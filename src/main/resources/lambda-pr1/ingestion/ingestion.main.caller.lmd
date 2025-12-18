@@ -1,0 +1,69 @@
+process "ingestion.main.caller"
+{
+	try{
+        assign as "time_stamp_ingestion" source "intics_zio_db_conn" using
+        {"
+                SELECT now() as consumed_on_ts;
+        "} on-condition if "true"=="true"
+
+        callprocess as "calling ingestion processor"
+        with-target "ingestion.processor"
+        from-file "${basepath}/ingestion/ingestion.processor.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT producer_process_id,group_id, inbound_id, status, stage FROM ingestion.ingestion_payload_queue where tenant_id=${tenant_id} and group_id= '${gen_group_id.group_id}';
+        "} on-condition if "true"=="true" on-parallel-fielding "${ingestion.processor.threadcount}"
+
+
+        callprocess as "calling csv import into db processor"
+        with-target "import.csv.into.db"
+        from-file "${basepath}/coverageReport/import/import.csv.into.db.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${coverage.report.csv.import.activator}"=="true"
+
+        transform as "Batch processing splitting for batching" on "intics_zio_db_conn" using {"
+                INSERT INTO batching.sub_batching_process_payload_queue
+                (producer_process_id, origin_id, batch_id, group_id, created_on, status, stage, root_pipeline_id, tenant_id)
+                SELECT producer_process_id, origin_id, batch_id , group_id, now(), status, stage, root_pipeline_id, ${tenant_id}
+                FROM batching.batching_process_payload_queue
+                where group_id='${gen_group_id.group_id}' and tenant_id = ${tenant_id};
+
+        "} on-condition if "true"=="true"
+
+	}
+	catch{
+        transform as "failed in ingestion main caller" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO ingestion.ingestion_pipeline_audit
+                (process_id, group_id, created_on, status, stage, message,root_pipeline_id, tenant_id)
+                VALUES( '${init_process_id.process_id}','${gen_group_id.group_id}',now(), 'FAILED', 'INGESTION_MAIN_CALLER', 'failed in ingestion main caller lambda','${gen_id.root_pipeline_id}', ${tenant_id});
+        "}on-condition if "true"=="true"
+	}
+	finally{
+        transform as "completed in ingestion main caller" on "intics_zio_db_conn" using
+        {"
+            INSERT INTO ingestion.ingestion_pipeline_audit
+            (process_id, group_id, created_on, status, stage, message,root_pipeline_id, tenant_id)
+            VALUES( '${init_process_id.process_id}','${gen_group_id.group_id}',now(), 'COMPLETED', 'INGESTION_MAIN_CALLER', 'completed ingestion main caller lambda','${gen_id.root_pipeline_id}', ${tenant_id});
+        "}on-condition if "true"=="true"
+
+		transform as "Insert into info.source_of_origin temporary table for reference" on "intics_zio_db_conn" using {"
+            INSERT INTO ${temp_schema_name}.source_of_origin_${init_process_id.process_id}
+            (origin_id, tenant_id, created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, file_id, group_id, origin_type, preview_encode, root_pipeline_id, transaction_id, workspace_id, asset_id, channel_id, preview_file_path, batch_id)
+            SELECT origin_id, tenant_id, created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, file_id, group_id, origin_type, preview_encode, root_pipeline_id, transaction_id, workspace_id, asset_id, channel_id, preview_file_path, batch_id
+            FROM info.source_of_origin
+            where group_id='${gen_group_id.group_id}' and tenant_id = ${tenant_id};
+
+            INSERT INTO ${temp_schema_name}.asset_${init_process_id.process_id}
+            (asset_id, created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, file_checksum, file_extension, file_id, file_name, file_path, file_size, root_pipeline_id, tenant_id, transaction_id, workspace_id, height, width, dpi, channel_id, batch_id, decoded_file_name)
+            SELECT a.asset_id, a.created_on, a.created_user_id, a.last_updated_on, a.last_updated_user_id, a.status, a.version, a.file_checksum, a.file_extension, a.file_id, a.file_name, a.file_path, a.file_size, a.root_pipeline_id, a.tenant_id, a.transaction_id, a.workspace_id, a.height, a.width, a.dpi, a.channel_id, a.batch_id, a.decoded_file_name
+            FROM info.asset a
+            JOIN info.source_of_origin soo on a.asset_id=soo.asset_id and a.tenant_id=soo.tenant_id
+            where soo.group_id='${gen_group_id.group_id}' and soo.tenant_id = ${tenant_id};
+		"} on-condition if "true"=="true"
+
+
+	}
+}

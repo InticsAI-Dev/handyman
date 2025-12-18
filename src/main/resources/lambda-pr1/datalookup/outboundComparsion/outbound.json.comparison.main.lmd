@@ -1,0 +1,101 @@
+process "outbound.json.comparison.main"
+{
+try{
+           assign as "accuracy_metrics_controller" source "intics_zio_db_conn" using
+            {"
+                   select  (case when '${kafka.production.activator}'='true' AND '${data.coverage.lookup.dcnid.activator}'='false' then 'true' else 'false' end) as control_data_without_dcnid;
+                   select  (case when '${kafka.production.activator}'='true' AND '${data.coverage.lookup.dcnid.activator}'='true' then 'true' else 'false' end) as control_data_with_dcnid;
+            "}on-condition if "true"=="true"
+
+           transform as "create input and output table" on "intics_zio_db_conn" using {"
+
+
+
+                     create table if not exists ${COVERAGE_REPORT}.final_result_field_summary_kafka_comparison (
+                                            id bigserial NOT NULL PRIMARY KEY,
+                                            root_pipeline_id INT8 NULL,
+                                            created_on TIMESTAMP NULL,
+                                            group_id INT8 NULL,
+                                            file_name VARCHAR NULL,
+                                            origin_id VARCHAR NULL,
+                                            batch_id VARCHAR NULL,
+                                            paper_no VARCHAR NULL,
+                                            actual_value TEXT NULL,
+                                            extracted_value TEXT NULL,
+                                            match_status VARCHAR NULL,
+                                            mismatch_count INT8 NULL,
+                                            tenant_id INT8 NULL,
+                                            classification VARCHAR NULL,
+                                            sor_container_id INT8 NULL,
+                                            sor_item_name VARCHAR NULL,
+                                            sor_item_id INT8 NULL
+                                        );
+
+                        CREATE TABLE IF NOT EXISTS ${CONTROL_DATA}.consolidated_coverage_input(
+                                            root_pipeline_id int8 null,
+                                            created_on timestamp NULL,
+                                            group_id int4 NULL,
+                                            batch_id varchar null,
+                                            file_name varchar NULL,
+                                            origin_id varchar NULL,
+                                            paper_no int8 null,
+                                            actual_value varchar NULL,
+                                            extracted_value text NULL,
+                                            tenant_id int8 NULL,
+                                            document_type varchar null,
+                                            sor_container_id int8 null,
+                                            sor_item_id int8 null
+                                                        );
+
+
+
+                "} on-condition if "true"=="true"
+
+
+
+                      callprocess as "calling outbound.json.processor caller"
+                      with-target "outbound.json.processor"
+                      from-file "${basepath}/datalookup/outboundComparsion/outbound.json.processor.lmd"
+                      using "intics_zio_db_conn"
+                      for-every {"
+                        SELECT a.sor_item_name, ft.field_type, sc.sor_container_id, a.sor_item_id, sc.sor_container_name
+   --                    ,allowed_adapter, allowed_characters, char_limit,
+   --                    char_threshold, comparable_characters, sor_container_id, restricted_adapter, restricted_adapter_flag,
+   --                    validator_threshold, word_limit, word_threshold, created_on, created_user_id,
+   --                    last_updated_on, last_updated_user_id, status, tenant_id,
+   --                    allowed_adaptor_display_text, restricted_adapter_display_text
+                       FROM sor_meta.sor_container sc
+                       JOIN sor_meta.sor_item a on sc.sor_container_id=a.sor_container_id and  sc.tenant_id=a.tenant_id
+                        JOIN sor_meta.sor_item_activators cdi on cdi.sor_item_id =a.sor_item_id and cdi.report_plugin = TRUE
+                       JOIN sor_meta.field_type ft on ft.field_type_id = a.field_type_id
+                       WHERE sc.document_type='${document_type}' and sc.tenant_id = '${tenant_id}' and sc.status='ACTIVE' and a.status='ACTIVE';
+
+                     "} on-condition if "${kafka.production.activator}"=="true" on-parallel-fielding "${data.coverage.lookup.processor.parallel.fielding}"
+
+
+                      controlDataComparison as "insert into control data input details"
+                     on-resource-conn "intics_zio_db_conn"
+                     input-table "${CONTROL_DATA}.consolidated_coverage_input"
+                     output-table "${COVERAGE_REPORT}.final_result_field_summary_kafka_comparison"
+                     using {"
+                         SELECT ROW_NUMBER() OVER (ORDER BY a.root_pipeline_id) AS id,a.root_pipeline_id ,now(),a.group_id ,a.file_name ,a.origin_id ,a.paper_no,
+                         a.actual_value as  actual_value , a.extracted_value as extracted_value,
+                         a.tenant_id, si.allowed_adapter, si.char_limit, si.restricted_adapter, si.sor_item_name, si.is_encrypted, ep.encryption_policy,si.sor_item_id,si.sor_container_id
+                         FROM ${CONTROL_DATA}.consolidated_coverage_input a
+                         JOIN sor_meta.sor_item si ON si.sor_item_id = a.sor_item_id AND si.tenant_id = a.tenant_id AND si.status = 'ACTIVE'
+                         JOIN sor_meta.encryption_policies ep ON si.encryption_policy_id=ep.encryption_policy_id
+                         WHERE a.root_pipeline_id = '${init_process_id.process_id}' and si.sor_item_id = a.sor_item_id and si.sor_container_id = a.sor_container_id;
+                 "} on-condition if "true"=="true"
+
+
+
+
+
+}
+catch{
+}
+finally{
+
+
+}
+}

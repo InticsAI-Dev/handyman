@@ -1,0 +1,1785 @@
+process "eocdoc.detail.ddl"
+
+{
+
+    try {
+        transform as "create table for the eoc detail insert payload queue archive" on "intics_zio_db_conn" using
+        {"
+
+                CREATE TABLE IF NOT EXISTS outbound.merger_output_table (
+                id bigserial NOT NULL,
+                batch_id varchar NOT NULL,
+                process_id int8 NULL,
+                group_id int8 NULL,
+                origin_id varchar NULL,
+                processed_file_path varchar NULL,
+                file_name varchar NULL,
+                created_on timestamp NULL,
+                last_updated_on timestamp NULL,
+                tenant_id int8 NULL,
+                root_pipeline_id int8 NULL,
+                status varchar NULL,
+                stage varchar NULL,
+                message varchar NULL,
+                height float4 null,
+                width float4 null,
+                dpi int4 NULL,
+                model_name varchar NULL,
+                model_version varchar NULL,
+                CONSTRAINT merger_output_table_pk PRIMARY KEY (id)
+                );
+
+                CREATE TABLE IF NOT EXISTS voting.kvp_dpi_scaling_details (
+                id bigserial NOT NULL,
+                batch_id varchar NOT NULL,
+                group_id int8 NULL,
+                origin_id varchar NULL,
+                paper_no int4 not null,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                pdf_height float4 null,
+                pdf_width float4 null,
+                image_height float4 null,
+                image_width float4 null,
+                width_scale float4 null,
+                height_scale float4 null,
+                dpi int4 null
+                );
+
+                CREATE TABLE IF NOT EXISTS voting.cummulative_result_bbox_info (
+                id bigserial NOT NULL,
+                batch_id varchar NOT NULL,
+                cummulative_id int8 NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                frequency int8 NULL,
+                b_box varchar NULL,
+                confidence_score int8 NULL,
+                extracted_value varchar NULL,
+                filter_score int8 NULL,
+                group_id int8 NULL,
+                maximum_score varchar NULL,
+                origin_id varchar NULL,
+                paper_no int8 NULL,
+                question_id int8 NULL,
+                root_pipeline_id int8 NULL,
+                sor_item_name varchar NOT NULL,
+                synonym_id int8 NULL,
+                tenant_id int8 NULL,
+                CONSTRAINT cummulative_result_bbox_info_pk PRIMARY KEY (id)
+                );
+
+                CREATE TABLE IF NOT EXISTS urgency_triage.ut_dpi_scaling_details (
+                id bigserial NOT NULL,
+                batch_id varchar NOT NULL,
+                group_id int8 NULL,
+                origin_id varchar NULL,
+                paper_no int4 not null,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                pdf_height float4 null,
+                pdf_width float4 null,
+                image_height float4 null,
+                image_width float4 null,
+                width_scale float4 null,
+                height_scale float4 null,
+                dpi int4 null
+                );
+
+                CREATE TABLE IF NOT EXISTS urgency_triage.ut_model_result_bbox_info (
+                transaction_id bigserial NOT NULL,
+                created_on timestamp NOT NULL,
+                created_user_id varchar NOT NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id varchar NULL,
+                process_id int8 NULL,
+                batch_id varchar NOT NULL,
+                group_id int4 NULL,
+                tenant_id int8 NOT NULL,
+                confidence_score float8 NULL,
+                origin_id varchar NOT NULL,
+                paper_no int4 NOT NULL,
+                template_id varchar NOT NULL,
+                model_id int8 NULL,
+                paper_type varchar NULL,
+                bboxes varchar NULL,
+                status varchar NOT NULL,
+                stage varchar NOT NULL,
+                message text NOT NULL,
+                document_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                model_name varchar NULL,
+                model_version varchar NULL,
+                CONSTRAINT ut_model_result_bbox_info_pk PRIMARY KEY (transaction_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS qr_extraction.qr_dpi_scaling_details (
+                id bigserial NOT NULL,
+                batch_id varchar NOT NULL,
+                group_id int8 NULL,
+                origin_id varchar NULL,
+                paper_no int4 not null,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                pdf_height float4 null,
+                pdf_width float4 null,
+                image_height float4 null,
+                image_width float4 null,
+                width_scale float4 null,
+                height_scale float4 null,
+                dpi int4 null
+                );
+
+                CREATE TABLE IF NOT EXISTS qr_extraction.qr_extraction_details_bbox_info (
+                id bigserial NOT NULL,
+                batch_id varchar NOT NULL,
+                process_id int8 NULL,
+                origin_id varchar NULL,
+                group_id int4 NULL,
+                paper_no int4 NULL,
+                created_on timestamp NULL,
+                qr_format varchar NULL,
+                qr_format_id int4 NULL,
+                decode_type varchar NULL,
+                extracted_value varchar NULL,
+                file_id varchar NULL,
+                b_box varchar NULL,
+                angle int8 NULL,
+                confidence_score int4 NULL,
+                status varchar NULL,
+                stage varchar NULL,
+                message varchar NULL,
+                is_candidate_qr varchar NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                model_name varchar NULL,
+                model_version varchar NULL,
+                CONSTRAINT qr_extraction_result_bbox_info_pk PRIMARY KEY (id)
+                );
+
+                CREATE TABLE IF NOT EXISTS eoc_transformer.eoc_transformer_payload_queue_archive (
+                producer_process_id int8 NOT NULL,
+                consumer_process_id int8 NULL,
+                origin_id varchar NOT NULL,
+                group_id int4 NULL,
+                created_on timestamp NULL,
+                consumed_on_ts varchar NULL,
+                status varchar NULL,
+                stage varchar NULL,
+                batch_id varchar NOT NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                CONSTRAINT eoc_transformer_queue_archive_pk PRIMARY KEY (producer_process_id, origin_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS eoc_transformer.eoc_transformer_payload_error_queue (
+                producer_process_id int8 NOT NULL,
+                consumer_process_id int8 NULL,
+                batch_id varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp  NULL,
+                group_id int4  null,
+                status varchar  NULL,
+                stage  varchar  NULL,
+                message varchar NULL,
+                consumed_on_ts timestamp NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                CONSTRAINT eoc_transformer_payload_error_queue_pk PRIMARY KEY ( origin_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS eoc_transformer.eoc_transformer_pipeline_audit (
+                id bigserial NOT NULL,
+                batch_id varchar NULL,
+                process_id bigint NOT NULL,
+                origin_id varchar  NULL,
+                group_id varchar NULL,
+                created_on varchar  NULL,
+                status varchar  NULL,
+                stage varchar  NULL,
+                message varchar  NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL
+                );
+
+                "}
+
+                transform as "create table for the eocdoc_details" on "intics_zio_db_conn" using
+                {"
+                CREATE SCHEMA IF NOT EXISTS eoc_response;
+                CREATE table IF NOT EXISTS eoc_response.eoc_extraction
+                (pahub_patient_instance_id int4,
+                batch_id varchar NOT NULL,
+                origin_id varchar not null,
+                document_id varchar not null,
+                eoc_identifier varchar not null,
+                values varchar not null,
+                paper_no int4 not null,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                constraint fkey123 foreign key(pahub_patient_instance_id) references
+                sor_grouping.pahub_patient_instance(pahub_patient_instance_id)
+                );
+
+                CREATE table IF NOT EXISTS eoc_response.eoc_trans(
+                cummulative_id int8 NOT NULL,
+                document_id varchar,
+                origin_id varchar,
+                value_type varchar null,
+                paper_no int4,eoc_identifier varchar,sor_item_name varchar,values varchar,
+                confidence_score float8 not null,
+                b_box json null,
+                root_pipeline_id int8 NULL,
+                batch_id varchar NOT NULL,
+                tenant_id int8 NULL,
+                constraint pak primary key (cummulative_id),
+                constraint fkey1234 foreign key(cummulative_id) references voting.cummulative_result(cummulative_id)
+                );
+
+                CREATE TABLE  IF NOT EXISTS eoc_response.eoc_document_detail (
+                eoc_identifier varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                document_id varchar NULL,
+                end_page_no int4 NULL,
+                process_completed_on timestamp NULL,
+                process_started_on timestamp NULL,
+                start_page_no int4 NULL,
+                batch_id varchar NOT NULL,
+                tenant_id int8 NULL,
+                total_processed_duration int8 NULL,
+                time_zone varchar null,
+                uploaded_on timestamp NULL,
+                root_pipeline_id int8 NULL,
+                file_name varchar NULL,
+                CONSTRAINT eoc_document_detail_pkey PRIMARY KEY (eoc_identifier, origin_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS eoc_response.image_dpi_information(
+                process_id int8 NULL,
+                group_id int8 NULL,
+                root_pipeline_id int8 NULL,
+                created_on timestamp NULL,
+                batch_id varchar NOT NULL,
+                origin_id varchar NULL,
+                paper_no int8 NULL,
+                image_dpi int8 NULL,
+                image_width int8 NULL,
+                image_height int8 NULL,
+                extracted_image_unit varchar null,
+                tenant_id int8 NULL
+                );
+
+                CREATE TABLE  IF NOT EXISTS  eoc_response.bounding_box_details (
+                bounding_box_details_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                document_id varchar NULL,
+                eoc_identifier varchar NULL,
+                extracted_image_unit varchar NULL,
+                image_dpi int4 NULL,
+                image_height int4 NULL,
+                image_width int4 NULL,
+                batch_id varchar NOT NULL,
+                origin_id varchar NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT bounding_box_details_pkey PRIMARY KEY (bounding_box_details_id),
+                CONSTRAINT fk5ld41fl61nroq5bxy8r3yl56p FOREIGN KEY (eoc_identifier,origin_id) REFERENCES eoc_response.eoc_document_detail(eoc_identifier,origin_id)
+                );
+
+                CREATE TABLE   IF NOT EXISTS eoc_response.pahub_patient_request (
+                eoc_identifier varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                document_id varchar NULL,
+                batch_id varchar NOT NULL,
+                tenant_id int8 NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT pahub_patient_request_pkey PRIMARY KEY (eoc_identifier, origin_id)
+                );
+
+                CREATE TABLE   IF NOT EXISTS eoc_response.patient_detail (
+                eoc_identifier varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                document_id varchar NULL,
+                batch_id varchar NOT NULL,
+                tenant_id int8 NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT patient_detail_pkey PRIMARY KEY (eoc_identifier, origin_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS eoc_response.patient_sordetails (
+                patient_sordetailsid bigserial NOT NULL,
+                document_id varchar NULL,
+                eoc_identifier varchar NULL,
+                origin_id varchar NULL,
+                patient_sordetails varchar NULL,
+                mandatory bool NULL,
+                status varchar NULL,
+                created_on timestamp NULL,
+                last_modified_date timestamp NULL,
+                root_pipeline_id int8 NULL,
+                batch_id varchar NOT NULL,
+                tenant_id int8 NULL,
+                CONSTRAINT pkey10 PRIMARY KEY (patient_sordetailsid),
+                CONSTRAINT fkey1 FOREIGN KEY (eoc_identifier,origin_id) REFERENCES eoc_response.patient_detail(eoc_identifier,origin_id)
+                );
+
+
+                CREATE TABLE   IF NOT EXISTS eoc_response.prescriber_detail (
+                eoc_identifier varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                document_id varchar NULL,
+                batch_id varchar NOT NULL,
+                tenant_id int8 NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT prescriber_detail_pkey PRIMARY KEY (eoc_identifier, origin_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS eoc_response.prescriber_sordetails (
+                prescriber_sordetailsid bigserial NOT NULL,
+                document_id varchar NULL,
+                eoc_identifier varchar NULL,
+                origin_id varchar NULL,
+                prescriber_sordetails varchar NULL,
+                mandatory bool NULL,
+                status varchar NULL,
+                created_on timestamp NULL,
+                last_modified_date timestamp NULL,
+                root_pipeline_id int8 NULL,
+                batch_id varchar NOT NULL,
+                tenant_id int8 NULL,
+                CONSTRAINT pkey12 PRIMARY KEY (prescriber_sordetailsid),
+                CONSTRAINT fkey2 FOREIGN KEY (eoc_identifier,origin_id) REFERENCES eoc_response.prescriber_detail(eoc_identifier,origin_id)
+                );
+
+
+
+
+                CREATE TABLE  IF NOT EXISTS  eoc_response.provider_detail (
+                eoc_identifier varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                document_id varchar NULL,
+                batch_id varchar NOT NULL,
+                tenant_id int8 NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT provider_detail_pkey PRIMARY KEY (eoc_identifier, origin_id),
+                CONSTRAINT fklvcaqi8l1clscqnn9d50oq1nj FOREIGN KEY (eoc_identifier,origin_id) REFERENCES eoc_response.pahub_patient_request(eoc_identifier,origin_id)
+                );
+
+
+                CREATE TABLE IF NOT EXISTS eoc_response.provider_sordetails (
+                provider_sordetailsid bigserial NOT NULL,
+                document_id varchar NULL,
+                eoc_identifier varchar NULL,
+                origin_id varchar NULL,
+                provider_sordetails varchar NULL,
+                mandatory bool NULL,
+                status varchar NULL,
+                created_on timestamp NULL,
+                last_modified_date timestamp NULL,
+                root_pipeline_id int8 NULL,
+                batch_id varchar NOT NULL,
+                tenant_id int8 NULL,
+                CONSTRAINT pkey11 PRIMARY KEY (provider_sordetailsid),
+                CONSTRAINT fkey1 FOREIGN KEY (eoc_identifier,origin_id) REFERENCES eoc_response.provider_detail(eoc_identifier,origin_id)
+                );
+
+                CREATE TABLE   IF NOT EXISTS eoc_response.drug_detail (
+                eoc_identifier varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                document_id varchar NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT drug_detail_pkey PRIMARY KEY (eoc_identifier, origin_id),
+                CONSTRAINT fkojha9n996op9pe1w4efl71jan FOREIGN KEY (eoc_identifier,origin_id) REFERENCES eoc_response.pahub_patient_request(eoc_identifier,origin_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS eoc_response.drug_sordetails (
+                drug_sordetailsid bigserial NOT NULL,
+                document_id varchar NULL,
+                eoc_identifier varchar NULL,
+                origin_id varchar NULL,
+                drug_sordetails varchar NULL,
+                mandatory bool NULL,
+                status varchar NULL,
+                created_on date NULL,
+                last_modified_date date NULL,
+                root_pipeline_id int8 NULL,
+                batch_id varchar NOT NULL,
+                tenant_id int8 NULL,
+                CONSTRAINT pkey13 PRIMARY KEY (drug_sordetailsid),
+                CONSTRAINT fkey5 FOREIGN KEY (eoc_identifier,origin_id) REFERENCES eoc_response.drug_detail(eoc_identifier,origin_id)
+                );
+
+
+                CREATE TABLE   IF NOT EXISTS eoc_response.patient_date_of_birth (
+                eoc_identifier varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT patient_date_of_birth_pkey PRIMARY KEY (eoc_identifier, origin_id)
+                );
+
+                CREATE TABLE   IF NOT EXISTS eoc_response.patient_member_id (
+                eoc_identifier varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT patient_member_id_pkey PRIMARY KEY (eoc_identifier, origin_id)
+                );
+
+                CREATE TABLE   IF NOT EXISTS eoc_response.patient_name (
+                eoc_identifier varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT patient_name_pkey PRIMARY KEY (eoc_identifier, origin_id)
+                );
+
+                CREATE TABLE  IF NOT EXISTS  eoc_response.prescriber_name (
+                eoc_identifier varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT prescriber_name_pkey PRIMARY KEY (eoc_identifier, origin_id)
+                );
+
+                CREATE TABLE   IF NOT EXISTS eoc_response.prescriber_npi (
+                eoc_identifier varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT prescriber_npi_pkey PRIMARY KEY (eoc_identifier, origin_id)
+                );
+
+                CREATE TABLE  IF NOT EXISTS  eoc_response.provider_name (
+                provider_detail_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                eoc_identifier varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                origin_id varchar NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT provider_name_pkey PRIMARY KEY (provider_detail_id),
+                CONSTRAINT fkg61rc5kofjpqkpwnwbpgw90ct FOREIGN KEY (eoc_identifier,origin_id) REFERENCES eoc_response.provider_detail(eoc_identifier,origin_id)
+                );
+
+
+                CREATE TABLE   IF NOT EXISTS eoc_response.drug_name (
+                drug_detail_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                eoc_identifier varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                origin_id varchar NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT drug_name_pkey PRIMARY KEY (drug_detail_id),
+                CONSTRAINT fkkwljq7auuxmmyn0m88cvl2c8r FOREIGN KEY (eoc_identifier,origin_id) REFERENCES eoc_response.drug_detail(eoc_identifier,origin_id)
+                );
+
+                CREATE TABLE  IF NOT EXISTS  eoc_response.patient_address (
+                eoc_identifier varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT patient_address_pkey PRIMARY KEY (eoc_identifier, origin_id)
+                );
+
+                CREATE TABLE  IF NOT EXISTS  eoc_response.patient_city (
+                eoc_identifier varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float8 NULL,
+                document_id varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float8 NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT patient_city_pkey PRIMARY KEY (eoc_identifier, origin_id)
+                );
+
+                CREATE TABLE  IF NOT EXISTS  eoc_response.patient_group_number (
+                eoc_identifier varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT patient_group_number_pkey PRIMARY KEY (eoc_identifier, origin_id)
+                );
+
+
+                CREATE TABLE  IF NOT EXISTS  eoc_response.patient_phone (
+                eoc_identifier varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT patient_phone_pkey PRIMARY KEY (eoc_identifier, origin_id)
+                );
+
+                CREATE TABLE   IF NOT EXISTS eoc_response.patient_state (
+                eoc_identifier varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT patient_state_pkey PRIMARY KEY (eoc_identifier, origin_id)
+                );
+
+
+                CREATE TABLE  IF NOT EXISTS  eoc_response.patient_zipcode (
+                eoc_identifier varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT patient_zipcode_pkey PRIMARY KEY (eoc_identifier, origin_id)
+                );
+
+                CREATE TABLE  IF NOT EXISTS  eoc_response.patient_city_state_zip (
+                eoc_identifier varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT patient_city_state_zip_pkey PRIMARY KEY (eoc_identifier, origin_id)
+                );
+
+
+                CREATE TABLE  IF NOT EXISTS  eoc_response.prescriber_address (
+                eoc_identifier varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT prescriber_address_pkey PRIMARY KEY (eoc_identifier, origin_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS eoc_response.prescriber_city (
+                eoc_identifier varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT prescriber_city_pkey PRIMARY KEY (eoc_identifier, origin_id)
+                );
+
+
+                CREATE TABLE  IF NOT EXISTS eoc_response.prescriber_fax (
+                eoc_identifier varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT prescriber_fax_pkey PRIMARY KEY (eoc_identifier, origin_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS  eoc_response.prescriber_phone (
+                eoc_identifier varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT prescriber_phone_pkey PRIMARY KEY (eoc_identifier, origin_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS  eoc_response.prescriber_state_lic_id (
+                eoc_identifier varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT prescriber_state_lic_id_pkey PRIMARY KEY (eoc_identifier, origin_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS  eoc_response.prescriber_state (
+                eoc_identifier varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT prescriber_state_pkey PRIMARY KEY (eoc_identifier, origin_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS  eoc_response.prescriber_tax_id (
+                eoc_identifier varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT prescriber_tax_id_pkey PRIMARY KEY (eoc_identifier, origin_id)
+                );
+
+                CREATE TABLE  IF NOT EXISTS eoc_response.prescriber_zipcode (
+                eoc_identifier varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT prescriber_zipcode_pkey PRIMARY KEY (eoc_identifier, origin_id)
+                );
+
+                CREATE TABLE  IF NOT EXISTS eoc_response.prescriber_city_state_zip (
+                eoc_identifier varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT prescriber_city_state_zip_pkey PRIMARY KEY (eoc_identifier, origin_id)
+                );
+
+
+                CREATE TABLE IF NOT EXISTS eoc_response.drug_diagnosis (
+                drug_detail_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                eoc_identifier varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                origin_id varchar NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT drug_diagnosis_pkey PRIMARY KEY (drug_detail_id),
+                CONSTRAINT fkhi1g28tmgrp9fr0qy65xfstas FOREIGN KEY (eoc_identifier,origin_id) REFERENCES eoc_response.drug_detail(eoc_identifier,origin_id)
+                );
+
+
+                CREATE TABLE IF NOT EXISTS eoc_response.drug_directions (
+                drug_detail_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                eoc_identifier varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                origin_id varchar NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT drug_directions_pkey PRIMARY KEY (drug_detail_id),
+                CONSTRAINT fkth3mixge07svwqid0g0ceb9vh FOREIGN KEY (eoc_identifier,origin_id) REFERENCES eoc_response.drug_detail(eoc_identifier,origin_id)
+                );
+
+
+                CREATE TABLE IF NOT EXISTS eoc_response.drug_dose (
+                drug_detail_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                eoc_identifier varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                origin_id varchar NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT drug_dose_pkey PRIMARY KEY (drug_detail_id),
+                CONSTRAINT fkc5chlel64x69j3kq2utccelww FOREIGN KEY (eoc_identifier,origin_id) REFERENCES eoc_response.drug_detail(eoc_identifier,origin_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS eoc_response.drug_hcpcs (
+                drug_detail_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                eoc_identifier varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                origin_id varchar NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT drug_hcpcs_pkey PRIMARY KEY (drug_detail_id),
+                CONSTRAINT fkjvyyooxf2slvu90id0ffooj9a FOREIGN KEY (eoc_identifier,origin_id) REFERENCES eoc_response.drug_detail(eoc_identifier,origin_id)
+                );
+
+
+                CREATE TABLE IF NOT EXISTS eoc_response.drug_icd10 (
+                drug_detail_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                eoc_identifier varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                origin_id varchar NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT drug_icd10_pkey PRIMARY KEY (drug_detail_id),
+                CONSTRAINT fkgapwoiawxub75cmp33984xdoq FOREIGN KEY (eoc_identifier,origin_id) REFERENCES eoc_response.drug_detail(eoc_identifier,origin_id)
+                );
+
+
+                CREATE TABLE IF NOT EXISTS eoc_response.drug_jcode (
+                drug_detail_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                eoc_identifier varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                origin_id varchar NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT drug_jcode_pkey PRIMARY KEY (drug_detail_id),
+                CONSTRAINT fk12v1jhd7jsppm4u4id3bwxrbi FOREIGN KEY (eoc_identifier,origin_id) REFERENCES eoc_response.drug_detail(eoc_identifier,origin_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS eoc_response.drug_quantity (
+                drug_detail_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                eoc_identifier varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                origin_id varchar NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT drug_quantity_pkey PRIMARY KEY (drug_detail_id),
+                CONSTRAINT fkd3bnfdjv2wh0h0rtd323ys8dt FOREIGN KEY (eoc_identifier,origin_id) REFERENCES eoc_response.drug_detail(eoc_identifier,origin_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS eoc_response.drug_strength (
+                drug_detail_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                eoc_identifier varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                origin_id varchar NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT drug_strength_pkey PRIMARY KEY (drug_detail_id),
+                CONSTRAINT fko83duas9pyvhv9ut9vbma4lfa FOREIGN KEY (eoc_identifier,origin_id) REFERENCES eoc_response.drug_detail(eoc_identifier,origin_id)
+                );
+
+
+                CREATE TABLE IF NOT EXISTS eoc_response.provider_fax (
+                provider_detail_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                eoc_identifier varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                origin_id varchar NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT provider_fax_pkey PRIMARY KEY (provider_detail_id),
+                CONSTRAINT fk1qck4m6632wgvbf5b4fi1b01h FOREIGN KEY (eoc_identifier,origin_id) REFERENCES eoc_response.provider_detail(eoc_identifier,origin_id)
+                );
+
+
+                CREATE TABLE IF NOT EXISTS eoc_response.provider_npi (
+                provider_detail_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                eoc_identifier varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                origin_id varchar NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT provider_npi_pkey PRIMARY KEY (provider_detail_id),
+                CONSTRAINT fkg16gp3t61u8eukknif6jcmq6x FOREIGN KEY (eoc_identifier,origin_id) REFERENCES eoc_response.provider_detail(eoc_identifier,origin_id)
+                );
+
+
+                CREATE TABLE IF NOT EXISTS eoc_response.provider_phone (
+                provider_detail_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                eoc_identifier varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                origin_id varchar NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT provider_phone_pkey PRIMARY KEY (provider_detail_id),
+                CONSTRAINT fkjf0j6b7mjfwgwvcrr0uaa49oh FOREIGN KEY (eoc_identifier,origin_id) REFERENCES eoc_response.provider_detail(eoc_identifier,origin_id)
+                );
+
+
+                CREATE TABLE IF NOT EXISTS eoc_response.provider_state (
+                provider_detail_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                eoc_identifier varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                origin_id varchar NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT provider_state_pkey PRIMARY KEY (provider_detail_id),
+                CONSTRAINT fkdxcxdl74e4ec9x87hdcm76gq5 FOREIGN KEY (eoc_identifier,origin_id) REFERENCES eoc_response.provider_detail(eoc_identifier,origin_id)
+                );
+
+
+                CREATE TABLE IF NOT EXISTS eoc_response.provider_tax_id (
+                provider_detail_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                eoc_identifier varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                origin_id varchar NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT provider_tax_id_pkey PRIMARY KEY (provider_detail_id),
+                CONSTRAINT fktb15nq3arx4cg7s63mxjhai37 FOREIGN KEY (eoc_identifier,origin_id) REFERENCES eoc_response.provider_detail(eoc_identifier,origin_id)
+                );
+
+
+
+                CREATE TABLE IF NOT EXISTS eoc_response.provider_zipcode (
+                provider_detail_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                eoc_identifier varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                origin_id varchar NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT provider_zipcode_pkey PRIMARY KEY (provider_detail_id),
+                CONSTRAINT fkl5pd4irwtvd7dm606dm7n6ksq FOREIGN KEY (eoc_identifier,origin_id) REFERENCES eoc_response.provider_detail(eoc_identifier,origin_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS eoc_response.provider_city_state_zip (
+                provider_detail_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                eoc_identifier varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                origin_id varchar NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT provider_city_state_zip_pkey PRIMARY KEY (provider_detail_id),
+                CONSTRAINT fkl2fwcykyrdaassrnhhjvgieh7 FOREIGN KEY (eoc_identifier,origin_id) REFERENCES eoc_response.provider_detail(eoc_identifier,origin_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS eoc_response.drug_date_of_service_from (
+                drug_detail_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                eoc_identifier varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                origin_id varchar NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT drug_date_of_service_from_pkey PRIMARY KEY (drug_detail_id),
+                CONSTRAINT fkeb1g282oioc0td2otss1kj9mp FOREIGN KEY (eoc_identifier,origin_id) REFERENCES eoc_response.drug_detail(eoc_identifier,origin_id)
+                );
+
+
+
+                CREATE TABLE IF NOT EXISTS eoc_response.drug_date_of_service_to (
+                drug_detail_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                eoc_identifier varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                origin_id varchar NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT drug_date_of_service_to_pkey PRIMARY KEY (drug_detail_id),
+                CONSTRAINT fkb8n1os0xixgk1x31wi6x5ye4t FOREIGN KEY (eoc_identifier,origin_id) REFERENCES eoc_response.drug_detail(eoc_identifier,origin_id)
+                );
+
+
+                CREATE TABLE IF NOT EXISTS eoc_response.provider_address (
+                provider_detail_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                eoc_identifier varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                origin_id varchar NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT provider_address_pkey PRIMARY KEY (provider_detail_id),
+                CONSTRAINT fk8isoj5iutsiadg7p6x5im8ghv FOREIGN KEY (eoc_identifier,origin_id) REFERENCES eoc_response.provider_detail(eoc_identifier,origin_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS eoc_response.provider_city (
+                provider_detail_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                eoc_identifier varchar NULL,
+                h_value varchar NULL,
+                is_master_value_matched bool NULL,
+                master_value varchar NULL,
+                master_value_match_percentage float4 NULL,
+                origin_id varchar NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT provider_city_pkey PRIMARY KEY (provider_detail_id),
+                CONSTRAINT fkljqj04qhdrf7bt1nk0ufbfrfa FOREIGN KEY (eoc_identifier,origin_id) REFERENCES eoc_response.provider_detail(eoc_identifier,origin_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS eoc_response.document_type_detail (
+                eoc_identifier varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score int8 NULL,
+                document_id varchar NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT document_type_detail_pkey PRIMARY KEY (eoc_identifier, origin_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS eoc_response.eoc_id_detail (
+                eoc_identifier varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score int8 NULL,
+                document_id varchar NULL,
+                end_page_no int4 NULL,
+                pa_hub_patient_request_page_count int4 NULL,
+                page_number int4 NULL,
+                source_of_pa_hub_patient_request_id varchar NULL,
+                start_page_no int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT eoc_id_detail_pkey PRIMARY KEY (eoc_identifier, origin_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS eoc_response.bar_code_details (
+                bar_code_detail_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score int8 NULL,
+                document_id varchar NULL,
+                eoc_identifier varchar NULL,
+                origin_id varchar NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT bar_code_details_pkey PRIMARY KEY (bar_code_detail_id),
+                CONSTRAINT fko8cna8vrh7hfjq6jnwlbd74bj FOREIGN KEY (eoc_identifier,origin_id) REFERENCES eoc_response.eoc_document_detail(eoc_identifier,origin_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS eoc_response.intics_reference_id_detail (
+                eoc_identifier varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                bounding_box json NULL,
+                confidence_score int8 NULL,
+                document_id varchar NULL,
+                end_page_no int4 NULL,
+                pa_hub_patient_request_page_count int4 NULL,
+                source_of_intics_reference_id varchar NULL,
+                start_page_no int4 NULL,
+                page_number int4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value varchar NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT intics_reference_id_detail_pkey PRIMARY KEY (eoc_identifier, origin_id)
+                );
+
+                CREATE TABLE if not exists eoc_response.hw_value_type (
+                eoc_identifier varchar NULL,
+                origin_id varchar  NULL,
+                batch_id varchar NOT NULL,
+                document_id varchar  NULL,
+                max_confidence_score int4  NULL,
+                value int4  NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS eoc_response.process_status_detail (
+                id bigserial NOT NULL,
+                delivered_on timestamp NULL,
+                document_id varchar NULL,
+                batch_id varchar NOT NULL,
+                origin_id varchar NULL,
+                originuri varchar NULL,
+                process_completed_on timestamp NULL,
+                process_started_on timestamp NULL,
+                resourceuri varchar NULL,
+                stage varchar NULL,
+                status varchar NULL,
+                tenant_id int8 NULL,
+                total_processed_duration int8 NULL,
+                uploaded_on timestamp NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT process_status_detail_pkey PRIMARY KEY (id)
+                );
+
+                CREATE TABLE IF NOT EXISTS eoc_response.urgency_details (
+                urgency_detail_id bigserial NOT NULL,
+                confidence_score int8 NULL,
+                document_id varchar NULL,
+                eoc_identifier varchar NULL,
+                origin_id varchar NULL,
+                h_value varchar NULL,
+                page_number int4 NULL,
+                value varchar NULL,
+                bounding_box json NULL,
+                value_type varchar NULL,
+                root_pipeline_id int8 NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                batch_id varchar NOT NULL,
+                tenant_id int8 NULL,
+                CONSTRAINT urgency_details_pkey PRIMARY KEY (urgency_detail_id),
+                CONSTRAINT docfor_key FOREIGN KEY (eoc_identifier,origin_id) REFERENCES eoc_response.eoc_document_detail(eoc_identifier,origin_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS eoc_response.noise_model_details (
+                noise_detail_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                checkbox_mark_detection_output json NULL,
+                check_noise_detection_output json NULL,
+                class_value varchar NULL,
+                confidence_score float4 NULL,
+                document_id varchar NULL,
+                eoc_identifier varchar NULL,
+                handwritten_noise_detection_output json NULL,
+                noise_model_result json NULL,
+                origin_id varchar NULL,
+                page_number int4 NULL,
+                root_pipeline_id int8 NULL,
+                speckle_noise_detection_output json NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                value_type varchar NULL,
+                CONSTRAINT noise_model_details_pkey PRIMARY KEY (noise_detail_id),
+                CONSTRAINT noise_model_details_fkey FOREIGN KEY (eoc_identifier,origin_id) REFERENCES eoc_response.eoc_document_detail(eoc_identifier,origin_id)
+                );
+
+                create table if not exists ${temp_schema_name}.pdf_merger_input_${init_process_id.process_id}(
+                origin_id varchar NULL,
+                output_file_name varchar NULL,
+                group_id int8 NULL,
+                file_paths TEXT[] NULL,
+                tenant_id int8 NULL,
+                root_pipeline_id int8 NULL,
+                process_id int8 NULL,
+                batch_id varchar NOT NULL
+                );
+
+
+
+                create table if not exists macro.pdf_merger_input_audit(
+                origin_id varchar NULL,
+                output_file_name varchar NULL,
+                group_id int8 NULL,
+                file_paths TEXT[] NULL,
+                tenant_id int8 NULL,
+                root_pipeline_id int8 NULL,
+                process_id int8 NULL,
+                batch_id varchar NOT NULL
+                );
+
+
+
+        "}  on-condition if "true"=="true"
+    }
+
+    catch {
+    }
+
+    finally {
+    }
+
+
+
+}

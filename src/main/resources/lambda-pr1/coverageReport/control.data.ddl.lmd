@@ -1,0 +1,2283 @@
+process "control.data.ddl"
+{
+    try {
+
+        transform as "table creation for control data payload queue" on "intics_zio_db_conn" using
+        {"
+
+                CREATE TABLE IF NOT EXISTS control_data.control_data_payload_queue_archive (
+                root_pipeline_id int8 NULL,
+                producer_process_id int8 NOT NULL,
+                consumer_process_id int8 NULL,
+                origin_id varchar NOT NULL,
+                group_id int4 NULL,
+                created_on timestamp NULL,
+                consumed_on_ts varchar NULL,
+                status varchar NULL,
+                stage varchar NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                CONSTRAINT control_data_queue_archive_pk PRIMARY KEY (producer_process_id, origin_id)
+                );
+
+
+                CREATE TABLE IF NOT EXISTS  control_data.control_data_payload_error_queue (
+                producer_process_id int8 NOT NULL,
+                consumer_process_id int8 NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp  NULL,
+                group_id int4  null,
+                status varchar  NULL,
+                stage  varchar  NULL,
+                message varchar NULL,
+                consumed_on_ts timestamp NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                CONSTRAINT control_data_payload_error_queue_pk PRIMARY KEY ( origin_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS  control_data.control_data_pipeline_audit (
+                id bigserial NOT NULL,
+                process_id bigint NOT NULL,
+                origin_id varchar  NULL,
+                group_id varchar NULL,
+                created_on varchar  NULL,
+                status varchar  NULL,
+                stage varchar  NULL,
+                message varchar  NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+
+                "}  on-condition if "true"=="true"
+
+                transform as "transpose consolidated result" on "intics_zio_db_conn" using
+                {"
+
+
+                CREATE TABLE IF NOT EXISTS Control_data.evaluation_transposed (
+                origin_id varchar NULL,
+                tenant_id int8 NULL,
+                file_name varchar NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                created_on timestamp NULL,
+                member_name text NULL,
+                member_id text NULL,
+                member_address text NULL,
+                member_gender text NULL,
+                member_groupnumber text NULL,
+                member_city text NULL,
+                member_citystatezip text NULL,
+                member_state text NULL,
+                member_zip text NULL,
+                member_phone text NULL,
+                member_dob text NULL,
+                prescriber_npi text NULL,
+                prescriber_name text NULL,
+                prescriber_address text NULL,
+                prescriber_citystatezip text NULL,
+                prescriber_state text NULL,
+                prescriber_statelicid text NULL,
+                prescriber_zipcode text NULL,
+                prescriber_phone text NULL,
+                prescriber_fax text NULL,
+                prescriber_taxid text NULL,
+                prescriber_city text NULL,
+                provider_name text NULL,
+                provider_address text NULL,
+                provider_city text NULL,
+                provider_city_state_zip text NULL,
+                provider_fax text NULL,
+                provider_npi text NULL,
+                provider_phone text NULL,
+                provider_state text NULL,
+                provider_tax_id text NULL,
+                provider_zip text NULL,
+                drug_name text NULL,
+                date_of_service_from text NULL,
+                date_of_service_to text NULL,
+                diagnosis text NULL,
+                direction_sig text NULL,
+                drug_dose text NULL,
+                drug_quantity text NULL,
+                drug_strength text NULL,
+                hcpcs text NULL,
+                icd10 text NULL,
+                j_code text NULL,
+                batch_id varchar NOT NULL);
+
+                "}  on-condition if "true"=="true"
+
+
+                transform as  "creating table for file name detection" on "intics_zio_db_conn" using
+                {"
+
+
+                CREATE TABLE IF NOT EXISTS control_data.file_name_detection (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                file_id varchar NULL,
+                group_id int4 NULL,
+                created_on timestamp NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+
+        "}on-condition if "true"=="true"
+
+        transform as "create ddl for drug entity similarity" on "intics_zio_db_conn" using
+        {"
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.drug_direction_similarity_input (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data.drug_direction_similarity (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                confidence_score int8 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_direction_sig (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                intelli_match float4 NULL,
+                confidence_score int8 NULL,
+                status varchar null,
+                stage varchar null,
+                message text null,
+                model_name varchar null,
+                model_version varchar null,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                request text null,
+                response text null,
+                endpoint varchar null
+                );
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.drug_dos_similarity_input (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data.drug_dos_similarity (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                confidence_score int8 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_date_of_service_from (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                intelli_match float4 NULL,
+                confidence_score int8 NULL,
+                status varchar null,
+                stage varchar null,
+                message text null,
+                model_name varchar null,
+                model_version varchar null,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                request text null,
+                response text null,
+                endpoint varchar null);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.drug_dosage_similarity_input (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+
+
+                CREATE TABLE IF NOT EXISTS control_data.drug_dosage_similarity (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                confidence_score int8 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_drug_dose (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                intelli_match float4 NULL,
+                confidence_score int8 NULL,
+                status varchar null,
+                stage varchar null,
+                message text null,
+                model_name varchar null,
+                model_version varchar null,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                request text null,
+                response text null,
+                endpoint varchar null);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.drug_hcpcs_similarity_input (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data.drug_hcpcs_similarity (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                confidence_score int8 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.drug_strength_similarity_input (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_hcpcs (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                intelli_match float4 NULL,
+                confidence_score int8 NULL,
+                status varchar null,
+                stage varchar null,
+                message text null,
+                model_name varchar null,
+                model_version varchar null,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                request text null,
+                response text null,
+                endpoint varchar null
+                );
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.drug_icd10_similarity_input (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+
+                CREATE TABLE IF NOT EXISTS control_data.drug_icd10_similarity (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                confidence_score int8 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_icd10 (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                intelli_match float4 NULL,
+                confidence_score int8 NULL,
+                status varchar null,
+                stage varchar null,
+                message text null,
+                model_name varchar null,
+                model_version varchar null,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                request text null,
+                response text null,
+                endpoint varchar null);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.drug_jcode_similarity_input (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data.drug_jcode_similarity (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                confidence_score int8 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_drug_j_code (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                intelli_match float4 NULL,
+                confidence_score int8 NULL,
+                status varchar null,
+                stage varchar null,
+                message text null,
+                model_name varchar null,
+                model_version varchar null,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                request text null,
+                response text null,
+                endpoint varchar null);
+
+                CREATE TABLE IF NOT EXISTS  control_data_macro.drug_name_similarity_input (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS  control_data.drug_name_similarity (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                confidence_score int8 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_drug_name (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                intelli_match float4 NULL,
+                confidence_score int8 NULL,
+                status varchar null,
+                stage varchar null,
+                message text null,
+                model_name varchar null,
+                model_version varchar null,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                request text null,
+                response text null,
+                endpoint varchar null);
+
+                CREATE TABLE IF NOT EXISTS  control_data_macro.drug_qty_similarity_input (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+
+                CREATE TABLE IF NOT EXISTS  control_data.drug_qty_similarity (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                confidence_score int8 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_drug_quantity (
+                    file_name varchar NULL,
+                    origin_id varchar NULL,
+                    created_on timestamp NULL,
+                    group_id int4 NULL,
+                    root_pipeline_id int8 NULL,
+                    actual_value varchar NULL,
+                    extracted_value text NULL,
+                    intelli_match float4 NULL,
+                    confidence_score int8 NULL,
+                    status varchar null,
+                    stage varchar null,
+                    message text null,
+                    model_name varchar null,
+                    model_version varchar null,
+                    tenant_id int8 NULL,
+                    batch_id varchar NOT NULL,
+                    request text null,
+                    response text null,
+                    endpoint varchar null
+                );
+
+
+                CREATE TABLE IF NOT EXISTS  control_data.drug_strength_similarity (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                confidence_score int8 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_drug_strength (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                intelli_match float4 NULL,
+                confidence_score int8 NULL,
+                status varchar null,
+                stage varchar null,
+                message text null,
+                model_name varchar null,
+                model_version varchar null,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                 request text null,
+                 response text null,
+                 endpoint varchar null);
+
+        "}  on-condition if "true"=="true"
+
+        transform as "create ddl for eval member_name" on "intics_zio_db_conn" using
+        {"
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.member_city_similarity_input (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data.member_city_similarity (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_patient_city (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                intelli_match float4 NULL,
+                confidence_score int8 NULL,
+                status varchar null,
+                stage varchar null,
+                message text null,
+                model_name varchar null,
+                model_version varchar null,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                request text null,
+                response text null,
+                endpoint varchar null);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.member_csz_similarity_input (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data.member_csz_similarity (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_patient_city_state_zip (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                intelli_match float4 NULL,
+                confidence_score int8 NULL,
+                status varchar null,
+                stage varchar null,
+                message text null,
+                model_name varchar null,
+                model_version varchar null,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                request text null,
+                response text null,
+                endpoint varchar null);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.member_dob_similarity_input (
+                file_name varchar NULL,
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+
+                CREATE TABLE IF NOT EXISTS control_data.member_dob_similarity (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_member_dob (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                intelli_match float4 NULL,
+                confidence_score int8 NULL,
+                status varchar null,
+                stage varchar null,
+                message text null,
+                model_name varchar null,
+                model_version varchar null,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                 request text null,
+                 response text null,
+                 endpoint varchar null);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.member_group_similarity_input (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data.member_group_similarity (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_member_groupnumber(
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                intelli_match float4 NULL,
+                confidence_score int8 NULL,
+                status varchar null,
+                stage varchar null,
+                message text null,
+                model_name varchar null,
+                model_version varchar null,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                 request text null,
+                 response text null,
+                 endpoint varchar null);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.member_name_similarity_input (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value text NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+
+                CREATE TABLE IF NOT EXISTS control_data.member_name_similarity (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value text NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                 request text null,
+                 response text null,
+                 endpoint varchar null);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_member_name (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                intelli_match float4 NULL,
+                confidence_score int8 NULL,
+                status varchar null,
+                stage varchar null,
+                message text null,
+                model_name varchar null,
+                model_version varchar null,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                 request text null,
+                 response text null,
+                 endpoint varchar null);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.member_phone_similarity_input (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data.member_phone_similarity (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_patient_phone (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                intelli_match float4 NULL,
+                confidence_score int8 NULL,
+                status varchar null,
+                stage varchar null,
+                message text null,
+                model_name varchar null,
+                model_version varchar null,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                 request text null,
+                 response text null,
+                 endpoint varchar null);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.member_state_similarity_input (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data.member_state_similarity (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_patient_state (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                intelli_match float4 NULL,
+                confidence_score int8 NULL,
+                status varchar null,
+                stage varchar null,
+                message text null,
+                model_name varchar null,
+                model_version varchar null,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                 request text null,
+                 response text null,
+                 endpoint varchar null);
+
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.member_zip_similarity_input (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data.member_zip_similarity (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_patient_zip (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                intelli_match float4 NULL,
+                confidence_score int8 NULL,
+                status varchar null,
+                stage varchar null,
+                message text null,
+                model_name varchar null,
+                model_version varchar null,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                 request text null,
+                 response text null,
+                 endpoint varchar null);
+
+                CREATE TABLE IF NOT EXISTS  control_data_macro.member_address_similarity_input (
+                file_name varchar NULL,
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+
+                CREATE TABLE IF NOT EXISTS  control_data.member_address_similarity (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_patient_address (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                intelli_match float4 NULL,
+                confidence_score int8 NULL,
+                status varchar null,
+                stage varchar null,
+                message text null,
+                model_name varchar null,
+                model_version varchar null,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                 request text null,
+                 response text null,
+                 endpoint varchar null);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.member_id_similarity_input (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data.member_id_similarity (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_member_id (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                intelli_match float4 NULL,
+                confidence_score int8 NULL,
+                status varchar null,
+                stage varchar null,
+                message text null,
+                model_name varchar null,
+                model_version varchar null,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                 request text null,
+                 response text null,
+                 endpoint varchar null);
+
+        "}  on-condition if "true"=="true"
+
+        transform as "create ddl for eval prescriber_name" on "intics_zio_db_conn" using
+        {"
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.prescriber_address_similarity_input (
+                actual_value text NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data.prescriber_address_similarity (
+                actual_value text NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_prescriber_address (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                intelli_match float4 NULL,
+                confidence_score int8 NULL,
+                status varchar null,
+                stage varchar null,
+                message text null,
+                model_name varchar null,
+                model_version varchar null,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                 request text null,
+                 response text null,
+                 endpoint varchar null);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.prescriber_city_similarity_input (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+
+                CREATE TABLE IF NOT EXISTS control_data.prescriber_city_similarity (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_prescriber_city (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                intelli_match float4 NULL,
+                confidence_score int8 NULL,
+                status varchar null,
+                stage varchar null,
+                message text null,
+                model_name varchar null,
+                model_version varchar null,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                 request text null,
+                 response text null,
+                 endpoint varchar null);
+
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.prescriber_csz_similarity_input (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data.prescriber_csz_similarity (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_prescriber_city_state_zip (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                intelli_match float4 NULL,
+                confidence_score int8 NULL,
+                status varchar null,
+                stage varchar null,
+                message text null,
+                model_name varchar null,
+                model_version varchar null,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                 request text null,
+                 response text null,
+                 endpoint varchar null);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.prescriber_fax_similarity_input (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+
+                CREATE TABLE IF NOT EXISTS control_data.prescriber_fax_similarity (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_prescriber_fax (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                intelli_match float4 NULL,
+                confidence_score int8 NULL,
+                status varchar null,
+                stage varchar null,
+                message text null,
+                model_name varchar null,
+                model_version varchar null,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                 request text null,
+                 response text null,
+                 endpoint varchar null);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.prescriber_name_similarity_input (
+                actual_value text NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data.prescriber_name_similarity (
+                actual_value text NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_prescriber_name (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                intelli_match float4 NULL,
+                confidence_score int8 NULL,
+                status varchar null,
+                stage varchar null,
+                message text null,
+                model_name varchar null,
+                model_version varchar null,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                 request text null,
+                 response text null,
+                 endpoint varchar null);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.prescriber_npi_similarity_input (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data.prescriber_npi_similarity (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_prescriber_npi (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                intelli_match float4 NULL,
+                confidence_score int8 NULL,
+                status varchar null,
+                stage varchar null,
+                message text null,
+                model_name varchar null,
+                model_version varchar null,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                 request text null,
+                 response text null,
+                 endpoint varchar null);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.prescriber_phone_similarity_input (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data.prescriber_phone_similarity (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_prescriber_phone (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                intelli_match float4 NULL,
+                confidence_score int8 NULL,
+                status varchar null,
+                stage varchar null,
+                message text null,
+                model_name varchar null,
+                model_version varchar null,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                 request text null,
+                 response text null,
+                 endpoint varchar null);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.prescriber_state_similarity_input (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data.prescriber_state_similarity (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_prescriber_state (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                intelli_match float4 NULL,
+                confidence_score int8 NULL,
+                status varchar null,
+                stage varchar null,
+                message text null,
+                model_name varchar null,
+                model_version varchar null,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                 request text null,
+                 response text null,
+                 endpoint varchar null);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.prescriber_taxid_similarity_input (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data.prescriber_taxid_similarity (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_prescriber_tax_id (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                intelli_match float4 NULL,
+                confidence_score int8 NULL,
+                status varchar null,
+                stage varchar null,
+                message text null,
+                model_name varchar null,
+                model_version varchar null,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                 request text null,
+                 response text null,
+                 endpoint varchar null);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.prescriber_zip_similarity_input (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data.prescriber_zip_similarity (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_prescriber_zip (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                intelli_match float4 NULL,
+                confidence_score int8 NULL,
+                status varchar null,
+                stage varchar null,
+                message text null,
+                model_name varchar null,
+                model_version varchar null,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                 request text null,
+                 response text null,
+                 endpoint varchar null);
+                "}  on-condition if "true"=="true"
+
+                transform as "create ddl for eval provider" on "intics_zio_db_conn" using
+                {"
+
+                CREATE TABLE IF NOT EXISTS  control_data_macro.provider_address_similarity_input (
+                actual_value text NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+
+                CREATE TABLE IF NOT EXISTS  control_data.provider_address_similarity (
+                actual_value text NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_provider_address (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                intelli_match float4 NULL,
+                confidence_score int8 NULL,
+                status varchar null,
+                stage varchar null,
+                message text null,
+                model_name varchar null,
+                model_version varchar null,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                 request text null,
+                 response text null,
+                 endpoint varchar null);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.provider_city_similarity_input (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data.provider_city_similarity (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_provider_city (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                intelli_match float4 NULL,
+                confidence_score int8 NULL,
+                status varchar null,
+                stage varchar null,
+                message text null,
+                model_name varchar null,
+                model_version varchar null,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                 request text null,
+                 response text null,
+                 endpoint varchar null);
+
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.provider_name_similarity_input (
+                actual_value text NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data.provider_name_similarity (
+                actual_value text NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_provider_name (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                intelli_match float4 NULL,
+                confidence_score int8 NULL,
+                status varchar null,
+                stage varchar null,
+                message text null,
+                model_name varchar null,
+                model_version varchar null,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                 request text null,
+                 response text null,
+                 endpoint varchar null);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.provider_npi_similarity_input (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data.provider_npi_similarity (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_provider_npi (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                intelli_match float4 NULL,
+                confidence_score int8 NULL,
+                status varchar null,
+                stage varchar null,
+                message text null,
+                model_name varchar null,
+                model_version varchar null,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                 request text null,
+                 response text null,
+                 endpoint varchar null);
+
+                CREATE TABLE IF NOT EXISTS  control_data_macro.provider_state_similarity_input (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS  control_data.provider_state_similarity (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_provider_state (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                intelli_match float4 NULL,
+                confidence_score int8 NULL,
+                status varchar null,
+                stage varchar null,
+                message text null,
+                model_name varchar null,
+                model_version varchar null,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                 request text null,
+                 response text null,
+                 endpoint varchar null);
+
+
+                CREATE TABLE IF NOT EXISTS  control_data_macro.provider_zip_similarity_input (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS  control_data.provider_zip_similarity (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_provider_zip (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                intelli_match float4 NULL,
+                confidence_score int8 NULL,
+                status varchar null,
+                stage varchar null,
+                message text null,
+                model_name varchar null,
+                model_version varchar null,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                 request text null,
+                 response text null,
+                 endpoint varchar null);
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.provider_taxid_similarity_input (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data.provider_taxid_similarity (
+                actual_value varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                extracted_value text NULL,
+                confidence_score int8 NULL,
+                file_name varchar NULL,
+                similarity float4 NULL,
+                levenshtein_score int4 NULL,
+                perfect_match varchar NULL,
+                text_match varchar NULL,
+                intellimatch_score float4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL);
+
+
+                CREATE TABLE IF NOT EXISTS control_data_macro.eval_provider_tax_id (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                intelli_match float4 NULL,
+                confidence_score int8 NULL,
+                status varchar null,
+                stage varchar null,
+                message text null,
+                model_name varchar null,
+                model_version varchar null,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                request text null,
+                response text null,
+                endpoint varchar null);
+
+                "}  on-condition if "true"=="true"
+
+
+                transform as "create ddl CONSOLIDATED RESULT FOR ALL THE 4 ENTITIES" on "intics_zio_db_conn" using
+                {"
+
+                CREATE TABLE IF NOT EXISTS control_data.control_data_prescriber (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                actual_pres_name text NULL,
+                extracted_pres_name text NULL,
+                name_similarity float4 NULL,
+                name_confidence_score int8 NULL,
+                prescriber_name_intelli_match float4 null,
+                prescriber_name_levenshtein_score int8 null,
+
+                actual_pres_city varchar NULL,
+                extracted_pres_city text NULL,
+                city_similarity float4 NULL,
+                city_confidence_score int8 NULL,
+                prescriber_city_intelli_match float4 null,
+                prescriber_city_levenshtein_score int8 null,
+
+                actual_pres_csz varchar NULL,
+                extracted_pres_csz text NULL,
+                pres_csz_similarity float4 NULL,
+                pres_csz_confidence_score int8 NULL,
+                prescriber_csz_intelli_match float4 null,
+                prescriber_csz_levenshtein_score int8 null,
+
+
+                actual_pres_fax varchar NULL,
+                extracted_pres_fax text NULL,
+                pres_fax_similarity float4 NULL,
+                pres_fax_confidence_score int8 NULL,
+                prescriber_fax_intelli_match float4 null,
+                prescriber_fax_levenshtein_score int8 null,
+
+                acutual_addres text NULL,
+                extracted_pres_address text NULL,
+                add_similarity float4 NULL,
+                add_confidence_score int8 NULL,
+                prescriber_address_intelli_match float4 null,
+                prescriber_address_levenshtein_score int8 null,
+
+                actual_pres_npi varchar NULL,
+                extracted_pres_npi text NULL,
+                npi_similarity float4 NULL,
+                npi_confidence_score int8 NULL,
+                prescriber_npi_intelli_match float4 null,
+                prescriber_npi_levenshtein_score int8 null,
+
+                actual_pres_phone varchar NULL,
+                extracted_pres_phone text NULL,
+                phone_similarity float4 NULL,
+                phone_confidence_score int8 NULL,
+                prescriber_phone_intelli_match float4 null,
+                prescriber_phone_levenshtein_score int8 null,
+
+                actual_pres_state varchar NULL,
+                extracted_pres_state text NULL,
+                state_similarity float4 NULL,
+                state_confidence_score int8 NULL,
+                prescriber_state_intelli_match float4 null,
+                prescriber_state_levenshtein_score int8 null,
+
+                actual_pres_taxid varchar NULL,
+                extracted_pres_taxid text NULL,
+                tax_similarity float4 NULL,
+                tax_confidence_score int8 NULL,
+                prescriber_taxid_intelli_match float4 null,
+                prescriber_taxid_levenshtein_score int8 null,
+
+                actual_pres_zip varchar NULL,
+                extracted_pres_zip text NULL,
+                zip_similarity float4 NULL,
+                zip_confidence_score int8 NULL,
+                prescriber_zip_intelli_match float4 null,
+                prescriber_zip_levenshtein_score int8 null,
+                batch_id varchar NOT NULL);
+
+
+                CREATE TABLE IF NOT EXISTS control_data.control_data_provider (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+
+                actual_pro_address text NULL,
+                extracted_pro_address text NULL,
+                pro_add_similarity float4 NULL,
+                pro_address_confidence_score int8 NULL,
+                provider_address_intelli_match float4 null,
+                provider_address_levenshtein_score int8 null,
+
+                actual_pro_city varchar NULL,
+                extracted_pro_city text NULL,
+                pro_city_similarity float4 NULL,
+                pro_city_confidence_score int8 NULL,
+                provider_city_intelli_match float4 null,
+                provider_city_levenshtein_score int8 null,
+
+                actual_pro_name text NULL,
+                extracted_pro_name text NULL,
+                pro_name_similarity float4 NULL,
+                pro_name_confidence_score int8 NULL,
+                provider_name_intelli_match float4 null,
+                provider_name_levenshtein_score int8 null,
+
+                actual_pro_npi varchar NULL,
+                extracted_pro_npi text NULL,
+                pro_npi_similarity float4 NULL,
+                pro_npi_confidence_score int8 NULL,
+                provider_npi_intelli_match float4 null,
+                provider_npi_levenshtein_score int8 null,
+
+                actual_pro_state varchar NULL,
+                extracted_pro_state text NULL,
+                pro_state_similarity float4 NULL,
+                pro_state_confidence_score int8 NULL,
+                provider_state_intelli_match float4 null,
+                provider_state_levenshtein_score int8 null,
+
+                actual_tax_id varchar NULL,
+                extracted_pro_tax text NULL,
+                pro_tax_similarity float4 NULL,
+                pro_tax_confidence_score int8 NULL,
+                provider_tax_intelli_match float4 null,
+                provider_tax_levenshtein_score int8 null,
+
+                actual_pro_zip varchar NULL,
+                extracted_pro_zip text NULL,
+                pro_zip_similarity float4 NULL,
+                pro_zip_confidence_score int8 NULL,
+                provider_zip_intelli_match float4 null,
+                provider_zip_levenshtein_score int8 null,
+                batch_id varchar NOT NULL);
+
+                CREATE TABLE IF NOT EXISTS control_data.control_data_drug (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+
+                actual_icd varchar NULL,
+                extracted_icd text NULL,
+                icd_similarity float4 NULL,
+                icd_confidence_score int8 NULL,
+                drug_icd_intelli_match float4 null,
+                drug_icd_levenshtein_score int8 null,
+
+                actual_dose varchar NULL,
+                extracted_dose text NULL,
+                dose_similarity float4 NULL,
+                dose_confidence_score int8 NULL,
+                drug_dose_intelli_match float4 null,
+                drug_dose_levenshtein_score int8 null,
+
+                actual_direction varchar NULL,
+                extracted_dir text NULL,
+                dir_similarity float4 NULL,
+                dir_confidence_score int8 NULL,
+                drug_dir_intelli_match float4 null,
+                drug_dir_levenshtein_score int8 null,
+
+                actual_jcode varchar NULL,
+                extracted_jcode text NULL,
+                jcode_similarity float4 NULL,
+                jcode_confidence_score int8 NULL,
+                drug_jcode_intelli_match float4 null,
+                drug_jcode_levenshtein_score int8 null,
+
+                actual_drug_name varchar NULL,
+                extracted_drug_name text NULL,
+                name_similarity float4 NULL,
+                name_confidence_score int8 NULL,
+                drug_name_intelli_match float4 null,
+                drug_name_levenshtein_score int8 null,
+
+                actual_quantity varchar NULL,
+                extracted_quantity text NULL,
+                quamtity_similarity float4 NULL,
+                quantity_confidence_score int8 NULL,
+                drug_quantity_intelli_match float4 null,
+                drug_quantity_levenshtein_score int8 null,
+
+                actual_service varchar NULL,
+                extracted_service text NULL,
+                service_similarity float4 NULL,
+                service_confidence_score int8 NULL,
+                drug_service_intelli_match float4 null,
+                drug_service_levenshtein_score int8 null,
+
+                actual_strength varchar NULL,
+                extracted_strength text NULL,
+                strength_similarity float4 NULL,
+                strength_confidence_score int8 NULL,
+                drug_strength_intelli_match float4 null,
+                drug_strength_levenshtein_score int8 null,
+
+
+                actual_hspcs varchar NULL,
+                extracted_hspcs text NULL,
+                hspcs_similarity float4 NULL,
+                hspcs_confidence_score int8 NULL,
+                drug_hspcs_intelli_match float4 null,
+                drug_hspcs_levenshtein_score int8 null,
+                batch_id varchar NOT NULL);
+
+
+                CREATE TABLE IF NOT EXISTS control_data.control_data_patient (
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+
+                actual_mem_name text NULL,
+                extracted_mem_name text NULL,
+                mem_name_similarity float4 NULL,
+                mem_name_confidencescore int8 NULL,
+                mem_name_intelli_match float4 null,
+                mem_name_levenshtein_score int8 null,
+
+                actual_dob varchar NULL,
+                extracted_dob text NULL,
+                dob_similarity float4 NULL,
+                dob_confidence_score int8 NULL,
+                mem_dob_intelli_match float4 null,
+                mem_dob_levenshtein_score int8 null,
+
+                actual_id varchar NULL,
+                extracted_id text NULL,
+                id_similarity float4 NULL,
+                id_confidence_score int8 NULL,
+                mem_id_intelli_match float4 null,
+                mem_id_levenshtein_score int8 null,
+
+                actual_grp_num varchar NULL,
+                extracted_grpnum text NULL,
+                grp_similarity float4 NULL,
+                grpno_confidence_score int8 NULL,
+                mem_grpno_intelli_match float4 null,
+                mem_grpno_levenshtein_score int8 null,
+
+                actual_mem_add varchar NULL,
+                extracted_mem_add text NULL,
+                mem_add_similarity float4 NULL,
+                mem_add_confidence_score int8 NULL,
+                mem_address_intelli_match float4 null,
+                mem_address_levenshtein_score int8 null,
+
+                actual_mem_city varchar NULL,
+                extracted_mme_city text NULL,
+                city_similarity float4 NULL,
+                city_confidence_score int8 NULL,
+                mem_city_intelli_match float4 null,
+                mem_city_levenshtein_score int8 null,
+
+                actual_memcitystatezip varchar NULL,
+                extracted_mem_citystatezip text NULL,
+                csz_similarity float4 NULL,
+                csz_confidence_score int8 NULL,
+                mem_csz_intelli_match float4 null,
+                mem_csz_levenshtein_score int8 null,
+
+                actual_mem_state varchar NULL,
+                extracted_mem_state text NULL,
+                mem_state_similarity float4 NULL,
+                mem_state_confidence_score int8 NULL,
+                mem_state_intelli_match float4 null,
+                mem_state_levenshtein_score int8 null,
+
+                actual_mem_zip varchar NULL,
+                extracted_mem_zip text NULL,
+                mem_zip_similarity float4 NULL,
+                mem_zip_confidence_score int8 NULL,
+                mem_zip_intelli_match float4 null,
+                mem_zip_levenshtein_score int8 null,
+
+                actual_mem_phone varchar NULL,
+                extracted_mem_phone text NULL,
+                mem_phone_similarity float4 NULL,
+                mem_phone_confidence_score int8 NULL,
+                mem_phone_intelli_match float4 null,
+                mem_phone_levenshtein_score int8 null,
+                batch_id varchar NOT NULL
+                );
+
+        "}  on-condition if "true"=="true"
+
+    }
+
+    catch {}
+
+    finally { }
+
+
+
+}

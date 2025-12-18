@@ -1,0 +1,72 @@
+process "preprocess.grey.scale.conversion"
+{
+try{
+
+
+        multipartUpload as "multipart file upload for grey scale conversion"
+        resource-conn "intics_zio_db_conn"
+        upload-url "${grey.scale.conversion.multipart.upload.url}"
+        using {"
+            SELECT a.processed_file_path as file_path
+            FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id} a
+            join preprocess.preprocess_payload_queue b on a.origin_id=b.origin_id and a.tenant_id=b.tenant_id
+            WHERE a.status='COMPLETED' AND b.status='IN_PROGRESS' AND a.group_id='${group_id}' and a.tenant_id = ${tenant_id} and a.batch_id='${batch_id}';
+        "} on-condition if "${multipart_activator.preprocess}"=="true"
+
+
+        greyScaleConversion as "grey scale conversion for group_id ${group_id}"
+        output-dir "${gen_directory.autorotation_dest_path}"
+        process-id "${init_process_id.process_id}"
+        copro-url "${copro.grey.scale.conversion.url}"
+        output-table "info.grey_Scale_conversion"
+        resource-conn "intics_zio_db_conn"
+        using  {"
+                SELECT a.origin_id,a.group_id,a.processed_file_path as file_path,a.paper_no,a.tenant_id,a.template_id,a.process_id,a.root_pipeline_id, a.batch_id
+                FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id} a
+                join preprocess.preprocess_payload_queue b on a.origin_id=b.origin_id and a.tenant_id=b.tenant_id
+                WHERE a.status='COMPLETED' AND b.status='IN_PROGRESS' and a.group_id='${group_id}' and a.tenant_id = ${tenant_id} and a.batch_id ='${batch_id}';
+        "} on-condition if "${grey.scale.conversion.activator}"=="true"
+
+
+        transform as "insert into audit table for grey scale conversion" on "intics_zio_db_conn" using
+        {"
+                insert into audit.process_audit_output
+                (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint,paper_no, batch_id)
+                select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint, ai.paper_no, '${batch_id}'
+                from info.grey_Scale_conversion ai
+                where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id} and batch_id='${batch_id}'
+                group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage, ai.paper_no
+        "}  on-condition if "true"=="true"
+
+
+        transform as "Grey scale conversion falsed" on "intics_zio_db_conn" using
+        {"
+            INSERT INTO info.grey_scale_conversion
+            (process_id, tenant_id, template_id, group_id, paper_no, origin_id, processed_file_path, input_file_path, status, stage, message, created_on, root_pipeline_id, model_name, model_version, is_color, batch_id)
+            SELECT a.process_id, a.tenant_id, a.template_id, a.group_id, a.paper_no, a.origin_id, a.processed_file_path,a.processed_file_path as input_file_path, a.status, a.stage, a.message, a.created_on, a.root_pipeline_id, a.model_name, a.model_version,true, a.batch_id
+            FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id} a
+            join preprocess.preprocess_payload_queue b on a.origin_id=b.origin_id and a.tenant_id=b.tenant_id
+            WHERE a.status='COMPLETED' AND b.status='IN_PROGRESS' AND a.group_id='${group_id}' and a.tenant_id = ${tenant_id} and a.batch_id ='${batch_id}'
+        "}on-condition if "${grey.scale.conversion.activator}"=="false"
+
+        multipartDownload as "downloading response file of data extraction"
+        resource-conn "intics_zio_db_conn"
+        download-url "${grey.scale.conversion.response.download.url}"
+        using {"
+           select ar.processed_file_path as file_path
+           from info.grey_Scale_conversion ar
+           where ar.status ='COMPLETED' and ar.group_id='${group_id}' and ar.tenant_id=${tenant_id} and ar.batch_id ='${batch_id}';
+        "} on-condition if "${multipart_activator.preprocess}"=="true"
+}
+catch{
+        transform as "Update to FAILED in preprocess payload queue" on "intics_zio_db_conn" using
+        {"
+          UPDATE preprocess.preprocess_payload_queue
+          SET status='FAILED', consumed_on_ts = '${time_stamp_preprocess.consumed_on_ts}', consumer_process_id = '${process-id}'
+          WHERE group_id='${group_id}' AND status='IN_PROGRESS' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+        "}  on-condition if "true"=="true"
+}
+finally{
+
+}
+}

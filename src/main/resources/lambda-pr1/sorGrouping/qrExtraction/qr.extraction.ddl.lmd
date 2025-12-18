@@ -1,0 +1,180 @@
+process "qr.extraction.ddl"
+{
+	try {
+            transform as "qr extraction ddl" on "intics_zio_db_conn"
+            using {"
+                    CREATE TABLE IF NOT EXISTS ${temp_schema_name}.qr_extraction_result_${init_process_id.process_id} (
+                    id BIGSERIAL NOT NULL,
+                    origin_id varchar NULL,
+                    group_id INT4 NULL,
+                    paper_no INT4 NULL,
+                    created_on TIMESTAMP NULL,
+                    last_updated_on TIMESTAMP NULL,
+                    qr_format VARCHAR NULL,
+                    qr_format_id INT4 NULL,
+                    extracted_value VARCHAR NULL,
+                    decode_type varchar null,
+                    file_id VARCHAR NULL,
+                    b_box varchar NULL,
+                    angle int8 NULL,
+                    confidence_score INT4 NULL,
+                    status VARCHAR NULL,
+                    stage VARCHAR NULL,
+                    message VARCHAR NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL,
+                    model_name varchar null,
+                    model_version varchar null,
+                    request text null,
+                    response text null,
+                    endpoint varchar null,
+                    batch_id varchar NOT NULL,
+                    CONSTRAINT qr_extraction_pk_${init_process_id.process_id} PRIMARY KEY (id)
+                    );
+
+                    CREATE TABLE IF NOT EXISTS qr_extraction.qr_extraction_result_audit (
+                    id BIGSERIAL NOT NULL,
+                    batch_id varchar NOT NULL,
+                    origin_id varchar NULL,
+                    group_id INT4 NULL,
+                    paper_no INT4 NULL,
+                    created_on TIMESTAMP NULL,
+                    last_updated_on TIMESTAMP NULL,
+                    qr_format VARCHAR NULL,
+                    qr_format_id INT4 NULL,
+                    extracted_value VARCHAR NULL,
+                    decode_type varchar null,
+                    file_id VARCHAR NULL,
+                    b_box varchar NULL,
+                    angle int8 NULL,
+                    confidence_score INT4 NULL,
+                    status VARCHAR NULL,
+                    stage VARCHAR NULL,
+                    message VARCHAR NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL,
+                    request text null,
+                    response text null,
+                    endpoint varchar null,
+                    CONSTRAINT qr_extraction_pk_audit PRIMARY KEY (id)
+                    );
+
+                    CREATE TABLE IF NOT EXISTS qr_extraction.qr_extraction_details (
+                    id BIGSERIAL NOT NULL,
+                    batch_id varchar NOT NULL,
+                    process_id int8 NULL,
+                    origin_id varchar NULL,
+                    group_id INT4 NULL,
+                    paper_no INT4 NULL,
+                    created_on TIMESTAMP NULL,
+                    qr_format VARCHAR NULL,
+                    qr_format_id INT4 NULL,
+                    decode_type varchar null,
+                    extracted_value VARCHAR NULL,
+                    file_id VARCHAR NULL,
+                    b_box varchar NULL,
+                    angle int8 NULL,
+                    confidence_score INT4 NULL,
+                    status VARCHAR NULL,
+                    stage VARCHAR NULL,
+                    message VARCHAR NULL,
+                    is_candidate_qr VARCHAR NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL,
+                    model_name varchar null,
+                    model_version varchar null,
+                    last_updated_on TIMESTAMP NULL,
+                    request varchar null,
+                    response varchar null,
+                    endpoint varchar null,
+                    CONSTRAINT qr_extraction_result_pk PRIMARY KEY (id)
+                    );
+
+                    CREATE TABLE IF NOT EXISTS qr_extraction.qr_extraction_payload_error_queue (
+                    producer_process_id int8 NOT NULL,
+                    batch_id varchar NOT NULL,
+                    consumer_process_id int8 NULL,
+                    origin_id varchar NOT NULL,
+                    group_id int4 NOT NULL,
+                    created_on timestamp NOT NULL,
+                    status varchar NOT NULL,
+                    stage varchar NOT NULL,
+                    message varchar NULL,
+                    consumed_on_ts timestamp NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL,
+                    CONSTRAINT qr_extraction_payload_error_queue_pk PRIMARY KEY ( origin_id,tenant_id)
+                    );
+
+                    CREATE TABLE IF NOT EXISTS qr_extraction.qr_extraction_payload_queue_archive (
+                    producer_process_id int8 NOT NULL,
+                    batch_id varchar NOT NULL,
+                    consumer_process_id int8 NULL,
+                    origin_id varchar NOT NULL,
+                    group_id int4 NOT NULL,
+                    created_on timestamp NOT NULL,
+                    status varchar NOT NULL,
+                    stage varchar NOT NULL,
+                    consumed_on_ts timestamp NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL,
+                    CONSTRAINT qr_extraction_payload_queue_archive_pk PRIMARY KEY ( origin_id,tenant_id)
+                    );
+
+                    CREATE TABLE IF NOT EXISTS qr_extraction.qr_extraction_pipeline_audit (
+                    id bigserial NOT NULL,
+                    batch_id varchar NULL,
+                    origin_id varchar  NULL,
+                    created_on timestamp  NULL,
+                    user_id varchar  NULL,
+                    group_id varchar  NULL,
+                    tenant_id int8 NULL,
+                    status varchar  NULL,
+                    stage varchar  NULL,
+                    message varchar  NULL,
+                    root_pipeline_id int8 NULL
+                    );
+
+                    CREATE TABLE IF NOT EXISTS ${temp_schema_name}.qr_candidate_result_${init_process_id.process_id} (
+                    origin_id varchar NULL,
+                    batch_id varchar NOT NULL,
+                    group_id int4 NULL,
+                    paper_no int4 NULL,
+                    extracted_value varchar NULL,
+                    qr_count int8 NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL
+                    );
+
+                    CREATE TABLE IF NOT EXISTS qr_extraction.qr_candidate_result_audit (
+                    origin_id varchar NULL,
+                    batch_id varchar NOT NULL,
+                    group_id int4 NULL,
+                    paper_no int4 NULL,
+                    extracted_value varchar NULL,
+                    qr_count int8 NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL
+                    );
+            "}on-condition if "true"=="true"
+
+	}
+	catch{
+			transform as "qr extraction ddl executed failed" on "intics_zio_db_conn" using
+			{"
+                    INSERT INTO qr_extraction.qr_extraction_pipeline_audit
+                    (created_on, user_id, group_id, tenant_id, status, stage, message, root_pipeline_id)
+                    VALUES(now(), '${created_user_id}', '${gen_group_id.group_id}', '${tenant_id}', 'FAILED', 'QR_EXTRACTION', 'Failed in create ddl for qr extraction','${gen_id.root_pipeline_id}');
+			"} on-condition if "true"=="true"
+
+
+	}
+	finally{
+			transform as "qr extraction ddl executed completed" on "intics_zio_db_conn" using
+			{"
+                    INSERT INTO qr_extraction.qr_extraction_pipeline_audit
+                    (created_on, user_id, group_id, tenant_id, status, stage, message, root_pipeline_id)
+                    VALUES(now(), '${created_user_id}', '${gen_group_id.group_id}', '${tenant_id}', 'COMPLETED', 'QR_EXTRACTION', 'Completed in create ddl for qr extraction', '${gen_id.root_pipeline_id}');
+            "} on-condition if "true"=="true"
+	}
+}

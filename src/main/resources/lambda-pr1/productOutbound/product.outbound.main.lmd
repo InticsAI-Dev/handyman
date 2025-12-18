@@ -1,0 +1,236 @@
+process "product.outbound.main"
+{
+
+try{
+
+            assign as "outbound_timesStamp" source "intics_zio_db_conn"
+            using{"
+                SELECT now() as consumed_on_ts;
+            "} on-condition if "true"=="true"
+
+            assign as "pipeline_train_mode" source "intics_zio_db_conn" using
+            {"
+                select  (case when '${product.outbound.start.action}'='true' AND '${pipeline.train.mode}'='true' then 'true' else 'false' end) as product_outbound;
+            "}on-condition if "true"=="true"
+
+
+             callprocess as "callprocess for product outbound processor"
+            with-target "product.outbound.processor"
+            from-file "${basepath}/productOutbound/product.outbound.processor.lmd"
+            using "intics_zio_db_conn"
+            for-every {"
+               select 1;
+            "} on-condition if "true"=="true"
+
+            transform as "insert query for error document details payload queue" on "intics_zio_db_conn" using {"
+
+                INSERT INTO ${temp_schema_name}.temp_error_document_detail_${init_process_id.process_id}
+                ( origin_id, group_id, process_failed_on, status,stage, message, tenant_id,batch_id)
+                    SELECT a.origin_id ,a.group_id, a.consumed_on_ts,status,a.stage,a.message, ${tenant_id},a.batch_id
+                    FROM preprocess.preprocess_payload_error_queue a
+                    WHERE a.group_id='${group_id}' AND a.origin_id ='${origin_id}'  and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+                    GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts,a.message, a.status,a.batch_id
+                    UNION
+                        SELECT a.origin_id ,a.group_id,a.consumed_on_ts,a.status,a.stage,'preprocess pipeline completed', ${tenant_id}, a.batch_id
+                        FROM preprocess.preprocess_payload_queue_archive a
+                        WHERE a.group_id='${group_id}' AND a.origin_id ='${origin_id}'  and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+                        GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts, a.status, a.batch_id;
+                "} on-condition if "${preprocess.main.caller.activator}"=="true"
+
+            transform as "insert query for error document details payload queue" on "intics_zio_db_conn" using {"
+                    INSERT INTO ${temp_schema_name}.temp_error_document_detail_${init_process_id.process_id}
+                    ( origin_id, group_id, process_failed_on, status,stage, message, tenant_id,batch_id)
+                    SELECT a.origin_id ,a.group_id, cast(consumed_on_ts as TIMESTAMP),status,a.stage,a.message, ${tenant_id}, a.batch_id
+                    FROM paper.potential_feature_payload_error_queue a
+                    WHERE a.group_id='${group_id}' AND a.origin_id ='${origin_id}'  and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+                    GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts,a.message,a.stage,a.status,a.batch_id
+                    UNION
+                        SELECT a.origin_id ,a.group_id,  cast(consumed_on_ts as TIMESTAMP),a.status,a.stage,'potential feature pipeline completed', ${tenant_id}, a.batch_id
+                        FROM paper.potential_feature_payload_queue_archive a
+                        WHERE a.group_id='${group_id}' AND a.origin_id ='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+                        GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts,a.status,a.batch_id;
+                "} on-condition if "${root.filter.activator}"=="true"
+
+            transform as "insert query for error document details payload queue" on "intics_zio_db_conn" using {"
+                    INSERT INTO ${temp_schema_name}.temp_error_document_detail_${init_process_id.process_id}
+                    ( origin_id, group_id, process_failed_on, status,stage, message,tenant_id,batch_id)
+                    SELECT a.origin_id ,a.group_id,consumed_on_ts,status,a.stage,a.message, ${tenant_id}, a.batch_id
+                    FROM paper_classification.paper_classification_payload_error_queue a
+                    WHERE a.group_id='${group_id}' AND a.origin_id ='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+                    GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts,a.message,a.stage,a.status, a.batch_id
+                    UNION
+                        SELECT a.origin_id ,a.group_id,consumed_on_ts,a.status,a.stage,'paper classification pipeline completed', ${tenant_id}, a.batch_id
+                        FROM paper_classification.paper_classification_payload_queue_archive a
+                         WHERE a.group_id='${group_id}' AND a.origin_id ='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+                        GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts,a.status, a.batch_id;
+                "} on-condition if "${paper.classification.activator}"=="true"
+
+            transform as "insert query for error document details payload queue" on "intics_zio_db_conn" using {"
+                    INSERT INTO ${temp_schema_name}.temp_error_document_detail_${init_process_id.process_id}
+                    ( origin_id, group_id, process_failed_on, status,stage, message, tenant_id,batch_id)
+                    SELECT a.origin_id ,a.group_id, cast(consumed_on_ts as TIMESTAMP),status,a.stage,a.message, ${tenant_id}, a.batch_id
+                    FROM urgency_triage.ut_model_payload_error_queue a
+                    WHERE a.group_id='${group_id}' AND a.origin_id ='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+                    GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts,a.message,a.stage,a.status, a.batch_id
+                    UNION
+                        SELECT a.origin_id ,a.group_id,cast(consumed_on_ts as TIMESTAMP),a.status,a.stage,'checkbox urgency pipeline completed', ${tenant_id}, a.batch_id
+                        FROM urgency_triage.ut_model_payload_queue_archive a
+                        WHERE a.group_id='${group_id}' AND a.origin_id ='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+                        GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts,a.status, a.batch_id;
+                "} on-condition if "${ut.model.activator}"=="true"
+
+            transform as "insert query for error document details payload queue" on "intics_zio_db_conn" using {"
+                    INSERT INTO ${temp_schema_name}.temp_error_document_detail_${init_process_id.process_id}
+                    ( origin_id, group_id, process_failed_on, status,stage, message,tenant_id,batch_id)
+                    SELECT a.origin_id ,a.group_id, cast(consumed_on_ts as TIMESTAMP),status,a.stage,a.message, ${tenant_id}, a.batch_id
+                    FROM qr_extraction.qr_extraction_payload_error_queue a
+                    where a.group_id='${group_id}' and a.origin_id ='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+                    GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts,a.message,a.stage,a.status, a.batch_id
+                    UNION
+                        SELECT a.origin_id ,a.group_id,cast(consumed_on_ts as TIMESTAMP),a.status,a.stage,'qr extraction pipeline completed', ${tenant_id}, a.batch_id
+                        FROM qr_extraction.qr_extraction_payload_queue_archive a
+                        WHERE a.group_id='${group_id}' AND a.origin_id ='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+                        GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts,a.status, a.batch_id;
+                "} on-condition if "${qr.extraction.processor.activator}"=="true"
+
+            transform as "insert query for error document details payload queue" on "intics_zio_db_conn" using {"
+                     INSERT INTO ${temp_schema_name}.temp_error_document_detail_${init_process_id.process_id}
+                    ( origin_id, group_id, process_failed_on, status,stage, message, tenant_id,batch_id)
+                    SELECT a.origin_id ,a.group_id,cast(consumed_on_ts as TIMESTAMP),status,a.stage,a.message, ${tenant_id}, a.batch_id
+                    FROM sor_transaction.sor_transaction_payload_error_queue a
+                    WHERE a.group_id='${group_id}' and a.origin_id ='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+                    GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts,a.message,a.stage,a.status, a.batch_id
+                    UNION
+                        SELECT a.origin_id ,a.group_id,cast(consumed_on_ts as TIMESTAMP),a.status,a.stage,'sor transaction pipeline completed', ${tenant_id}, a.batch_id
+                        FROM sor_transaction.sor_transaction_payload_queue_archive a
+                        WHERE a.group_id='${group_id}' AND a.origin_id ='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+                        GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts,a.status, a.batch_id;
+               "} on-condition if "${sor.transaction.nextgen.activator}"=="true"
+
+            transform as "insert query for error document details payload queue" on "intics_zio_db_conn" using {"
+                     INSERT INTO ${temp_schema_name}.temp_error_document_detail_${init_process_id.process_id}
+                    ( origin_id, group_id, process_failed_on, status,stage, message, tenant_id,batch_id)
+                    SELECT a.origin_id ,a.group_id,consumed_on_ts,status,a.stage,a.message, ${tenant_id}, a.batch_id
+                    FROM sor_grouping.sor_grouping_payload_error_queue a
+                    WHERE a.group_id='${group_id}' AND a.origin_id ='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+                    GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts,a.message,a.stage,a.status, a.batch_id
+                    UNION
+                        SELECT a.origin_id ,a.group_id,consumed_on_ts,a.status,a.stage,'sor grouping pipeline completed', ${tenant_id},a.batch_id
+                        FROM sor_grouping.sor_grouping_payload_queue_archive a
+                        WHERE a.group_id='${group_id}' AND a.origin_id ='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+                        GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts,a.status, a.batch_id;
+                "} on-condition if "${eoc.splitting.main.activator}"=="true"
+            transform as "insert query for error document details payload queue" on "intics_zio_db_conn" using {"
+
+                     INSERT INTO ${temp_schema_name}.temp_error_document_detail_${init_process_id.process_id}
+                    ( origin_id, group_id, process_failed_on, status,stage, message, tenant_id,batch_id)
+                    SELECT a.origin_id ,a.group_id,cast(consumed_on_ts as TIMESTAMP),status,a.stage,a.message, ${tenant_id}, a.batch_id
+                    FROM voting.voting_payload_error_queue a
+                    WHERE a.group_id='${group_id}' AND a.origin_id ='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+                    GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts,a.message,a.stage,a.status,a.batch_id
+                    UNION
+                        SELECT a.origin_id ,a.group_id,cast(consumed_on_ts as TIMESTAMP),a.status,a.stage,'voting pipeline completed', ${tenant_id},a.batch_id
+                        FROM voting.voting_payload_queue_archive a
+                        WHERE a.group_id='${group_id}' AND a.origin_id ='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+                        GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts,a.status, a.batch_id;
+                "} on-condition if "${voting.v3.activator}"=="true"
+
+            transform as "insert query for error document details payload queue" on "intics_zio_db_conn" using {"
+
+                     INSERT INTO ${temp_schema_name}.temp_error_document_detail_${init_process_id.process_id}
+                    ( origin_id, group_id, process_failed_on, status,stage, message,tenant_id,batch_id)
+                    SELECT a.origin_id ,a.group_id,cast(consumed_on_ts as TIMESTAMP),status,a.stage,a.message, ${tenant_id},a.batch_id
+                    FROM product_outbound.product_outbound_payload_error_queue a
+                    WHERE a.group_id='${group_id}' and a.origin_id ='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+                    GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts,a.message,a.stage,a.status, a.batch_id
+                    UNION
+                        SELECT a.origin_id ,a.group_id, cast(consumed_on_ts as TIMESTAMP),a.status,a.stage,'product outbound pipeline completed', ${tenant_id},a.batch_id
+                        FROM product_outbound.product_outbound_payload_queue_archive a
+                        WHERE a.group_id='${group_id}' AND a.origin_id ='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+                        GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts,a.status,a.batch_id;
+                "} on-condition if "${product.response.builder.activator}"=="true"
+
+            transform as "insert query for error document details payload queue" on "intics_zio_db_conn" using {"
+                      INSERT INTO ${temp_schema_name}.temp_error_document_detail_${init_process_id.process_id}
+                     ( origin_id, group_id, process_failed_on, status,stage, message,tenant_id, batch_id)
+                    SELECT a.origin_id ,a.group_id,cast(consumed_on_ts as TIMESTAMP),status,a.stage,a.message, ${tenant_id}, a.batch_id
+                    FROM table_extraction.table_extraction_payload_error_queue a
+                    WHERE a.group_id='${group_id}' and a.origin_id ='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id='${batch_id}'
+                    GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts,a.message,a.stage,a.status, a.batch_id
+                    UNION
+                        SELECT a.origin_id ,a.group_id, cast(consumed_on_ts as TIMESTAMP),a.status,a.stage,'Table extraction completed', ${tenant_id}, a.batch_id
+                        FROM table_extraction.table_extraction_payload_queue_archive a
+                        WHERE a.group_id='${group_id}' AND a.origin_id ='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id='${batch_id}'
+                        GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts,a.status, a.batch_id;
+
+                "} on-condition if "${table.extraction.activator}"=="true"
+
+
+                 transform as "process failed status table inside macro" on "intics_zio_db_conn" using {"
+                        INSERT INTO ${temp_schema_name}.process_failed_status_${init_process_id.process_id}
+                        (origin_id, failed_on_stage, process_failes_on, message, root_pipeline_id, tenant_id,batch_id)
+                        SELECT origin_id ,stage ,process_failed_on,message,'${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                        FROM ${temp_schema_name}.temp_error_document_detail_${init_process_id.process_id}
+                        WHERE origin_id='${origin_id}' AND status='FAILED' and tenant_id = ${tenant_id} and batch_id = '${batch_id}'
+                        ORDER BY process_failed_on desc LIMIT 1;
+
+                  "} on-condition if "true"=="true"
+
+                   transform as "error json final output table insert" on "intics_zio_db_conn" using {"
+                        INSERT INTO product_outbound.error_document_detail
+                        (document_id, origin_id, group_id, total_no_of_pages,failed_on_stage, stages,message,uploaded_on,process_failed_on, total_processed_duration, root_pipeline_id, tenant_id,batch_id)
+                        SELECT  c.file_name,a.origin_id, a.group_id,count(origin.origin_id),pfs.failed_on_stage,
+                        (jsonb_object_agg(a.stage,a.status order by a.status desc))::jsonb,pfs.message,
+                        origin.created_on  ,pfs.process_failes_on ,EXTRACT(EPOCH FROM (pfs.process_failes_on - pfs.process_failes_on)),'${gen_id.root_pipeline_id}', ${tenant_id}, a.batch_id
+                        FROM ${temp_schema_name}.temp_error_document_detail_${init_process_id.process_id} a
+                        join ${temp_schema_name}.source_of_origin_${init_process_id.process_id} origin on a.origin_id=origin.origin_id
+                        join ${temp_schema_name}.asset_${init_process_id.process_id} c on a.origin_id=origin.origin_id and origin.file_id=c.file_id and a.origin_id='${origin_id}'
+                        join ${temp_schema_name}.process_failed_status_${init_process_id.process_id} pfs on pfs.origin_id=origin.origin_id
+                        where a.batch_id = '${batch_id}'
+                        group by c.file_name, a.origin_id, a.group_id ,pfs.failed_on_stage,pfs.process_failes_on,origin.created_on,pfs.message,a.batch_id;
+
+                   "} on-condition if "true"=="true"
+
+
+}
+catch{
+         transform as "update to in-progress response main outbound payload queue" on "intics_zio_db_conn" using
+           {"
+                UPDATE  product_outbound.product_outbound_payload_queue
+                SET consumer_process_id='${process-id}', consumed_on_ts=now() , status='FAILED'
+                WHERE origin_id ='${origin_id}' AND status ='IN_PROGRESS' AND stage ='OUTBOUND' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                INSERT INTO product_outbound.product_outbound_pipeline_audit
+                 (process_id, origin_id,group_id, created_on, status, stage, message, root_pipeline_id,tenant_id,batch_id)
+                 VALUES('${init_process_id.process_id}','${origin_id}', '${group_id}',now(), 'FAILED', 'OUTBOUND', 'outbound process failed in response main lmd for origin_id ${origin_id}', '${gen_id.root_pipeline_id}','${tenant_id}', '${batch_id}');
+
+           "} on-condition if "true"=="true"
+}
+finally{
+
+             transform as "move to product outbound payload archive after completed " on "intics_zio_db_conn" using
+              {"
+
+
+                    update ingestion.pipeline_queue_status_audit as a
+                    set status = 'COMPLETED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                    where  a.group_id=${group_id}
+                    and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='OUTBOUND' ;
+
+                    INSERT INTO product_outbound.product_outbound_payload_queue_archive
+                    (producer_process_id, consumer_process_id, group_id,origin_id, created_on, status, stage, consumed_on_ts,root_pipeline_id,tenant_id, batch_id)
+                    SELECT producer_process_id, consumer_process_id, '${group_id}',origin_id, now(), status, stage, now(),root_pipeline_id,${tenant_id}, batch_id
+                    FROM product_outbound.product_outbound_payload_queue where status='COMPLETED' and group_id=${group_id} and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+					 DELETE FROM product_outbound.product_outbound_payload_queue WHERE status='COMPLETED' and group_id=${group_id} and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                    INSERT INTO product_outbound.product_outbound_payload_error_queue
+                    (producer_process_id, consumer_process_id,group_id, origin_id, created_on, status, stage, message, consumed_on_ts,root_pipeline_id,tenant_id, batch_id)
+                    SELECT  producer_process_id, consumer_process_id,'${group_id}',origin_id, now(),status,stage,'error in preprocess sot process',now(),root_pipeline_id,${tenant_id}, batch_id
+                    FROM product_outbound.product_outbound_payload_queue where status = 'FAILED' and group_id=${group_id} and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                    DELETE FROM product_outbound.product_outbound_payload_queue WHERE status='FAILED' and group_id=${group_id} and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+              "} on-condition if "true"=="true"
+
+}
+}

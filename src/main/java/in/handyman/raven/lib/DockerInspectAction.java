@@ -20,9 +20,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import in.handyman.raven.lib.model.dockerinspect.dto.DockerInspectApiResponseDTO;
-import in.handyman.raven.lib.model.dockerinspect.dto.ContainerInfoDTO;
-import in.handyman.raven.lib.model.dockerinspect.dto.DockerInspectInputTable;
+import in.handyman.raven.lib.services.dockerinspect.dto.DockerInspectApiResponseDTO;
+import in.handyman.raven.lib.services.dockerinspect.dto.ContainerInfoDTO;
+import in.handyman.raven.lib.services.dockerinspect.dto.DockerInspectInputTable;
 import in.handyman.raven.util.CommonQueryUtil;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;

@@ -1,0 +1,780 @@
+process "preprocess.main.ddl"
+{
+	try{
+			transform as "Create preprocess audit, queue, archive, error queue, Source of truth,auto rotation,data extraction,blank page removal,sor transaction payload queue, potential_feature_payload_queue table " on "intics_zio_db_conn" using
+            {"
+                    CREATE TABLE IF NOT EXISTS preprocess.preprocess_pipeline_audit (
+                    id bigserial NOT NULL,
+                    process_id bigint NULL,
+                    origin_id varchar NULL,
+                    group_id varchar NULL,
+                    batch_id varchar NULL,
+                    created_on varchar NULL,
+                    status varchar NULL,
+                    stage varchar NULL,
+                    message varchar NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL
+                    );
+
+                    CREATE TABLE IF NOT EXISTS preprocess.preprocess_payload_queue_archive (
+                    producer_process_id int8 NOT NULL,
+                    consumer_process_id int8 NULL,
+                    group_id int4 NOT NULL,
+                    batch_id varchar NOT NULL,
+                    origin_id varchar NOT NULL,
+                    created_on timestamp NOT NULL,
+                    status varchar NOT NULL,
+                    stage  varchar NOT NULL,
+                    consumed_on_ts timestamp NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL,
+                    CONSTRAINT pre_process_payload_queue_archive_pk PRIMARY KEY (tenant_id, origin_id)
+                    );
+
+                    CREATE TABLE IF NOT EXISTS preprocess.preprocess_payload_error_queue (
+                    producer_process_id int8 NOT NULL,
+                    consumer_process_id int8 NULL,
+                    group_id int4 NOT NULL,
+                    batch_id varchar NOT NULL,
+                    origin_id varchar NOT NULL,
+                    created_on timestamp NOT NULL,
+                    status varchar NOT NULL,
+                    stage  varchar NOT NULL,
+                    message varchar NULL,
+                    consumed_on_ts timestamp NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL,
+                    CONSTRAINT preprocess_payload_error_queue_pk PRIMARY KEY (tenant_id, origin_id)
+                    );
+
+
+                    CREATE TABLE IF NOT EXISTS ${temp_schema_name}.source_of_truth_${init_process_id.process_id} (
+                   truth_id int8 NOT NULL,
+                   created_on timestamp NULL,
+                   created_user_id int8 NULL,
+                   last_updated_on timestamp NULL,
+                   last_updated_user_id int8 NULL,
+                   status varchar NULL,
+                   version int4 NULL,
+                   content text NULL,
+                   encode text NULL,
+                   group_id int4 NULL,
+                   height int8 NULL,
+                   paper_no int4 NULL,
+                   preprocessed_file_id varchar NULL,
+                   root_pipeline_id int8 NULL,
+                   template_name varchar NULL,
+                   transaction_id varchar NULL,
+                   width int8 NULL,
+                   workspace_id int8 NULL,
+                   asset_id int8 NULL,
+                   origin_id varchar NULL,
+                   tenant_id int8 NULL,
+                   document_type varchar NULL,
+                   channel_id int8 NULL,
+                   batch_id varchar NOT NULL,
+                   CONSTRAINT source_of_truth_${init_process_id.process_id}_pkey PRIMARY KEY (truth_id)
+                    );
+
+                    CREATE TABLE IF NOT EXISTS info.source_of_truth (
+                        truth_id bigserial NOT NULL,
+                        created_on timestamp NULL,
+                        created_user_id int8 NULL,
+                        last_updated_on timestamp NULL,
+                        last_updated_user_id int8 NULL,
+                        status varchar NULL,
+                        version int4 NULL,
+                        content text NULL,
+                        encode text NULL,
+                        group_id int4 NULL,
+                        height int8 NULL,
+                        paper_no int4 NULL,
+                        preprocessed_file_id varchar NULL,
+                        root_pipeline_id int8 NULL,
+                        template_name varchar NULL,
+                        transaction_id varchar NULL,
+                        width int8 NULL,
+                        workspace_id int8 NULL,
+                        asset_id int8 NULL,
+                        origin_id varchar NULL,
+                        tenant_id int8 NULL,
+                        document_type varchar NULL,
+                        channel_id int8 NULL,
+                        batch_id varchar NOT NULL,
+                        CONSTRAINT source_of_truth_pkey PRIMARY KEY (truth_id)
+                    );
+
+                    CREATE TABLE IF NOT EXISTS ${temp_schema_name}.auto_rotation_${init_process_id.process_id} (
+                    id serial4 NOT NULL,
+                    process_id int8 null,
+                    tenant_id int8 NULL,
+                    template_id varchar null,
+                    group_id int4  NULL,
+                    batch_id varchar NOT NULL,
+                    paper_no int4  NULL,
+                    origin_id varchar  NULL,
+                    processed_file_path varchar NULL,
+                    status varchar NULL,
+                    stage varchar NULL,
+                    message varchar NULL,
+                    created_on timestamp NULL,
+                    last_updated_on timestamp null,
+                    root_pipeline_id int8 NULL,
+                    model_name varchar NULL,
+                    model_version varchar NULL,
+                    request text NULL,
+                    response text NULL,
+                    endpoint varchar NULL
+                    );
+
+                    CREATE TABLE IF NOT EXISTS info.auto_rotation (
+                    id serial4 NOT NULL,
+                    process_id int8 null,
+                    tenant_id int8 NULL,
+                    template_id varchar null,
+                    group_id int4  NULL,
+                    batch_id varchar NOT NULL,
+                    paper_no int4  NULL,
+                    origin_id varchar  NULL,
+                    processed_file_path varchar NULL,
+                    status varchar NULL,
+                    stage varchar NULL,
+                    message varchar NULL,
+                    created_on timestamp NULL,
+                    last_updated_on timestamp null,
+                    root_pipeline_id int8 NULL,
+                    model_name varchar NULL,
+                    model_version varchar NULL,
+                    request text NULL,
+                    response text NULL,
+                    endpoint varchar NULL
+                    );
+
+                    CREATE TABLE IF NOT EXISTS info.grey_scale_conversion (
+                    id serial4 NOT NULL,
+                    process_id int8 null,
+                    tenant_id int8 NULL,
+                    template_id varchar null,
+                    group_id int4  NULL,
+                    paper_no int4  NULL,
+                    origin_id varchar  NULL,
+                    processed_file_path varchar NULL,
+                    status varchar NULL,
+                    stage varchar NULL,
+                    message varchar NULL,
+                    created_on timestamp NULL,
+                    last_updated_on timestamp null,
+                    root_pipeline_id int8 NULL,
+                    model_name varchar NULL,
+                    model_version varchar NULL,
+                    input_file_path varchar NULL,
+                    is_color bool null,
+                    batch_id varchar NOT NULL,
+                    request text NULL,
+                    response text NULL,
+                    endpoint varchar NULL
+                    );
+
+                    CREATE TABLE IF NOT EXISTS info.data_extraction(
+                    id serial4 NOT NULL,
+                    process_id int8 null,
+                    tenant_id int8 NULL,
+                    template_id varchar null,
+                    group_id int4 NULL,
+                    batch_id varchar NOT NULL,
+                    origin_id varchar NULL,
+                    paper_no int4 NULL,
+                    file_path varchar NULL,
+                    file_name varchar NULL,
+                    extracted_text varchar NULL,
+                    status varchar NULL,
+                    stage varchar NULL,
+                    message varchar NULL,
+                    template_name varchar null,
+                    is_blank_page varchar NULL,
+                    created_on timestamp NULL,
+                    last_updated_on timestamp null,
+                    root_pipeline_id int8 NULL,
+                    model_name varchar NULL,
+                    model_version varchar NULL,
+                    request text NULL,
+                    response text NULL,
+                    endpoint varchar NULL
+                    );
+
+
+                    CREATE TABLE IF NOT EXISTS ${temp_schema_name}.data_extraction_${init_process_id.process_id}(
+                    id serial4 NOT NULL,
+                    process_id int8 null,
+                    tenant_id int8 NULL,
+                    template_id varchar null,
+                    group_id int4 NULL,
+                    batch_id varchar NOT NULL,
+                    origin_id varchar NULL,
+                    paper_no int4 NULL,
+                    file_path varchar NULL,
+                    file_name varchar NULL,
+                    extracted_text varchar NULL,
+                    status varchar NULL,
+                    stage varchar NULL,
+                    message varchar NULL,
+                    template_name varchar null,
+                    is_blank_page varchar NULL,
+                    created_on timestamp NULL,
+                    last_updated_on timestamp null,
+                    root_pipeline_id int8 NULL,
+                    model_name varchar NULL,
+                    model_version varchar NULL,
+                    request text NULL,
+                    response text NULL,
+                    endpoint varchar NULL
+                    );
+
+                    CREATE TABLE IF NOT EXISTS ${temp_schema_name}.paper_itemizer_${init_process_id.process_id} (
+                    id serial4 NOT NULL,
+                    process_id int8 NULL,
+                    group_id int4 NULL,
+                    batch_id varchar NOT NULL,
+                    tenant_id int8 NULL,
+                    template_id varchar NULL,
+                    origin_id varchar NULL,
+                    paper_no int4 NULL,
+                    processed_file_path varchar NULL,
+                    status varchar NULL,
+                    stage varchar NULL,
+                    message varchar NULL,
+                    created_on timestamp NULL,
+                    last_updated_on timestamp null,
+                    root_pipeline_id int8 NULL,
+                    model_name varchar NULL,
+                    model_version varchar NULL,
+                    request text NULL,
+                    response text NULL,
+                    endpoint varchar NULL
+                    );
+
+                    CREATE TABLE IF NOT EXISTS info.paper_itemizer (
+                    id serial4 NOT NULL,
+                    process_id int8 NULL,
+                    group_id int4 NULL,
+                    batch_id varchar NOT NULL,
+                    tenant_id int8 NULL,
+                    template_id varchar NULL,
+                    origin_id varchar NULL,
+                    paper_no int4 NULL,
+                    processed_file_path varchar NULL,
+                    status varchar NULL,
+                    stage varchar NULL,
+                    message varchar NULL,
+                    created_on timestamp NULL,
+                    last_updated_on timestamp null,
+                    root_pipeline_id int8 NULL,
+                    model_name varchar NULL,
+                    model_version varchar NULL,
+                    request text NULL,
+                    response text NULL,
+                    endpoint varchar NULL
+                    );
+
+                    CREATE TABLE IF NOT EXISTS paper.potential_feature_payload_queue (
+                    producer_process_id int8 NOT NULL,
+                    consumer_process_id int8 NULL,
+                    group_id int4 NULL,
+                    batch_id varchar NOT NULL,
+                    origin_id varchar NOT NULL,
+                    created_on timestamp NOT NULL,
+                    status varchar NOT NULL,
+                    stage  varchar NOT NULL,
+                    consumed_on_ts timestamp NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL,
+                    CONSTRAINT potential_feature_payload_queue_pk PRIMARY KEY (tenant_id, origin_id)
+                    );
+
+
+                    CREATE TABLE IF NOT EXISTS paper_filter.agentic_paper_filter_payload_queue (
+                    producer_process_id int8 NOT NULL,
+                    consumer_process_id int8 NULL,
+                    group_id int4 NULL,
+                    batch_id varchar NOT NULL,
+                    origin_id varchar NOT NULL,
+                    created_on timestamp NOT NULL,
+                    status varchar NOT NULL,
+                    stage  varchar NOT NULL,
+                    consumed_on_ts timestamp NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL,
+                    CONSTRAINT agentic_paper_filter_payload_queue_pk PRIMARY KEY (tenant_id, origin_id)
+                    );
+
+
+                    CREATE TABLE IF NOT EXISTS ${temp_schema_name}.file_details_truth_${init_process_id.process_id} (
+                    file_id varchar NOT NULL,
+                    process_id int8  NULL,
+                    root_pipeline_id int8  NULL,
+                    batch_id varchar NOT NULL,
+                    tenant_id int8 NULL,
+                    file_checksum varchar  NULL,
+                    file_extension varchar  NULL,
+                    file_name varchar  NULL,
+                    decoded_file_name  varchar  NULL,
+                    file_path varchar  NULL,
+                    file_size varchar  NULL,
+                    height float4 null,
+                    width float4 null,
+                    dpi int4 NULL,
+                    encode text null
+                    );
+
+                    CREATE TABLE IF NOT EXISTS macro.file_details_truth_audit (
+                    file_id varchar NOT NULL,
+                    process_id int8  NULL,
+                    root_pipeline_id int8  NULL,
+                    tenant_id int8 NULL,
+                    batch_id varchar NOT NULL,
+                    file_checksum varchar  NULL,
+                    file_extension varchar  NULL,
+                    file_name varchar  NULL,
+                    decoded_file_name  varchar  NULL,
+                    file_path varchar  NULL,
+                    file_size varchar  NULL,
+                    height float4 null,
+                    width float4 null,
+                    dpi int4 NULL,
+                    encode text null
+                    );
+
+                    CREATE TABLE if not exists ${temp_schema_name}.sanitizer_summary_truth_audit_${init_process_id.process_id} (
+                    row_count int4 NULL,
+                    batch_id varchar NOT NULL,
+                    correct_row_count int4 NULL,
+                    error_row_count int4 NULL,
+                    comments varchar NULL,
+                    created_at timestamp NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL
+                    );
+
+                    CREATE TABLE if not exists preprocess.sanitizer_summary_audit (
+                    row_count int4 NULL,
+                    batch_id varchar NOT NULL,
+                    correct_row_count int4 NULL,
+                    error_row_count int4 NULL,
+                    comments varchar NULL,
+                    created_at timestamp NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL
+                    );
+
+                    CREATE TABLE IF NOT EXISTS eoc_response.error_document_detail (
+                    error_document_id bigserial NOT NULL,
+                    document_id varchar NULL,
+                    origin_id varchar NULL,
+                    group_id varchar NULL,
+                    batch_id varchar NOT NULL,
+                    uploaded_on timestamp NULL,
+                    process_failed_on timestamp NULL,
+                    total_processed_duration int8 NULL,
+                    total_no_of_pages int8 NULL,
+                    failed_on_stage varchar NULL,
+                    stages json NULL,
+                    message varchar NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL,
+                    CONSTRAINT error_document_detail_pk PRIMARY KEY (error_document_id)
+                    );
+
+                    CREATE TABLE IF NOT EXISTS eoc_response.temp_error_document_detail (
+                    error_document_id bigserial NOT NULL,
+                    origin_id varchar NULL,
+                    group_id varchar NULL,
+                    batch_id varchar NOT NULL,
+                    uploaded_on timestamp NULL,
+                    process_failed_on timestamp NULL,
+                    failed_on_stage varchar NULL,
+                    status varchar NULL,
+                    message varchar NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL,
+                    CONSTRAINT temp_error_document_detail_pk PRIMARY KEY (error_document_id)
+                    );
+
+                    CREATE TABLE IF NOT EXISTS preprocess.final_sanitizer_summary_audit (
+                    id bigserial NOT NULL,
+                    batch_id varchar NOT NULL,
+                    row_count int4 NULL,
+                    correct_row_count int4 NULL,
+                    error_row_count int4 NULL,
+                    comments varchar NULL,
+                    created_at timestamp NULL,
+                    process_id int8 NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL
+                    );
+
+                 CREATE TABLE IF NOT EXISTS ${temp_schema_name}.preprocess_chrono_clash_input_${init_process_id.process_id} (
+                     root_pipeline_id int8 NOT NULL,
+                     created_on timestamp NULL,
+                     updated_on timestamp NULL,
+                     batch_id varchar NOT NULL,
+                     group_id int4 NULL,
+                     origin_id varchar NOT NULL,
+                     tenant_id int8 NOT NULL,
+                     time_frame int4 NULL,
+                     stage varchar NULL,
+                     status varchar NULL,
+                     transaction_id varchar NOT NULL,
+                     downloaded_time timestamp NULL,
+                     remaining_time interval NULL,
+                     CONSTRAINT preprocess_chrono_clash_input_${init_process_id.process_id}_pk PRIMARY KEY (origin_id,tenant_id,root_pipeline_id,transaction_id)
+                 );
+
+                 CREATE TABLE IF NOT EXISTS chrono_clash.chrono_clash_audit (
+                     id bigserial NOT NULL,
+                     root_pipeline_id int8 NOT NULL,
+                     created_on timestamp NULL,
+                     updated_on timestamp NULL,
+                     batch_id varchar NOT NULL,
+                     group_id int4 NULL,
+                     origin_id varchar NOT NULL,
+                     tenant_id int8 NOT NULL,
+                     time_frame int4 NULL,
+                     stage varchar NULL,
+                     status varchar NULL,
+                     transaction_id varchar NOT NULL,
+                     downloaded_time timestamp NULL,
+                     remaining_time interval NULL,
+                     CONSTRAINT chrono_clash_pk PRIMARY KEY (origin_id,tenant_id,root_pipeline_id,transaction_id)
+                 );
+
+
+            "} on-condition if "true"=="true"
+
+
+            transform as "Ddl creation for template detection pipeline " on "intics_zio_db_conn" using
+            {"
+
+                        CREATE TABLE if not exists info.template_detection (
+                        process_id int8 NULL,
+                        origin_id varchar NOT NULL,
+                        group_id int8 NULL,
+                        template_name varchar NULL,
+                        score int8 NULL,
+                        tenant_id int8 NULL,
+                        template_id varchar NULL,
+                        created_on timestamp NULL,
+                        root_pipeline_id int8 null,
+                        batch_id varchar NOT NULL,
+                        constraint template_detection_pk primary key (tenant_id,origin_id)
+                        );
+
+                        create table if not exists ${temp_schema_name}.a_template_detection_response_${init_process_id.process_id}(
+                        id bigserial not null,
+                        process_id int8 null,
+                        origin_id varchar null,
+                        paper_no int8 null,
+                        group_id int8 null,
+                        processed_file_path varchar null,
+                        question varchar null,
+                        predictedAttribution_value varchar null,
+                        score int8 null,
+                        bboxes varchar null,
+                        image_width int8 null,
+                        image_height int8 null,
+                        image_DPI int8 null,
+                        extracted_image_unit varchar null,
+                        tenant_id int8 NULL,
+                        template_id varchar null,
+                        status varchar null,
+                        stage varchar null,
+                        message varchar null,
+                        created_on timestamp null,
+                        last_updated_on timestamp null,
+                        root_pipeline_id int8 null,
+                        model_name varchar NULL,
+                        model_version varchar NULL,
+                        batch_id varchar NOT NULL,
+                        model_registry_id int8 NOT NULL,
+                        request varchar NULL,
+                        response varchar NULL,
+                        endpoint varchar NULL
+                        );
+
+                        create table if not exists template_detection.a_template_detection_response_audit(
+                        id bigserial not null,
+                        process_id int8 null,
+                        origin_id varchar null,
+                        paper_no int8 null,
+                        group_id int8 null,
+                        batch_id varchar NOT NULL,
+                        processed_file_path varchar null,
+                        question varchar null,
+                        predictedAttribution_value varchar null,
+                        score int8 null,
+                        bboxes varchar null,
+                        image_width int8 null,
+                        image_height int8 null,
+                        image_DPI int8 null,
+                        extracted_image_unit varchar null,
+                        tenant_id int8 NULL,
+                        template_id varchar null,
+                        status varchar null,
+                        stage varchar null,
+                        message varchar null,
+                        created_on timestamp null,
+                        last_updated_on timestamp null,
+                        root_pipeline_id int8 null,
+                        model_name varchar NULL,
+                        model_version varchar NULL,
+                        model_registry_id int8 NOT NULL,
+                        request text NULL,
+                        response text NULL,
+                        endpoint varchar NULL
+                        );
+
+                        CREATE TABLE IF NOT EXISTS ${temp_schema_name}.b_template_response_group_${init_process_id.process_id} (
+                        origin_id varchar NOT NULL,
+                        tenant_id INT NOT NULL,
+                        paper_no INT NOT NULL,
+                        template_name varchar,
+                        occurance_count INT,
+                        batch_id varchar,
+                        root_pipeline_id varchar
+                        );
+
+                        CREATE TABLE IF NOT EXISTS ${temp_schema_name}.c_template_max_occurance_${init_process_id.process_id} (
+                        origin_id varchar NOT NULL,
+                        template_name varchar,
+                        tenant_id INT NOT NULL,
+                        paper_no INT NOT NULL,
+                        occurance_count INT,
+                        batch_id varchar,
+                        root_pipeline_id varchar
+                        );
+
+                        CREATE TABLE IF NOT EXISTS ${temp_schema_name}.d_template_name_match_${init_process_id.process_id} (
+                        paper_no INT NOT NULL,
+                        tenant_id INT NOT NULL,
+                        origin_id varchar NOT NULL,
+                        template_name varchar,
+                        batch_id varchar
+                        );
+
+                        CREATE TABLE IF NOT EXISTS ${temp_schema_name}.e_template_name_fuzzy_match_${init_process_id.process_id} (
+                        origin_id varchar NOT NULL,
+                        tenant_id INT NOT NULL,
+                        predicted_template_name varchar,
+                        template_name varchar,
+                        fuzzy_score DECIMAL(5, 2),
+                        batch_id varchar,
+                        document_type varchar null,
+                        root_pipeline_id varchar
+                        );
+
+                        CREATE TABLE IF NOT EXISTS ${temp_schema_name}.f_template_name_max_fuzzy_match_${init_process_id.process_id} (
+                        origin_id varchar NOT NULL,
+                        tenant_id INT NOT NULL,
+                        max DECIMAL(5, 2),
+                        batch_id varchar
+                        );
+
+                        CREATE TABLE IF NOT EXISTS ${temp_schema_name}.g_final_template_match_${init_process_id.process_id} (
+                        origin_id varchar NOT NULL,
+                        tenant_id INT NOT NULL,
+                        template_name varchar,
+                        fuzzy_score DECIMAL(5, 2),
+                        batch_id varchar
+                        );
+
+
+                        CREATE TABLE if not exists ${temp_schema_name}.template_detection_result_${init_process_id.process_id}(
+                        process_id int8 NULL,
+                        origin_id varchar NOT NULL,
+                        group_id int8 NULL,
+                        batch_id varchar NOT NULL,
+                        template_name varchar NULL,
+                        score int8 NULL,
+                        tenant_id int8 NULL,
+                        template_id varchar NULL,
+                        created_on timestamp NULL,
+                        root_pipeline_id int8 null
+                        );
+
+
+                        CREATE TABLE IF NOT EXISTS template_detection.b_template_response_group_audit (
+                        origin_id varchar NOT NULL,
+                        tenant_id INT NOT NULL,
+                        paper_no INT NOT NULL,
+                        template_name varchar,
+                        occurance_count INT,
+                        batch_id varchar,
+                        root_pipeline_id varchar
+                        );
+
+                        CREATE TABLE IF NOT EXISTS template_detection.c_template_max_occurance_audit (
+                        origin_id varchar NOT NULL,
+                        template_name varchar,
+                        tenant_id INT NOT NULL,
+                        paper_no INT NOT NULL,
+                        occurance_count INT,
+                        batch_id varchar,
+                        root_pipeline_id varchar
+                        );
+
+                        CREATE TABLE IF NOT EXISTS template_detection.d_template_name_match_audit (
+                        paper_no INT NOT NULL,
+                        tenant_id INT NOT NULL,
+                        origin_id varchar NOT NULL,
+                        template_name varchar,
+                        batch_id varchar
+                        );
+
+                        CREATE TABLE IF NOT EXISTS template_detection.e_template_name_fuzzy_match_audit (
+                        origin_id varchar NOT NULL,
+                        tenant_id INT NOT NULL,
+                        predicted_template_name varchar,
+                        template_name varchar,
+                        fuzzy_score DECIMAL(5, 2),
+                        batch_id varchar,
+                        root_pipeline_id varchar,
+                        document_type varchar null
+                        );
+
+                        CREATE TABLE IF NOT EXISTS template_detection.f_template_name_max_fuzzy_match_audit (
+                        origin_id varchar NOT NULL,
+                        tenant_id INT NOT NULL,
+                        max DECIMAL(5, 2),
+                        batch_id varchar
+                        );
+
+                        CREATE TABLE IF NOT EXISTS template_detection.g_final_template_match_audit (
+                        origin_id varchar NOT NULL,
+                        tenant_id INT NOT NULL,
+                        template_name varchar,
+                        fuzzy_score DECIMAL(5, 2),
+                        batch_id varchar
+                        );
+
+                        CREATE TABLE IF NOT EXISTS template_detection.template_detection_result_audit(
+                        process_id int8 NULL,
+                        origin_id varchar NOT NULL,
+                        group_id int8 NULL,
+                        batch_id varchar NOT NULL,
+                        template_name varchar NULL,
+                        score int8 NULL,
+                        tenant_id int8 NULL,
+                        template_id varchar NULL,
+                        created_on timestamp NULL,
+                        root_pipeline_id int8 null
+                        );
+
+                        CREATE TABLE IF NOT EXISTS info.template_detection_result (
+                        process_id int8 NULL,
+                        origin_id varchar NULL,
+                        group_id int8 NULL,
+                        template_name varchar NULL,
+                        score int8 NULL,
+                        tenant_id int8 NULL,
+                        template_id varchar NULL,
+                        created_on timestamp NULL,
+                        root_pipeline_id int8 NULL,
+                        batch_id varchar NOT NULL,
+                        CONSTRAINT template_detection_result_pkey PRIMARY KEY (process_id, origin_id, tenant_id, batch_id)
+                        );
+
+                        CREATE TABLE IF NOT EXISTS info.downloaded_asset_source_details (
+                            id bigserial NOT NULL,
+                        	origin_id varchar NOT NULL,
+                        	asset_id int4 NOT NULL,
+                        	document_id varchar NULL,
+                        	file_downloaded_time timestamp NULL,
+                        	inbound_transaction_id varchar NULL,
+                        	downloaded_file_path varchar NULL,
+                        	request_txn_id varchar NULL,
+                        	file_id varchar NULL,
+                        	file_name varchar NULL,
+                        	file_size float8 NULL,
+                        	total_pages int8 NULL,
+                        	file_path varchar NULL,
+                        	height float4 NULL,
+                        	width float4 NULL,
+                        	file_checksum varchar NULL,
+                        	file_extension varchar NULL,
+                        	transaction_id varchar NULL,
+                        	group_id int4 NULL,
+                        	root_pipeline_id int8 NULL,
+                        	batch_id varchar NOT NULL,
+                        	tenant_id int8 NOT NULL,
+                        	reference_id varchar NULL,
+                        	CONSTRAINT downloaded_asset_source_details_pkey PRIMARY KEY (origin_id, transaction_id, tenant_id)
+                        );
+
+                        CREATE TABLE IF NOT EXISTS ${temp_schema_name}.downloaded_asset_source_details_${init_process_id.process_id} (
+                            origin_id varchar NOT NULL,
+                            asset_id int4 NOT NULL,
+                            document_id varchar NULL,
+                            file_downloaded_time timestamp NULL,
+                            inbound_transaction_id varchar NULL,
+                            downloaded_file_path varchar NULL,
+                            request_txn_id varchar NULL,
+                            file_id varchar NULL,
+                            file_name varchar NULL,
+                            file_size float8 NULL,
+                            total_pages int8 NULL,
+                            file_path varchar NULL,
+                            height float4 NULL,
+                            width float4 NULL,
+                            file_checksum varchar NULL,
+                            file_extension varchar NULL,
+                            transaction_id varchar NULL,
+                            group_id int4 NULL,
+                            root_pipeline_id int8 NULL,
+                            batch_id varchar NOT NULL,
+                            tenant_id int8 NOT NULL,
+                            reference_id varchar NULL,
+                            CONSTRAINT downloaded_asset_source_details_${init_process_id.process_id}_pkey PRIMARY KEY (origin_id, transaction_id, tenant_id)
+                        );
+
+
+                        INSERT INTO preprocess.preprocess_pipeline_audit
+                        (process_id, origin_id,group_id, created_on, status, stage, message,root_pipeline_id, tenant_id)
+                        values('${init_process_id.process_id}', '${origin_id}','${gen_group_id.group_id}',now(),'COMPLETED','INFO_DDL','Completed the ddl creation for all the tables','${gen_id.root_pipeline_id}', ${tenant_id});
+
+            "} on-condition if "true"=="true"
+
+            transform as "create a deep sift payload queue" on "intics_zio_db_conn" using
+            {"
+
+                        CREATE TABLE IF NOT EXISTS deep_sift.deep_sift_payload_queue (
+                        producer_process_id int8 NOT NULL,
+                        consumer_process_id int8 NOT NULL,
+                        origin_id varchar NOT NULL,
+                        tenant_id int4 NOT NULL,
+                        group_id varchar NULL,
+                        batch_id varchar NULL,
+                        root_pipeline_id int8 NULL,
+                        created_on TIMESTAMP NULL,
+                        status varchar NULL,
+                        stage varchar NULL,
+                        consumed_on_ts TIMESTAMP NULL,
+                        CONSTRAINT deep_sift_payload_queue_pk PRIMARY KEY (tenant_id, origin_id)
+                        );
+
+              "} on-condition if "${deep.sift.extraction.activator}"=="true"
+
+	}
+	catch{
+			transform as "insert into audit table for failed in creating ddl " on "intics_zio_db_conn" using
+			{"
+                    INSERT INTO preprocess.preprocess_pipeline_audit
+                    (process_id, origin_id,group_id, created_on, status, stage, message,root_pipeline_id, tenant_id)
+                    values('${init_process_id.process_id}', '${origin_id}','${gen_group_id.group_id}',now(),'FAILED','INFO_DDL','Completed the ddl creation for all the tables','${gen_id.root_pipeline_id}', ${tenant_id});
+			"} on-condition if "true"=="true"
+
+	}
+	finally{
+
+
+	}
+}

@@ -1,0 +1,70 @@
+process "menu.onboarding.processor"
+{
+    try{
+         assign as "check.menuname" source "intics_zio_db_conn" using
+             {"
+                select (case when count(ma.menu_name) = 0 then 'true'
+                             when count(ma.menu_name) > 0 then 'false' end)
+                as menu_count
+                from user_management.menu_access ma
+                where ma.tenant_id='${tenant_id}'
+             "} on-condition if "true"=="true"
+
+         transform as "Insert into the Menu Access table" on "intics_zio_db_conn" using
+            {"
+                INSERT INTO user_management.menu_access
+                ( menu_name, created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, tenant_id, user_id)
+                SELECT menu_name, now(), ${tenant_id}, now(), ${tenant_id}, status, 1, ${tenant_id} , ${created_user_id}
+                FROM ui_config_access.menu_options ;
+            "} on-condition if "${check.menuname.menu_count}"=="true"
+
+         assign as "check.submenuname" source "intics_zio_db_conn" using
+             {"
+                 select (case when count(sma.submenu_name) = 0 then 'true'
+                              when count(sma.submenu_name) > 0 then 'false' end)
+                 as submenu_count
+                 from user_management.submenu_access sma
+                 where sma.tenant_id='${tenant_id}'
+             "} on-condition if "true"=="true"
+
+         transform as "Insert into the Submenu Access table" on "intics_zio_db_conn" using
+              {"
+                  INSERT INTO user_management.submenu_access
+                  (menu_id, submenu_name, created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, tenant_id, user_id)
+                  SELECT ma.menu_id, submenu_name, now(), ${tenant_id}, now(), ${tenant_id}, so.status, 1, ${tenant_id} , ${created_user_id}
+                  FROM ui_config_access.submenu_options so
+                  inner join ui_config_access.menu_options mo ON so.menu_id = mo.menu_id
+                  inner join user_management.menu_access ma on ma.menu_name = mo.menu_name and ma.tenant_id = ${tenant_id};
+              "} on-condition if "${check.submenuname.submenu_count}"=="true"
+
+         assign as "check.usecases" source "intics_zio_db_conn" using
+              {"
+                  select (case when count(ua.usecase_name) = 0 then 'true'
+                               when count(ua.usecase_name) > 0 then 'false' end)
+                  as usecases_count
+                  from user_management.usecase_access ua
+                  where ua.tenant_id='${tenant_id}'
+                  "} on-condition if "true"=="true"
+
+         transform as "Insert into the Usecase Access table" on "intics_zio_db_conn" using
+              {"
+                   INSERT INTO user_management.usecase_access
+                   (menu_id, sub_menu_id, usecase_name, created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, tenant_id, user_id)
+                   SELECT sma.menu_id, sma.sub_menu_id, usecase_name, now(), ${tenant_id}, now(), ${tenant_id}, uo.status, 1, ${tenant_id} , ${created_user_id}
+                   FROM ui_config_access.usecase_options uo
+                   left join ui_config_access.submenu_options so on uo.sub_menu_id = so.sub_menu_id
+                   left join user_management.submenu_access sma on sma.submenu_name = so.submenu_name and sma.tenant_id = ${tenant_id};
+              "} on-condition if "${check.usecases.usecases_count}"=="true"
+    }
+
+    catch {
+               raise exception as "${tenant_id} Check if response failed" using
+               {"Error in adding User Configuration for the given tenantId and userId"}
+               on-condition if "true"=="true"
+    }
+
+    }
+    finally{
+
+    }
+}

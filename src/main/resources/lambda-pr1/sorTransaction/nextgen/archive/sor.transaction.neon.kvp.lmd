@@ -1,0 +1,86 @@
+process "sor.transaction.neon.kvp"
+{
+try{
+
+        transform as "Input table for neon kvp" on "intics_zio_db_conn" using {"
+
+                INSERT INTO ${temp_schema_name}.neon_kvp_input_${init_process_id.process_id}
+                (input_file_path, prompt, text_model, process, paper_type, paper_no, origin_id, process_id, group_id, tenant_id, root_pipeline_id,
+                model_registry, response_format)
+                SELECT a.file_path , pv.base_prompt as prompt, 'XENON' as text_model, 'NEON KVP' as process, 'Printed' as paper_type,
+                sot.paper_no ,stpq.origin_id , '${init_process_id.process_id}' as process_id, stpq.group_id , stpq.tenant_id , stpq.root_pipeline_id ,
+                'NEON' as model_registry , 'JSON' as response_format
+                FROM sor_transaction.sor_transaction_payload_queue stpq
+                join info.source_of_truth sot on sot.origin_id=stpq.origin_id and sot.group_id=stpq.group_id and sot.tenant_id=stpq.tenant_id
+                join paper.paper_level_score_audit pl on pl.origin_id = sot.origin_id
+                                                      and pl.tenant_id = sot.tenant_id
+                                                      and pl.batch_id = sot.batch_id
+                                                      and pl.paper_no = sot.paper_no
+                join sor_meta.asset_info ai on ai.template_name = sot.template_name and ai.tenant_id = sot.tenant_id
+                join info.asset a on a.asset_id=sot.asset_id and a.tenant_id= sot.tenant_id
+                join dynamic_prompt_gen.channel_based_prompt_audit_table pv on ai.asset_id = pv.channel_id
+                and pv.tenant_id=sot.tenant_id and pv.id = '${dynamic_prompt_gen.version}'
+                where stpq.group_id = '${group_id}'
+                      and stpq.tenant_id = '${tenant_id}'
+                      and stpq.batch_id ='${batch_id}'
+                      and pl.is_candidate_paper = 'yes';
+
+        "} on-condition if "true"=="true"
+
+        neonKvp as "neon Kvp api calling macro"
+        on-resource-conn "intics_zio_db_conn"
+        copro-url "${copro.trinity-neon.kvp.url}"
+        output-table "${temp_schema_name}.neon_kvp_output_${init_process_id.process_id}"
+        using
+        {"
+                SELECT input_file_path, prompt, text_model, process, paper_type, paper_no, origin_id, process_id, group_id, tenant_id, root_pipeline_id,
+                batch_id, model_registry, response_format
+                FROM ${temp_schema_name}.neon_kvp_input_${init_process_id.process_id}
+                WHERE model_registry = 'NEON'  and group_id ='${group_id}' and tenant_id='${tenant_id}' and stpq.batch_id ='${batch_id}';
+        "}on-condition if "true"=="true"
+
+
+        llmJsonParser as "neon kvp json parser macro"
+        on-resource-conn "intics_zio_db_conn"
+        input-table "${temp_schema_name}.neon_kvp_output_${init_process_id.process_id}"
+        output-table "sor_transaction.neon_json_parser_output_${init_process_id.process_id}"
+        using
+        {"
+                SELECT total_response_json as response, paper_no,  origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry,
+                image_dpi, extracted_image_unit, image_width, image_height
+                from ${temp_schema_name}.neon_kvp_output_${init_process_id.process_id}
+                WHERE tenant_id = ${tenant_id} AND model_registry = 'NEON' and group_id ='${group_id}';
+
+        "}on-condition if "true"=="true"
+
+        transform as "Insert into vqa transaction for NEON" on "intics_zio_db_conn" using {"
+                INSERT INTO sor_transaction.vqa_transaction
+                ( created_on, created_user_id, last_updated_on, last_updated_user_id,
+                answer,extracted_image_unit, group_id, image_dpi, image_height,
+                image_width, model_id, model_info, origin_id, paper_no, question_id, root_pipeline_id,
+                sor_item_name, sor_question, synonym_id, tenant_id, weight,
+                model_registry,status,stage, sor_item_attribution_id, document_id, vqa_score , b_box)
+                SELECT now(), kjpo.tenant_id, now(), kjpo.tenant_id ,case when kjpo.answer = 'null' then null else kjpo.answer end , kjpo.extracted_image_unit,kjpo.group_id ,
+                kjpo.image_dpi , kjpo.image_width , kjpo.image_height , mr.model_id , 'NEON' as model_info,
+                kjpo.origin_id , kjpo.paper_no , sq.question_id , kjpo.root_pipeline_id ,si.sor_item_name , sq.question ,
+                st.synonym_id , kjpo.tenant_id , 150 as weight, kjpo.model_registry,'COMPLETED' as status,'SOR_TRANSACTION' as stage, mr.sor_item_attribution_id as sor_item_attribution_id,
+                '${document_id}' as document_id, case when kjpo.answer = 'null' then 0 else 100 end  as vqa_score,'{}' as b_box
+                from sor_transaction.neon_json_parser_output_${init_process_id.process_id} kjpo
+                join sor_meta.sor_item si on kjpo.sor_item_name = si.sor_item_name and kjpo.tenant_id = si.tenant_id
+                join sor_meta.sor_tsynonym st on st.sor_item_id = si.sor_item_id and st.tenant_id = si.tenant_id
+                join sor_meta.truth_entity te on te.truth_entity_id = st.truth_entity_id
+                join sor_meta.asset_info ai on ai.tenant_id =kjpo.tenant_id and ai.asset_id =te.asset_id
+                join sor_meta.sor_question sq on sq.synonym_id = st.synonym_id
+                join sor_meta.model_registry mr on mr.model_id = sq.model_registry_id
+                where mr.model_name = 'NEON' and kjpo.group_id ='${group_id}' and kjpo.root_pipeline_id = ${init_process_id.process_id} and ai.template_name ='UNIVERSE';
+
+        "}on-condition if "true"=="true"
+}
+catch{
+
+}
+finally{
+
+}
+
+}

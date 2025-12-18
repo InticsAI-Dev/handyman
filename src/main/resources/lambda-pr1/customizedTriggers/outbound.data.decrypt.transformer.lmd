@@ -1,0 +1,33 @@
+process "outbound.data.decrypt.transformer"
+{
+try{
+
+            decryptInticsEnc as "decrypt the encrypted data for control data pipeline"
+            source "intics_zio_db_conn"
+            decrypt-url "${protegrity.dec.api.url}"
+            output-csv-path "${exported.csv.output.path}"
+            using
+            {"
+                select cr.root_pipeline_id ,cr.group_id,idfd.document_id ,cr.tenant_id ,'' as sor_container_name ,a.file_name ,cr.origin_id ,jsonb_agg(jsonb_build_object('key',si.sor_item_name,'value',cr.extracted_value ,'policy',ep.encryption_policy,'isEncrypted',si.is_encrypted))::varchar as extracted_meta_detail
+                from voting.cummulative_result cr
+                join info.source_of_origin soo on soo.tenant_id =cr.tenant_id and soo.origin_id =cr.origin_id
+                join ${temp_schema_name}.asset_${init_process_id.process_id} a on a.asset_id =soo.asset_id and a.tenant_id =soo.tenant_id
+                join sor_meta.asset_info ai on ai.tenant_id =cr.tenant_id
+                join sor_meta.sor_container sc on sc.tenant_id =cr.tenant_id and sc.document_type=ai.document_type
+                join sor_meta.sor_item si on si.sor_container_id =sc.sor_container_id and si.sor_item_name=cr.sor_item_name and si.tenant_id =cr.tenant_id
+                join sor_meta.encryption_policies ep on ep.encryption_policy_id =si.encryption_policy_id
+                join inbound_config.ingestion_downloaded_file_details idfd on idfd.transaction_id =soo.transaction_id and idfd.tenant_id =soo.tenant_id and a.file_name=idfd.file_name
+                join inbound_config.ingestion_file_details ifd on ifd.inbound_transaction_id =idfd.inbound_transaction_id
+                where cr.root_pipeline_id in (${inbound.rootpipelineid.list})
+                and cr.tenant_id =${tenant_id}
+                and ai.document_type ='${document_type}' and ai.template_name ='${channel_name}'
+                group by cr.root_pipeline_id ,cr.group_id ,idfd.document_id,cr.tenant_id,a.file_name ,cr.origin_id ;
+		    "} on-condition if "true"=="true"
+
+
+}
+catch{
+}
+finally{
+
+}}

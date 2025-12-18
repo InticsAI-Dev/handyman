@@ -1,7 +1,7 @@
 package in.handyman.raven.lambda.access.repo;
 
 
-import in.handyman.raven.lib.model.retry.CoproRetryErrorAuditTable;
+import in.handyman.raven.lib.services.retry.CoproRetryErrorAuditTable;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.config.RegisterBeanMapper;

@@ -1,0 +1,308 @@
+process "master.data.intellimatch"
+{
+    try {
+
+        assign as "master_data_comparison_case" source "intics_zio_db_conn" using
+            {"
+                    select  (case when '${count_system_key}'='1' and '${sor_container_id}' = '4' then 'true' else 'false' end) as matched_provider1;
+                    select  (case when '${count_system_key}'='2' and '${sor_container_id}' = '4' then 'true' else 'false' end) as matched_provider2;
+                    select  (case when '${count_system_key}'='1' and '${sor_container_id}' = '2' then 'true' else 'false' end) as matched_prescriber1;
+                    select  (case when '${count_system_key}'='2' and '${sor_container_id}' = '2' then 'true' else 'false' end) as matched_prescriber2;
+                    select  (case when '${count_system_key}'='1' and '${sor_container_id}' = '1' then 'true' else 'false' end) as matched_patient1;
+            "}on-condition if "true"=="true"
+
+        assign as "master_data_outbound_zip_case" source "intics_zio_db_conn" using
+            {"
+                    select  (case when '${master.data.outboundZip}'='true' and '${sor_container_id}' = '4' then 'true' else 'false' end) as provider_outbound;
+                    select  (case when '${master.data.outboundZip}'='true' and '${sor_container_id}' = '2' then 'true' else 'false' end) as prescriber_outbound;
+                    select  (case when '${master.data.outboundZip}'='true' and '${sor_container_id}' = '1' then 'true' else 'false' end) as patient_outbound;
+            "}on-condition if "true"=="true"
+
+
+        transform as "insert into master data provider and prescriber audit as started" on "intics_zio_db_conn" using
+              {"
+                  INSERT INTO md_lookup_systemKey.master_data_pipeline_audit
+                  (process_id,origin_id, created_on, group_id,  status, stage, message,root_pipeline_id, tenant_id, batch_id)
+                  SELECT '${init_process_id.process_id}',a.origin_id,now(),'${gen_group_id.group_id}','STARTED',
+                  'MASTER_DATA_PROVIDER_PRESCRIBER','master_data for prescriber and provider is started ',
+                  '${gen_id.root_pipeline_id}', '${tenant_id}', a.batch_id
+                  from  md_lookup_systemKey.master_data_payload_queue a
+                  where a.batch_id='${batch_id}';
+
+                  UPDATE  md_lookup_systemKey.master_data_payload_queue
+                  SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts=now(),status='IN_PROGRESS'
+                  WHERE status='STAGED' and tenant_id = ${tenant_id} and batch_id='${batch_id}';
+
+              "}  on-condition if "true"=="true"
+
+
+            transform as "sor item classifier for ${sor_item_name}" on "intics_zio_db_conn" using
+            {"
+                INSERT INTO md_lookup_systemkey.${sor_item_name}
+                (origin_id, paper_no, eoc_identifier, group_id, ${sor_item_name}, sk_${system_key1}, root_pipeline_id, tenant_id, batch_id)
+                    SELECT
+                        a.origin_id,
+                        MAX(a.paper_no),
+                        a.eoc_identifier,
+                        b.group_id,
+                        MAX(CASE WHEN a.sor_item_name = '${sor_item_name}' THEN a.values END) AS ${sor_item_name},
+                        MAX(CASE WHEN a.sor_item_name = '${system_key1}' THEN a.values END) AS sk_${system_key1},
+                        a.root_pipeline_id,
+                        b.tenant_id,
+                        b.batch_id
+                    FROM
+                        eoc_response.eoc_trans a
+                    JOIN
+                        md_lookup_systemKey.master_data_payload_queue b ON a.origin_id = b.origin_id
+                    JOIN
+                        sor_meta.sor_item si ON si.sor_item_name = a.sor_item_name AND b.tenant_id = si.tenant_id
+                    WHERE
+                        (a.sor_item_name = '${system_key1}' OR a.sor_item_name = '${sor_item_name}') and b.batch_id='${batch_id}'
+                    GROUP BY
+                        a.origin_id,
+                        a.eoc_identifier,
+                        b.group_id,
+                        a.root_pipeline_id,
+                        b.tenant_id,
+                        b.batch_id
+                    ORDER BY
+                        a.origin_id;
+            "} on-condition if "${count_system_key}"=="1"
+
+
+            transform as "sor item classifier for ${sor_item_name}" on "intics_zio_db_conn" using
+                {"
+                    INSERT INTO md_lookup_systemkey.${sor_item_name}
+                     (origin_id, paper_no, eoc_identifier, group_id, ${sor_item_name}, sk_${system_key1},sk_${system_key2}, root_pipeline_id, tenant_id, batch_id)
+                        SELECT
+                            a.origin_id,
+                            MAX(a.paper_no),
+                            a.eoc_identifier,
+                            b.group_id,
+                            MAX(CASE WHEN a.sor_item_name = '${sor_item_name}' THEN a.values END) AS ${sor_item_name},
+                            MAX(CASE WHEN a.sor_item_name = '${system_key1}' THEN a.values END) AS sk_${system_key1},
+                            MAX(CASE WHEN a.sor_item_name = '${system_key2}' THEN a.values END) AS sk_${system_key2},
+                            a.root_pipeline_id,
+                            b.tenant_id,
+                            b.batch_id
+                        FROM
+                            eoc_response.eoc_trans a
+                        JOIN
+                            md_lookup_systemKey.master_data_payload_queue b ON a.origin_id = b.origin_id
+                        JOIN
+                            sor_meta.sor_item si ON si.sor_item_name = a.sor_item_name AND b.tenant_id = si.tenant_id
+                        WHERE
+                            (a.sor_item_name = '${system_key1}' OR a.sor_item_name = '${system_key2}' OR a.sor_item_name = '${sor_item_name}') and b.batch_id='${batch_id}'
+                        GROUP BY
+                            a.origin_id,
+                            a.eoc_identifier,
+                            b.group_id,
+                            a.root_pipeline_id,
+                            b.tenant_id,
+                            b.batch_id
+                        ORDER BY
+                            a.origin_id;
+                "} on-condition if "${count_system_key}"=="2"
+
+        masterdataComparison as "matched patient for ${sor_item_name}"
+        match-result "md_lookup_systemKey.${sor_item_name}_match"
+        on-resource-conn "intics_zio_db_conn"
+        process-id "${init_process_id.process_id}"
+        copro-url "${copro.intelli-match.url}"
+        using {"
+                SELECT a.origin_id ,a.paper_no ,a.eoc_identifier,now(), a.${sor_item_name}  as extracted_value ,b.${sor_item_name}  as actual_value,
+                a.root_pipeline_id as root_pipeline_id, a.tenant_id as tenant_id, a.batch_id
+                FROM md_lookup_systemKey.${sor_item_name} a
+                LEFT JOIN master_data.patient_metadata b
+                ON a.sk_${system_key1}=b.${system_key1}
+                WHERE a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+                "} on-condition if "${master_data_comparison_case.matched_patient1}"=="true"
+
+        masterdataComparison as "matched provider for one system key for ${sor_item_name}"
+        match-result "md_lookup_systemKey.${sor_item_name}_match"
+        on-resource-conn "intics_zio_db_conn"
+        process-id "${init_process_id.process_id}"
+        copro-url "${copro.intelli-match.url}"
+        using {"
+                SELECT a.origin_id ,a.paper_no ,a.eoc_identifier,now(), a.${sor_item_name}  as extracted_value ,b.${sor_item_name}  as actual_value,
+                a.root_pipeline_id as root_pipeline_id, a.tenant_id as tenant_id, a.batch_id
+                FROM md_lookup_systemKey.${sor_item_name} a
+                LEFT JOIN master_data.provider_metadata b
+                ON a.sk_${system_key1}=b.${system_key1}
+                WHERE a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+                "} on-condition if "${master_data_comparison_case.matched_provider1}"=="true"
+
+        masterdataComparison as "matched provider for two system keys for ${sor_item_name}"
+        match-result "md_lookup_systemKey.${sor_item_name}_match"
+        on-resource-conn "intics_zio_db_conn"
+        process-id "${init_process_id.process_id}"
+        copro-url "${copro.intelli-match.url}"
+        using {"
+                SELECT a.origin_id ,a.paper_no ,a.eoc_identifier,now(), a.${sor_item_name}  as extracted_value ,b.${sor_item_name}  as actual_value,
+                a.root_pipeline_id as root_pipeline_id, a.tenant_id as tenant_id, a.batch_id
+                FROM md_lookup_systemKey.${sor_item_name} a
+                LEFT JOIN master_data.provider_metadata b
+                ON a.sk_${system_key1}=b.${system_key1}
+                or a.sk_${system_key2}=b.${system_key2}
+                WHERE a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+                "} on-condition if "${master_data_comparison_case.matched_provider2}"=="true"
+
+
+        masterdataComparison as "matched prescriber for ${sor_item_name}"
+        match-result "md_lookup_systemKey.${sor_item_name}_match"
+        on-resource-conn "intics_zio_db_conn"
+        process-id "${init_process_id.process_id}"
+        copro-url "${copro.intelli-match.url}"
+        using {"
+                SELECT a.origin_id ,a.paper_no ,a.eoc_identifier,now(), a.${sor_item_name}  as extracted_value ,b.${sor_item_name}  as actual_value,
+                a.root_pipeline_id as root_pipeline_id, a.tenant_id as tenant_id, a.batch_id
+                FROM md_lookup_systemKey.${sor_item_name} a
+                LEFT JOIN master_data.prescriber_metadata b
+                ON a.sk_${system_key1}=b.${system_key1}
+                WHERE a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+                "} on-condition if "${master_data_comparison_case.matched_prescriber1}"=="true"
+
+
+        masterdataComparison as "matched prescriber for two systems keys for ${sor_item_name}"
+        match-result "md_lookup_systemKey.${sor_item_name}_match"
+        on-resource-conn "intics_zio_db_conn"
+        process-id "${init_process_id.process_id}"
+        copro-url "${copro.intelli-match.url}"
+        using {"
+                SELECT a.origin_id ,a.paper_no ,a.eoc_identifier,now(), a.${sor_item_name}  as extracted_value ,b.${sor_item_name}  as actual_value,
+                a.root_pipeline_id as root_pipeline_id, a.tenant_id as tenant_id, a.batch_id
+                FROM md_lookup_systemKey.${sor_item_name} a
+                LEFT JOIN master_data.prescriber_metadata b
+                ON a.sk_${system_key1}=b.${system_key1}
+                or a.sk_${system_key2}=b.${system_key2}
+                WHERE a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+                "} on-condition if "${master_data_comparison_case.matched_prescriber2}"=="true"
+
+
+        transform as "inserting patient details into the outbound zip table for ${sor_item_name}" on "intics_zio_db_conn" using
+                {"
+                        INSERT INTO eoc_response.${sor_item_name}
+                        (eoc_identifier,origin_id,created_on, created_user_id, last_updated_on, last_updated_user_id, status, version,page_number,
+                        value,document_id,confidence_score,bounding_box,value_type,master_value,is_master_value_matched,master_value_match_percentage,
+                        root_pipeline_id, tenant_id, batch_id)
+                        SELECT a.eoc_identifier ,a.origin_id,now(),'${created_user_id}',now(),'${created_user_id}','ACTIVE',1, b.paper_no ,b.values,
+                        a.document_id,b.confidence_score,b.b_box,b.value_type,
+                        (case when c.actual_value is not null then c.actual_value else '' end ),
+                        (case when c.intelli_match >'${masterdata_threshold_patient}' then true else false end),
+                        round((c.intelli_match)*100),b.root_pipeline_id, b.tenant_id, d.batch_id
+                        FROM eoc_response.patient_detail a
+                        JOIN eoc_response.eoc_trans b
+                        ON a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+                        and b.sor_item_name='${sor_item_name}'
+                        JOIN md_lookup_systemKey.${sor_item_name}_match c
+                        ON a.origin_id =c.origin_id and a.eoc_identifier =c.eoc_identifier
+                        JOIN md_lookup_systemkey.master_data_payload_queue d on a.origin_id =d.origin_id
+                        where d.group_id='${gen_group_id.group_id}' and d.tenant_id = ${tenant_id} and d.batch_id = '${batch_id}';
+                "}on-condition if "${master_data_outbound_zip_case.patient_outbound}"=="true"
+
+            transform as "insert into audit table for masterData Comparison" on "intics_zio_db_conn" using
+            {"
+                    insert into audit.process_audit_output
+                    (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint,paper_no, batch_id)
+                    select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint, ai.paper_no, '${batch_id}'
+                    from md_lookup_systemKey.${sor_item_name}_match ai
+                    where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id} and batch_id='${batch_id}'
+                    group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage, ai.paper_no
+            "}  on-condition if "true"=="true"
+
+
+        transform as "inserting provider details into the outbound zip table for ${sor_item_name}" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO eoc_response.${sor_item_name}
+                (eoc_identifier,origin_id,created_on, created_user_id, last_updated_on, last_updated_user_id, status, version,page_number,
+                value,document_id,confidence_score,bounding_box,value_type,master_value,is_master_value_matched,master_value_match_percentage,
+                root_pipeline_id, tenant_id, batch_id)
+                SELECT a.eoc_identifier ,a.origin_id,now(),'${created_user_id}',now(),'${created_user_id}','ACTIVE',1, b.paper_no ,b.values,
+                a.document_id,b.confidence_score,b.b_box,b.value_type,
+                (case when c.actual_value is not null then c.actual_value else '' end ),
+                (case when c.intelli_match >'${masterdata_threshold_provider}' then true else false end),
+                round((c.intelli_match)*100),b.root_pipeline_id, b.tenant_id, d.batch_id
+                FROM eoc_response.provider_detail a
+                JOIN eoc_response.eoc_trans b
+                ON a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+                and b.sor_item_name='${sor_item_name}'
+                JOIN md_lookup_systemKey.${sor_item_name}_match c
+                ON a.origin_id =c.origin_id and a.eoc_identifier =c.eoc_identifier
+                JOIN md_lookup_systemkey.master_data_payload_queue d on a.origin_id =d.origin_id
+                where d.group_id='${gen_group_id.group_id}' and d.tenant_id = ${tenant_id} and d.batch_id = '${batch_id}';
+        "}on-condition if "${master_data_outbound_zip_case.provider_outbound}"=="true"
+
+
+        transform as "inserting prescriber details into the outbound zip table for ${sor_item_name}" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO eoc_response.${sor_item_name}
+                (eoc_identifier,origin_id,created_on, created_user_id, last_updated_on, last_updated_user_id, status, version,page_number,
+                value,document_id,confidence_score,bounding_box,value_type,master_value,is_master_value_matched,master_value_match_percentage,
+                root_pipeline_id, tenant_id, batch_id)
+                SELECT a.eoc_identifier ,a.origin_id,now(),'${created_user_id}',now(),'${created_user_id}','ACTIVE',1, b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type,
+                (case when c.actual_value is not null then c.actual_value else '' end ),
+                (case when c.intelli_match >'${masterdata_threshold_prescriber}' then true else false end),
+                round((c.intelli_match)*100),b.root_pipeline_id, b.tenant_id, d.batch_id
+                FROM eoc_response.prescriber_detail a
+                JOIN eoc_response.eoc_trans b
+                ON a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+                and b.sor_item_name='${sor_item_name}'
+                JOIN md_lookup_systemKey.${sor_item_name}_match c
+                ON a.origin_id =c.origin_id and a.eoc_identifier =c.eoc_identifier
+                JOIN md_lookup_systemkey.master_data_payload_queue d on a.origin_id =d.origin_id
+                where d.group_id='${gen_group_id.group_id}' and d.tenant_id = ${tenant_id} and ${sor_container_id} = 2 and d.batch_id = '${batch_id}';
+        "}on-condition if "${master_data_outbound_zip_case.prescriber_outbound}"=="true"
+
+        transform as "insert into outbound drug name" on "intics_zio_db_conn" using
+        {"
+
+                INSERT INTO eoc_response.drug_name(eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type,master_value,is_master_value_matched,master_value_match_percentage,root_pipeline_id, tenant_id, batch_id)
+                SELECT a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type,c.actual_value,(case WHEN c.intelli_match >'${masterdata_threshold}' then true else false end),round((c.intelli_match)*100),'${gen_id.root_pipeline_id}', ${tenant_id}, b.batch_id
+                FROM eoc_response.drug_detail a
+                JOIN eoc_response.eoc_trans  b
+                ON a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+                and b.sor_item_name='drug_name'
+                JOIN ${temp_schema_name}.final_drugName_match_${init_process_id.process_id} c
+                ON a.origin_id =c.origin_id and a.eoc_identifier =c.eoc_identifier
+                JOIN md_lookup_systemkey.master_data_payload_queue d on a.origin_id =d.origin_id
+                where b.batch_id='${batch_id}';
+
+
+        "}  on-condition if "true"=="false"
+
+        transform as "insert into sor grouping audit completed" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO md_lookup_systemKey.master_data_pipeline_audit
+                (process_id,origin_id, created_on, group_id,  status, stage, message,root_pipeline_id, tenant_id, batch_id)
+                SELECT '${init_process_id.process_id}',a.origin_id,now(),'${gen_group_id.group_id}','COMPLETED','MASTER_DATA','master_data for prescriber and provider is completed ','${gen_id.root_pipeline_id}', '${tenant_id}', a.batch_id
+                from  md_lookup_systemKey.master_data_payload_queue a
+                where a.batch_id='${batch_id}';
+
+                UPDATE  md_lookup_systemKey.master_data_payload_queue
+                SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts=now(),status='COMPLETED'
+                WHERE status='IN_PROGRESS' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+        "}  on-condition if "true"=="true"
+
+
+            }
+
+    catch {
+        transform as "updating payload queue for failed" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO md_lookup_systemKey.master_data_pipeline_audit
+                (process_id,origin_id, created_on, group_id,  status, stage, message,root_pipeline_id,tenant_id, batch_id)
+                SELECT '${init_process_id.process_id}',a.origin_id,now(),'${gen_group_id.group_id}','FAILED','MASTER_DATA','master_data for prescriber and provider is failed ','${gen_id.root_pipeline_id}', '${tenant_id}', a.batch_id
+                from  md_lookup_systemKey.master_data_payload_queue a
+                where a.batch_id='${batch_id}';
+
+                UPDATE  md_lookup_systemKey.master_data_payload_queue
+                SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts=now(),status='FAILED'
+                WHERE status='IN_PROGRESS' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+        "}  on-condition if "true"=="true"
+
+    }
+
+    finally { }
+
+}

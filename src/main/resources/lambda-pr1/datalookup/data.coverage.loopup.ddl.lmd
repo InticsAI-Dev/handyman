@@ -1,0 +1,99 @@
+process "data.coverage.lookup.ddl"
+{
+try{
+
+        transform as "table creation for control data payload queue" on "intics_zio_db_conn" using
+        {"
+
+                CREATE SCHEMA IF NOT EXISTS ${CONTROL_DATA};
+                CREATE SCHEMA IF NOT EXISTS ${COVERAGE_REPORT};
+                CREATE EXTENSION  IF NOT EXISTS fuzzystrmatch;
+                CREATE EXTENSION  IF NOT EXISTS pg_trgm;
+
+                CREATE TABLE IF NOT EXISTS ${CONTROL_DATA}.control_data_payload_queue_archive (
+                root_pipeline_id int8 NULL,
+                producer_process_id int8 NOT NULL,
+                consumer_process_id int8 NULL,
+                origin_id varchar NOT NULL,
+                group_id int4 NULL,
+                created_on timestamp NULL,
+                consumed_on_ts varchar NULL,
+                status varchar NULL,
+                stage varchar NULL,
+                tenant_id int8 NULL,
+                CONSTRAINT control_data_queue_archive_pk PRIMARY KEY (producer_process_id, origin_id)
+                );
+
+
+                CREATE TABLE IF NOT EXISTS ${CONTROL_DATA}.control_data_payload_error_queue (
+                producer_process_id int8 NOT NULL,
+                consumer_process_id int8 NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp  NULL,
+                group_id int4  null,
+                status varchar  NULL,
+                stage  varchar  NULL,
+                message varchar NULL,
+                consumed_on_ts timestamp NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                CONSTRAINT control_data_payload_error_queue_pk PRIMARY KEY ( origin_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS ${CONTROL_DATA}.control_data_pipeline_audit (
+                id bigserial NOT NULL,
+                process_id bigint NOT NULL,
+                origin_id varchar  NULL,
+                group_id varchar NULL,
+                created_on varchar  NULL,
+                status varchar  NULL,
+                stage varchar  NULL,
+                message varchar  NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL
+                );
+
+
+        "}  on-condition if "true"=="true"
+
+        transform as "create input and result tables for the control data pipeline" on "intics_zio_db_conn" using {"
+
+                CREATE TABLE IF NOT EXISTS ${CONTROL_DATA}.${sor_item_name}_input(
+                root_pipeline_id int8 null,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                batch_id varchar null,
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                paper_no int8 null,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                tenant_id int8 NULL
+                );
+
+
+                CREATE TABLE IF NOT EXISTS ${COVERAGE_REPORT}.${sor_item_name}_result(
+                root_pipeline_id int8 null,
+                created_on timestamp NULL,
+                group_id int4 NULL,
+                batch_id varchar null,
+                file_name varchar NULL,
+                origin_id varchar NULL,
+                paper_no int8 null,
+                actual_value varchar NULL,
+                extracted_value text NULL,
+                full_match varchar NULL,
+                sce_match varchar null,
+                mce_match varchar null,
+                tenant_id int8 NULL
+                );
+
+        "} on-condition if "true"=="true"
+
+
+}
+catch{
+}
+finally{
+}
+}

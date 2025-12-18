@@ -1,0 +1,67 @@
+process "doc.impira.ddl"
+{
+    try{
+
+    transform as "create payload queue, audit, archive table in doc impira  schema" on "intics_zio_db_conn" using
+    			{"
+    					CREATE SCHEMA IF NOT EXISTS doc_impira;
+                        CREATE TABLE IF NOT EXISTS doc_impira.doc_impira_payload_queue_archive (
+                            producer_process_id int8 NOT NULL,
+                            consumer_process_id int8 NULL,
+                            origin_id varchar NOT NULL,
+                            group_id int4 NULL,
+                            created_on timestamp NULL,
+                            consumed_on_ts timestamp NULL,
+                            status varchar NULL,
+                            stage varchar NULL,
+                            tenant_id int8 NULL,
+                            CONSTRAINT doc_impira_payload_queue_archive_pk PRIMARY KEY (producer_process_id, origin_id)
+                            );
+
+                        CREATE TABLE IF NOT EXISTS doc_impira.doc_impira_payload_error_queue (
+                             producer_process_id int8 NOT NULL,
+                             consumer_process_id int8 NULL,
+                             origin_id varchar NOT NULL,
+                             created_on timestamp NOT NULL,
+                             group_id int4 not null,
+                             status varchar NOT NULL,
+                             stage  varchar NOT NULL,
+                             message varchar NULL,
+                             consumed_on_ts timestamp NULL,
+                             tenant_id int8 NULL,
+                             CONSTRAINT doc_impira_payload_error_queue_pk PRIMARY KEY ( origin_id)
+                        );
+
+                         CREATE TABLE IF NOT EXISTS doc_impira.doc_impira_pipeline_audit (
+                                id bigserial NOT NULL,
+                                group_id int4 NOT NULL,
+                                created_on timestamp NOT NULL,
+                                created_by varchar NOT NULL,
+                                user_id varchar NOT NULL,
+                                tenant_id int8 NULL,
+                                status varchar NOT NULL,
+                                stage varchar NOT NULL,
+                                message varchar NOT NULL
+                        );
+
+						CREATE TABLE  if not exists ${temp_schema_name}.aggregation_evaluator_max_confidence_score_${init_process_id.process_id} (
+                        	max_confidence_score float8 NULL,
+                        	origin_id varchar NULL,
+                        	paper_no int4 NULL,
+                        	sor_item_name varchar NULL,
+                        	tenant_id int8 NULL
+                        );
+                        CREATE TABLE  if not exists  macro.aggregation_evaluator_max_confidence_score_audit (
+                                                	max_confidence_score float8 NULL,
+                                                	origin_id varchar NULL,
+                                                	paper_no int4 NULL,
+                                                	sor_item_name varchar NULL,
+                                                	tenant_id int8 NULL
+                                                );
+                "}on-condition if "true"=="true"
+    }
+    catch{
+    }
+    finally{
+    }
+}

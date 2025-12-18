@@ -1,0 +1,379 @@
+process "table.extraction.ddl"
+{
+     try{
+              transform as "create table extraction ddl" on "intics_zio_db_conn" using
+            {"
+                        CREATE SCHEMA if not exists signature_extraction;
+                        CREATE TABLE IF NOT EXISTS signature_extraction.signature_extraction_payload_queue (
+                            producer_process_id int8 NULL,
+                            consumer_process_id int8 NULL,
+                            origin_id varchar NOT NULL,
+                            group_id int4 NULL,
+                            batch_id varchar NULL,
+                            created_on timestamp NULL,
+                            consumed_on_ts timestamp NULL,
+                            root_pipeline_id int8 NULL,
+                            status varchar NULL,
+                            stage varchar NULL,
+                            tenant_id int8 NULL,
+                            CONSTRAINT signature_extraction_payload_queue_pk PRIMARY KEY (producer_process_id, origin_id,tenant_id)
+                        );
+
+                        CREATE SCHEMA if not exists table_extraction;
+
+                        CREATE TABLE IF NOT EXISTS table_extraction.table_extraction_payload_queue(
+                            producer_process_id int8 NULL,
+                            consumer_process_id int8 NULL,
+                            origin_id varchar NOT NULL,
+                            group_id int4 NULL,
+                            batch_id varchar NULL,
+                            created_on timestamp NULL,
+                            consumed_on_ts timestamp NULL,
+                            root_pipeline_id int8 NULL,
+                            status varchar NULL,
+                            stage varchar NULL,
+                            tenant_id int8 NULL,
+                            CONSTRAINT table_extraction_payload_queue_pk PRIMARY KEY (producer_process_id, origin_id,tenant_id)
+                        );
+
+
+                        CREATE TABLE if not exists table_extraction.table_extraction_payload_queue_archive
+                        (
+                        producer_process_id int8 NOT NULL,
+                        consumer_process_id int8 NULL,
+                        group_id int4 NOT NULL,
+                        batch_id varchar NULL,
+                        origin_id varchar NOT NULL,
+                        created_on timestamp NOT NULL,
+                        status varchar NOT NULL,
+                        stage  varchar NOT NULL,
+                        consumed_on_ts timestamp NULL,
+                        root_pipeline_id int8 NULL,
+                        tenant_id int8 NULL,
+                        CONSTRAINT table_extaraction_payload_queue_archive_pk PRIMARY KEY (tenant_id,origin_id)
+                        );
+
+                        CREATE TABLE if not exists table_extraction.table_extraction_payload_error_queue
+                        (
+                        producer_process_id int8 NOT NULL,
+                        consumer_process_id int8 NULL,
+                        origin_id varchar NOT NULL,
+                        batch_id varchar NULL,
+                        group_id int4 NULL,
+                        created_on timestamp NOT NULL,
+                        status varchar NOT NULL,
+                        stage  varchar NOT NULL,
+                        message varchar NULL,
+                        consumed_on_ts timestamp NULL,
+                        root_pipeline_id int8 NULL,
+                        tenant_id int8 NULL,
+                        CONSTRAINT table_extaraction_payload_error_queue_pk PRIMARY KEY (producer_process_id, origin_id,tenant_id)
+                        );
+
+
+                CREATE TABLE IF NOT EXISTS table_extraction.table_extraction_result (
+                    id serial4 NOT NULL,
+                    process_id int8 NULL,
+                    batch_id varchar NULL,
+                    group_id int4 NULL,
+                    tenant_id int8 NULL,
+                    template_id varchar NULL,
+                    origin_id varchar NULL,
+                    paper_no int4 NULL,
+                    processed_file_path varchar NULL,
+                    table_response varchar NULL,
+                    status varchar NULL,
+                    stage varchar NULL,
+                    message varchar NULL,
+                    created_on timestamp NULL,
+                    root_pipeline_id int8 NULL,
+                    bboxes varchar NULL,
+                    croppedimage varchar NULL,
+                    column_headers varchar NULL,
+                    truth_entity_name varchar NULL,
+                    model_name varchar null,
+                    truth_entity_id int8 null,
+                    sor_container_id int8 null,
+                    channel_id int8 null
+                );
+
+                  CREATE TABLE IF NOT EXISTS table_extraction.table_extraction_outbound (
+                    id serial4 NOT NULL,
+                    process_id int8 NULL,
+                    group_id int4 NULL,
+                    tenant_id int8 NULL,
+                    template_id varchar NULL,
+                    origin_id varchar NULL,
+                    paper_no int4 NULL,
+                    processed_file_path varchar NULL,
+                    table_response varchar NULL,
+                    status varchar NULL,
+                    stage varchar NULL,
+                    message varchar NULL,
+                    created_on timestamp NULL,
+                    root_pipeline_id int8 NULL,
+                    bboxes varchar NULL,
+                    croppedimage varchar NULL,
+                    column_headers varchar NULL,
+                    truth_entity_name varchar NULL,
+                    model_name varchar null,
+                    aggregated_json varchar null,
+                    sor_item_id int8 null,
+                    batch_id varchar NULL
+                );
+
+                    CREATE TABLE IF NOT EXISTS ${temp_schema_name}.table_extraction_outbound_input_${process-id}(
+                    id serial4 NOT NULL,
+                    process_id int8 NULL,
+                    group_id int4 NULL,
+                    tenant_id int8 NULL,
+                    template_id varchar NULL,
+                    origin_id varchar NULL,
+                    paper_no int4 NULL,
+                    processed_file_path varchar NULL,
+                    table_response varchar NULL,
+                    status varchar NULL,
+                    stage varchar NULL,
+                    message varchar NULL,
+                    created_on timestamp NULL,
+                    root_pipeline_id int8 NULL,
+                    bboxes varchar NULL,
+                    croppedimage varchar NULL,
+                    column_header varchar NULL,
+                    truth_entity_name varchar NULL,
+                    model_name varchar null,
+                    sor_item_id int8 null,
+                    table_aggregate_function varchar null,
+                    batch_id varchar NULL
+                );
+
+                    CREATE TABLE IF NOT EXISTS table_extraction.table_extraction_outbound_input_audit(
+                    id serial4 NOT NULL,
+                    process_id int8 NULL,
+                    group_id int4 NULL,
+                    tenant_id int8 NULL,
+                    template_id varchar NULL,
+                    origin_id varchar NULL,
+                    paper_no int4 NULL,
+                    processed_file_path varchar NULL,
+                    table_response varchar NULL,
+                    status varchar NULL,
+                    stage varchar NULL,
+                    message varchar NULL,
+                    created_on timestamp NULL,
+                    root_pipeline_id int8 NULL,
+                    bboxes varchar NULL,
+                    croppedimage varchar NULL,
+                    column_header varchar NULL,
+                    truth_entity_name varchar NULL,
+                    model_name varchar null,
+                    sor_item_id int8 null,
+                    table_aggregate_function varchar null,
+                    batch_id varchar NULL
+                );
+
+    CREATE TABLE IF NOT EXISTS table_extraction.table_extraction_outbound_output_audit(
+        id serial4 NOT NULL,
+        process_id int8 NULL,
+        group_id int4 NULL,
+        tenant_id int8 NULL,
+        template_id varchar NULL,
+        origin_id varchar NULL,
+        paper_no int4 NULL,
+        processed_file_path varchar NULL,
+        table_response varchar NULL,
+        status varchar NULL,
+        stage varchar NULL,
+        message varchar NULL,
+        created_on timestamp NULL,
+        root_pipeline_id int8 NULL,
+        bboxes varchar NULL,
+        croppedimage varchar NULL,
+        column_headers varchar NULL,
+        truth_entity_name varchar NULL,
+        model_name varchar null,
+        aggregated_json varchar null,
+        sor_item_id int8 null,
+        table_aggregate_function varchar null,
+        batch_id varchar NULL
+          );
+
+                        CREATE TABLE IF NOT EXISTS table_extraction.table_extraction_pipeline_audit (
+							id bigserial NOT NULL,
+							process_id bigint NULL,
+							batch_id varchar NULL,
+							origin_id varchar NULL,
+							group_id varchar NULL,
+							created_on varchar NULL,
+							status varchar NULL,
+							stage varchar NULL,
+							message varchar NULL,
+							root_pipeline_id int8 NULL,
+							tenant_id int8 NULL
+                        );
+
+
+                        CREATE TABLE IF NOT EXISTS ${temp_schema_name}.table_extraction_line_items_${process-id} (
+                        	tenant_id int8 NULL,
+                        	root_pipeline_id int8 NULL,
+                        	batch_id varchar NULL,
+                        	group_id int4 NULL,
+                        	origin_id varchar NULL,
+                        	paper_no int4 NULL,
+                        	document_type varchar NULL,
+                        	template_name varchar NULL,
+                        	file_path varchar NULL,
+                        	table_headers varchar NULL,
+                        	model_name varchar NULL,
+                            truth_entity_id int8 null,
+                            sor_container_id int8 null,
+                            channel_id int8 null
+                        );
+
+
+                        CREATE TABLE  IF NOT EXISTS ${temp_schema_name}.table_extraction_temp_table_${process-id} (
+                        	tenant_id int8 NULL,
+                        	batch_id varchar NULL,
+                        	root_pipeline_id int8 NULL,
+                        	group_id int4 NULL,
+                        	origin_id varchar NULL,
+                        	paper_no int4 NULL,
+                        	document_type varchar NULL,
+                        	template_name varchar NULL,
+                        	truth_entity_name varchar NULL,
+                        	synonym_array _varchar NULL,
+                        	file_path varchar NULL,
+                        	model_name varchar NULL,
+                            truth_entity_id int8 null,
+                            sor_container_id int8 null,
+                            channel_id int8 null
+                        );
+
+                        CREATE TABLE IF NOT EXISTS macro.table_extraction_line_items_audit (
+                                tenant_id int8 NULL,
+                                batch_id varchar NULL,
+                                root_pipeline_id int8 NULL,
+                                group_id int4 NULL,
+                                origin_id varchar NULL,
+                                paper_no int4 NULL,
+                                document_type varchar NULL,
+                                template_name varchar NULL,
+                                file_path varchar NULL,
+                                table_headers varchar NULL,
+                                model_name varchar NULL,
+                                truth_entity_id int8 null,
+                                sor_container_id int8 null,
+                                channel_id int8 null
+                            );
+
+
+                            CREATE TABLE  IF NOT EXISTS macro.table_extraction_temp_table_audit (
+                                tenant_id int8 NULL,
+                                batch_id varchar NULL,
+                                root_pipeline_id int8 NULL,
+                                group_id int4 NULL,
+                                origin_id varchar NULL,
+                                paper_no int4 NULL,
+                                document_type varchar NULL,
+                                template_name varchar NULL,
+                                truth_entity_name varchar NULL,
+                                synonym_array _varchar NULL,
+                                file_path varchar NULL,
+                                model_name varchar NULL,
+                                truth_entity_id int8 null,
+                                sor_container_id int8 null,
+                                channel_id int8 null
+                            );
+
+            "} on-condition if "true"=="true"
+
+
+            transform as "create table extraction ddl" on "intics_zio_db_conn" using
+            {"
+
+                    CREATE TABLE IF NOT EXISTS ${temp_schema_name}.table_extraction_outbound_input_${process-id}(
+                    id serial4 NOT NULL,
+                    process_id int8 NULL,
+                    group_id int4 NULL,
+                    tenant_id int8 NULL,
+                    template_id varchar NULL,
+                    origin_id varchar NULL,
+                    paper_no int4 NULL,
+                    processed_file_path varchar NULL,
+                    table_response varchar NULL,
+                    status varchar NULL,
+                    stage varchar NULL,
+                    message varchar NULL,
+                    created_on timestamp NULL,
+                    root_pipeline_id int8 NULL,
+                    bboxes varchar NULL,
+                    croppedimage varchar NULL,
+                    column_header varchar NULL,
+                    truth_entity_name varchar NULL,
+                    model_name varchar null,
+                    sor_item_id int8 null,
+                    table_aggregate_function varchar null,
+                    batch_id varchar NULL
+                    );
+
+                    CREATE TABLE IF NOT EXISTS table_extraction.table_extraction_outbound_input_audit(
+                    id serial4 NOT NULL,
+                    process_id int8 NULL,
+                    group_id int4 NULL,
+                    tenant_id int8 NULL,
+                    template_id varchar NULL,
+                    origin_id varchar NULL,
+                    paper_no int4 NULL,
+                    processed_file_path varchar NULL,
+                    table_response varchar NULL,
+                    status varchar NULL,
+                    stage varchar NULL,
+                    message varchar NULL,
+                    created_on timestamp NULL,
+                    root_pipeline_id int8 NULL,
+                    bboxes varchar NULL,
+                    croppedimage varchar NULL,
+                    column_header varchar NULL,
+                    truth_entity_name varchar NULL,
+                    model_name varchar null,
+                    sor_item_id int8 null,
+                    batch_id varchar NULL,
+                    table_aggregate_function varchar null
+                    );
+
+                    CREATE TABLE IF NOT EXISTS table_extraction.table_extraction_outbound_output_audit(
+                    id serial4 NOT NULL,
+                    process_id int8 NULL,
+                    group_id int4 NULL,
+                    tenant_id int8 NULL,
+                    template_id varchar NULL,
+                    origin_id varchar NULL,
+                    paper_no int4 NULL,
+                    processed_file_path varchar NULL,
+                    table_response varchar NULL,
+                    status varchar NULL,
+                    stage varchar NULL,
+                    message varchar NULL,
+                    created_on timestamp NULL,
+                    root_pipeline_id int8 NULL,
+                    bboxes varchar NULL,
+                    croppedimage varchar NULL,
+                    column_headers varchar NULL,
+                    truth_entity_name varchar NULL,
+                    model_name varchar null,
+                    aggregated_json varchar null,
+                    sor_item_id int8 null,
+                    batch_id varchar NULL,
+                    table_aggregate_function varchar null
+                    );
+
+            "} on-condition if "${table.outbound.aggregate.activator}"=="true"
+
+     }
+
+     catch{
+     }
+
+     finally{
+     }
+}

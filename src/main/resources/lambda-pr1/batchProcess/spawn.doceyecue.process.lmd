@@ -1,0 +1,19 @@
+process "spawn.doceyecue.process"
+{
+try {
+
+    callprocess as "Calling docEyeCue main caller"
+    with-target "doc.eyecue.main"
+    from-file "${basepath}/docEyeCue/doc.eyecue.main.lmd"
+    using "intics_zio_db_conn"
+    for-every {"
+            SELECT 1;
+    "} on-condition if "${doc.eyecue.activator}"=="true"
+
+} catch {
+}
+
+finally {
+}
+
+}

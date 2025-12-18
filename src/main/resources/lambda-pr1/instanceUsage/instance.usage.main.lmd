@@ -1,0 +1,29 @@
+process "instance.usage.main"
+{
+try{
+
+        dockerInspect as "calling docker inspect api call"
+        on-resource-conn "intics_zio_db_conn"
+        api-url "${instance.usage.api.url.base}"
+        consumer-api-count "${instance.usage.api.count}"
+        input-table "instance_config.machine"
+        output-table "audit.instance_audit"
+        using
+        {"
+                select m.machine_name ,m.machine_ip , m.machine_hostname ,m.etc_host_name ,m.utils_url ,m.cluster_id,
+                ${tenant_id} as tenant_id,${root-ref-id} as root_pipeline_id,m.machine_id as machine_id
+                from instance_config.cluster c
+                join instance_config.machine m on c.cluster_id =m.cluster_id
+                where m.status='ACTIVE';
+        "} on-condition if "true"=="true"
+
+
+}
+
+catch{
+
+}
+finally{
+
+}
+}

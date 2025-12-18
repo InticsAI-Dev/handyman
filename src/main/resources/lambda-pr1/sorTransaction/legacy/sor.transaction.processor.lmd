@@ -1,0 +1,781 @@
+process "sor.transaction.processor"
+{
+
+    try{
+            transform as "Insert into chrono-clash file wise input table using the common time interval for legacy sor-transaction" on "intics_zio_db_conn" using {"
+                INSERT INTO ${temp_schema_name}.legacy_sor_transaction_chrono_clash_input_${init_process_id.process_id}
+                (root_pipeline_id, created_on, updated_on, batch_id, group_id, origin_id, tenant_id, time_frame, stage, status, transaction_id, downloaded_time, remaining_time)
+                SELECT stpq.root_pipeline_id, now(), now(), stpq.batch_id, stpq.group_id, stpq.origin_id, stpq.tenant_id,
+                ${chronoclash.threshold.time} AS time_frame,
+                'SOR_TRANSACTION' AS stage,
+                CASE
+                    WHEN now() - soo.file_downloaded_time >= (${chronoclash.threshold.time} * interval '1 minute')
+                         AND '${chronoclash.activator}' = 'true' AND POSITION('SOR_TRANSACTION_LEGACY' IN '${chronoclash.stage.controller}') > 0
+                    THEN 'ABORTED'
+                    ELSE 'IN_PROGRESS'
+                END AS status,
+                soo.transaction_id,
+                soo.file_downloaded_time as downloaded_time,
+                ((${chronoclash.threshold.time} * interval '1 minute') - (now() - soo.file_downloaded_time)) as remaining_time
+                FROM sor_transaction.sor_transaction_payload_queue stpq
+                JOIN ${temp_schema_name}.downloaded_asset_source_details_${init_process_id.process_id} soo on soo.root_pipeline_id = stpq.root_pipeline_id and soo.origin_id = stpq.origin_id
+                WHERE stpq.batch_id='${batch_id}' and stpq.tenant_id =${tenant_id} and stpq.stage ='SOR_TRANSACTION' and stpq.status = 'STAGED';
+            "} on-condition if "${chronoclash.specific.time.interval.enabler}" == "false"
+
+            transform as "Insert into chrono-clash file wise input table using the specific time interval for legacy sor-transaction" on "intics_zio_db_conn" using {"
+                INSERT INTO ${temp_schema_name}.legacy_sor_transaction_chrono_clash_input_${init_process_id.process_id}
+                (root_pipeline_id, created_on, updated_on, batch_id, group_id, origin_id, tenant_id, time_frame, stage, status, transaction_id, downloaded_time, remaining_time)
+                SELECT stpq.root_pipeline_id, now(), now(), stpq.batch_id, stpq.group_id, stpq.origin_id, stpq.tenant_id,
+                CASE
+                    WHEN (CURRENT_TIME BETWEEN scti.start_time_frame::time AND scti.end_time_frame::time)
+                    THEN scti.time_frame
+                    ELSE ${chronoclash.threshold.time}
+                END AS time_frame,
+                'SOR_TRANSACTION' AS stage,
+                CASE
+                    WHEN now() - soo.file_downloaded_time >= ((time_frame) * interval '1 minute') AND '${chronoclash.activator}' = 'true' AND POSITION('SOR_TRANSACTION_LEGACY' IN '${chronoclash.stage.controller}') > 0
+                    THEN 'ABORTED'
+                    ELSE 'IN_PROGRESS'
+                END AS status,
+                soo.transaction_id,
+                soo.file_downloaded_time as downloaded_time,
+                ((time_frame * interval '1 minute') - (now() - soo.file_downloaded_time)) as remaining_time
+                FROM sor_transaction.sor_transaction_payload_queue stpq
+                JOIN ${temp_schema_name}.downloaded_asset_source_details_${init_process_id.process_id} soo on soo.root_pipeline_id = stpq.root_pipeline_id and soo.origin_id = stpq.origin_id
+                JOIN config.spw_chrono_clash_time_interval scti on scti.tenant_id = stpq.tenant_id and scti.instance = '${root-pipeline-name}' and CURRENT_TIME BETWEEN scti.start_time_frame::time AND scti.end_time_frame::time
+                WHERE stpq.batch_id='${batch_id}' and stpq.tenant_id =${tenant_id} and stpq.stage ='SOR_TRANSACTION' and stpq.status = 'STAGED';
+            "} on-condition if "${chronoclash.specific.time.interval.enabler}" == "true"
+
+           transform as "update to in-progress sor transaction payload queue" on "intics_zio_db_conn" using
+           {"
+                UPDATE sor_transaction.sor_transaction_payload_queue as stpq
+                SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts='${time_stamp_sor_transaction.consumed_on_ts}', status= a.status
+                FROM ${temp_schema_name}.legacy_sor_transaction_chrono_clash_input_${init_process_id.process_id} a
+                WHERE a.origin_id = stpq.origin_id and stpq.group_id ='${group_id}' AND stpq.status ='STAGED' AND stpq.stage ='SOR_TRANSACTION' and stpq.tenant_id = ${tenant_id} and stpq.batch_id = '${batch_id}';
+
+                UPDATE batching.sub_batching_process_payload_queue as stpq
+                 SET status=a.status,  stage='SOR_TRANSACTION'
+                 FROM ${temp_schema_name}.legacy_sor_transaction_chrono_clash_input_${init_process_id.process_id} a
+                 WHERE a.origin_id = stpq.origin_id and a.group_id='${group_id}' and a.batch_id ='${batch_id}' and a.tenant_id = ${tenant_id};
+
+                update ingestion.pipeline_queue_status_audit as stpq
+                set status = a.status, consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                FROM ${temp_schema_name}.legacy_sor_transaction_chrono_clash_input_${init_process_id.process_id} a
+                where a.origin_id = stpq.origin_id and a.group_id=${group_id} and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='SOR_TRANSACTION' and status='STAGED';
+
+                INSERT INTO sor_transaction.sor_transaction_pipeline_audit
+                (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+                SELECT stpq.group_id, now(), stpq.tenant_id, stpq.tenant_id, stpq.tenant_id, 'STARTED', 'SOR_TRANSACTION', 'Sor transaction process started for group_id ${group_id}', stpq.root_pipeline_id, stpq.batch_id
+                FROM sor_transaction.sor_transaction_payload_queue stpq
+                JOIN ${temp_schema_name}.legacy_sor_transaction_chrono_clash_input_${init_process_id.process_id} a ON a.origin_id = stpq.origin_id AND a.tenant_id = stpq.tenant_id
+                WHERE stpq.status = a.status and stpq.group_id='${group_id}' and stpq.tenant_id = ${tenant_id} and stpq.batch_id = '${batch_id}';
+           "} on-condition if "true"=="true"
+
+           assign as "kvp_target_directory" source "intics_zio_db_conn" using
+           {"
+                SELECT concat('${gen_directory.current_directory}','/kvp_transaction/') as target_directory_path;
+          "} on-condition if "true"=="true"
+
+            assign as "pipeline_train_mode" source "intics_zio_db_conn" using
+              {"
+                      select  (case when '${printed.start.action}'='true' AND '${pipeline.train.mode}'='true' then 'true' else 'false' end) as vqa_printed;
+                      select  (case when '${handwritten.start.action}'='true' AND '${pipeline.train.mode}'='true' then 'true' else 'false' end) as vqa_handwritten;
+                      select  (case when '${validation.start.action}'='true' AND '${pipeline.train.mode}'='true' then 'true' else 'false' end) as valuation;
+              "}on-condition if "true"=="true"
+
+              assign as "multiverse.bootstraping" source "intics_zio_db_conn" using
+            {"
+                    select  (case
+                                 when '${multiverse.activator}'='true' AND '${document.type.enable.activator}'='false' then 'true'
+                                 when '${multiverse.activator}'='true' AND '${document.type.enable.activator}'='true' then 'true'
+                                 else 'false' end) as activator;
+
+            "}on-condition if "true"=="true"
+
+           assign as "gen_table_name" source "intics_zio_db_conn" using
+           {"
+                 SELECT lower(replace('sor_transaction_temp_tqa_synonym_${init_process_id.process_id}_${tenant_id}_${group_id}','-','_')) as tqa_x_synonym_table_name;
+                 SELECT lower(replace('docnet_attribution_response_${init_process_id.process_id}','-','_')) as docnet_attribution_response;
+           "} on-condition if "true"=="true"
+
+            transform as "Sor transaction Legacy TQA X only SOR-QA Synonym table for ${group_id}" on "intics_zio_db_conn" using
+              {"
+                    INSERT INTO
+                    ${temp_schema_name}.sor_transaction_tqa_${init_process_id.process_id}
+                    (tqa_id, template_name, truth_entity, sor_item_name, group_id, synonym, question, question_id,category,weights, synonym_id, origin_id, paper_no, file_path,model_registry,model_registry_id, root_pipeline_id, document_type, tenant_id, batch_id)
+                    SELECT
+                               row_number() over(order by elsa.truth_entity) as tqa_id,
+                               '${document_type}' as template_name,
+                               elsa.truth_entity ,
+                               si.sor_item_name,
+                               stpq.group_id,
+                               st.synonym,
+                               sq.question,
+                               sq.question_id,
+                               sq.category,
+                               sq.weights,
+                               st.synonym_id ,
+                               frs.origin_id,
+                               frs.paper_no,
+                               asset.file_path,
+                               mr.model_name as model_registry,
+                               mr.model_id as model_registry_id,
+                               stpq.root_pipeline_id,
+                               pcr.document_type,
+                               ${tenant_id} as tenant_id,
+                               stpq.batch_id
+                              FROM sor_transaction.sor_transaction_payload_queue stpq
+                              JOIN paper.paper_level_score_audit frs on frs.origin_id =stpq.origin_id and frs.tenant_id = stpq.tenant_id and stpq.batch_id = frs.batch_id
+                              JOIN paper.entity_level_score_audit elsa ON frs.origin_id =elsa.origin_id and frs.tenant_id = elsa.tenant_id
+                              JOIN paper_classification.paper_classification_result pcr on frs.origin_id=pcr.origin_id
+                              and frs.paper_no = pcr.paper_no and frs.tenant_id = pcr.tenant_id
+                              JOIN info.source_of_truth sot ON sot.origin_id =frs.origin_id  AND frs.paper_no  =sot.paper_no and frs.tenant_id = sot.tenant_id
+                              JOIN info.asset asset ON asset.file_id=sot.preprocessed_file_id and asset.tenant_id = sot.tenant_id
+                              join sor_meta.asset_info ai on
+                              (
+                                  (CASE
+                                      WHEN '${document.type.change.check}' = 'true' then lower(ai.document_type) = lower(sot.document_type) and ai.tenant_id = sot.tenant_id
+                                      WHEN '${document.type.change.check}' = 'false' then lower(ai.template_name) = lower(sot.template_name) and ai.tenant_id = sot.tenant_id
+                                      END
+                                  )
+                              )
+                              join sor_meta.truth_entity te on te.asset_id  = ai.asset_id and te.truth_entity_name=elsa.truth_entity and te.tenant_id = elsa.tenant_id
+                              join sor_meta.sor_tsynonym st on st.truth_entity_id=te.truth_entity_id and te.tenant_id = st.tenant_id
+                              join sor_meta.sor_question sq on sq.synonym_id = st.synonym_id and sq.tenant_id = st.tenant_id
+                              join sor_meta.model_registry mr on mr.model_id = sq.model_registry_id and sq.tenant_id = mr.tenant_id
+                              join sor_meta.sor_item si on si.sor_item_id =st.sor_item_id and st.tenant_id = si.tenant_id
+                              where sq.weights='${impira.question.weight.threshold}' and te.sip_type='KVP_SIP' and sq.category = 'PRIMARY'
+                              and frs.is_candidate_paper='yes' and frs.tenant_id = ${tenant_id} and ai.tenant_id=${tenant_id} and stpq.group_id='${group_id}' and stpq.batch_id = '${batch_id}'
+                              and sq.status='ACTIVE' and te.status='ACTIVE' and st.status='ACTIVE' and si.status='ACTIVE' and mr.status='ACTIVE' and ai.status='ACTIVE' ;
+
+         "} on-condition if "${grouping.duplicates.pre.vqa.flag}"=="false"
+
+         transform as "Sor transaction Legacy TQA X only SOR-QA Synonym table for ${group_id} Multiverse and for ${qn_category} and for '${batch_id}" on "intics_zio_db_conn" using {"
+
+
+            INSERT INTO ${temp_schema_name}.sor_transaction_tqa_grouping_duplicates_a_${init_process_id.process_id}
+            (tqa_id, template_name, truth_entity, sor_item_name, group_id, synonym, question, question_id,category, weights, synonym_id, origin_id, paper_no, file_path,model_registry,model_registry_id, root_pipeline_id, document_type, tenant_id, batch_id)
+                    SELECT
+                   row_number() over(order by elsa.truth_entity) as tqa_id,
+                   '${document_type}' as template_name,
+                   elsa.truth_entity ,
+                   si.sor_item_name,
+                   stpq.group_id,
+                   st.synonym,
+                   sq.question,
+                   sq.question_id,
+                   sq.category,
+                   sq.weights,
+                   st.synonym_id ,
+                   frs.origin_id,
+                   frs.paper_no,
+                   asset.file_path,
+                   mr.model_name as model_registry,
+                   mr.model_id as model_registry_id,
+                   stpq.root_pipeline_id,
+                   pcr.document_type,
+                   ${tenant_id} as tenant_id,
+                   stpq.batch_id
+                  FROM sor_transaction.sor_transaction_payload_queue stpq
+                  JOIN paper.paper_level_score_audit frs on frs.origin_id =stpq.origin_id and stpq.tenant_id = frs.tenant_id and stpq.batch_id = frs.batch_id
+                  JOIN paper.entity_level_score_audit elsa ON frs.origin_id =elsa.origin_id and frs.tenant_id = elsa.tenant_id
+                  JOIN paper_classification.paper_classification_result pcr on frs.origin_id=pcr.origin_id and frs.paper_no = pcr.paper_no and pcr.tenant_id = frs.tenant_id
+                  JOIN info.source_of_truth sot ON sot.origin_id =frs.origin_id  AND frs.paper_no  =sot.paper_no and frs.tenant_id = sot.tenant_id
+                  JOIN info.asset asset ON asset.file_id=sot.preprocessed_file_id and asset.tenant_id = sot.tenant_id
+                  join sor_meta.asset_info ai on
+                  (
+                      (CASE
+                          WHEN '${document.type.change.check}' = 'true' then lower(ai.document_type) = lower(sot.document_type) and ai.tenant_id = sot.tenant_id
+                          WHEN '${document.type.change.check}' = 'false' then lower(ai.template_name) = lower(sot.template_name) and ai.tenant_id = sot.tenant_id
+                          END
+                      )
+                  )
+                  join sor_meta.truth_entity te on te.asset_id  = ai.asset_id and te.truth_entity_name=elsa.truth_entity and te.tenant_id = elsa.tenant_id
+                  join sor_meta.sor_tsynonym st on st.truth_entity_id=te.truth_entity_id and te.tenant_id = st.tenant_id
+                  join sor_meta.sor_question sq on sq.synonym_id = st.synonym_id and sq.tenant_id = st.tenant_id
+                  join sor_meta.model_registry mr on mr.model_id = sq.model_registry_id and sq.tenant_id = mr.tenant_id
+                  join sor_meta.sor_item si on si.sor_item_id =st.sor_item_id and si.tenant_id = st.tenant_id
+                  where sq.weights='${impira.question.weight.threshold}' and te.sip_type='KVP_SIP' and sq.category = 'PRIMARY'
+                  and frs.is_candidate_paper='yes' and frs.tenant_id = ${tenant_id} and ai.tenant_id=${tenant_id} and stpq.group_id='${group_id}' and stpq.batch_id = '${batch_id}'
+                  and sq.status='ACTIVE' and te.status='ACTIVE' and st.status='ACTIVE' and si.status='ACTIVE' and mr.status='ACTIVE' and ai.status='ACTIVE' ;
+
+
+                   INSERT INTO ${temp_schema_name}.sor_transaction_tqa_grouping_duplicates_b_${init_process_id.process_id}
+                   (max_question_id, question, file_path,document_type,truth_entity,sor_item_name,synonym, model_registry, model_registry_id, category, batch_id)
+                   SELECT MAX(sot.question_id) as max_question_id, LOWER(sot.question) as  question,sot.file_path,sot.document_type,
+                   sot.truth_entity,sot.sor_item_name,LOWER(sot.synonym) as synonym, sot.model_registry, sot.model_registry_id, sot.category, sot.batch_id
+                   FROM ${temp_schema_name}.sor_transaction_tqa_grouping_duplicates_a_${init_process_id.process_id} sot
+                   WHERE sot.category = 'PRIMARY'
+                   GROUP BY sot.document_type,sot.truth_entity,sot.sor_item_name,LOWER(sot.synonym),LOWER(sot.question),sot.file_path,sot.model_registry, sot.model_registry_id, sot.category, sot.batch_id;
+
+
+                    INSERT INTO
+                    ${temp_schema_name}.sor_transaction_tqa_${init_process_id.process_id}
+                    (tqa_id, template_name, truth_entity, sor_item_name, group_id, synonym, question,question_id,category, weights, synonym_id, origin_id, paper_no, file_path, root_pipeline_id, document_type, tenant_id, model_registry, model_registry_id, batch_id)
+                    SELECT a.tqa_id, a.template_name, a.truth_entity, a.sor_item_name, a.group_id, a.synonym, a.question,
+                    a.question_id,a.category, a.weights, a.synonym_id, a.origin_id, a.paper_no, a.file_path, a.root_pipeline_id, a.document_type, a.tenant_id, a.model_registry, a.model_registry_id, a.batch_id
+                    FROM
+                    ${temp_schema_name}.sor_transaction_tqa_grouping_duplicates_a_${init_process_id.process_id} a
+                    INNER JOIN ${temp_schema_name}.sor_transaction_tqa_grouping_duplicates_b_${init_process_id.process_id} b
+                    ON a.question_id = b.max_question_id and a.file_path=b.file_path and a.category = b.category and a.batch_id = b.batch_id
+                    WHERE a.category = 'PRIMARY';
+
+
+
+         "} on-condition if "${grouping.duplicates.pre.vqa.flag}"=="true"
+
+         transform as "kvp common question for both argon and xenon" on "intics_zio_db_conn" using {"
+
+                INSERT INTO ${temp_schema_name}.sor_transaction_final_tqa_${init_process_id.process_id}
+                (questions,sor_item_name,question_id, synonym_id, weights, file_path, paper_type, model_registry,model_registry_id, tenant_id, origin_id,group_id, paper_no, category, root_pipeline_id, batch_id)
+                SELECT
+                    a.question as questions,
+                    a.sor_item_name,a.question_id, a.synonym_id, a.weights,
+                    a.file_path,
+                    a.document_type AS paper_type,
+                    'XENON' AS model_registry, a.model_registry_id,
+                    a.tenant_id, a.origin_id,a.group_id, a.paper_no, a.category, a.root_pipeline_id, a.batch_id
+                FROM
+                    ${temp_schema_name}.sor_transaction_tqa_${init_process_id.process_id} a
+                JOIN
+                    sor_transaction.sor_transaction_payload_queue b ON b.origin_id = a.origin_id
+                WHERE
+                    b.origin_id = a.origin_id
+                    AND a.document_type = 'Handwritten'
+                    AND a.batch_id='${batch_id}'
+                    AND a.model_registry IN ('XENON', 'DUAL', 'ARGON')
+                    AND a.category = '${qn_category}';
+
+
+
+
+                INSERT INTO ${temp_schema_name}.sor_transaction_final_tqa_${init_process_id.process_id}
+                (questions,sor_item_name,question_id, synonym_id, weights, file_path, paper_type, model_registry,model_registry_id, tenant_id, origin_id,group_id, paper_no, category, root_pipeline_id, batch_id)
+                SELECT
+                    a.question AS questions,
+                    a.sor_item_name,a.question_id,a.synonym_id, a.weights,
+                    a.file_path,
+                    a.document_type AS paper_type,
+                    'ARGON' AS model_registry, a.model_registry_id,
+                    a.tenant_id, a.origin_id,a.group_id, a.paper_no,  a.category, a.root_pipeline_id, a.batch_id
+                FROM
+                    ${temp_schema_name}.sor_transaction_tqa_${init_process_id.process_id} a
+                JOIN
+                    sor_transaction.sor_transaction_payload_queue b ON b.origin_id = a.origin_id
+                WHERE
+                    b.origin_id = a.origin_id
+                    AND a.document_type = 'Printed'
+                    AND a.model_registry IN ('ARGON', 'DUAL')
+                    AND a.category = '${qn_category}'
+                    AND a.batch_id='${batch_id}';
+
+
+                INSERT INTO ${temp_schema_name}.sor_transaction_final_tqa_${init_process_id.process_id}
+                (questions,sor_item_name,question_id, synonym_id, weights, file_path, paper_type, model_registry,model_registry_id, tenant_id, origin_id,group_id, paper_no, category, root_pipeline_id, batch_id)
+                SELECT
+                    a.question AS questions,
+                    a.sor_item_name,a.question_id, a.synonym_id, a.weights,
+                    a.file_path,
+                    a.document_type AS paper_type,
+                    'XENON' AS model_registry, a.model_registry_id,
+                    a.tenant_id,
+                    a.origin_id,a.group_id, a.paper_no, a.category, a.root_pipeline_id, a.batch_id
+                FROM
+                    ${temp_schema_name}.sor_transaction_tqa_${init_process_id.process_id} a
+                JOIN
+                    sor_transaction.sor_transaction_payload_queue b ON b.origin_id = a.origin_id
+                WHERE
+                    b.origin_id = a.origin_id
+                    AND a.document_type = 'Printed'
+                    AND a.model_registry IN ('XENON')
+                    AND a.category = '${qn_category}'
+                    AND a.batch_id='${batch_id}';
+
+        "} on-condition if "true"=="true"
+
+
+        coproStart as "Calling  copro valuation printed start action" for "VQA_PRINTED"
+        copro-server-url "${copro.valuation.printed.admin.start.url}"
+        export-command "${copro.printed.export}"
+        process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+        using
+        {"
+            ${printedStartCommand}
+
+        "} on-condition if "${pipeline_train_mode.vqa_printed}" == "true"
+
+        trinity-docqa as "Trinity model payload with ARGON model for group id ${group_id} "
+        in-output-dir "${kvp_target_directory.target_directory_path}"
+        on-resource-conn "intics_zio_db_conn"
+        save-response-as "sor_transaction.vqa_transaction"
+        api-endpoint "${copro.trinity-attribution.printed.url}"
+        using  {"
+                SELECT (jsonb_agg(json_build_object('question', (a.questions), 'questionId', a.question_id, 'synonymId', a.synonym_id, 'sorItemName', a.sor_item_name)))::varchar as attributes,
+                a.file_path,a.paper_type as paper_type, a.model_registry,  a.origin_id,a.paper_no,a.tenant_id, a.group_id, a.category as qn_category , a.root_pipeline_id, a.model_registry_id, '${process-id}' as process_id, a.batch_id
+                FROM ${temp_schema_name}.sor_transaction_final_tqa_${init_process_id.process_id} a
+                join sor_transaction.sor_transaction_payload_queue st on st.origin_id=a.origin_id
+                where a.model_registry = 'ARGON' and a.category = '${qn_category}'
+                and a.tenant_id = '${tenant_id}' and st.group_id='${group_id}' and a.batch_id='${batch_id}'
+                group by a.file_path, a.paper_type, a.model_registry,a.origin_id, a.paper_no , a.tenant_id,a.group_id ,a.category, a.root_pipeline_id, a.model_registry_id, a.batch_id;
+        "} on-condition if "true"=="true" on-parallel-fielding "${vqa.printed.API.count}"
+
+
+        trinity-docqa as "Trinity model payload with XENON model for group id ${group_id} "
+        in-output-dir "${kvp_target_directory.target_directory_path}"
+        on-resource-conn "intics_zio_db_conn"
+        save-response-as "sor_transaction.vqa_transaction"
+        api-endpoint "${copro.trinity-attribution.handwritten.url}"
+        using  {"
+               SELECT (jsonb_agg(json_build_object('question', (a.questions), 'questionId', a.question_id, 'synonymId', a.synonym_id, 'sorItemName', a.sor_item_name)))::varchar as attributes,
+               a.file_path,a.paper_type as paper_type, a.model_registry,  a.origin_id,a.paper_no,a.tenant_id, a.group_id, a.category as qn_category , a.root_pipeline_id, a.model_registry_id, '${process-id}' as process_id, a.batch_id
+               FROM ${temp_schema_name}.sor_transaction_final_tqa_${init_process_id.process_id} a
+               join sor_transaction.sor_transaction_payload_queue st on st.origin_id=a.origin_id
+               where a.model_registry = 'XENON' and a.category = '${qn_category}'
+               and a.tenant_id = '${tenant_id}' and st.group_id='${group_id}' and a.batch_id='${batch_id}'
+               group by a.file_path, a.paper_type, a.model_registry,a.origin_id, a.paper_no , a.tenant_id,a.group_id ,a.category, a.root_pipeline_id, a.model_registry_id, a.batch_id;
+
+        "} on-condition if "true"=="true" on-parallel-fielding "${vqa.handwritten.API.count}"
+
+         trinity-docqa as "Trinity model payload with KRYPTON model for group id ${group_id} "
+               in-output-dir "${target_directory.target_directory_path}"
+               on-resource-conn "intics_zio_db_conn"
+               save-response-as "sor_transaction.vqa_transaction"
+               api-endpoint "${copro.trinity-attribution.krypton.url}"
+               using  {"
+                       SELECT (jsonb_agg(json_build_object('question', (a.questions), 'questionId', a.question_id, 'synonymId', a.synonym_id, 'sorItemName', a.sor_item_name)))::varchar as attributes,
+                       a.file_path,a.paper_type, a.model_registry,  a.origin_id,a.paper_no,a.tenant_id, a.group_id, a.root_pipeline_id, a.model_registry_id, '${process-id}' as process_id, a.batch_id
+                       FROM ${temp_schema_name}.sor_transaction_final_tqa_${init_process_id.process_id} a
+                       join sor_transaction.sor_transaction_payload_queue st on st.origin_id=a.origin_id
+                       where a.model_registry = 'KRYPTON' and a.paper_type='Handwritten'
+                        and a.tenant_id = ${tenant_id} and st.group_id='${group_id}' and st.batch_id='${batch_id}'
+                        group by a.file_path, a.paper_type, a.model_registry,a.origin_id, a.paper_no , a.tenant_id,a.group_id , a.root_pipeline_id, a.model_registry_id, a.batch_id;
+                "} on-condition if "true"=="true" on-parallel-fielding "${vqa.printed.API.count}"
+
+
+            coproStop as "Calling valuation printed stop action" for "VQA_PRINTED_STOP"
+            copro-server-url "${copro.valuation.printed.admin.stop.url}"
+            process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+            using
+            {"
+                gunicorn
+
+            "}on-condition if "${printed.stop.action}"=="true"
+
+                coproStart as "Calling valuation handwritten copro start action" for "VQA_HANDWRITTEN"
+                copro-server-url "${copro.valuation.handwritten.admin.start.url}"
+                export-command "${copro.valuation.handwritten.export}"
+                process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+                using
+                {"
+                    ${handwrittenStartCommand}
+
+                "} on-condition if "${pipeline_train_mode.vqa_handwritten}" == "true"
+
+                coproStart as "Calling validation copro start action" for "validation"
+                copro-server-url "${copro.validation.admin.start.url}"
+                export-command "${copro.validation.export}"
+                process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+                using
+                {"
+                    ${validationStartCommand}
+
+                "} on-condition if "${validation.start.action}${pipeline.bus.mode}"=="true"
+
+            coproStop as "Calling valuation handwritten copro stop action" for "VQA_HANDWRITTEN_PRINTED"
+            copro-server-url "${copro.valuation.handwritten.admin.stop.url}"
+            process-id "${init_process_id.process_id}"
+            resource-conn "intics_zio_db_conn"
+            using
+            {"
+                    gunicorn
+
+            "} on-condition if "${handwritten.stop.action}"=="true"
+
+           raise exception as "${group_id} Check if response failed" using
+           {"
+                ${docnet_attribution_response.response}
+           "}  on-condition if "${gen_table_name.docnet_attribution_response}"=="true"
+
+
+
+
+           transform as "insert into pipeline summary audit sor transaction" on "intics_zio_db_conn" using {"
+              INSERT INTO ${temp_schema_name}.summary_audit_papers_${process-id}
+              (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken, root_pipeline_id, tenant_id, batch_id)
+              SELECT ${process-id} , 'VQA_TRANSACTION' ,'XENON_TRANSACTION',
+              coalesce (count(DISTINCT CASE WHEN B.status='COMPLETED' THEN concat(A.origin_id,'_',A.paper_no) WHEN B.status='ABSENT' THEN concat(A.origin_id,'_',A.paper_no) END),0) ,
+              coalesce (count(DISTINCT CASE WHEN B.status='FAILED' THEN concat(A.origin_id,'_',A.paper_no) END),0),min(B.created_on),max(B.created_on), EXTRACT(epoch FROM (max(B.created_on)-min(B.created_on))),'${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}'
+              FROM ${temp_schema_name}.sor_transaction_tqa_${init_process_id.process_id} A
+              JOIN sor_transaction.vqa_transaction B
+              ON A.question=B.sor_question and A.origin_id = B.origin_id AND b.answer is not null and A.batch_id= B.batch_id
+              where A.group_id = '${group_id}' and A.tenant_id = '${tenant_id}' and A.batch_id='${batch_id}';
+
+              INSERT INTO ${temp_schema_name}.summary_audit_files_${process-id}
+              (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken, root_pipeline_id, tenant_id, batch_id)
+              SELECT ${process-id} , 'VQA_TRANSACTION' ,'XENON_TRANSACTION',coalesce (sum(CASE WHEN status=case when (${chronoclash.enabler} = true THEN 'ABORTED' else 'IN_PROGRESS') THEN 1 ELSE 0 END),0) ,
+              coalesce (sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END),0),min(created_on),max(created_on), EXTRACT(epoch FROM (max(created_on)-min(created_on))),'${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}'
+              FROM sor_transaction.sor_transaction_payload_queue
+              WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+
+              INSERT INTO audit.pipeline_summary_audit
+              (process_id, created_on, module_name, macro_process, files_processed_count,papers_processed_count,files_failed_count,papers_failed_count,start_time,end_time, time_taken, group_id, root_pipeline_id, created_user_id, template_id, tenant_id,average_time, batch_id)
+              SELECT msaf.process_id ,now(),msaf.module_name ,msaf.macro_process ,msaf.completed_count,msap.completed_count,msaf.failed_count,msap.failed_count,msap.min_created_on,msap.max_created_on, EXTRACT(epoch FROM (msap.max_created_on-msap.min_created_on)),
+              '${group_id}','${gen_id.root_pipeline_id}','${created_user_id}','${document_id}',${tenant_id},(CASE WHEN (msaf.completed_count+msaf.failed_count)=0 THEN msaf.time_taken WHEN (msaf.time_taken/(msaf.completed_count+msaf.failed_count))=0 THEN msaf.time_taken ELSE (msaf.time_taken/(msaf.completed_count+msaf.failed_count)) END), msaf.batch_id
+              FROM ${temp_schema_name}.summary_audit_files_${process-id} msaf,
+              ${temp_schema_name}.summary_audit_papers_${process-id} msap
+              WHERE msaf.module_name=msap.module_name
+              AND msaf.batch_id=msap.batch_id
+              AND msaf.macro_process=msap.macro_process AND
+              msaf.module_name='VQA_TRANSACTION'
+              AND msaf.macro_process='XENON_TRANSACTION'
+              AND msaf.tenant_id = ${tenant_id}
+              and msaf.batch_id = '${batch_id}';
+
+           "} on-condition if "true"=="true"
+
+           transform as "insert audit for Sor Transaction" on "intics_zio_db_conn" using
+           {"
+                 INSERT INTO sor_transaction.sor_transaction_pipeline_audit
+                 (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+                 VALUES('${group_id}', now(), '${created_user_id}', '${created_user_id}', ${tenant_id}, 'COMPLETED', 'SOR_TRANSACTION', 'Sor transaction insert into vqa transaction finished ${group_id}', '${gen_id.root_pipeline_id}', '${batch_id}');
+
+                 INSERT INTO sor_transaction.sor_transaction_pipeline_audit
+                 (group_id, created_on, created_by, user_id, tenant_id, status, stage, message,root_pipeline_id, batch_id)
+                 VALUES('${group_id}', now(), '${created_user_id}', '${created_user_id}', ${tenant_id}, 'STARTED', 'SCALAR', 'scalar validation started for the files with group_id ${group_id}','${gen_id.root_pipeline_id}', '${batch_id}');
+           "} on-condition if "true"=="true"
+
+
+
+                coproStart as "Calling validation copro start action" for "VALIDATION"
+                copro-server-url "${copro.validation.admin.start.url}"
+                export-command "${copro.validation.export}"
+                process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+                using
+                {"
+                    ${validationStartCommand}
+                "} on-condition if "${pipeline_train_mode.valuation}" == "true"
+
+
+          scalarAdapter as "scalar adapter for docnut attribution"
+          on-resource-conn "intics_zio_db_conn"
+          process-id "${init_process_id.process_id}"
+          using-docnut-result
+          {"
+                   SELECT dp.sor_item_name as sor_key,dp.sor_item_name as sor_item_name,si.sor_item_id, dp.sor_question as question, dp.answer as input_value, dp.weight,dp.vqa_score,
+                    si.allowed_adapter , si.restricted_adapter ,dp.synonym_id, dp.question_id,'${init_process_id.process_id}' as process_id,
+                    si.word_limit , si.word_threshold ,
+                    si.char_limit , si.char_threshold ,
+                    si.validator_threshold , si.allowed_characters ,
+                    si.comparable_characters, si.restricted_adapter_flag,
+                    dp.origin_id ,dp.paper_no ,dp.group_id,
+                    dp.created_user_id, dp.tenant_id,dp.b_box, dp.model_registry, dp.root_pipeline_id, dp.batch_id
+                    FROM sor_transaction.vqa_transaction dp
+                    JOIN sor_meta.sor_item si ON si.sor_item_name = dp.sor_item_name
+                    join sor_transaction.sor_transaction_payload_queue st on st.origin_id=dp.origin_id
+                    WHERE dp.group_id = '${group_id}' AND si.allowed_adapter !='ner'
+                    AND dp.answer is not null and dp.tenant_id = ${tenant_id} and dp.batch_id = '${batch_id}';
+          "} on-condition if "${scalar.adapter.activator}"=="true"
+
+         nerAdapter as "nerAdapter for vqa attribution"
+         on-resource-conn "intics_zio_db_conn"
+         result-table "${temp_schema_name}.adapter_result_${init_process_id.process_id}"
+         using-docnut-result
+          {"
+                    SELECT dp.sor_item_name as sor_key,si.sor_item_id, dp.sor_question as question, dp.answer as input_value, dp.weight,dp.vqa_score,
+                    si.allowed_adapter , si.restricted_adapter,dp.synonym_id,dp.question_id, '${init_process_id.process_id}' as process_id,
+                    si.word_limit , si.word_threshold ,
+                    si.char_limit , si.char_threshold ,
+                    si.validator_threshold , si.allowed_characters ,
+                    si.comparable_characters, si.restricted_adapter_flag,
+                    dp.origin_id ,dp.paper_no ,dp.group_id,
+                    dp.created_user_id, dp.tenant_id,dp.b_box, dp.model_registry, dp.root_pipeline_id, dp.batch_id
+                    FROM sor_transaction.vqa_transaction dp
+                    JOIN sor_meta.sor_item si ON si.sor_item_name = dp.sor_item_name
+                    join sor_transaction.sor_transaction_payload_queue st on st.origin_id=dp.origin_id
+                    WHERE dp.group_id = '${group_id}' AND si.allowed_adapter ='ner'
+                    AND dp.answer is not null AND dp.tenant_id = ${tenant_id} and dp.batch_id = '${batch_id}';
+          "} on-condition if "${scalar.adapter.activator}"=="true"
+
+                coproStop as "Calling validation copro stop action" for "VALIDATION"
+                copro-server-url "${copro.validation.admin.stop.url}"
+                process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+                using
+                {"
+                    gunicorn
+
+                "} on-condition if "${validation.stop.action}"=="true"
+
+
+            transform as "Insert into Argon Result" on "intics_zio_db_conn" using
+            {"
+               INSERT INTO score.scalar_validation
+               (created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, origin_id, paper_no,group_id, question,predicted_value,weight, score, sor_item_attribution_id, sor_item_name, document_id, validation_name,b_box,root_pipeline_id,vqa_score,question_id,synonym_id, model_registry, batch_id, category)
+               SELECT now(),'${created_user_id}',now(),'${created_user_id}',${tenant_id},a.origin_id,a.paper_no,a.group_id,a.question,a.answer,a.weight, a.confidence_score,a.sor_item_id,a.sor_item_name,'${document_id}',a.validation_name,a.b_box,'${gen_id.root_pipeline_id}',a.vqa_score,a.question_id,a.synonym_id, a.model_registry, b.batch_id, a.category
+               FROM ${temp_schema_name}.adapter_result_${init_process_id.process_id} a
+                join sor_transaction.sor_transaction_payload_queue b on b.origin_id=a.origin_id and b.batch_id = a.batch_id
+                where a.batch_id = '${batch_id}';
+            "} on-condition if "${scalar.adapter.activator}"=="true" on-condition if  "${validation.multiverse-mode}"=="true"
+
+            transform as "Insert into argon Result" on "intics_zio_db_conn" using
+            {"
+               INSERT INTO score.scalar_validation
+               (created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, origin_id, paper_no,group_id, question,predicted_value,weight, score, sor_item_attribution_id, sor_item_name, document_id, validation_name,b_box,root_pipeline_id,vqa_score,question_id,synonym_id, batch_id)
+               SELECT now(),'${created_user_id}',now(),'${created_user_id}',${tenant_id},a.origin_id,a.paper_no,a.group_id,a.question,a.answer,a.weight, a.confidence_score,a.sor_item_id,a.sor_item_name,'${document_id}',a.validation_name,a.b_box,'${gen_id.root_pipeline_id}',a.vqa_score,a.question_id,a.synonym_id, a.batch_id
+               FROM ${temp_schema_name}.adapter_result_${init_process_id.process_id} a
+                join sor_transaction.sor_transaction_payload_queue st on st.origin_id=a.origin_id and a.batch_id = b.batch_id}
+                where confidence_score =100 and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+            "} on-condition if "${scalar.adapter.activator}"=="none"
+
+            transform as "insert into scalar validator without scalar and ner validaton" on "intics_zio_db_conn" using {"
+                    INSERT INTO score.scalar_validation
+                    (created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, origin_id,
+                    paper_no,group_id, question,predicted_value,weight, score, sor_item_attribution_id,
+                    sor_item_name, document_id, validation_name,b_box,root_pipeline_id,vqa_score,question_id,synonym_id, model_registry, batch_id, category)
+                    SELECT now(),'${created_user_id}',now(),'${created_user_id}',${tenant_id},a.origin_id,
+                    a.paper_no,a.group_id,a.sor_question,a.answer,a.weight,100,a.sor_item_attribution_id,
+                    a.sor_item_name,a.document_id,'NA',a.b_box,a.root_pipeline_id,a.vqa_score,a.question_id,a.synonym_id, a.model_registry, st.batch_id, a.category
+                    FROM sor_transaction.vqa_transaction a
+                     join sor_transaction.sor_transaction_payload_queue st on st.origin_id=a.origin_id and a.batch_id = st.batch_id
+                     join info.source_of_truth sot on sot.origin_id=a.origin_id and sot.paper_no=a.paper_no
+                     WHERE a.group_id='${group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+             "} on-condition if "${scalar.adapter.activator}"=="false"
+
+            transform as "insert into pipeline summary audit sor transaction" on "intics_zio_db_conn" using {"
+               INSERT INTO ${temp_schema_name}.summary_audit_papers_${process-id}
+               (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken,root_pipeline_id, tenant_id, batch_id)
+               SELECT ${process-id} , 'SOR_TRANSACTION' ,'SCALAR_VALIDATION',coalesce (count(DISTINCT CASE WHEN status='COMPLETED' THEN concat(origin_id,'_',paper_no) WHEN status='ABSENT' THEN concat(origin_id,'_',paper_no) END),0) ,
+               coalesce (count(DISTINCT CASE WHEN status='FAILED' THEN concat(origin_id,'_',paper_no) END),0),min(created_on),max(created_on), EXTRACT(epoch FROM (max(created_on)-min(created_on))),'${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}'
+               FROM ${temp_schema_name}.adapter_result_${init_process_id.process_id}
+               WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+               INSERT INTO ${temp_schema_name}.summary_audit_files_${process-id}
+               (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken, root_pipeline_id, tenant_id, batch_id)
+               SELECT ${process-id} , 'SOR_TRANSACTION' ,'SCALAR_VALIDATION',coalesce (sum(CASE WHEN status=case when (${chronoclash.enabler} = true THEN 'ABORTED' else 'IN_PROGRESS') THEN 1 ELSE 0 END),0) ,
+               coalesce (sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END),0),min(created_on),max(created_on), EXTRACT(epoch FROM (max(created_on)-min(created_on))),'${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}'
+               FROM sor_transaction.sor_transaction_payload_queue
+               WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+               INSERT INTO audit.pipeline_summary_audit
+               (process_id, created_on, module_name, macro_process, files_processed_count,papers_processed_count,files_failed_count,papers_failed_count,start_time,end_time, time_taken, group_id, root_pipeline_id, created_user_id, template_id, tenant_id,average_time, batch_id )
+               SELECT msaf.process_id ,now(),msaf.module_name ,msaf.macro_process ,msaf.completed_count,msap.completed_count,msaf.failed_count,msap.failed_count,msap.min_created_on,msap.max_created_on, EXTRACT(epoch FROM (msap.max_created_on-msap.min_created_on)),
+               '${group_id}','${gen_id.root_pipeline_id}','${created_user_id}','${document_id}',${tenant_id},(CASE WHEN (msaf.completed_count+msaf.failed_count)=0 THEN msaf.time_taken WHEN (msaf.time_taken/(msaf.completed_count+msaf.failed_count))=0 THEN msaf.time_taken ELSE (msaf.time_taken/(msaf.completed_count+msaf.failed_count)) END), msaf.batch_id
+               FROM ${temp_schema_name}.summary_audit_files_${process-id} msaf,
+               ${temp_schema_name}.summary_audit_papers_${process-id} msap
+               WHERE msaf.module_name=msap.module_name
+               AND msaf.batch_id=msap.batch_id
+               AND msaf.macro_process=msap.macro_process
+               AND msaf.module_name='SOR_TRANSACTION'
+               AND msaf.macro_process='SCALAR_VALIDATION'
+               AND msaf.tenant_id = ${tenant_id}
+               and msaf.batch_id = '${batch_id}';
+
+            "} on-condition if "true"=="true"
+
+            transform as "insert audit for scalar" on "intics_zio_db_conn" using
+            {"
+                INSERT INTO sor_transaction.sor_transaction_pipeline_audit
+                (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+                VALUES('${group_id}', now(), '${created_user_id}', '${created_user_id}', ${tenant_id}, 'COMPLETED', 'SCALAR', 'scalar validation completed for the files with group_id ${group_id}', '${gen_id.root_pipeline_id}', '${batch_id}');
+
+                INSERT INTO sor_transaction.sor_transaction_pipeline_audit
+                (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+                VALUES('${group_id}', now(), '${created_user_id}', '${created_user_id}', ${tenant_id}, 'STARTED', 'AGGREGATOR', 'aggregation started for the files with group_id ${group_id}', '${gen_id.root_pipeline_id}', '${batch_id}');
+            "} on-condition if "true"=="true"
+
+         transform as "insert into weighted value" on "intics_zio_db_conn" using {"
+           INSERT INTO voting.weighted_value
+           (  validation_id, origin_id, sor_item_name, paper_no, extracted_value,
+           group_id, created_on, freq, weight_rank, weight_score, confidence_score, difference, root_pipeline_id, tenant_id, model_registry, batch_id)
+           select min(a.validation_id), a.origin_id,a.sor_item_name,a.paper_no,a.predicted_value,a.group_id,now(),count(a.predicted_value),
+           row_number() over(partition by a.origin_id ,a.paper_no, a.sor_item_name ORDER BY SUM(b.weights) DESC) as weight_rank,
+           b.weights,a.vqa_score,0 , '${gen_id.root_pipeline_id}', ${tenant_id}, a.model_registry, st.batch_id
+            from score.scalar_validation a
+            join sor_meta.sor_question b on a.question=b.question
+            join sor_transaction.sor_transaction_payload_queue st on st.origin_id=a.origin_id
+            where st.group_id='${group_id}' and st.tenant_id = ${tenant_id} and st.batch_id = '${batch_id}'
+           group by a.origin_id,a.sor_item_name,a.paper_no,a.predicted_value,a.group_id,b.weights,a.vqa_score, a.model_registry, st.batch_id;
+
+            INSERT INTO score.aggregation_evaluator
+           (created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, aggregated_score, masked_score, origin_id,
+           paper_no, predicted_value, rank, sor_item_attribution_id, sor_item_name, document_id,b_box,group_id, root_pipeline_id,vqa_score,question_id,synonym_id, model_registry, batch_id)
+           SELECT now(),'${created_user_id}',now(),'${created_user_id}',${tenant_id}, a.confidence_score,
+           a.weight_score,a.origin_id,a.paper_no,a.extracted_value as answer,a.weight_rank, 0 as sor_item_id,
+           a.sor_item_name,'${document_id}',b.b_box,'${group_id}','${gen_id.root_pipeline_id}' , b.vqa_score,b.question_id,b.synonym_id,a.model_registry, a.batch_id
+           FROM voting.weighted_value a
+           JOIN score.scalar_validation b ON  a.validation_id = b.validation_id
+            join sor_transaction.sor_transaction_payload_queue st on st.origin_id=a.origin_id and st.batch_id = a.batch_id
+           WHERE a.group_id  = '${group_id}' and a.weight_rank =1  and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+    "} on-condition if "${voting.v1.activator}"=="false"
+
+
+              callprocess as "calling voting version 1"
+              with-target "voting.processor.v1"
+              from-file "${basepath}/voting/voting.processor.v1.lmd"
+              using "intics_zio_db_conn"
+              for-every {"
+                       SELECT '${group_id}' as group_id;
+              "} on-condition if "${voting.v1.activator}"=="true"
+
+              callprocess as "calling voting version 2"
+              with-target "voting.processor.v2"
+              from-file "${basepath}/voting/voting.processor.v2.lmd"
+              using "intics_zio_db_conn"
+              for-every {"
+                       SELECT '${group_id}' as group_id;
+              "} on-condition if "${voting.v2.activator}"=="true"
+
+              callprocess as "calling voting version 3"
+              with-target "voting.processor.v3"
+              from-file "${basepath}/voting/voting.processor.v3.lmd"
+              using "intics_zio_db_conn"
+              for-every {"
+                       SELECT '${group_id}' as group_id;
+              "} on-condition if "${voting.v3.activator}"=="true"
+
+
+
+
+             transform as "Insert into aggregation evaluator" on "intics_zio_db_conn" using
+             {"
+                    INSERT INTO score.aggregation_evaluator
+                    (created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, aggregated_score, masked_score, origin_id, paper_no,
+                    predicted_value, rank, sor_item_attribution_id, sor_item_name, document_id, acc_transaction_id,b_box, root_pipeline_id,vqa_score,question_id,synonym_id,model_registry, batch_id)
+                    SELECT now(),'${created_user_id}',now(),'${created_user_id}',${tenant_id},(a.freq_weight/a.frequency::float4) as confidence_score,
+                    (a.freq_weight/a.frequency::float4) as confidence_score,a.origin_id,a.paper_no,a.answer,a.weight_rank,a.sor_item_id,a.sor_item_name,'${document_id}',
+                    a.acc_transaction_id,b.b_box, '${gen_id.root_pipeline_id}',vqa_score,b.question_id,b.synonym_id, b.model_registry, a.batch_id
+                    FROM score.weighted_details_${init_process_id.process_id} a
+                    JOIN ${temp_schema_name}.adapter_result_${init_process_id.process_id} b ON
+                    a.adapter_id = b.id
+                    where a.batch_id='${batch_id}';
+             "} on-condition if "true"=="false"
+
+             callprocess as "calling voting"
+             with-target "voting.processor"
+             from-file "${basepath}/voting/voting.processor.lmd"
+             using "intics_zio_db_conn"
+             for-every {"
+                      SELECT '${group_id}' as group_id;
+             "} on-condition if "true"=="false"
+
+
+            transform as "update to completed sor transaction payload queue" on "intics_zio_db_conn" using
+            {"
+                    INSERT INTO sor_transaction.sor_transaction_pipeline_audit
+                    (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+                    VALUES('${group_id}', now(), '${created_user_id}', '${created_user_id}', ${tenant_id}, 'COMPLETED', 'AGGREGATOR', 'aggregation completed for the files with group_id ${group_id}', '${gen_id.root_pipeline_id}', '${batch_id}');
+
+                    UPDATE sor_transaction.sor_transaction_payload_queue
+                    SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts='${time_stamp_sor_transaction.consumed_on_ts}', status='COMPLETED'
+                    WHERE group_id ='${group_id}' AND status ='IN_PROGRESS'
+                    AND stage ='SOR_TRANSACTION' AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                    update ingestion.pipeline_queue_status_audit as a
+                    set status = 'COMPLETED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                    where  a.group_id=${group_id}
+                    and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='SOR_TRANSACTION' and status='IN_PROGRESS';
+
+                    UPDATE batching.sub_batching_process_payload_queue a
+                    SET status='COMPLETED',  stage='SOR_TRANSACTION'
+                    WHERE a.group_id='${group_id}'  and a.batch_id ='${batch_id}'
+                    and a.tenant_id = ${tenant_id};
+
+
+            "} on-condition if "true"=="true"
+
+
+    }
+    catch{
+            transform as "Insert to failed sor transaction audit queue" on "intics_zio_db_conn" using
+            {"
+
+                    UPDATE sor_transaction.sor_transaction_payload_queue
+                    SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts='${time_stamp_sor_transaction.consumed_on_ts}', status='FAILED'
+                    WHERE group_id ='${group_id}' AND status ='IN_PROGRESS'
+                    AND stage ='SOR_TRANSACTION' AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                    update ingestion.pipeline_queue_status_audit as a
+                    set status = 'FAILED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                    where  a.group_id=${group_id}
+                    and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='SOR_TRANSACTION' and status='IN_PROGRESS';
+
+
+                    INSERT INTO sor_transaction.sor_transaction_pipeline_audit
+                    (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+                    VALUES('${group_id}', now(), '${created_user_id}', '${created_user_id}', ${tenant_id}, 'FAILED', 'SCALAR', 'scalar validation failes for the files with group_id ${group_id}','${gen_id.root_pipeline_id}', '${batch_id}');
+                    INSERT INTO sor_transaction.sor_transaction_pipeline_audit
+                    (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+                    VALUES('${group_id}', now(), '${created_user_id}', '${created_user_id}', ${tenant_id}, 'COMPLETED', 'SOR_TRANSACTION', 'Sor transaction failed in sor processor with group_id ${group_id}', '${gen_id.root_pipeline_id}', '${batch_id}');
+                    UPDATE sor_transaction.sor_transaction_payload_queue
+                    SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts='${time_stamp_sor_transaction.consumed_on_ts}', status='FAILED'
+                    WHERE group_id ='${group_id}' AND status ='IN_PROGRESS'
+                    AND stage ='SOR_TRANSACTION' AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+            "} on-condition if "true"=="true"
+    }
+    finally{
+
+            transform as "Insert to failed sor transaction audit queue" on "intics_zio_db_conn" using
+            {"
+                    UPDATE sor_transaction.sor_transaction_payload_queue
+                    SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts='${time_stamp_sor_transaction.consumed_on_ts}', status='FAILED'
+                    WHERE group_id ='${group_id}' AND status ='IN_PROGRESS'
+                    AND stage ='SOR_TRANSACTION' AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+            "} on-condition if "true"=="true"
+
+            transform as "insert into sor grouping after completed" on "intics_zio_db_conn" using {"
+                INSERT INTO sor_grouping.sor_grouping_payload_queue
+                (producer_process_id, origin_id, group_id, created_on, status, stage, root_pipeline_id, tenant_id, batch_id)
+                SELECT producer_process_id, origin_id, group_id, cast(created_on as TIMESTAMP), 'STAGED', 'SOR_GROUPING', '${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM sor_transaction.sor_transaction_payload_queue
+                where status='COMPLETED' and stage='SOR_TRANSACTION'
+                AND group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+            "} on-condition if "true"=="true"
+
+            transform as "Move to archive after completed" on "intics_zio_db_conn" using {"
+                INSERT INTO sor_transaction.sor_transaction_payload_queue_archive
+                (producer_process_id, consumer_process_id, origin_id,group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, batch_id)
+                SELECT producer_process_id, consumer_process_id, origin_id, group_id, created_on, status, stage,consumed_on_ts, root_pipeline_id, ${tenant_id}, batch_id
+                FROM sor_transaction.sor_transaction_payload_queue
+                where status='COMPLETED' and stage='SOR_TRANSACTION'
+                AND group_id='${group_id}' and tenant_id = ${tenant_id}
+                and batch_id = '${batch_id}';
+
+                Delete from sor_transaction.sor_transaction_payload_queue
+             where status='COMPLETED' and stage='SOR_TRANSACTION' AND group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+            "} on-condition if "true"=="true"
+
+            transform as "Move to archive after failed" on "intics_zio_db_conn" using {"
+                    INSERT INTO sor_transaction.sor_transaction_payload_error_queue
+                    (producer_process_id, consumer_process_id, origin_id,group_id, created_on, status, stage, message, consumed_on_ts, root_pipeline_id, tenant_id, batch_id)
+                    SELECT producer_process_id, consumer_process_id,origin_id, group_id, created_on, status, stage, 'sor_transaction Processor failed for group_id ${group_id}',consumed_on_ts, root_pipeline_id, ${tenant_id}, batch_id
+                    FROM sor_transaction.sor_transaction_payload_queue
+                    where status='FAILED' AND group_id='${group_id}' AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                    Delete from sor_transaction.sor_transaction_payload_queue
+                    where status='FAILED' and stage='SOR_TRANSACTION' AND group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                    INSERT INTO sor_transaction.sor_transaction_payload_error_queue
+                    (producer_process_id, consumer_process_id, origin_id,group_id, created_on, status, stage, message, consumed_on_ts, root_pipeline_id, tenant_id, batch_id)
+                    SELECT producer_process_id, consumer_process_id,origin_id, group_id, created_on, status, stage, 'sor_transaction legacy stage aborted batch_id=${batch_id} | root_pipeline_id=${root_pipeline_id} | group_id=${group_id} | transaction_id=${transaction_id} | reason=execution time exceeded the threshold limit',consumed_on_ts, root_pipeline_id, ${tenant_id}, batch_id
+                    FROM sor_transaction.sor_transaction_payload_queue
+                    where status='ABORTED' AND group_id='${group_id}' AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                    Delete from sor_transaction.sor_transaction_payload_queue
+                    where status='ABORTED' and stage='SOR_TRANSACTION' AND group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+            "} on-condition if "true"=="true"
+
+            transform as "update chronoclash audit form temporary tables" on "intics_zio_db_conn" using
+              {"
+                     UPDATE chrono_clash.chrono_clash_audit as cca
+                     SET updated_on=now(), stage='SOR_TRANSACTION', status=ppq.status, remaining_time=((a.time_frame * interval '1 minute') - (now() - a.downloaded_time))
+                     FROM ${temp_schema_name}.legacy_sor_transaction_chrono_clash_input_${init_process_id.process_id} a
+                     JOIN sor_transaction.sor_transaction_payload_queue ppq ON ppq.origin_id = a.origin_id AND ppq.tenant_id = a.tenant_id
+                     WHERE cca.origin_id = a.origin_id and a.group_id=${group_id} and a.tenant_id = ${tenant_id} and a.batch_id ='${batch_id}';
+
+                     DROP TABLE IF EXISTS ${temp_schema_name}.legacy_sor_transaction_chrono_clash_input_${init_process_id.process_id};
+              "}  on-condition if "${chronoclash.activator}"=="true"
+    }
+}
+

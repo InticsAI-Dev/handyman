@@ -1,0 +1,666 @@
+process "eval.drug.match"
+{
+    try {
+
+            transform as "inserting audit for drug match  started" on "intics_zio_db_conn" using
+            {"
+
+                INSERT INTO control_data.control_data_pipeline_audit
+                (process_id,origin_id, created_on, group_id,  status, stage, message,root_pipeline_id, batch_id)
+                SELECT '${init_process_id.process_id}',a.origin_id,now(),'${gen_group_id.group_id}','STARTED','CONTROL_DATA','Control data match started for drug match','${gen_id.root_pipeline_id}', batch_id
+                from  control_data.control_data_payload_queue a where group_id='${gen_group_id.group_id}' and batch_id='${batch_id}';
+
+            "}  on-condition if "true"=="true"
+
+            transform as "INSERT INTO drug name,dos" on "intics_zio_db_conn" using
+            {"
+                INSERT INTO control_data_macro.drug_name_similarity_input
+                (file_name, origin_id, created_on, group_id, root_pipeline_id, actual_value, extracted_value, confidence_score, tenant_id, batch_id)
+                SELECT
+                b.file_name as file_name,
+                b.origin_id,
+                b.created_on,
+                b.group_id,
+                b.root_pipeline_id,
+                a.drug_name as actual_value,
+                b.drug_name as extracted_value,
+                c.confidence_score,
+                ${tenant_id},
+                b.batch_id
+                FROM public.fax_data_2411 a
+                JOIN control_data.evaluation_transposed b
+                ON LOWER(a.agadiadocid)=LOWER(b.file_name)
+                join voting.cummulative_result c on b.origin_id=c.origin_id
+                JOIN control_data.control_data_payload_queue d on b.origin_id=d.origin_id
+                where  c.sor_item_name ='drug_name' and  b.group_id='${gen_group_id.group_id}' and b.tenant_id = ${tenant_id} and b.batch_id ='${batch_id}';
+
+
+                INSERT INTO control_data_macro.drug_dos_similarity_input
+                (file_name, origin_id, created_on, group_id, root_pipeline_id, actual_value, extracted_value, confidence_score, tenant_id, batch_id)
+                SELECT
+                b.file_name as file_name,
+                b.origin_id,
+                b.created_on,
+                b.group_id,
+                b.root_pipeline_id,
+                a.drug_startdateofservice as actual_value,
+                b.date_of_service_from as extracted_value,
+                c.confidence_score,
+                ${tenant_id},
+                b.batch_id
+                FROM public.fax_data_2411 a
+                JOIN control_data.evaluation_transposed b
+                ON LOWER(a.agadiadocid)=LOWER(b.file_name)
+                join voting.cummulative_result c on b.origin_id=c.origin_id
+                join control_data.control_data_payload_queue d on b.origin_id=d.origin_id
+                where  c.sor_item_name ='date_of_service_from' and  b.group_id='${gen_group_id.group_id}' and b.tenant_id = ${tenant_id} and b.batch_id ='${batch_id}';
+
+            "}  on-condition if "true"=="true"
+
+
+            transform as "INSERT INTO drug dos,direction" on "intics_zio_db_conn" using
+            {"
+
+                INSERT INTO control_data_macro.drug_direction_similarity_input
+                (file_name, origin_id, created_on, group_id, root_pipeline_id, actual_value, extracted_value,confidence_score,tenant_id, batch_id)
+                SELECT
+                b.file_name as file_name,
+                b.origin_id,
+                b.created_on,
+                b.group_id,
+                b.root_pipeline_id,
+                a.drug_direction as actual_value,
+                b.direction_sig as extracted_value,
+                c.confidence_score,
+                ${tenant_id},
+                b.batch_id
+                FROM public.fax_data_2411 a
+                JOIN control_data.evaluation_transposed b
+                ON LOWER(a.agadiadocid)=LOWER(b.file_name)
+                join voting.cummulative_result c on b.origin_id=c.origin_id
+                join control_data.control_data_payload_queue d on b.origin_id=d.origin_id
+                where  c.sor_item_name ='direction_sig' and  b.group_id='${gen_group_id.group_id}' and b.tenant_id = ${tenant_id} and b.batch_id ='${batch_id}';
+
+
+                INSERT INTO control_data_macro.drug_dosage_similarity_input
+                (file_name, origin_id, created_on, group_id, root_pipeline_id, actual_value, extracted_value, confidence_score, tenant_id, batch_id)
+                SELECT
+                b.file_name as file_name,
+                b.origin_id,
+                b.created_on,
+                b.group_id,
+                b.root_pipeline_id,
+                a.drug_dosage as actual_value,
+                b.drug_dose as extracted_value,
+                c.confidence_score,
+                ${tenant_id},
+                b.batch_id
+                FROM public.fax_data_2411 a
+                JOIN control_data.evaluation_transposed b
+                ON LOWER(a.agadiadocid)=LOWER(b.file_name)
+                join voting.cummulative_result c on b.origin_id=c.origin_id
+                join control_data.control_data_payload_queue d on b.origin_id=d.origin_id
+                where  c.sor_item_name ='drug_dose' and  b.group_id='${gen_group_id.group_id}' and b.tenant_id = ${tenant_id} and b.batch_id ='${batch_id}';
+
+            "}  on-condition if "true"=="true"
+
+            transform as "INSERT INTO drug quantity and hcpcs" on "intics_zio_db_conn" using
+            {"
+
+                INSERT INTO control_data_macro.drug_qty_similarity_input
+                (file_name, origin_id, created_on, group_id, root_pipeline_id, actual_value, extracted_value, confidence_score, tenant_id, batch_id)
+                SELECT
+                b.file_name as file_name,
+                b.origin_id,
+                b.created_on,
+                b.group_id,
+                b.root_pipeline_id,
+                a.drug_quantity as actual_value,
+                b.drug_quantity as extracted_value,
+                c.confidence_score,
+                ${tenant_id},
+                b.batch_id
+                FROM public.fax_data_2411 a
+                JOIN control_data.evaluation_transposed b
+                ON LOWER(a.agadiadocid)=LOWER(b.file_name)
+                join voting.cummulative_result c on b.origin_id=c.origin_id
+                join control_data.control_data_payload_queue d on b.origin_id=d.origin_id
+                where  c.sor_item_name ='drug_quantity' and  b.group_id='${gen_group_id.group_id}' and b.tenant_id = ${tenant_id} and b.batch_id ='${batch_id}';
+
+                INSERT INTO control_data_macro.drug_hcpcs_similarity_input
+                (file_name, origin_id, created_on, group_id, root_pipeline_id, actual_value, extracted_value, confidence_score, tenant_id, batch_id)
+                SELECT
+                b.file_name as file_name,
+                b.origin_id,
+                b.created_on,
+                b.group_id,
+                b.root_pipeline_id,
+                a.drug_hcpcscode as actual_value,
+                b.hcpcs as extracted_value,
+                c.confidence_score,
+                ${tenant_id},
+                b.batch_id
+                FROM public.fax_data_2411 a
+                JOIN control_data.evaluation_transposed b
+                ON LOWER(a.agadiadocid)=LOWER(b.file_name)
+                join voting.cummulative_result c on b.origin_id=c.origin_id
+                join control_data.control_data_payload_queue d on b.origin_id=d.origin_id
+                where  c.sor_item_name ='hcpcs' and  b.group_id='${gen_group_id.group_id}' and b.tenant_id = ${tenant_id} and b.batch_id ='${batch_id}';
+
+            "}  on-condition if "true"=="true"
+
+            transform as "INSERT INTO drug strength,jcode " on "intics_zio_db_conn" using
+            {"
+
+                INSERT INTO control_data_macro.drug_strength_similarity_input
+                (file_name, origin_id, created_on, group_id, root_pipeline_id, actual_value, extracted_value,
+                confidence_score,tenant_id, batch_id)
+                SELECT
+                b.file_name as file_name,
+                b.origin_id,
+                b.created_on,
+                b.group_id,
+                b.root_pipeline_id,
+                a.drug_strength as actual_value,
+                b.drug_strength as extracted_value,
+                c.confidence_score,
+                ${tenant_id},
+                b.batch_id
+                FROM public.fax_data_2411 a
+                JOIN control_data.evaluation_transposed b
+                ON LOWER(a.agadiadocid)=LOWER(b.file_name)   join voting.cummulative_result c on
+                b.origin_id=c.origin_id
+                join control_data.control_data_payload_queue d on b.origin_id=d.origin_id
+                where  c.sor_item_name ='drug_strength' and  b.group_id='${gen_group_id.group_id}' and b.tenant_id = ${tenant_id} and b.batch_id ='${batch_id}';
+
+
+                INSERT INTO control_data_macro.drug_jcode_similarity_input
+                (file_name, origin_id, created_on, group_id, root_pipeline_id, actual_value, extracted_value,
+                 confidence_score, tenant_id, batch_id)
+                SELECT
+                b.file_name as file_name,
+                b.origin_id,
+                b.created_on,
+                b.group_id,
+                b.root_pipeline_id,
+                a.j_code as actual_value,
+                b.j_code as extracted_value,
+                 c.confidence_score,
+                ${tenant_id},
+                b.batch_id
+                FROM public.fax_data_2411 a
+                JOIN control_data.evaluation_transposed b
+                ON LOWER(a.agadiadocid)=LOWER(b.file_name)
+                join voting.cummulative_result c on b.origin_id=c.origin_id
+                join control_data.control_data_payload_queue d on b.origin_id=d.origin_id
+                where  c.sor_item_name ='j_code' and  b.group_id='${gen_group_id.group_id}' and b.tenant_id = ${tenant_id} and b.batch_id ='${batch_id}';
+
+            "}  on-condition if "true"=="true"
+
+            transform as "INSERT INTO drug icd10" on "intics_zio_db_conn" using
+            {"
+
+                INSERT INTO control_data_macro.drug_icd10_similarity_input
+                (file_name, origin_id, created_on, group_id, root_pipeline_id, actual_value, extracted_value, confidence_score, tenant_id, batch_id)
+                SELECT
+                b.file_name as file_namev,
+                b.origin_id,
+                b.created_on,
+                b.group_id,
+                b.root_pipeline_id,a.icd10 as actual_value,
+                b.icd10 as extracted_value,
+                c.confidence_score,
+                ${tenant_id},
+                b.batch_id
+                FROM public.fax_data_2411 a
+                JOIN control_data.evaluation_transposed b
+                ON LOWER(a.agadiadocid)=LOWER(b.file_name)
+                join voting.cummulative_result c on b.origin_id=c.origin_id
+                join control_data.control_data_payload_queue d on b.origin_id=d.origin_id
+                where  c.sor_item_name ='icd10' and  b.group_id='${gen_group_id.group_id}' and b.tenant_id = ${tenant_id} and b.batch_id ='${batch_id}';
+
+            "}  on-condition if "true"=="true"
+
+
+
+                            intellimatch as "matched drug names"
+                            on-resource-conn "intics_zio_db_conn"
+                            match-result "control_data_macro.eval_drug_name"
+                            using {"
+
+                                SELECT  a.file_name,a.origin_id,now() as created_on,a.group_id,a.root_pipeline_id,a.actual_value, a.extracted_value, a.confidence_score, a.tenant_id, a.batch_id
+                                FROM control_data_macro.drug_name_similarity_input a
+                                JOIN control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+                                where  a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                            "} on-condition if "true"=="true"
+
+                             intellimatch as "matched eval_date_of_service_from "
+                             on-resource-conn "intics_zio_db_conn"
+                             match-result "control_data_macro.eval_date_of_service_from"
+                             using {"
+
+                                 SELECT  a.file_name,a.origin_id,now() as created_on,a.group_id,a.root_pipeline_id,a.actual_value, a.extracted_value, a.confidence_score, a.tenant_id, a.batch_id
+                                 FROM control_data_macro.drug_dos_similarity_input a
+                                 JOIN control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+                                 where  a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                             "} on-condition if "true"=="true"
+
+                             intellimatch as "matched eval_direction_sig "
+                             on-resource-conn "intics_zio_db_conn"
+                             match-result "control_data_macro.eval_direction_sig"
+                             using {"
+                                 SELECT  a.file_name,a.origin_id,now() as created_on,a.group_id,a.root_pipeline_id,a.actual_value, a.extracted_value, a.confidence_score, a.tenant_id, a.batch_id
+                                 FROM control_data_macro.drug_direction_similarity_input a
+                                 JOIN control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+                                 where  a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+                             "} on-condition if "true"=="true"
+
+                             intellimatch as "matched eval_drug_dose "
+                             on-resource-conn "intics_zio_db_conn"
+                             match-result "control_data_macro.eval_drug_dose"
+                             using{"
+
+                                 SELECT  a.file_name,a.origin_id,now() as created_on,a.group_id,a.root_pipeline_id,a.actual_value, a.extracted_value, a.confidence_score, a.tenant_id, a.batch_id
+                                 FROM control_data_macro.drug_dosage_similarity_input a
+                                 JOIN control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+                                 where  a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                             "} on-condition if "true"=="true"
+
+                             intellimatch as "matched eval_drug_quantity"
+                             on-resource-conn "intics_zio_db_conn"
+                             match-result "control_data_macro.eval_drug_quantity"
+                             using {"
+
+                                 SELECT  a.file_name,a.origin_id,now() as created_on,a.group_id,a.root_pipeline_id,a.actual_value, a.extracted_value, a.confidence_score, a.tenant_id, a.batch_id
+                                 FROM control_data_macro.drug_qty_similarity_input a
+                                 JOIN control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+                                 where  a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+                             "} on-condition if "true"=="true"
+
+                             intellimatch as "matched eval_hcpcs "
+                             on-resource-conn "intics_zio_db_conn"
+                             match-result "control_data_macro.eval_hcpcs"
+                             using {"
+
+                                 SELECT  a.file_name,a.origin_id,now() as created_on,a.group_id,a.root_pipeline_id,a.actual_value, a.extracted_value, a.confidence_score, a.tenant_id, a.batch_id
+                                 FROM control_data_macro.drug_hcpcs_similarity_input a
+                                 JOIN control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+                                 where  a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                             "} on-condition if "true"=="true"
+
+                             intellimatch as "matched eval_drug_strength "
+                             on-resource-conn "intics_zio_db_conn"
+                             match-result "control_data_macro.eval_drug_strength"
+                             using {"
+
+                                 SELECT  a.file_name,a.origin_id,now() as created_on,a.group_id,a.root_pipeline_id,a.actual_value, a.extracted_value, a.confidence_score, a.tenant_id, a.batch_id
+                                 FROM control_data_macro.drug_strength_similarity_input a
+                                 JOIN control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+                                 where  a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+                             "} on-condition if "true"=="true"
+
+
+                             intellimatch as "matched eval_drug_j_code "
+                             on-resource-conn "intics_zio_db_conn"
+                             match-result "control_data_macro.eval_drug_j_code"
+                             using {"
+
+                                 SELECT  a.file_name,a.origin_id,now() as created_on,a.group_id,a.root_pipeline_id,a.actual_value, a.extracted_value, a.confidence_score, a.tenant_id, a.batch_id
+                                 FROM control_data_macro.drug_jcode_similarity_input a
+                                 JOIN control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+                                 where  a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+                             "} on-condition if "true"=="true"
+
+
+                             intellimatch as "matched eval_icd10 "
+                             on-resource-conn "intics_zio_db_conn"
+                             match-result "control_data_macro.eval_icd10"
+                             using {"
+
+                                 SELECT  a.file_name,a.origin_id,now() as created_on,a.group_id,a.root_pipeline_id,a.actual_value, a.extracted_value, a.confidence_score, a.tenant_id, a.batch_id
+                                 FROM control_data_macro.drug_icd10_similarity_input a
+                                 JOIN control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+                                 where  a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                             "} on-condition if "true"=="true"
+
+
+            transform as "INSERT INTO control data output tables" on "intics_zio_db_conn" using
+            {"
+                        INSERT INTO control_data.drug_name_similarity
+                        (file_name, origin_id, created_on, group_id, root_pipeline_id, actual_value, extracted_value, similarity, levenshtein_score,intellimatch_score, confidence_score, tenant_id, batch_id)
+                        SELECT
+                        a.file_name as file_name,
+                        a.origin_id,
+                        a.created_on,
+                        a.group_id,
+                        a.root_pipeline_id,
+                        a.actual_value as actual_value,
+                        a.extracted_value as extracted_value,
+                        (case
+                            when a.actual_value='' and a.extracted_value='' then 1
+                            when replace(lower(a.actual_value),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                            else  similarity(replace(lower(a.actual_value),' ',''),replace(lower(a.extracted_value),' ',''))
+                        end) as similarity,
+                        (case
+                            when a.actual_value='' and a.extracted_value='' then 1
+                            when replace(lower(a.actual_value),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                            else  levenshtein(replace(lower(a.actual_value),' ',''),replace(lower(a.extracted_value),' ',''))
+                        end) as levenshtein_score,
+                        intelli_match as intellimatch_score,
+                         a.confidence_score,
+                         ${tenant_id},
+                         a.batch_id
+                        FROM control_data_macro.eval_drug_name a
+                        JOIN control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+                         WHERE a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                        INSERT INTO control_data.drug_dos_similarity
+                        (file_name, origin_id, created_on, group_id, root_pipeline_id, actual_value, extracted_value, similarity, levenshtein_score,intellimatch_score, confidence_score, tenant_id, batch_id)
+                        SELECT
+                        a.file_name as file_name,
+                        a.origin_id,
+                        a.created_on,
+                        a.group_id,
+                        a.root_pipeline_id,
+                        a.actual_value as actual_value,
+                        a.extracted_value as extracted_value,
+                        (case
+                            when a.actual_value='' and a.extracted_value='' then 1
+                            when replace(lower(a.actual_value),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                            else  similarity(replace(lower(a.actual_value),' ',''),replace(lower(a.extracted_value),' ',''))
+                        end) as similarity,
+                        (case
+                            when a.actual_value='' and a.extracted_value='' then 1
+                            when replace(lower(a.actual_value),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                            else  levenshtein(replace(lower(a.actual_value),' ',''),replace(lower(a.extracted_value),' ',''))
+                        end) as levenshtein_score,
+                        intelli_match as intellimatch_score,
+                         a.confidence_score,
+                         ${tenant_id},
+                         a.batch_id
+                        FROM control_data_macro.eval_date_of_service_from a
+                        JOIN control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+                         WHERE a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+
+
+                        INSERT INTO control_data.drug_direction_similarity
+                        (file_name, origin_id, created_on, group_id, root_pipeline_id, actual_value, extracted_value, similarity, levenshtein_score, intellimatch_score, confidence_score, tenant_id, batch_id)
+                        SELECT
+                        a.file_name as file_name,
+                        a.origin_id,
+                        a.created_on,
+                        a.group_id,
+                        a.root_pipeline_id,
+                        a.actual_value as actual_value,
+                        a.extracted_value as extracted_value,
+                        (case
+                        when a.actual_value='' and a.extracted_value='' then 1
+                        when replace(lower(a.actual_value),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                        else  similarity(replace(lower(a.actual_value),' ',''),replace(lower(a.extracted_value),' ',''))
+                        end) as similarity,
+                        (case
+                        when a.actual_value='' and a.extracted_value='' then 1
+                        when replace(lower(a.actual_value),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                        else  levenshtein(replace(lower(a.actual_value),' ',''),replace(lower(a.extracted_value),' ',''))
+                        end) as levenshtein_score,
+                        intelli_match as intellimatch_score,
+                        a.confidence_score,
+                        ${tenant_id},
+                        a.batch_id
+                        FROM control_data_macro.eval_direction_sig a
+                        JOIN control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+                        WHERE a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+
+                        INSERT INTO control_data.drug_dosage_similarity
+                        (file_name, origin_id, created_on, group_id, root_pipeline_id, actual_value, extracted_value, similarity, levenshtein_score, intellimatch_score, confidence_score, tenant_id, batch_id)
+                        SELECT
+                        a.file_name as file_name,
+                        a.origin_id,
+                        a.created_on,
+                        a.group_id,
+                        a.root_pipeline_id,
+                        a.actual_value as actual_value,
+                        a.extracted_value as extracted_value,
+                        (case
+                        when a.actual_value='' and a.extracted_value='' then 1
+                        when replace(lower(a.actual_value),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                        else  similarity(replace(lower(a.actual_value),' ',''),replace(lower(a.extracted_value),' ',''))
+                        end) as similarity,
+                        (case
+                        when a.actual_value='' and a.extracted_value='' then 1
+                        when replace(lower(a.actual_value),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                        else  levenshtein(replace(lower(a.actual_value),' ',''),replace(lower(a.extracted_value),' ',''))
+                        end) as levenshtein_score,
+                        intelli_match as intellimatch_score,
+                        a.confidence_score,
+                        ${tenant_id},
+                        a.batch_id
+                        FROM control_data_macro.eval_drug_dose a
+                        JOIN control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+                        WHERE a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                        INSERT INTO control_data.drug_qty_similarity
+                        (file_name, origin_id, created_on, group_id, root_pipeline_id, actual_value, extracted_value, similarity, levenshtein_score, intellimatch_score, confidence_score, tenant_id, batch_id)
+                        SELECT
+                        a.file_name as file_name,
+                        a.origin_id,
+                        a.created_on,
+                        a.group_id,
+                        a.root_pipeline_id,
+                        a.actual_value as actual_value,
+                        a.extracted_value as extracted_value,
+                        (case
+                        when a.actual_value='' and a.extracted_value='' then 1
+                        when replace(lower(a.actual_value),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                        else  similarity(replace(lower(a.actual_value),' ',''),replace(lower(a.extracted_value),' ',''))
+                        end) as similarity,
+                        (case
+                        when a.actual_value='' and a.extracted_value='' then 1
+                        when replace(lower(a.actual_value),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                        else  levenshtein(replace(lower(a.actual_value),' ',''),replace(lower(a.extracted_value),' ',''))
+                        end) as levenshtein_score,
+                        intelli_match as intellimatch_score,
+                        a.confidence_score,
+                        ${tenant_id},
+                        a.batch_id
+                        FROM control_data_macro.eval_drug_quantity a
+                        JOIN control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+                        WHERE a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                        INSERT INTO control_data.drug_hcpcs_similarity
+                        (file_name, origin_id, created_on, group_id, root_pipeline_id, actual_value, extracted_value, similarity, levenshtein_score, intellimatch_score, confidence_score, tenant_id, batch_id)
+                        SELECT
+                        a.file_name as file_name,
+                        a.origin_id,
+                        a.created_on,
+                        a.group_id,
+                        a.root_pipeline_id,
+                        a.actual_value as actual_value,
+                        a.extracted_value as extracted_value,
+                        (case
+                        when a.actual_value='' and a.extracted_value='' then 1
+                        when replace(lower(a.actual_value),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                        else  similarity(replace(lower(a.actual_value),' ',''),replace(lower(a.extracted_value),' ',''))
+                        end) as similarity,
+                        (case
+                        when a.actual_value='' and a.extracted_value='' then 1
+                        when replace(lower(a.actual_value),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                        else  levenshtein(replace(lower(a.actual_value),' ',''),replace(lower(a.extracted_value),' ',''))
+                        end) as levenshtein_score,
+                        intelli_match as intellimatch_score,
+                        a.confidence_score,
+                        ${tenant_id},
+                        a.batch_id
+                        FROM control_data_macro.eval_hcpcs a
+                        JOIN control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+                        WHERE a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                        INSERT INTO control_data.drug_strength_similarity
+                        (file_name, origin_id, created_on, group_id, root_pipeline_id, actual_value, extracted_value, similarity, levenshtein_score, intellimatch_score, confidence_score, tenant_id, batch_id)
+                        SELECT
+                        a.file_name as file_name,
+                        a.origin_id,
+                        a.created_on,
+                        a.group_id,
+                        a.root_pipeline_id,
+                        a.actual_value as actual_value,
+                        a.extracted_value as extracted_value,
+                        (case
+                        when a.actual_value='' and a.extracted_value='' then 1
+                        when replace(lower(a.actual_value),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                        else  similarity(replace(lower(a.actual_value),' ',''),replace(lower(a.extracted_value),' ',''))
+                        end) as similarity,
+                        (case
+                        when a.actual_value='' and a.extracted_value='' then 1
+                        when replace(lower(a.actual_value),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                        else  levenshtein(replace(lower(a.actual_value),' ',''),replace(lower(a.extracted_value),' ',''))
+                        end) as levenshtein_score,
+                        intelli_match as intellimatch_score,
+                        a.confidence_score,
+                        ${tenant_id},
+                        a.batch_id
+                        FROM control_data_macro.eval_drug_strength a
+                        JOIN control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+                        WHERE a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                        INSERT INTO control_data.drug_jcode_similarity
+                        (file_name, origin_id, created_on, group_id, root_pipeline_id, actual_value, extracted_value, similarity, levenshtein_score, intellimatch_score, confidence_score, tenant_id, batch_id)
+                        SELECT
+                        a.file_name as file_name,
+                        a.origin_id,
+                        a.created_on,
+                        a.group_id,
+                        a.root_pipeline_id,
+                        a.actual_value as actual_value,
+                        a.extracted_value as extracted_value,
+                        (case
+                        when a.actual_value='' and a.extracted_value='' then 1
+                        when replace(lower(a.actual_value),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                        else  similarity(replace(lower(a.actual_value),' ',''),replace(lower(a.extracted_value),' ',''))
+                        end) as similarity,
+                        (case
+                        when a.actual_value='' and a.extracted_value='' then 1
+                        when replace(lower(a.actual_value),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                        else  levenshtein(replace(lower(a.actual_value),' ',''),replace(lower(a.extracted_value),' ',''))
+                        end) as levenshtein_score,
+                        intelli_match as intellimatch_score,
+                        a.confidence_score,
+                        ${tenant_id},
+                        a.batch_id
+                        FROM control_data_macro.eval_drug_j_code a
+                        JOIN control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+                        WHERE a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+
+                        INSERT INTO control_data.drug_icd10_similarity
+                        (file_name, origin_id, created_on, group_id, root_pipeline_id, actual_value, extracted_value, similarity, levenshtein_score, intellimatch_score, confidence_score, tenant_id, batch_id)
+                        SELECT
+                        a.file_name as file_name,
+                        a.origin_id,
+                        a.created_on,
+                        a.group_id,
+                        a.root_pipeline_id,
+                        a.actual_value as actual_value,
+                        a.extracted_value as extracted_value,
+                        (case
+                        when a.actual_value='' and a.extracted_value='' then 1
+                        when replace(lower(a.actual_value),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                        else  similarity(replace(lower(a.actual_value),' ',''),replace(lower(a.extracted_value),' ',''))
+                        end) as similarity,
+                        (case
+                        when a.actual_value='' and a.extracted_value='' then 1
+                        when replace(lower(a.actual_value),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                        else  levenshtein(replace(lower(a.actual_value),' ',''),replace(lower(a.extracted_value),' ',''))
+                        end) as levenshtein_score,
+                        intelli_match as intellimatch_score,
+                        a.confidence_score,
+                        ${tenant_id},
+                        a.batch_id
+                        FROM control_data_macro.eval_icd10 a
+                        JOIN control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+                        WHERE a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+            "}  on-condition if "true"=="true"
+
+
+                transform as "consolidated result table for control data drug entity" on "intics_zio_db_conn" using
+                {"
+
+                        INSERT INTO control_data.control_data_drug
+                        (file_name, origin_id, group_id, root_pipeline_id, actual_icd, extracted_icd, icd_similarity, icd_confidence_score, actual_dose,
+                        extracted_dose, dose_similarity, dose_confidence_score, actual_direction, extracted_dir, dir_similarity, dir_confidence_score,
+                        actual_jcode, extracted_jcode, jcode_similarity, jcode_confidence_score, actual_drug_name, extracted_drug_name, name_similarity,
+                         name_confidence_score, actual_quantity, extracted_quantity, quamtity_similarity, quantity_confidence_score, actual_service, extracted_service,
+                         service_similarity, service_confidence_score, actual_strength, extracted_strength, strength_similarity, strength_confidence_score, actual_hspcs,
+                         extracted_hspcs, hspcs_similarity, hspcs_confidence_score, tenant_id, batch_id)
+                        SELECT  l.file_name ,m.origin_id,k.group_id,k.root_pipeline_id, a.actual_value as actual_icd,a.extracted_value as extracted_icd,a.similarity as icd_similarity ,a.confidence_score as icd_confidence_score ,
+                        b.actual_value as actual_dose,b.extracted_value as extracted_dose,b.similarity as dose_similarity ,b.confidence_score as dose_confidence_score,
+                        c.actual_value as actual_direction,c.extracted_value as extracted_dir,c.similarity as dir_similarity ,c.confidence_score as dir_confidence_score ,
+                        d.actual_value as actual_jcode,d.extracted_value as extracted_jcode,d.similarity as jcode_similarity ,d.confidence_score as jcode_confidence_score ,
+                        e.actual_value as actual_drug_name,e.extracted_value as extracted_drug_name,e.similarity name_similarity,e.confidence_score as name_confidence_score ,
+                        f.actual_value as actual_quantity,f.extracted_value as extracted_quantity,f.similarity as quamtity_similarity ,f.confidence_score as quantity_confidence_score ,
+                        g.actual_value as actual_service,g.extracted_value as extracted_service,g.similarity as service_similarity ,g.confidence_score service_confidence_score,
+                        h.actual_value as actual_strength,h.extracted_value as extracted_strength ,h.similarity as strength_similarity ,h.confidence_score as strength_confidence_score ,
+                        i.actual_value as actual_hspcs,h.extracted_value as extracted_hspcs,i.similarity as hspcs_similarity ,i.confidence_score as hspcs_confidence_score, ${tenant_id}, m.batch_id
+                        FROM control_data.control_data_payload_queue m
+                        LEFT JOIN info.source_of_origin k on  m.origin_id=k.origin_id
+                        LEFT JOIN info.asset l on l.file_id=K.file_id
+                        LEFT JOIN control_data.drug_icd10_similarity a on a.origin_id=m.origin_id
+                        LEFT JOIN control_data.drug_dosage_similarity b on m.origin_id=b.origin_id
+                        LEFT JOIN control_data.drug_direction_similarity c on m.origin_id=c.origin_id
+                        LEFT JOIN control_data.drug_jcode_similarity d on m.origin_id=d.origin_id
+                        LEFT JOIN control_data.drug_name_similarity e on m.origin_id=e.origin_id
+                        LEFT JOIN control_data.drug_qty_similarity f on m.origin_id=f.origin_id
+                        LEFT JOIN control_data.drug_dos_similarity  g on m.origin_id=g.origin_id
+                        LEFT JOIN control_data.drug_strength_similarity h on m.origin_id=h.origin_id
+                        LEFT JOIN control_data.drug_hcpcs_similarity i on m.origin_id=i.origin_id
+                        WHERE k.group_id='${gen_group_id.group_id}' and m.tenant_id = ${tenant_id} and m.batch_id = '${batch_id}';
+
+                "}  on-condition if "true"=="true"
+
+                  transform as "inserting audit and update for drug match completed" on "intics_zio_db_conn" using
+                    {"
+
+                        INSERT INTO control_data.control_data_pipeline_audit
+                        (process_id,origin_id, created_on, group_id,  status, stage, message,root_pipeline_id, batch_id)
+                        SELECT '${init_process_id.process_id}',a.origin_id,now(),'${gen_group_id.group_id}','COMPLETED','CONTROL_DATA','Control data match completed for drug match','${gen_id.root_pipeline_id}', batch_id
+                        from  control_data.control_data_payload_queue a where group_id='${gen_group_id.group_id}' and batch_id = '${batch_id}';
+
+                        UPDATE  control_data.control_data_payload_queue
+                        SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts=now(),status='COMPLETED'
+                        WHERE status='IN_PROGRESS' AND tenant_id = ${tenant_id} and group_id='${gen_group_id.group_id}' and batch_id = '${batch_id}';
+                    "}  on-condition if "true"=="true"
+
+
+
+
+}
+
+catch {
+                transform as "inserting audit update for drug match  failed" on "intics_zio_db_conn" using
+                {"
+
+                    INSERT INTO control_data.control_data_pipeline_audit
+                    (process_id,origin_id, created_on, group_id,  status, stage, message,root_pipeline_id, batch_id)
+                    SELECT '${init_process_id.process_id}',a.origin_id,now(),'${gen_group_id.group_id}','FAILED','CONTROL_DATA','Control data match failed in drug match','${gen_id.root_pipeline_id}', batch_id
+                    from  control_data.control_data_payload_queue a where group_id='${gen_group_id.group_id}' and batch_id = '${batch_id}';
+
+                    UPDATE  control_data.control_data_payload_queue
+                    SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts=now(),status='FAILED'
+                    WHERE status='IN_PROGRESS' and tenant_id = ${tenant_id} and group_id='${gen_group_id.group_id}' and batch_id = '${batch_id}';
+
+                "}  on-condition if "true"=="true"
+
+}
+
+finally {}
+
+
+
+}

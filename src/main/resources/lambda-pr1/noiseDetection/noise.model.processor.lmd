@@ -1,0 +1,225 @@
+process "noise.model.processor"
+{
+try{
+
+        assign as "noise_model" source "intics_zio_db_conn"
+        using
+        {"
+              SELECT now() as consumed_on_ts;
+        "} on-condition if "true"=="true"
+
+        transform as "Update to in-progress in payload queue" on "intics_zio_db_conn"
+        using
+        {"
+
+                UPDATE noise_model.noise_model_payload_queue
+                SET status='IN_PROGRESS', consumed_on_ts = '${noise_model.consumed_on_ts}', consumer_process_id = '${init_process_id.process_id}'
+                WHERE group_id='${group_id}' AND status='STAGED' AND stage='NOISE_MODEL' and batch_id ='${batch_id}';
+
+                INSERT INTO noise_model.noise_detection_pipeline_audit
+                (process_id, origin_id,group_id, created_on, status, stage, message,root_pipeline_id, batch_id)
+                select ${init_process_id.process_id},origin_id,group_id, now(),
+                'STARTED', 'NOISE_MODEL','noise detection model process STARTED for group_id ${group_id}','${gen_id.root_pipeline_id}', batch_id
+                FROM noise_model.noise_model_payload_queue
+                WHERE status='IN_PROGRESS' AND stage='NOISE_MODEL' AND group_id='${group_id}' and batch_id ='${batch_id}';
+        "}on-condition if "true"=="true"
+
+
+        assign as "gen_directory" source "intics_zio_db_conn" using
+        {"
+                SELECT concat ('${gen_directory.current_directory}','/noise_model/noise_detection/') as noise_dest_path;
+        "} on-condition if "true"=="true"
+
+        createDirectory as "creating_directory" using
+        {
+                "${gen_directory.noise_dest_path}"
+        } on-condition if "true"=="true"
+
+        transform as "Insert into pipeline directory info" on "intics_zio_db_conn" using
+        {"
+        INSERT INTO ingestion.pipeline_directory_info
+        (target_directory_path, tenant_id, group_id, root_pipeline_id, created_on, updated_on, created_user_id, last_updated_user_id,
+         transaction_id, formatted_date, current_directory, zip_directory,process_name, status)
+        select '${target_directory_path}',${tenant_id},${gen_group_id.group_id},${root-ref-id},now(),now(),'${created_user_id}','${last_updated_user_id}',
+        '${transaction_id}','${gen_id.formatted_date}','${gen_directory.noise_dest_path}','${gen_directory.zip_directory}','NOISE_MODEL','STAGED';
+
+        "} on-condition if "true"=="true"
+
+
+        transform as "Insert into input_table for selecting the values for the process" on "intics_zio_db_conn"
+        using
+        {"
+
+                Insert into noise_model.noise_model_input_table(
+                root_pipeline_id ,input_file_path,output_dir,origin_id ,paper_no,
+                process_id,group_id,tenant_id , batch_id)
+                SELECT '${gen_id.root_pipeline_id}' as root_pipeline_id,b.file_path as inputFilePath,'${gen_directory.noise_dest_path}' as output_dir
+                ,a.origin_id as originId, soo.paper_no as paperNo,'${init_process_id.process_id}' as processId , soo.group_id as groupId,
+                b.tenant_id as tenantId, a.batch_id
+                FROM noise_model.noise_model_payload_queue a
+                JOIN  info.source_of_truth soo ON a.origin_id = soo.origin_id JOIN
+                info.asset b ON b.file_id = soo.preprocessed_file_id
+                WHERE
+                a.status = 'IN_PROGRESS' AND
+                soo.group_id='${group_id}'
+                and a.batch_id ='${batch_id}';
+        "} on-condition if "true"=="true"
+
+
+        noiseModel as "noise-detection-model for group_id ${group_id}"
+        on-resource-conn "intics_zio_db_conn"
+        copro-url "${copro.noise-detection.url}"
+        process-id "${init_process_id.process_id}"
+        output-table "noise_model.noise_model_output_table"
+        using
+        {"
+                select '${gen_id.root_pipeline_id}' as root_pipeline_id,input_file_path,output_dir,origin_id,paper_no,
+                process_id,group_id,tenant_id, batch_id, now() as created_on
+                from noise_model.noise_model_input_table
+                WHERE  group_id='${group_id}' AND  root_pipeline_id='${gen_id.root_pipeline_id}' and batch_id ='${batch_id}';
+        "} on-condition if "true"=="true"
+
+
+
+        transform as "insert into audit table for Noise Detection" on "intics_zio_db_conn" using
+        {"
+                insert into audit.process_audit_output
+                (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint,paper_no, batch_id)
+                select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint, ai.paper_no, '${batch_id}'
+                from noise_model.noise_model_output_table ai
+                where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id} and batch_id='${batch_id}'
+                group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage, ai.paper_no
+        "}  on-condition if "true"=="true"
+
+
+        transform as "Update to completed in payload queue" on "intics_zio_db_conn"
+        using
+        {"
+
+                UPDATE noise_model.noise_model_payload_queue a
+                SET status=b.status,  consumer_process_id = '${init_process_id.process_id}'
+                FROM noise_model.noise_model_output_table b
+                WHERE  a.origin_id=b.origin_id and a.status='IN_PROGRESS' and b.status='FAILED' AND a.group_id='${group_id}' and a.batch_id ='${batch_id}';
+
+                UPDATE noise_model.noise_model_payload_queue a
+                SET status=b.status, consumer_process_id = '${init_process_id.process_id}'
+                FROM noise_model.noise_model_output_table b
+                WHERE  a.origin_id=b.origin_id and a.status='IN_PROGRESS' and b.status='COMPLETED' AND a.group_id='${group_id}' and a.batch_id ='${batch_id}';
+
+
+                UPDATE batching.sub_batching_process_payload_queue a
+                SET status='COMPLETED',  stage='NOISE_MODEL'
+                WHERE a.group_id='${group_id}'  and a.tenant_id='${tenant_id}'
+                and a.batch_id ='${batch_id}';
+
+                INSERT INTO noise_model.noise_detection_pipeline_audit
+                (process_id, origin_id,group_id, created_on, status, stage, message, root_pipeline_id, batch_id)
+                select ${init_process_id.process_id},origin_id,group_id, now(),
+                'COMPLETED', 'NOISE_MODEL','noise detection process COMPLETED for group_id ${group_id}','${gen_id.root_pipeline_id}', batch_id
+                FROM noise_model.noise_model_payload_queue
+                WHERE stage='NOISE_MODEL' AND group_id='${group_id}' and batch_id ='${batch_id}';
+
+        "}on-condition if "true"=="true"
+
+}
+catch{
+        transform as "Update to failed in payload queue" on "intics_zio_db_conn"
+        using
+         {"
+                UPDATE noise_model.noise_model_payload_queue
+                SET status='FAILED',  consumer_process_id = '${init_process_id.process_id}'
+                WHERE group_id='${group_id}' AND status='IN_PROGRESS' AND group_id='${group_id}' and batch_id ='${batch_id}';
+
+                INSERT INTO noise_model.noise_detection_pipeline_audit
+                (process_id, origin_id,group_id, created_on, status, stage, message, root_pipeline_id, batch_id)
+                select ${init_process_id.process_id},origin_id,group_id, now(),
+                'FAILED', 'NOISE_MODEL','noise detection FAILED for group_id ${group_id}','${gen_id.root_pipeline_id}',batch_id
+                FROM noise_model.noise_model_payload_queue
+                WHERE status='FAILED' AND stage='NOISE_MODEL' AND group_id='${group_id}' and batch_id ='${batch_id}';
+        "}on-condition if "true"=="true"
+}
+finally{
+
+        transform as "update  to payload queue  for failed if the process is showing IN-PROGRESS" on "intics_zio_db_conn"
+        using
+        {"
+                update noise_model.noise_model_payload_queue
+                set status='FAILED'
+                where status='IN_PROGRESS' and group_id='${group_id}' and batch_id ='${batch_id}';
+        "}on-condition if "true"=="true"
+
+        transform as "insert into pipeline summary audit Noise model" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO ${temp_schema_name}.summary_audit_papers_${process-id}
+                (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken,root_pipeline_id, tenant_id, batch_id )
+                SELECT ${process-id} , 'NOISE_MODEL' ,'NOISE',coalesce (sum(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END),0) ,coalesce (sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END),0),min(created_on),max(last_updated_on), EXTRACT(epoch FROM (max(last_updated_on)-min(created_on))),'${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM noise_model.noise_model_output_table
+                WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id ='${batch_id}'
+                group by batch_id;
+
+                INSERT INTO ${temp_schema_name}.summary_audit_files_${process-id}
+                (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken,root_pipeline_id, tenant_id, batch_id )
+                SELECT ${process-id} , 'NOISE_MODEL' ,'NOISE',sum(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END) ,sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END),min(created_on),max(last_updated_on), EXTRACT(epoch FROM (max(last_updated_on)-min(created_on))),'${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM noise_model.noise_model_payload_queue
+                WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id ='${batch_id}'
+                group by batch_id;
+
+                INSERT INTO audit.pipeline_summary_audit
+                (process_id, created_on, module_name, macro_process, files_processed_count,papers_processed_count,files_failed_count,papers_failed_count,start_time,end_time, time_taken, group_id, root_pipeline_id, created_user_id, template_id, tenant_id,average_time, batch_id)
+                SELECT msaf.process_id ,now(),msaf.module_name ,msaf.macro_process ,msaf.completed_count,msap.completed_count,msaf.failed_count,msap.failed_count,msap.min_created_on,msap.max_created_on, EXTRACT(epoch FROM (msap.max_created_on-msap.min_created_on)),
+                '${group_id}','${root-ref-id}','${created_user_id}','${document_id}',${tenant_id},(CASE WHEN (msaf.completed_count+msaf.failed_count)=0 THEN msaf.time_taken WHEN (msaf.time_taken/(msaf.completed_count+msaf.failed_count))=0 THEN msaf.time_taken ELSE (msaf.time_taken/(msaf.completed_count+msaf.failed_count)) END), msaf.batch_id
+                FROM ${temp_schema_name}.summary_audit_files_${process-id} msaf,
+                ${temp_schema_name}.summary_audit_papers_${process-id} msap
+                WHERE msaf.module_name=msap.module_name AND msaf.macro_process=msap.macro_process AND msaf.batch_id=msap.batch_id AND
+                msaf.module_name='NOISE_MODEL' AND msaf.macro_process='NOISE' AND msaf.tenant_id = ${tenant_id} and msaf.batch_id ='${batch_id}';
+
+
+        "} on-condition if "true"=="true"
+
+        transform as "insert into potential feature payload queue after completed" on "intics_zio_db_conn" using
+        {"
+
+                INSERT INTO paper.potential_feature_payload_queue(producer_process_id ,
+                group_id,origin_id ,created_on, status,stage ,root_pipeline_id, batch_id)
+                select b.producer_process_id ,b.group_id,b.origin_id ,b.created_on, 'STAGED','PAPER_FILTER' ,b.root_pipeline_id, batch_id
+                from   noise_model.noise_model_output_table a join
+                noise_model.noise_model_payload_queue  b on a.origin_id=b.origin_id
+                where a.status ='COMPLETED' and a.consolidated_class ='NOT NOISY' and a.batch_id ='${batch_id}';
+
+                INSERT INTO ingestion.pipeline_queue_status_audit
+                (producer_process_id, consumer_process_id, origin_id,batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, origin_type)
+                select producer_process_id, consumer_process_id, origin_id, batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, '${origin_type}'
+                from paper.potential_feature_payload_queue
+                where group_id='${gen_group_id.group_id}' and batch_id='${batch_id}' and tenant_id =${tenant_id};
+
+
+        "}on-condition if "false"=="true"
+
+        transform as "moving to payload queue archive" on "intics_zio_db_conn"
+        using
+        {"
+                INSERT into noise_model.noise_detection_payload_queue_archive (producer_process_id, consumer_process_id, origin_id,group_id,
+                created_on, last_updated_on, status, stage, consumed_on_ts,root_pipeline_id, batch_id)
+                SELECT producer_process_id, consumer_process_id, origin_id, group_id, created_on, last_updated_on,status, stage, consumed_on_ts,root_pipeline_id,batch_id
+                FROM noise_model.noise_model_payload_queue WHERE status='COMPLETED' and stage='NOISE_MODEL' AND group_id='${group_id}' and batch_id ='${batch_id}';
+
+                DELETE FROM noise_model.noise_model_payload_queue WHERE status='COMPLETED' and stage='NOISE_MODEL' AND group_id='${group_id}';
+        "}on-condition if "true"=="true"
+
+
+        transform as "moving to payload ERROR queue" on "intics_zio_db_conn"
+        using
+        {"
+
+                INSERT into noise_model.noise_model_payload_error_queue(producer_process_id, consumer_process_id, origin_id,group_id, created_on,last_updated_on,status, stage, consumed_on_ts, root_pipeline_id, batch_id)
+                SELECT producer_process_id, consumer_process_id, origin_id, group_id,created_on, last_updated_on,status, stage, consumed_on_ts, root_pipeline_id, batch_id
+                FROM noise_model.noise_model_payload_queue WHERE status='FAILED' and stage='NOISE_MODEL' AND group_id='${group_id}' and batch_id ='${batch_id}';
+
+                DELETE FROM noise_model.noise_model_payload_queue WHERE status='FAILED' and stage='NOISE_MODEL' AND group_id='${group_id}' and batch_id ='${batch_id}';
+
+        "}on-condition if "true"=="true"
+
+}
+
+
+}

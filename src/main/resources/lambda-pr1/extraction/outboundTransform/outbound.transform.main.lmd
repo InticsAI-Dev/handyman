@@ -1,0 +1,31 @@
+process "outbound.transform.main"
+{
+
+try{
+        assign as "asis_outbound_timesStamp" source "intics_zio_db_conn"
+        using
+        {"
+               SELECT now() as consumed_on_ts;
+        "} on-condition if "true"=="true"
+
+            callprocess as "calling outbound transform asis processor ddl called"
+            with-target "outbound.transform.ddl"
+            from-file "${basepath}/extraction/outboundTransform/outbound.transform.ddl.lmd"
+            using "intics_zio_db_conn"
+            for-every {"
+                SELECT 1;
+            "} on-condition if "true"=="true"
+
+            callprocess as "calling outbound transform asis processor called"
+            with-target "outbound.transform.processor"
+            from-file "${basepath}/extraction/outboundTransform/outbound.transform.processor.lmd"
+            using "intics_zio_db_conn"
+            for-every {"
+                SELECT 1;
+            "} on-condition if "true"=="true"
+}catch{
+
+}finally{
+
+}
+}

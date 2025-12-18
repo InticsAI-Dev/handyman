@@ -4,13 +4,15 @@ import in.handyman.raven.core.enums.EncryptionConstants;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.MultivalueSorItemHandling;
-import in.handyman.raven.lib.model.soritemhandling.MultivalueSorItemHandlingActionInput;
+import in.handyman.raven.lib.services.soritemhandling.MultiValueOutputResult;
+import in.handyman.raven.lib.services.soritemhandling.MultivalueSorItemHandlingActionInput;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -21,17 +23,25 @@ class multiValueSorItemHandlingTest {
         MultivalueSorItemHandling multivalueSorItemHandling = MultivalueSorItemHandling.builder()
                 .name("Multivalue Concatenation Action")
                 .condition(true)
-                    .outputTable("entity_voting.sor_item_multivalue_filtering_output_audit")
+                    .outputTable("transit_data.sor_item_multivalue_filtering_output_1")
                 .resourceConn("intics_zio_db_conn")
-                .querySet("             select vqa.created_on, vqa.created_user_id, vqa.last_updated_on, vqa.last_updated_user_id, vqa.status,\n" +
-                        "            vqa.version, vqa.answer , vqa.b_box, vqa.document_id, vqa.extracted_image_unit, vqa.group_id, vqa.image_dpi,\n" +
-                        "            vqa.image_height, vqa.image_width, vqa.model_id, vqa.model_info, vqa.origin_id, vqa.paper_no, vqa.question_id,\n" +
-                        "            vqa.root_pipeline_id, vqa.score, vqa.sor_item_attribution_id, vqa.sor_item_name, vqa.sor_question, vqa.synonym_id,\n" +
-                        "            vqa.tenant_id, vqa.vqa_score, vqa.weight, vqa.model_registry, vqa.category, vqa.model_registry_id, vqa.stage, vqa.batch_id, ep.line_item_type,\n" +
-                        "            ep.encryption_policy_id, ep.is_encrypted, ep.encryption_policy, false as is_multi_entity_enabled, vqa.sor_container_instance, ep.sor_container \n" +
-                        "            from sor_transaction.vqa_transaction vqa\n" +
-                        "            join transit_data.sor_meta_consolidated_13110 ep on vqa.synonym_id=ep.synonym_id and vqa.sor_item_name=ep.sor_item_name and vqa.group_id=ep.group_id\n" +
-                        "            where vqa.origin_id='ORIGIN-69';")
+                .querySet("select vqa.created_on, vqa.created_user_id, vqa.last_updated_on, vqa.last_updated_user_id, vqa.status,\n" +
+                        "vqa.version, vqa.answer , vqa.b_box, vqa.document_id, vqa.extracted_image_unit, vqa.group_id, vqa.image_dpi,\n" +
+                        "vqa.image_height, vqa.image_width, vqa.model_id, vqa.model_info, vqa.origin_id, vqa.paper_no, vqa.question_id,\n" +
+                        "vqa.root_pipeline_id, vqa.vqa_score as score, vqa.sor_item_attribution_id, vqa.sor_item_name, vqa.sor_question, vqa.synonym_id,\n" +
+                        "vqa.tenant_id, vqa.vqa_score, vqa.weight, vqa.model_registry, vqa.category, vqa.model_registry_id, vqa.stage, vqa.batch_id, ep.line_item_type,\n" +
+                        "ep.encryption_policy_id, ep.is_encrypted, ep.encryption_policy, vqa.sor_container_instance, ep.is_multi_entity_enabled, ep.sor_container_name, vqa.section_alias, bs.whitelisted_sections\n" +
+                        "from transit_data.vqa_transaction_20817 vqa\n" +
+                        "join transit_data.sor_meta_consolidated_20817 ep on vqa.synonym_id=ep.synonym_id and vqa.sor_item_name=ep.sor_item_name and vqa.group_id=ep.group_id\n" +
+                        "LEFT JOIN (\n" +
+                        "                        SELECT\n" +
+                        "                            sor_container_id,\n" +
+                        "                            jsonb_agg(jsonb_build_object('truthEntity',truth_entity,'priorityLevel', priority_level))::varchar AS whitelisted_sections\n" +
+                        "                        FROM sor_meta.truth_entity_priority\n" +
+                        "                        WHERE section_type = 'ALLOWED'\n" +
+                        "                        GROUP BY sor_container_id\n" +
+                        "                    ) bs\n" +
+                        "                        ON bs.sor_container_id = ep.sor_container_id")
                 .build();
 
         final ActionExecutionAudit action = ActionExecutionAudit.builder().build();
@@ -71,7 +81,7 @@ class multiValueSorItemHandlingTest {
                         "                                    GROUP BY sor_container_id\n" +
                         "                                ) bs\n" +
                         "                                    ON bs.sor_container_id = ep.sor_container_id\n" +
-                        "            where ep.sor_container_name like ('MEMBER_DETAILS');\n")
+                        "            \n")
                 .build();
 
         final ActionExecutionAudit action = ActionExecutionAudit.builder().build();
@@ -84,10 +94,11 @@ class multiValueSorItemHandlingTest {
         MultivalueSorItemHandlingAction multivalueSorItemHandlingAction = new MultivalueSorItemHandlingAction(action, log, multivalueSorItemHandling);
         List<MultivalueSorItemHandlingActionInput> list = new ArrayList<>();
         final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(multivalueSorItemHandling.getResourceConn());
+        AtomicInteger idGenerator1 = new AtomicInteger(1);
         final List<MultivalueSorItemHandlingActionInput> multivalueConcatenationInputs = multivalueSorItemHandlingAction.fetchValuesFromDB(jdbi);
         System.out.println("Fetched Inputs:");
         for (MultivalueSorItemHandlingActionInput multivalueConcatenationInput : multivalueConcatenationInputs) {
-            System.out.println(multivalueConcatenationInput);
+            printSorLine(idGenerator1.incrementAndGet(),multivalueConcatenationInput,"Input");
         }
 
         List<MultivalueSorItemHandlingActionInput> singleValueFilteredList =
@@ -95,12 +106,279 @@ class multiValueSorItemHandlingTest {
                         .filter(item -> "single_value".equals(item.getLineItemType()) && !"multiple_member_indicator".equals(item.getSorItemName()))
                         .collect(Collectors.toList());
 
-        List<MultivalueSorItemHandlingActionInput> remappedMultivalueSorItemHandlingAction= multivalueSorItemHandlingAction.filterBySectionAliasOrFallback(singleValueFilteredList);
+        List<MultiValueOutputResult> remappedMultivalueSorItemHandlingAction= multivalueSorItemHandlingAction.processAndMapFilteredData(singleValueFilteredList);
         System.out.println("Max sor Instance Outputs:");
+        AtomicInteger idGenerator = new AtomicInteger(1);
         remappedMultivalueSorItemHandlingAction.forEach(multivalueSorItemHandlingActionInput -> {
-            System.out.println(multivalueSorItemHandlingActionInput);
+            printSorItemLine(idGenerator.incrementAndGet(),multivalueSorItemHandlingActionInput, "Output");
         });
 
+    }
+
+
+    // CASE 1: Multi-Value Items (De-duplication)
+    @Test
+    void testMultiValueRemapContainerInstance() throws Exception {
+        MultivalueSorItemHandling multivalueSorItemHandling = MultivalueSorItemHandling.builder()
+                .name("Multivalue Concatenation Action")
+                .condition(true)
+                .outputTable("entity_voting.sor_item_multivalue_filtering_output")
+                .resourceConn("intics_zio_db_conn")
+                .querySet("select vqa.created_on, vqa.created_user_id, vqa.last_updated_on, vqa.last_updated_user_id, vqa.status,\n" +
+                        "vqa.version, vqa.answer , vqa.b_box, vqa.document_id, vqa.extracted_image_unit, vqa.group_id, vqa.image_dpi,\n" +
+                        "vqa.image_height, vqa.image_width, vqa.model_id, vqa.model_info, vqa.origin_id, vqa.paper_no, vqa.question_id,\n" +
+                        "vqa.root_pipeline_id, vqa.score, vqa.sor_item_attribution_id, vqa.sor_item_name, vqa.sor_question, vqa.synonym_id,\n" +
+                        "vqa.tenant_id, vqa.vqa_score, vqa.weight, vqa.model_registry, vqa.category, vqa.model_registry_id, vqa.stage, vqa.batch_id, ep.line_item_type,\n" +
+                        "ep.encryption_policy_id, ep.is_encrypted, ep.encryption_policy, vqa.sor_container_instance, ep.is_multi_entity_enabled, ep.sor_container_name, vqa.section_alias, bs.whitelisted_sections\n" +
+                        "from transit_data.vqa_transaction_20817 vqa\n" +
+                        "join transit_data.sor_meta_consolidated_20817 ep on vqa.synonym_id=ep.synonym_id and vqa.sor_item_name=ep.sor_item_name and vqa.group_id=ep.group_id\n" +
+                        "LEFT JOIN (\n" +
+                        "                        SELECT\n" +
+                        "                            sor_container_id,\n" +
+                        "                            jsonb_agg(jsonb_build_object('truthEntity',truth_entity,'priorityLevel', priority_level))::varchar AS whitelisted_sections\n" +
+                        "                        FROM sor_meta.truth_entity_priority\n" +
+                        "                        WHERE section_type = 'ALLOWED'\n" +
+                        "                        GROUP BY sor_container_id\n" +
+                        "                    ) bs\n" +
+                        "                        ON bs.sor_container_id = ep.sor_container_id")
+                .build();
+
+        final ActionExecutionAudit action = ActionExecutionAudit.builder().build();
+        action.getContext().put("tenant_id", "1");
+        action.getContext().put("group_id", "2014");
+        action.getContext().put("batch_id", "BATCH-2014_0_new");
+        action.getContext().put("created_user_id", "1");
+        action.getContext().put(EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION, "false");
+
+        MultivalueSorItemHandlingAction multivalueSorItemHandlingAction = new MultivalueSorItemHandlingAction(action, log, multivalueSorItemHandling);
+        List<MultivalueSorItemHandlingActionInput> list = new ArrayList<>();
+        final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(multivalueSorItemHandling.getResourceConn());
+        AtomicInteger idGenerator1 = new AtomicInteger(1);
+        final List<MultivalueSorItemHandlingActionInput> multivalueConcatenationInputs = multivalueSorItemHandlingAction.fetchValuesFromDB(jdbi);
+        List<MultivalueSorItemHandlingActionInput> multiValueFilteredListInput =
+                multivalueConcatenationInputs.stream()
+                        .filter(item -> "multi_value".equals(item.getLineItemType()) && !"multiple_member_indicator".equals(item.getSorItemName()))
+                        .collect(Collectors.toList());
+
+        System.out.println("Fetched Inputs:");
+        for (MultivalueSorItemHandlingActionInput multivalueConcatenationInput : multiValueFilteredListInput) {
+            printSorLine(idGenerator1.incrementAndGet(),multivalueConcatenationInput,"Input");
+        }
+
+        List<MultiValueOutputResult> remappedMultivalueSorItemHandlingAction= multivalueSorItemHandlingAction.processAndMapFilteredData(multiValueFilteredListInput);
+        System.out.println("Max sor Instance Outputs:");
+        AtomicInteger idGenerator = new AtomicInteger(1);
+        remappedMultivalueSorItemHandlingAction.forEach(multivalueSorItemHandlingActionInput -> {
+            printSorItemLine(idGenerator.incrementAndGet(),multivalueSorItemHandlingActionInput, "Output");
+        });
+
+    }
+
+    //case 2 - tested multi_value splitting and de duplication
+    @Test
+    void testSingleValueRemapContainerInstance() throws Exception {
+        MultivalueSorItemHandling multivalueSorItemHandling = MultivalueSorItemHandling.builder()
+                .name("Multivalue Concatenation Action")
+                .condition(true)
+                .outputTable("entity_voting.sor_item_multivalue_filtering_output")
+                .resourceConn("intics_zio_db_conn")
+                .querySet("select vqa.created_on, vqa.created_user_id, vqa.last_updated_on, vqa.last_updated_user_id, vqa.status,\n" +
+                        "            vqa.version, vqa.answer , vqa.b_box, vqa.document_id, vqa.extracted_image_unit, vqa.group_id, vqa.image_dpi,\n" +
+                        "            vqa.image_height, vqa.image_width, vqa.model_id, vqa.model_info, vqa.origin_id, vqa.paper_no, vqa.question_id,\n" +
+                        "            vqa.root_pipeline_id, vqa.score, vqa.sor_item_attribution_id, vqa.sor_item_name, vqa.sor_question, vqa.synonym_id,\n" +
+                        "            vqa.tenant_id, vqa.vqa_score, vqa.weight, vqa.model_registry, vqa.category, vqa.model_registry_id, vqa.stage, vqa.batch_id, ep.line_item_type,\n" +
+                        "            ep.encryption_policy_id, ep.is_encrypted, ep.encryption_policy, vqa.sor_container_instance, ep.is_multi_entity_enabled, ep.sor_container_name, vqa.section_alias, bs.whitelisted_sections\n" +
+                        "            from transit_data.vqa_transaction_16068 vqa\n" +
+                        "            join transit_data.sor_meta_consolidated_16068 ep on vqa.synonym_id=ep.synonym_id and vqa.sor_item_name=ep.sor_item_name and vqa.group_id=ep.group_id\n" +
+                        "            LEFT JOIN (\n" +
+                        "                                    SELECT\n" +
+                        "                                        sor_container_id,\n" +
+                        "                                        jsonb_agg(jsonb_build_object('truthEntity',truth_entity,'priorityLevel', priority_level))::varchar AS whitelisted_sections\n" +
+                        "                                    FROM sor_meta.truth_entity_priority\n" +
+                        "                                    WHERE section_type = 'ALLOWED'\n" +
+                        "                                    GROUP BY sor_container_id\n" +
+                        "                                ) bs\n" +
+                        "                                    ON bs.sor_container_id = ep.sor_container_id where sor_container_instance like ('MEMBER_DETAILS_%')\n" +
+                        "            \n")
+                .build();
+
+        final ActionExecutionAudit action = ActionExecutionAudit.builder().build();
+        action.getContext().put("tenant_id", "1");
+        action.getContext().put("group_id", "2014");
+        action.getContext().put("batch_id", "BATCH-2014_0_new");
+        action.getContext().put("created_user_id", "1");
+        action.getContext().put(EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION, "false");
+
+        MultivalueSorItemHandlingAction multivalueSorItemHandlingAction = new MultivalueSorItemHandlingAction(action, log, multivalueSorItemHandling);
+        List<MultivalueSorItemHandlingActionInput> list = new ArrayList<>();
+        final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(multivalueSorItemHandling.getResourceConn());
+        AtomicInteger idGenerator1 = new AtomicInteger(1);
+        final List<MultivalueSorItemHandlingActionInput> multivalueConcatenationInputs = multivalueSorItemHandlingAction.fetchValuesFromDB(jdbi);
+        List<MultivalueSorItemHandlingActionInput> multiValueFilteredListInput =
+                multivalueConcatenationInputs.stream()
+                        .filter(item -> "single_value".equals(item.getLineItemType()) && !"multiple_member_indicator".equals(item.getSorItemName()))
+                        .collect(Collectors.toList());
+
+        System.out.println("Fetched Inputs:");
+        for (MultivalueSorItemHandlingActionInput multivalueConcatenationInput : multiValueFilteredListInput) {
+            printSorLine(idGenerator1.incrementAndGet(),multivalueConcatenationInput,"Input");
+        }
+
+        List<MultiValueOutputResult> remappedMultivalueSorItemHandlingAction= multivalueSorItemHandlingAction.processAndMapFilteredData(multiValueFilteredListInput);
+        System.out.println("Max sor Instance Outputs:");
+        AtomicInteger idGenerator = new AtomicInteger(1);
+        remappedMultivalueSorItemHandlingAction.forEach(multivalueSorItemHandlingActionInput -> {
+            printSorItemLine(idGenerator.incrementAndGet(),multivalueSorItemHandlingActionInput, "Output");
+        });
+
+    }
+
+
+    //case 2 - tested multi_value splitting and de duplication
+    @Test
+    void testOverallRemapContainerInstance() throws Exception {
+        MultivalueSorItemHandling multivalueSorItemHandling = MultivalueSorItemHandling.builder()
+                .name("Multivalue Concatenation Action")
+                .condition(true)
+                .outputTable("entity_voting.sor_item_multivalue_filtering_output")
+                .resourceConn("intics_zio_db_conn")
+                .querySet("select vqa.created_on, vqa.created_user_id, vqa.last_updated_on, vqa.last_updated_user_id, vqa.status,\n" +
+                        "            vqa.version, vqa.answer , vqa.b_box, vqa.document_id, vqa.extracted_image_unit, vqa.group_id, vqa.image_dpi,\n" +
+                        "            vqa.image_height, vqa.image_width, vqa.model_id, vqa.model_info, vqa.origin_id, vqa.paper_no, vqa.question_id,\n" +
+                        "            vqa.root_pipeline_id, vqa.score, vqa.sor_item_attribution_id, vqa.sor_item_name, vqa.sor_question, vqa.synonym_id,\n" +
+                        "            vqa.tenant_id, vqa.vqa_score, vqa.weight, vqa.model_registry, vqa.category, vqa.model_registry_id, vqa.stage, vqa.batch_id, ep.line_item_type,\n" +
+                        "            ep.encryption_policy_id, ep.is_encrypted, ep.encryption_policy, vqa.sor_container_instance, ep.is_multi_entity_enabled, ep.sor_container_name, vqa.section_alias, bs.whitelisted_sections\n" +
+                        "            from transit_data.vqa_transaction_16068 vqa\n" +
+                        "            join transit_data.sor_meta_consolidated_16068 ep on vqa.synonym_id=ep.synonym_id and vqa.sor_item_name=ep.sor_item_name and vqa.group_id=ep.group_id\n" +
+                        "            LEFT JOIN (\n" +
+                        "                                    SELECT\n" +
+                        "                                        sor_container_id,\n" +
+                        "                                        jsonb_agg(jsonb_build_object('truthEntity',truth_entity,'priorityLevel', priority_level))::varchar AS whitelisted_sections\n" +
+                        "                                    FROM sor_meta.truth_entity_priority\n" +
+                        "                                    WHERE section_type = 'ALLOWED'\n" +
+                        "                                    GROUP BY sor_container_id\n" +
+                        "                                ) bs\n" +
+                        "                                    ON bs.sor_container_id = ep.sor_container_id\n" +
+                        "            \n")
+                .build();
+
+        final ActionExecutionAudit action = ActionExecutionAudit.builder().build();
+        action.getContext().put("tenant_id", "1");
+        action.getContext().put("group_id", "2014");
+        action.getContext().put("batch_id", "BATCH-2014_0_new");
+        action.getContext().put("created_user_id", "1");
+        action.getContext().put(EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION, "false");
+
+        MultivalueSorItemHandlingAction multivalueSorItemHandlingAction = new MultivalueSorItemHandlingAction(action, log, multivalueSorItemHandling);
+        List<MultivalueSorItemHandlingActionInput> list = new ArrayList<>();
+        final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(multivalueSorItemHandling.getResourceConn());
+        AtomicInteger idGenerator1 = new AtomicInteger(0);
+        final List<MultivalueSorItemHandlingActionInput> multivalueConcatenationInputs = multivalueSorItemHandlingAction.fetchValuesFromDB(jdbi);
+
+        System.out.println("Fetched Inputs:");
+        for (MultivalueSorItemHandlingActionInput multivalueConcatenationInput : multivalueConcatenationInputs) {
+            printSorLine(idGenerator1.incrementAndGet(),multivalueConcatenationInput,"Input");
+        }
+
+        List<MultiValueOutputResult> remappedMultivalueSorItemHandlingAction= multivalueSorItemHandlingAction.processAndMapFilteredData(multivalueConcatenationInputs);
+        System.out.println("Max sor Instance Outputs:");
+        AtomicInteger idGenerator = new AtomicInteger(0);
+        remappedMultivalueSorItemHandlingAction.forEach(multivalueSorItemHandlingActionInput -> {
+            printSorItemLine(idGenerator.incrementAndGet(),multivalueSorItemHandlingActionInput, "Output");
+        });
+
+    }
+
+
+
+    //case 2 - tested multi_value splitting and de duplication
+    @Test
+    void testOverallRemapContainerUpdateSorItemNamesInstance() throws Exception {
+        MultivalueSorItemHandling multivalueSorItemHandling = MultivalueSorItemHandling.builder()
+                .name("Multivalue Concatenation Action")
+                .condition(true)
+                .outputTable("entity_voting.sor_item_multivalue_filtering_output")
+                .resourceConn("intics_zio_db_conn")
+                .querySet("select vqa.created_on, vqa.created_user_id, vqa.last_updated_on, vqa.last_updated_user_id, vqa.status,\n" +
+                        "            vqa.version, vqa.answer , vqa.b_box, vqa.document_id, vqa.extracted_image_unit, vqa.group_id, vqa.image_dpi,\n" +
+                        "            vqa.image_height, vqa.image_width, vqa.model_id, vqa.model_info, vqa.origin_id, vqa.paper_no, vqa.question_id,\n" +
+                        "            vqa.root_pipeline_id, vqa.score, vqa.sor_item_attribution_id, vqa.sor_item_name, vqa.sor_question, vqa.synonym_id,\n" +
+                        "            vqa.tenant_id, vqa.vqa_score, vqa.weight, vqa.model_registry, vqa.category, vqa.model_registry_id, vqa.stage, vqa.batch_id, ep.line_item_type,\n" +
+                        "            ep.encryption_policy_id, ep.is_encrypted, ep.encryption_policy, vqa.sor_container_instance, ep.is_multi_entity_enabled, ep.sor_container_name, vqa.section_alias, bs.whitelisted_sections\n" +
+                        "            from transit_data.vqa_transaction_16068 vqa\n" +
+                        "            join transit_data.sor_meta_consolidated_16068 ep on vqa.synonym_id=ep.synonym_id and vqa.sor_item_name=ep.sor_item_name and vqa.group_id=ep.group_id\n" +
+                        "            LEFT JOIN (\n" +
+                        "                                    SELECT\n" +
+                        "                                        sor_container_id,\n" +
+                        "                                        jsonb_agg(jsonb_build_object('truthEntity',truth_entity,'priorityLevel', priority_level))::varchar AS whitelisted_sections\n" +
+                        "                                    FROM sor_meta.truth_entity_priority\n" +
+                        "                                    WHERE section_type = 'ALLOWED'\n" +
+                        "                                    GROUP BY sor_container_id\n" +
+                        "                                ) bs\n" +
+                        "                                    ON bs.sor_container_id = ep.sor_container_id\n" +
+                        "            \n")
+                .build();
+
+        final ActionExecutionAudit action = ActionExecutionAudit.builder().build();
+        action.getContext().put("tenant_id", "1");
+        action.getContext().put("group_id", "2014");
+        action.getContext().put("batch_id", "BATCH-2014_0_new");
+        action.getContext().put("created_user_id", "1");
+        action.getContext().put(EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION, "false");
+
+        MultivalueSorItemHandlingAction multivalueSorItemHandlingAction = new MultivalueSorItemHandlingAction(action, log, multivalueSorItemHandling);
+        List<MultivalueSorItemHandlingActionInput> list = new ArrayList<>();
+        final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(multivalueSorItemHandling.getResourceConn());
+        AtomicInteger idGenerator1 = new AtomicInteger(0);
+        final List<MultivalueSorItemHandlingActionInput> multivalueConcatenationInputs = multivalueSorItemHandlingAction.fetchValuesFromDB(jdbi);
+
+        System.out.println("Fetched Inputs:");
+        for (MultivalueSorItemHandlingActionInput multivalueConcatenationInput : multivalueConcatenationInputs) {
+            printSorLine(idGenerator1.incrementAndGet(),multivalueConcatenationInput,"Input");
+        }
+
+        List<MultivalueSorItemHandlingActionInput> remappedMultivalueSorItemHandlingAction = multivalueSorItemHandlingAction.updateSorItemNamesByContainerInstance(multivalueConcatenationInputs);
+        System.out.println("Max sor Instance Outputs:");
+        AtomicInteger idGenerator = new AtomicInteger(0);
+        remappedMultivalueSorItemHandlingAction.forEach(multivalueSorItemHandlingActionInput -> {
+            printSorLine(idGenerator.incrementAndGet(),multivalueSorItemHandlingActionInput, "Output");
+        });
+
+    }
+
+    private static void printSorLine(Integer id,MultivalueSorItemHandlingActionInput item, String prefix) {
+        System.out.printf(
+                "%s | %s | originId=%s | paperNo=%s | sorContainerInstance=%s | " +
+                        "sorItemName=%s | isMultiEntityEnabled=%s | lineItemType=%s | answer=%s | message=%s %n",
+                id,
+                prefix,
+                item.getOriginId(),
+                item.getPaperNo(),
+                item.getSorContainerInstance(),
+                item.getSorItemName(),
+                item.getIsMultiEntityEnabled(),
+                item.getLineItemType(),
+                item.getAnswer(),
+                item.getMessage()
+        );
+    }
+
+
+    private static void printSorItemLine(Integer id,MultiValueOutputResult item, String prefix) {
+        System.out.printf(
+                "%s | %s | originId=%s | paperNo=%s | sorContainerInstance=%s | " +
+                        "sorItemName=%s | isMultiEntityEnabled=%s | lineItemType=%s | answer=%s | message=%s%n",
+                id,
+                prefix,
+                item.getOriginId(),
+                item.getPaperNo(),
+                item.getSorContainerInstance(),
+                item.getSorItemName(),
+                item.getIsMultiEntityEnabled(),
+                item.getLineItemType(),
+                item.getAnswer(),
+                item.getSectionPriorityAfterFilter()
+        );
     }
 
 

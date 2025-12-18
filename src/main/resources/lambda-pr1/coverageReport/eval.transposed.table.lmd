@@ -1,0 +1,91 @@
+process "eval.transposed.table"
+
+{
+
+    try {
+            transform as  "inserting data for file name detection" on "intics_zio_db_conn" using
+            {"
+
+                INSERT INTO control_data.file_name_detection
+                (file_name, origin_id, file_id, group_id, created_on, tenant_id, batch_id)
+                SELECT b.file_name,a.origin_id,a.file_id,a.group_id,a.created_on, ${tenant_id}, a.batch_id
+                FROM info.source_of_origin a
+                JOIN info.asset b ON a.file_id =b.file_id
+                join control_data.control_data_payload_queue c
+                on a.origin_id=c.origin_id
+                where a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+            "}on-condition if "true"=="true"
+
+            transform as "transpose consolidated result" on "intics_zio_db_conn" using
+            {"
+                INSERT INTO control_data.evaluation_transposed
+                (origin_id, file_name, group_id, root_pipeline_id, created_on, member_name, member_id,
+                member_address, member_gender, member_groupnumber, member_city, member_citystatezip,
+                member_state, member_zip, member_phone, member_dob, prescriber_npi, prescriber_name,
+                prescriber_address, prescriber_citystatezip, prescriber_state, prescriber_statelicid,
+                prescriber_zipcode, prescriber_phone, prescriber_fax, prescriber_taxid, prescriber_city,
+                provider_name, provider_address, provider_city, provider_city_state_zip, provider_fax,
+                provider_npi, provider_phone, provider_state, provider_tax_id, provider_zip, drug_name,
+                 date_of_service_from, date_of_service_to,
+                diagnosis, direction_sig, drug_dose, drug_quantity, drug_strength, hcpcs, icd10, j_code,tenant_id, batch_id )
+                SELECT  a.origin_id,b.file_name,b.group_id,a.root_pipeline_id,b.created_on,
+                max(case when a.sor_item_name ='patient_name' then a.extracted_value  else '' end)as member_name,
+                max(case when a.sor_item_name ='patient_member_id' then a.extracted_value  else '' end)as member_id,
+                max(case when a.sor_item_name ='patient_address' then a.extracted_value  else '' end)as member_address,
+                max(case when a.sor_item_name ='member_gender' then a.extracted_value  else '' end)as member_gender,
+                max(case when a.sor_item_name ='patient_group_number' then a.extracted_value  else '' end)as member_groupnumber,
+                max(case when a.sor_item_name ='patient_city' then a.extracted_value  else '' end)as member_city,
+                max(case when a.sor_item_name ='patient_city_state_zip' then a.extracted_value  else '' end)as member_citystatezip,
+                max(case when a.sor_item_name ='patient_state' then a.extracted_value  else '' end)as member_state,
+                max(case when a.sor_item_name ='patient_zip' then a.extracted_value  else '' end)as member_zip,
+                max(case when a.sor_item_name ='patient_phone' then a.extracted_value  else '' end)as member_phone,
+                max(case when a.sor_item_name ='patient_dob' then a.extracted_value  else '' end)as member_dob,
+                max(case when a.sor_item_name ='prescriber_npi' then a.extracted_value  else '' end)as prescriber_npi,
+                max(case when a.sor_item_name ='prescriber_name' then a.extracted_value  else '' end)as prescriber_name,
+                max(case when a.sor_item_name ='prescriber_address' then a.extracted_value  else '' end)as prescriber_address,
+                max(case when a.sor_item_name ='prescriber_city_state_zip' then a.extracted_value  else '' end)as prescriber_citystatezip,
+                max(case when a.sor_item_name ='prescriber_state' then a.extracted_value  else '' end)as prescriber_state,
+                max(case when a.sor_item_name ='prescriber_state_lic_id' then a.extracted_value  else '' end)as prescriber_statelicid,
+                max(case when a.sor_item_name ='prescriber_zip' then a.extracted_value  else '' end)as prescriber_zipcode,
+                max(case when a.sor_item_name ='prescriber_phone' then a.extracted_value  else '' end)as prescriber_phone,
+                max(case when a.sor_item_name ='prescriber_fax' then a.extracted_value  else '' end)as prescriber_fax,
+                max(case when a.sor_item_name ='prescriber_tax_id' then a.extracted_value  else '' end)as prescriber_taxid,
+                max(case when a.sor_item_name ='prescriber_city' then a.extracted_value  else '' end)as prescriber_city,
+                max(case when a.sor_item_name ='provider_name' then a.extracted_value  else '' end)as provider_name,
+                max(case when a.sor_item_name ='provider_address' then a.extracted_value  else '' end)as provider_address,
+                max(case when a.sor_item_name ='provider_city' then a.extracted_value  else '' end)as provider_city,
+                max(case when a.sor_item_name ='provider_city_state_zip' then a.extracted_value  else '' end)as provider_city_state_zip,
+                max(case when a.sor_item_name ='provider_fax' then a.extracted_value  else '' end)as provider_fax,
+                max(case when a.sor_item_name ='provider_npi' then a.extracted_value  else '' end)as provider_npi,
+                max(case when a.sor_item_name ='provider_phone' then a.extracted_value  else '' end)as provider_phone,
+                max(case when a.sor_item_name ='provider_state' then a.extracted_value  else '' end)as provider_state,
+                max(case when a.sor_item_name ='provider_tax_id' then a.extracted_value  else '' end)as provider_tax_id,
+                max(case when a.sor_item_name ='provider_zip' then a.extracted_value  else '' end)as provider_zip,
+                max(case when a.sor_item_name ='drug_name' then a.extracted_value  else '' end)as drug_name,
+                max(case when a.sor_item_name ='date_of_service_from' then a.extracted_value  else '' end)as date_of_service_from,
+                max(case when a.sor_item_name ='date_of_service_to' then a.extracted_value  else '' end)as date_of_service_to,
+                max(case when a.sor_item_name ='diagnosis' then a.extracted_value  else '' end)as diagnosis,
+                max(case when a.sor_item_name ='direction_sig' then a.extracted_value  else '' end)as direction_sig,
+                max(case when a.sor_item_name ='drug_dose' then a.extracted_value  else '' end)as drug_dose,
+                max(case when a.sor_item_name ='drug_quantity' then a.extracted_value  else '' end)as drug_quantity,
+                max(case when a.sor_item_name ='drug_strength' then a.extracted_value  else '' end)as drug_strength,
+                max(case when a.sor_item_name ='hcpcs' then a.extracted_value  else '' end)as hcpcs,
+                max(case when a.sor_item_name ='icd10' then a.extracted_value  else '' end)as icd10,
+                max(case when a.sor_item_name ='j_code' then a.extracted_value  else '' end)as j_code,
+                ${tenant_id}, b.batch_id
+                FROM voting.cummulative_result a
+                inner join control_data.file_name_detection b on a.origin_id=b.origin_id
+                join control_data.control_data_payload_queue c on a.origin_id=c.origin_id
+                where b.group_id='${gen_group_id.group_id}' and b.tenant_id = ${tenant_id}
+                and b.batch_id = '${batch_id}'
+                GROUP BY a.origin_id,b.file_name,b.group_id,a.root_pipeline_id,b.created_on,b.batch_id;
+            "}  on-condition if "true"=="true"
+
+    }  catch {
+
+    }
+    finally {
+
+    }
+}

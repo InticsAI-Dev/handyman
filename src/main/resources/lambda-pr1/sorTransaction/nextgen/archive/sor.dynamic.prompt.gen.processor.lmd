@@ -1,0 +1,312 @@
+process "sor.dynamic.prompt.gen.processor"
+{
+    try{
+        transform as "INSERT to in-progress sor transaction pipeline audit" on "intics_zio_db_conn" using
+                   {"
+                        INSERT INTO sor_transaction.sor_transaction_pipeline_audit
+                        (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+                        VALUES('${group_id}', now(), '${created_user_id}', '${created_user_id}', ${tenant_id}, 'STARTED', 'SOR_TRANSACTION_DYNAMIC_PROMPT_GEN', 'Sor transaction dynamic prompt generation process started for group_id ${group_id}','${gen_id.root_pipeline_id}', '${batch_id}');
+                   "} on-condition if "true"=="true"
+
+
+
+          transform as "Questionverse summary" on "intics_zio_db_conn" using
+             {"
+                  INSERT INTO dynamic_prompt_gen.questionverse_summary
+                  ( created_at, total_document_type_count, total_container_count, total_field_count,
+                  total_channel_count, total_sip_count, total_filter_count, total_synonym_count,
+                  total_question_count, tenant_id, root_pipeline_id, batch_id)
+                  select now(),
+                  (select count(*) from sor_meta.document as total_document_type_count where tenant_id = '${tenant_id}'),
+                  (select count(*) from sor_meta.sor_container  as total_container_count where tenant_id = '${tenant_id}'),
+                  (select count(*) from sor_meta.sor_item  as total_field_count where tenant_id = '${tenant_id}'),
+                  (select count(*) from sor_meta.asset_info  as total_channel_count where tenant_id = '${tenant_id}'),
+                  (select count(*) from sor_meta.truth_entity  as total_sip_count where tenant_id = '${tenant_id}'),
+                  (select count(*) from sor_meta.truth_entity_placeholder  as total_filter_count where tenant_id = '${tenant_id}'),
+                  (select count(*) from sor_meta.sor_tsynonym  as total_synonym_count where tenant_id = '${tenant_id}'),
+                  (select count(*) from sor_meta.sor_question  as total_question_count where tenant_id = '${tenant_id}'),'${tenant_id}', '${gen_id.root_pipeline_id}', '${batch_id}';
+             "} on-condition if "true"=="true"
+
+
+            transform as "INSERT to in-progress sor transaction pipeline audit" on "intics_zio_db_conn" using
+               {"
+                INSERT INTO ${temp_schema_name}.latest_entries_${init_process_id.process_id}
+                (summary_id, created_at, total_document_type_count, total_container_count, total_field_count, total_channel_count, total_sip_count, total_filter_count, total_synonym_count, total_question_count, root_pipeline_id, tenant_id, batch_id)
+                SELECT summary_id, created_at, total_document_type_count, total_container_count, total_field_count, total_channel_count, total_sip_count, total_filter_count, total_synonym_count, total_question_count, root_pipeline_id, tenant_id, '${batch_id}'
+                FROM dynamic_prompt_gen.questionverse_summary
+                WHERE tenant_id = '1'
+                 ORDER BY created_at DESC
+                 LIMIT 2
+               "}on-condition if "true"=="true"
+
+
+             assign as "dynamic_prompt_generation" source "intics_zio_db_conn" using
+              {"
+                  SELECT CASE WHEN COUNT(*) = 2
+                              AND MAX(total_document_type_count) = MIN(total_document_type_count)
+                              AND MAX(total_container_count) = MIN(total_container_count)
+                              AND MAX(total_field_count) = MIN(total_field_count)
+                              AND MAX(total_channel_count) = MIN(total_channel_count)
+                              AND MAX(total_sip_count) = MIN(total_sip_count)
+                              AND MAX(total_filter_count) = MIN(total_filter_count)
+                              AND MAX(total_synonym_count) = MIN(total_synonym_count)
+                              AND MAX(total_question_count) = MIN(total_question_count)
+                          THEN false
+                          ELSE true END AS values_changed
+                  FROM ${temp_schema_name}.latest_entries_${init_process_id.process_id};
+              "} on-condition if "true"=="true"
+
+
+
+            transform as "Inserting values into container, sor_item, entity and synonym list table for ${origin_id}" on "intics_zio_db_conn" using
+            {"
+                -- container list;
+
+
+                INSERT INTO ${temp_schema_name}.container_list_${init_process_id.process_id}
+                (created_at, container_list, tenant_id, asset_id, root_pipeline_id, origin_id, group_id,batch_id)
+                SELECT now() as created_at,
+                STRING_AGG(FORMAT('%s,', sc.sor_container_name), chr(10)) AS container_list, sc.tenant_id, ai.asset_id,
+                stpq.root_pipeline_id, stpq.origin_id, stpq.group_id, stpq.batch_id
+                FROM sor_meta.sor_container sc
+                join sor_transaction.sor_transaction_payload_queue stpq on stpq.tenant_id = sc.tenant_id
+                join info.source_of_truth sot on sot.origin_id = stpq.origin_id and sot.paper_no = 1
+                join sor_meta.asset_info ai on ai.template_name = sot.template_name
+                WHERE sc.tenant_id = '${tenant_id}' and stpq.root_pipeline_id = '${gen_id.root_pipeline_id}'
+                group by  sc.tenant_id, ai.asset_id,stpq.root_pipeline_id, stpq.origin_id, stpq.group_id, stpq.batch_id;
+
+
+
+
+                 -- truth_entities based on sor_container;
+
+
+
+                 INSERT INTO ${temp_schema_name}.concat_entity_list_${init_process_id.process_id}
+                 (created_at, sor_container_name, concat_entity_list, tenant_id, asset_id, root_pipeline_id, origin_id, group_id, batch_id)
+                 SELECT now() as created_at,sc.sor_container_name,
+                 STRING_AGG(DISTINCT te.truth_entity_name, ', ') AS concat_entity_list,  sc.tenant_id,ai.asset_id,
+                 stpq.root_pipeline_id, stpq.origin_id, stpq.group_id, stpq.batch_id
+                 FROM sor_meta.sor_container sc
+                 JOIN sor_meta.truth_entity te ON te.sor_container_id = sc.sor_container_id
+                 join sor_transaction.sor_transaction_payload_queue stpq on stpq.tenant_id = sc.tenant_id
+                 join info.source_of_truth sot on sot.origin_id = stpq.origin_id
+                 join sor_meta.asset_info ai on ai.template_name = sot.template_name
+                 WHERE sc.tenant_id = '${tenant_id}'  and stpq.root_pipeline_id = '${gen_id.root_pipeline_id}'
+                 GROUP BY sc.sor_container_name, sc.tenant_id, ai.asset_id, stpq.root_pipeline_id, stpq.origin_id, stpq.group_id, stpq.batch_id;
+
+
+                 INSERT INTO ${temp_schema_name}.entity_list_${init_process_id.process_id}
+                 ( created_at, entity_list, tenant_id, asset_id, root_pipeline_id, origin_id, group_id, batch_id)
+                 select now(), STRING_AGG(FORMAT('%s: %s,', ce.sor_container_name, ce.concat_entity_list), chr(10)) AS formatted_result,
+                     ce.tenant_id, ce.asset_id , ce.root_pipeline_id, ce.origin_id, ce.group_id, ce.batch_id
+                 from ${temp_schema_name}.concat_entity_list_${init_process_id.process_id} ce
+                 where ce.root_pipeline_id = '${gen_id.root_pipeline_id}'
+                 group by ce.tenant_id, ce.asset_id , ce.root_pipeline_id, ce.origin_id, ce.group_id, ce.batch_id;
+
+
+
+                 -- sor_items based on sor_containers;
+
+
+
+                 INSERT INTO ${temp_schema_name}.concat_sor_item_list_${init_process_id.process_id}
+                 (created_at, sor_container_name, concat_sor_item_list, tenant_id, asset_id, root_pipeline_id, origin_id, group_id, batch_id)
+                 SELECT  now() as created_at,  sc.sor_container_name,
+                 STRING_AGG(DISTINCT si.sor_item_name, ', ') AS concat_sor_item_list,si.tenant_id,
+                 ai.asset_id, stpq.root_pipeline_id, stpq.origin_id, stpq.group_id, stpq.batch_id
+                 FROM sor_meta.sor_container sc
+                 JOIN sor_meta.sor_item si ON si.sor_container_id = sc.sor_container_id
+                 join sor_meta.truth_entity te on te.sor_container_id = sc.sor_container_id
+                 join sor_transaction.sor_transaction_payload_queue stpq on stpq.tenant_id = si.tenant_id
+                 join info.source_of_truth sot on sot.origin_id = stpq.origin_id
+                 join sor_meta.asset_info ai on ai.template_name = sot.template_name
+                 WHERE si.tenant_id = '${tenant_id}' and stpq.root_pipeline_id = '${gen_id.root_pipeline_id}'
+                 GROUP BY sc.sor_container_name, si.tenant_id,ai.asset_id, stpq.root_pipeline_id, stpq.origin_id, stpq.group_id, stpq.batch_id;
+
+                 INSERT INTO ${temp_schema_name}.sor_item_list_${init_process_id.process_id}
+                 (created_at, sor_item_list, tenant_id, asset_id, root_pipeline_id, origin_id, group_id)
+                 select now(), STRING_AGG(FORMAT('%s: %s,', ci.sor_container_name, ci.concat_sor_item_list), chr(10)) AS sor_item_list,
+                 ci.tenant_id, ci.asset_id, ci.root_pipeline_id, ci.origin_id, ci.group_id
+                 from ${temp_schema_name}.concat_sor_item_list_${init_process_id.process_id} ci
+                 where ci.root_pipeline_id = '${gen_id.root_pipeline_id}'
+                 group by  ci.tenant_id, ci.asset_id,  ci.root_pipeline_id, ci.origin_id, ci.group_id,ci.batch_id;
+
+
+                 --synonyms based on sor_item_name;
+
+
+                 INSERT INTO ${temp_schema_name}.concat_synonym_list_${init_process_id.process_id}
+                 (created_at,sor_item_name, concat_synonym_list, tenant_id, asset_id, root_pipeline_id, origin_id, group_id,batch_id)
+                 select now() as created_at,si.sor_item_name,STRING_AGG(DISTINCT st.synonym, ', ') AS concat_synonym_list,
+                 si.tenant_id, ai.asset_id, stpq.root_pipeline_id, stpq.origin_id, stpq.group_id, stpq.batch_id
+                    from sor_meta.sor_item si
+                    join sor_meta.sor_tsynonym st on st.sor_item_id = si.sor_item_id
+                    join sor_meta.truth_entity te on te.truth_entity_id = st.truth_entity_id
+                    join sor_transaction.sor_transaction_payload_queue stpq on stpq.tenant_id = si.tenant_id
+                    join info.source_of_truth sot on sot.origin_id = stpq.origin_id
+                    join sor_meta.asset_info ai on ai.template_name = sot.template_name
+                    where si.tenant_id= '${tenant_id}' and stpq.root_pipeline_id = '${gen_id.root_pipeline_id}'
+                    group by si.sor_item_name, si.tenant_id, ai.asset_id,stpq.root_pipeline_id, stpq.origin_id, stpq.group_id, stpq.batch_id;
+
+
+
+                 INSERT INTO ${temp_schema_name}.synonym_list_${init_process_id.process_id}
+                 (created_at, synonym_list, tenant_id, asset_id, root_pipeline_id, origin_id, group_id, batch_id)
+                  select now(), STRING_AGG(FORMAT('%s: %s,', cs.sor_item_name, cs.concat_synonym_list), chr(10)) AS synonym_list,
+                  cs.tenant_id, cs.asset_id, cs.root_pipeline_id,cs.origin_id, cs.group_id, cs.batch_id
+                  from ${temp_schema_name}.concat_synonym_list_${init_process_id.process_id} cs
+                  where cs.root_pipeline_id = '${gen_id.root_pipeline_id}'
+                  group by cs.tenant_id, cs.asset_id,cs.root_pipeline_id,cs.origin_id, cs.group_id, cs.batch_id;
+
+
+
+
+                 -- json contract;
+
+
+                 INSERT INTO ${temp_schema_name}.inner_nest_json_contract_${init_process_id.process_id}
+                 ( created_at, sor_container_name, inner_nest_json_contract, tenant_id, root_pipeline_id, origin_id, group_id, asset_id, batch_id)
+                 select now(),sc.sor_container_name,
+                 JSON_OBJECT_AGG(si.sor_item_name, '') AS inner_nest_json_contract, sc.tenant_id, stpq.root_pipeline_id,
+                 stpq.origin_id, stpq.group_id, ai.asset_id, stpq.batch_id
+                 FROM sor_meta.sor_container sc
+                 JOIN sor_meta.sor_item si ON si.sor_container_id = sc.sor_container_id
+                 join sor_transaction.sor_transaction_payload_queue stpq on stpq.tenant_id = sc.tenant_id
+                 join info.source_of_truth sot on sot.origin_id = stpq.origin_id
+                 join sor_meta.asset_info ai on ai.template_name = sot.template_name
+                 WHERE si.tenant_id = '${tenant_id}' and stpq.root_pipeline_id = '${gen_id.root_pipeline_id}'
+                 GROUP BY sc.sor_container_name, sc.tenant_id,ai.asset_id , stpq.root_pipeline_id,stpq.origin_id, stpq.group_id, stpq.batch_id;
+
+                 INSERT INTO ${temp_schema_name}.json_contract_${init_process_id.process_id}
+                 (created_at, json_contract, tenant_id, root_pipeline_id, origin_id, group_id, asset_id,batch_id)
+                 select now(), jsonb_pretty(JSON_OBJECT_AGG(ci.sor_container_name, ci.inner_nest_json_contract) :: jsonb) AS json_contract , ci.tenant_id,
+                 ci.root_pipeline_id , ci.origin_id , ci.group_id, ci.asset_id, ci.batch_id
+                 from ${temp_schema_name}.inner_nest_json_contract_${init_process_id.process_id} ci
+                 where ci.root_pipeline_id = '${gen_id.root_pipeline_id}'
+                 group by ci.tenant_id,ci.root_pipeline_id , ci.origin_id , ci.group_id, ci.asset_id, ci.batch_id;
+
+             "} on-condition if "${dynamic_prompt_generation.values_changed}"=="true"
+
+            transform as "Creating prompt value from base prompt' " on "intics_zio_db_conn" using
+              {"
+                    -- replacing container list;
+
+                    INSERT INTO ${temp_schema_name}.replace_container_list_${init_process_id.process_id}
+                    ( prompt_id, channel_id, base_prompt, modified_prompt_cont_list, created_time, last_modified_time, version, status, tenant_id, root_pipeline_id, group_id, origin_id, batch_id)
+                    select cbp.prompt_id, cbp.channel_id,cbp.base_prompt,
+                    REPLACE(cbp.base_prompt, '${{container_list}}', cl.container_list), now(), now(),cbp.version, cbp.status, cl.tenant_id, stpq.root_pipeline_id , stpq.group_id,
+                                stpq.origin_id, stpq.batch_id
+                    FROM sor_meta.channel_based_prompt cbp
+                    JOIN ${temp_schema_name}.container_list_${init_process_id.process_id} cl ON cl.tenant_id  = cbp.tenant_id
+                    join sor_transaction.sor_transaction_payload_queue stpq on stpq.tenant_id = cl.tenant_id
+                    and stpq.root_pipeline_id = cl.root_pipeline_id
+                    join info.source_of_truth sot on sot.origin_id  = stpq.origin_id
+                    join sor_meta.asset_info ai on ai.template_name = sot.template_name
+                    WHERE  cbp.channel_id =  ai.asset_id and cl.root_pipeline_id = '${gen_id.root_pipeline_id}'
+                    and stpq.root_pipeline_id = '${gen_id.root_pipeline_id}'
+                    group by cl.container_list,cbp.base_prompt,cbp.prompt_id,cbp.channel_id,
+                    stpq.root_pipeline_id , stpq.group_id,stpq.origin_id,stpq.batch_id,
+                    cbp.version, cbp.status, cl.tenant_id;
+
+
+                    -- replacing entity list;
+
+                    INSERT INTO ${temp_schema_name}.replace_entity_list_${init_process_id.process_id}
+                    (prompt_id, channel_id, base_prompt, modified_prompt_entity_list, created_time, last_modified_time, version, status, tenant_id, root_pipeline_id, group_id, origin_id, batch_id)
+                    SELECT  cbp.prompt_id, cbp.channel_id,cbp.base_prompt,
+                    REPLACE(modified_prompt_cont_list,'${{entity_list}}', tel.entity_list),
+                    now(), now(),cbp.version, cbp.status, tel.tenant_id, stpq.root_pipeline_id , stpq.group_id,stpq.origin_id, stpq.batch_id
+                    FROM ${temp_schema_name}.replace_container_list_${init_process_id.process_id} cbp
+                    JOIN ${temp_schema_name}.entity_list_${init_process_id.process_id} tel ON tel.root_pipeline_id  = cbp.root_pipeline_id and cbp.origin_id = tel.origin_id
+                    join sor_transaction.sor_transaction_payload_queue stpq on stpq.tenant_id = cbp.tenant_id
+                    join info.source_of_truth sot on sot.origin_id  = stpq.origin_id
+                    join sor_meta.asset_info ai on ai.template_name = sot.template_name
+                    WHERE  cbp.channel_id =  ai.asset_id and cbp.root_pipeline_id = '${gen_id.root_pipeline_id}' and stpq.root_pipeline_id = '${gen_id.root_pipeline_id}'
+                    group by cbp.base_prompt,cbp.prompt_id,cbp.channel_id, cbp.modified_prompt_cont_list ,tel.entity_list,tel.tenant_id,
+                    cbp.tenant_id, stpq.root_pipeline_id , stpq.group_id,stpq.origin_id, cbp.version, cbp.status, stpq.batch_id;
+
+
+                     -- replacing  item list;
+
+
+                    INSERT INTO ${temp_schema_name}.replace_item_list_${init_process_id.process_id}
+                    ( prompt_id, channel_id, base_prompt, modified_prompt_item_list, created_time, last_modified_time, version, status, tenant_id, root_pipeline_id, group_id, origin_id, batch_id)
+                    SELECT  cbp.prompt_id, cbp.channel_id,cbp.base_prompt,
+                    REPLACE(cbp.modified_prompt_entity_list,'${{sor_item_list}}', sil.sor_item_list), now(), now(),cbp.version, cbp.status, sil.tenant_id, stpq.root_pipeline_id , stpq.group_id,stpq.origin_id, stpq.batch_id
+                    FROM ${temp_schema_name}.replace_entity_list_${init_process_id.process_id} cbp
+                    JOIN ${temp_schema_name}.sor_item_list_${init_process_id.process_id} sil ON sil.root_pipeline_id  = cbp.root_pipeline_id
+                    join sor_transaction.sor_transaction_payload_queue stpq on stpq.root_pipeline_id  = sil.root_pipeline_id
+                    join info.source_of_truth sot on sot.origin_id  = stpq.origin_id
+                    join sor_meta.asset_info ai on ai.template_name = sot.template_name
+                    WHERE  cbp.channel_id =  ai.asset_id  and stpq.root_pipeline_id = '${gen_id.root_pipeline_id}'
+                    group by cbp.base_prompt,cbp.prompt_id,cbp.channel_id,cbp.modified_prompt_entity_list, stpq.root_pipeline_id , stpq.group_id,stpq.origin_id,  sil.sor_item_list, sil.tenant_id,
+                    cbp.version, cbp.status, stpq.batch_id;
+
+
+                    -- replacing synonym list;
+
+                    INSERT INTO ${temp_schema_name}.replace_synonym_list_${init_process_id.process_id}
+                    ( prompt_id, channel_id, base_prompt, modified_prompt_synonym_list, created_time, last_modified_time, version, status, tenant_id, root_pipeline_id, group_id, origin_id, batch_id)
+                    SELECT  cbp.prompt_id, cbp.channel_id,cbp.base_prompt,
+                    REPLACE(cbp.modified_prompt_item_list,'${{synonym_list}}', sl.synonym_list), now(), now(),cbp.version, cbp.status, sl.tenant_id, stpq.root_pipeline_id , stpq.group_id,stpq.origin_id, stpq.batch_id
+                    FROM ${temp_schema_name}.replace_item_list_${init_process_id.process_id} cbp
+                    JOIN ${temp_schema_name}.synonym_list_${init_process_id.process_id} sl ON sl.root_pipeline_id  = cbp.root_pipeline_id
+                    join sor_transaction.sor_transaction_payload_queue stpq on stpq.root_pipeline_id  = sl.root_pipeline_id
+                    join info.source_of_truth sot on sot.origin_id  = stpq.origin_id
+                    join sor_meta.asset_info ai on ai.template_name = sot.template_name
+                    WHERE  cbp.channel_id =  ai.asset_id  and stpq.root_pipeline_id = '${gen_id.root_pipeline_id}'
+                    group by cbp.base_prompt,cbp.prompt_id,cbp.channel_id,cbp.modified_prompt_item_list, stpq.root_pipeline_id , stpq.group_id,stpq.origin_id,  sl.synonym_list, sl.tenant_id,
+                    cbp.version, cbp.status, stpq.batch_id;
+
+
+                    -- replacing json_contract list;
+
+                    INSERT INTO ${temp_schema_name}.replace_json_contract_${init_process_id.process_id}
+                    (prompt_id, channel_id, base_prompt, modified_prompt_json_contract, created_time, last_modified_time, version, status, tenant_id, root_pipeline_id, group_id, origin_id, batch_id)
+                    SELECT  cbp.prompt_id, cbp.channel_id,cbp.base_prompt,
+                    REPLACE(cbp.modified_prompt_synonym_list,'${{json_contract}}', jc.json_contract), now(), now(),cbp.version, cbp.status, jc.tenant_id, stpq.root_pipeline_id , stpq.group_id,stpq.origin_id,stpq.batch_id
+                    FROM ${temp_schema_name}.replace_synonym_list_${init_process_id.process_id} cbp
+                    join ${temp_schema_name}.json_contract_${init_process_id.process_id} jc on jc.root_pipeline_id = cbp.root_pipeline_id
+                    join sor_transaction.sor_transaction_payload_queue stpq on stpq.root_pipeline_id  = jc.root_pipeline_id
+                    join info.source_of_truth sot on sot.origin_id  = stpq.origin_id
+                    join sor_meta.asset_info ai on ai.template_name = sot.template_name
+                    WHERE  cbp.channel_id =  ai.asset_id  and stpq.root_pipeline_id = '${gen_id.root_pipeline_id}'
+                    group by cbp.base_prompt,cbp.prompt_id,cbp.channel_id,cbp.modified_prompt_synonym_list, stpq.root_pipeline_id , stpq.group_id,stpq.origin_id,  jc.json_contract , jc.tenant_id,
+                    cbp.version, cbp.status, stpq.batch_id;
+
+                    -- inserting into channel based prompt audit;
+
+                    INSERT INTO dynamic_prompt_gen.channel_based_prompt_${init_process_id.process_id}_table
+                    (prompt_id, channel_id, base_prompt, prompt_value, created_time, last_modified_time, version, status, tenant_id, root_pipeline_id, group_id, origin_id, batch_id)
+                    SELECT prompt_id, channel_id, base_prompt, modified_prompt_json_contract, created_time, last_modified_time, version, status, tenant_id, root_pipeline_id, group_id, origin_id, batch_id
+                    FROM ${temp_schema_name}.replace_json_contract_${init_process_id.process_id} jc
+                    where jc.root_pipeline_id = '${gen_id.root_pipeline_id}';
+
+              "} on-condition if "${dynamic_prompt_generation.values_changed}"=="true"
+
+    }
+    catch{
+        transform as "INSERT to failed sor transaction pipeline audit" on "intics_zio_db_conn" using
+           {"
+                INSERT INTO sor_transaction.sor_transaction_pipeline_audit
+                (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id)
+                VALUES('${group_id}', now(), '${created_user_id}', '${created_user_id}', ${tenant_id}, 'FAILED', 'SOR_TRANSACTION_DYNAMIC_PROMPT_GEN', 'Sor transaction dynamic prompt generation process failed for group_id ${group_id}','${gen_id.root_pipeline_id}');
+           "} on-condition if "true"=="true"
+    }
+    finally{
+        transform as "INSERT to COMPLETED sor transaction pipeline audit" on "intics_zio_db_conn" using
+           {"
+
+                INSERT INTO dynamic_prompt_gen.channel_based_prompt_audit_table
+                (prompt_id, channel_id, base_prompt, prompt_value, created_time, last_modified_time, version, status, tenant_id, root_pipeline_id, group_id, origin_id)
+                SELECT prompt_id, channel_id, base_prompt, prompt_value, created_time, last_modified_time, version, status, tenant_id, root_pipeline_id, group_id, origin_id
+                FROM dynamic_prompt_gen.channel_based_prompt_${init_process_id.process_id}_table;
+
+                INSERT INTO sor_transaction.sor_transaction_pipeline_audit
+                (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id)
+                VALUES('${group_id}', now(), '${created_user_id}', '${created_user_id}', ${tenant_id}, 'COMPLETED', 'SOR_TRANSACTION_DYNAMIC_PROMPT_GEN', 'Sor transaction dynamic prompt generation process completed for group_id ${group_id}','${gen_id.root_pipeline_id}');
+           "} on-condition if "true"=="true"
+        }
+    }
+    }

@@ -11,7 +11,7 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.adapters.comparison.ComparisonAdapter;
 import in.handyman.raven.lib.adapters.comparison.ComparisonAdapterFactory;
 import in.handyman.raven.lib.model.ControlDataComparison;
-import in.handyman.raven.lib.model.controldatacomaprison.ControlDataComparisonQueryInputTable;
+import in.handyman.raven.lib.services.controldatacomaprison.ControlDataComparisonQueryInputTable;
 import in.handyman.raven.util.CommonQueryUtil;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.PreparedBatch;

@@ -1,0 +1,290 @@
+process "deep.sift.ddl"
+{
+    try
+    {
+        transform as "create a queue, queue archive, error queue, pipeline audit table" on "intics_zio_db_conn" using
+        {"
+
+            CREATE TABLE IF NOT EXISTS deep_sift.deep_sift_pipeline_audit (
+                id bigserial PRIMARY KEY,
+                group_id VARCHAR NULL,
+                created_on TIMESTAMP NULL,
+                status VARCHAR NULL,
+                stage VARCHAR NULL,
+                message VARCHAR NULL,
+                root_pipeline_id INT8 NULL,
+                tenant_id INT4 NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS deep_sift.deep_sift_payload_queue_archive (
+                producer_process_id int8 NOT NULL,
+                consumer_process_id int8 NOT NULL,
+                origin_id varchar NOT NULL,
+                tenant_id int4 NOT NULL,
+                group_id varchar NULL,
+                batch_id varchar NULL,
+                root_pipeline_id int8 NULL,
+                created_on TIMESTAMP NULL,
+                status varchar NULL,
+                stage varchar NULL,
+                consumed_on_ts TIMESTAMP NULL,
+                CONSTRAINT deep_sift_payload_queue_archive_pk PRIMARY KEY (tenant_id, origin_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS deep_sift.deep_sift_error_queue (
+                producer_process_id int8 NOT NULL,
+                consumer_process_id int8 NOT NULL,
+                origin_id varchar NOT NULL,
+                tenant_id int4 NOT NULL,
+                group_id varchar NULL,
+                batch_id varchar NULL,
+                root_pipeline_id int8 NULL,
+                created_on TIMESTAMP NULL,
+                status varchar NULL,
+                stage varchar NULL,
+                message varchar NULL,
+                consumed_on_ts TIMESTAMP NULL,
+                CONSTRAINT deep_sift_error_queue_pk PRIMARY KEY (tenant_id, origin_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS ${temp_schema_name}.deep_sift_input_${init_process_id.process_id} (
+                id bigserial PRIMARY KEY,
+                origin_id varchar NOT NULL,
+                group_id varchar NOT NULL,
+                input_file_path text NULL,
+                created_on timestamp NOT NULL,
+                created_by varchar NOT NULL,
+                root_pipeline_id int8 NOT NULL,
+                tenant_id int4 NOT NULL,
+                batch_id varchar NOT NULL,
+                paper_no int4 NOT NULL,
+                source_document_type varchar NOT NULL,
+                model_id int4 NULL,
+                model_name varchar NULL,
+                base_prompt text NULL,
+                system_prompt text NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS ${temp_schema_name}.deep_sift_output_${init_process_id.process_id} (
+                id bigserial PRIMARY KEY,
+                origin_id varchar NOT NULL,
+                group_id varchar NOT NULL,
+                input_file_path text NULL,
+                created_on timestamp NOT NULL,
+                created_by varchar NOT NULL,
+                root_pipeline_id int8 NOT NULL,
+                tenant_id int4 NOT NULL,
+                batch_id varchar NOT NULL,
+                extracted_text text NULL,
+                paper_no int4 NOT NULL,
+                source_document_type varchar NOT NULL,
+                model_id int4 NULL,
+                model_name varchar NULL,
+                timetaken_ms BIGINT NULL,
+                status varchar NULL,
+                request TEXT NULL,
+                response TEXT NULL,
+                endpoint TEXT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS ${temp_schema_name}.deep_search_input_${init_process_id.process_id} (
+                id bigserial PRIMARY KEY,
+                origin_id varchar NOT NULL,
+                group_id varchar NOT NULL,
+                created_on timestamp NOT NULL,
+                created_by varchar NOT NULL,
+                extracted_text text NULL,
+                root_pipeline_id int8 NOT NULL,
+                tenant_id int4 NOT NULL,
+                batch_id varchar NOT NULL,
+                paper_no int4 NOT NULL,
+                source_document_type varchar NOT NULL,
+                sor_container_id int8 NOT NULL,
+                sor_container_name varchar NOT NULL,
+                sor_item_id int8 NOT NULL,
+                sor_item_name varchar NOT NULL,
+                search_id int8 NOT NULL,
+                search_name varchar NOT NULL,
+                keywords text NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS ${temp_schema_name}.deep_search_output_${init_process_id.process_id} (
+                id bigserial PRIMARY KEY,
+                origin_id varchar NOT NULL,
+                group_id varchar NOT NULL,
+                created_on timestamp NOT NULL,
+                created_by varchar NOT NULL,
+                search_output text NULL,
+                root_pipeline_id int8 NOT NULL,
+                tenant_id int4 NOT NULL,
+                batch_id varchar NOT NULL,
+                paper_no int4 NOT NULL,
+                source_document_type varchar NOT NULL,
+                sor_container_id int8 NOT NULL,
+                sor_container_name varchar NOT NULL,
+                sor_item_id int8 NOT NULL,
+                sor_item_name varchar NOT NULL,
+                search_id int8 NOT NULL,
+                search_name varchar NOT NULL,
+                timetaken_ms BIGINT NULL,
+                status varchar NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS ${temp_schema_name}.final_deep_search_${init_process_id.process_id} (
+                id bigserial PRIMARY KEY,
+                origin_id varchar NOT NULL,
+                group_id varchar NOT NULL,
+                created_on timestamp NOT NULL,
+                created_by varchar NOT NULL,
+                root_pipeline_id int8 NOT NULL,
+                tenant_id int4 NOT NULL,
+                batch_id varchar NOT NULL,
+                source_document_type varchar NOT NULL,
+                sor_container_id int8 NOT NULL,
+                sor_container_name varchar NOT NULL,
+                sor_item_id int8 NOT NULL,
+                sor_item_name varchar NOT NULL,
+                search_id int8 NOT NULL,
+                comma_separated_search_outputs text NULL,
+                min_paper_no int4 NULL
+            );
+
+        "}
+
+        transform as "create a deep sift input, output, search response table" on "intics_zio_db_conn" using
+        {"
+            CREATE TABLE IF NOT EXISTS deep_sift.deep_sift_input_audit (
+                id bigserial PRIMARY KEY,
+                origin_id varchar NOT NULL,
+                group_id varchar NOT NULL,
+                input_file_path text NULL,
+                created_on timestamp NOT NULL,
+                created_by varchar NOT NULL,
+                root_pipeline_id int8 NOT NULL,
+                tenant_id int4 NOT NULL,
+                batch_id varchar NOT NULL,
+                paper_no int4 NOT NULL,
+                source_document_type varchar NOT NULL,
+                model_id int4 NULL,
+                model_name varchar NULL,
+                base_prompt text NULL,
+                system_prompt text NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS deep_sift.deep_sift_output_audit (
+                id bigserial PRIMARY KEY,
+                origin_id varchar NOT NULL,
+                group_id varchar NOT NULL,
+                input_file_path text NULL,
+                created_on timestamp NOT NULL,
+                created_by varchar NOT NULL,
+                root_pipeline_id int8 NOT NULL,
+                tenant_id int4 NOT NULL,
+                batch_id varchar NOT NULL,
+                extracted_text text NULL,
+                paper_no int4 NOT NULL,
+                source_document_type varchar NOT NULL,
+                model_id int4 NULL,
+                model_name varchar NULL,
+                timetaken_ms BIGINT NULL,
+                status varchar NULL,
+                request TEXT NULL,
+                response TEXT NULL,
+                endpoint TEXT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS deep_sift.deep_search_input_audit (
+                id BIGSERIAL PRIMARY KEY,
+                origin_id VARCHAR NOT NULL,
+                group_id VARCHAR NOT NULL,
+                created_on TIMESTAMP NOT NULL,
+                created_by VARCHAR NOT NULL,
+                extracted_text TEXT NULL,
+                root_pipeline_id BIGINT NOT NULL,
+                tenant_id INT NOT NULL,
+                batch_id VARCHAR NOT NULL,
+                paper_no INT NOT NULL,
+                source_document_type varchar NOT NULL,
+                sor_container_id BIGINT NOT NULL,
+                sor_container_name varchar NOT NULL,
+                sor_item_id BIGINT NOT NULL,
+                sor_item_name varchar NOT NULL,
+                search_id BIGINT NOT NULL,
+                search_name varchar NOT NULL,
+                keywords TEXT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS deep_sift.deep_search_output_audit (
+                id BIGSERIAL PRIMARY KEY,
+                origin_id VARCHAR NOT NULL,
+                group_id VARCHAR NOT NULL,
+                created_on TIMESTAMP NOT NULL,
+                created_by VARCHAR NOT NULL,
+                search_output TEXT NULL,
+                root_pipeline_id BIGINT NOT NULL,
+                tenant_id INT NOT NULL,
+                batch_id VARCHAR NOT NULL,
+                paper_no INT NOT NULL,
+                source_document_type varchar NOT NULL,
+                sor_container_id BIGINT NOT NULL,
+                sor_container_name varchar NOT NULL,
+                sor_item_id BIGINT NOT NULL,
+                sor_item_name varchar NOT NULL,
+                search_id BIGINT NOT NULL,
+                search_name varchar NOT NULL,
+                timetaken_ms BIGINT NULL,
+                status varchar NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS deep_sift.final_deep_search_audit (
+                id bigserial PRIMARY KEY,
+                origin_id varchar NOT NULL,
+                group_id varchar NOT NULL,
+                created_on timestamp NOT NULL,
+                created_by varchar NOT NULL,
+                root_pipeline_id int8 NOT NULL,
+                tenant_id int4 NOT NULL,
+                batch_id varchar NOT NULL,
+                source_document_type varchar NOT NULL,
+                sor_container_id int8 NOT NULL,
+                sor_container_name varchar NOT NULL,
+                sor_item_id int8 NOT NULL,
+                sor_item_name varchar NOT NULL,
+                search_id int8 NOT NULL,
+                comma_separated_search_outputs text NULL,
+                min_paper_no int4 NULL
+            );
+
+             CREATE TABLE IF NOT EXISTS ${temp_schema_name}.deep_sift_chrono_clash_input_${init_process_id.process_id} (
+                 root_pipeline_id int8 NOT NULL,
+                 created_on timestamp NULL,
+                 updated_on timestamp NULL,
+                 batch_id varchar NOT NULL,
+                 group_id int4 NULL,
+                 origin_id varchar NOT NULL,
+                 tenant_id int8 NOT NULL,
+                 time_frame int4 NULL,
+                 stage varchar NULL,
+                 status varchar NULL,
+                 transaction_id varchar NOT NULL,
+                 downloaded_time timestamp NULL,
+                 remaining_time interval NULL,
+                 CONSTRAINT deep_sift_chrono_clash_input_${init_process_id.process_id}_pk PRIMARY KEY (origin_id,tenant_id,root_pipeline_id,transaction_id)
+             );
+
+        "} on-condition if "${deep.sift.extraction.activator}"=="true"
+
+    }
+    catch {
+        transform as "INSERTING FAILED STATUS FOR DEEP SIFT" on "intics_zio_db_conn" using
+        {"
+            INSERT INTO deep_sift.deep_sift_pipeline_audit
+            (process_id, group_id, created_on, status, stage, message, root_pipeline_id, tenant_id)
+            VALUES('${init_process_id.process_id}', '${gen_group_id.group_id}', now(), 'FAILED',
+            'DEEP_SIFT', 'FAILED DEEP SIFT PROCESS', '${gen_id.root_pipeline_id}', ${tenant_id});
+        "} on-condition if "true"=="true"
+    }
+    finally {
+
+    }
+}

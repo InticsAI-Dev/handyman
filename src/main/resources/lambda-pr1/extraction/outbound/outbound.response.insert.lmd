@@ -1,0 +1,125 @@
+process "outbound.response.insert"
+{
+try{
+
+
+        transform as "paper count insert" on "intics_zio_db_conn" using
+        {"
+                insert into macro.source_paper_count
+                           (root_pipeline_id, group_id, origin_id, paper_count, created_on , batch_id)
+                           select b.root_pipeline_id , b.group_id, b.origin_id, count(b.paper_no) as paper_count, inbound.created_on , b.batch_id
+                           from ${temp_schema_name}.source_of_truth_${init_process_id.process_id} b
+                           join ingestion.inbound_file inbound
+                           on inbound.root_pipeline_id=b.root_pipeline_id
+                           where b.group_id = '${gen_group_id.group_id}' and b.tenant_id = '${tenant_id}' and b.batch_id='${batch_id}'
+                           group by b.root_pipeline_id, inbound.created_on, b.group_id, b.origin_id, b.batch_id ;
+
+  "}on-condition if "true"=="true"
+
+        transform as "insert into total json response" on "intics_zio_db_conn" using
+        {"
+        insert into macro.total_json_response
+            (status, tenant_id, created_user_id, last_updated_user_id, version, transaction_id, batch_id,
+            root_pipeline_id, group_id, paper_no, origin_id, document_id, paper_count, file_extension, created_on,
+            ended_on, kvp_total_response_json, text_total_response_json,
+            tables_total_response_json, checkbox_total_response_json
+        )
+
+        SELECT
+            soo.status, soo.tenant_id, soo.created_user_id,
+            soo.last_updated_user_id, 1 as version, soo.transaction_id, soo.batch_id, soo.root_pipeline_id , soo.group_id,kvp.paper_no,
+            soo.origin_id, soo.file_id AS document_id, (pcnt.paper_count), a.file_extension,
+            soo.created_on, NOW() AS ended_on,
+        CASE
+                  WHEN kvp.kvp_results ='null' or kvp.kvp_results is null THEN '{}'::jsonb
+                  ELSE kvp.kvp_results::jsonb
+                END AS kvp_results,
+        CASE
+             WHEN text.response ='null' or text.response is null THEN '{}'::jsonb
+             ELSE text.response::jsonb
+           END AS text_response,
+        CASE
+                  WHEN tables.table_response ::jsonb ='null' or tables.table_response ::jsonb is null THEN '[]'::jsonb
+                  ELSE tables.table_response ::jsonb::jsonb
+                END AS table_response ,
+        CASE
+                  WHEN checkbox.response::jsonb::jsonb ='null' or checkbox.response::jsonb::jsonb is null THEN '[]'::jsonb
+                  ELSE checkbox.response::jsonb::jsonb::jsonb
+                END AS checkbox_response
+     FROM ${temp_schema_name}.source_of_origin_${init_process_id.process_id} soo
+     JOIN macro.source_paper_count pcnt
+           ON pcnt.root_pipeline_id = soo.root_pipeline_id
+           AND pcnt.group_id = soo.group_id
+           AND pcnt.origin_id = soo.origin_id
+     JOIN ${temp_schema_name}.asset_${init_process_id.process_id} a
+           ON soo.asset_id = a.asset_id
+     join ${temp_schema_name}.source_of_truth_${init_process_id.process_id} sot on soo.origin_id=sot.origin_id and soo.tenant_id=sot.tenant_id
+     left join ${temp_schema_name}.kvp_extraction_llm_json_parser_${init_process_id.process_id} kvp
+                    on sot.origin_id=kvp.origin_id
+                    and sot.tenant_id = kvp.tenant_id
+                    and sot.root_pipeline_id =kvp.root_pipeline_id
+                    and sot.paper_no = kvp.paper_no
+     left JOIN ${temp_schema_name}.text_extraction_llm_json_parser_${init_process_id.process_id} text
+           ON sot.root_pipeline_id = text.root_pipeline_id
+           AND sot.group_id = text.group_id
+           AND sot.origin_id = text.origin_id
+           and sot.paper_no = text.paper_no
+     left join ${temp_schema_name}.table_extraction_llm_json_parser_${init_process_id.process_id} tables
+                on soo.origin_id=tables.origin_id
+                and soo.tenant_id = tables.tenant_id
+                and sot.paper_no = tables.paper_no
+     left join ${temp_schema_name}.checkbox_extraction_llm_json_parser_${init_process_id.process_id} checkbox
+                on soo.origin_id=checkbox.origin_id
+                and soo.tenant_id = checkbox.tenant_id
+                and soo.root_pipeline_id = checkbox.root_pipeline_id
+                and sot.paper_no = checkbox.paper_no
+                   WHERE soo.group_id = '${gen_group_id.group_id}' and soo.tenant_id =  '${tenant_id}' and soo.batch_id='${batch_id}';
+
+
+  "}on-condition if "true"=="true"
+
+          transform as "Outbound response insert" on "intics_zio_db_conn" using
+          {"
+            insert into product_outbound.product_response_details
+            (status,transaction_id,tenant_id,created_user_id,last_updated_user_id,version,origin_id,document_id,
+            extension,created_on,last_updated_on,product_response)
+            select   status,
+                    transaction_id,
+                    tenant_id,
+                    created_user_id::int8,
+                    last_updated_user_id::int8,
+                    version,
+                    origin_id,
+                    document_id,
+                    file_extension,
+                    created_on,
+                    now() AS last_updated_on, json_build_object('docId',document_id,'originId',origin_id,'totalPages',paper_count,'extension',file_extension,'page_info',
+                array_agg(json_build_object('page_no',paper_no,'textLines',text_total_response_json,'form',kvp_total_response_json,
+                'tables',tables_total_response_json,'selectionElements',checkbox_total_response_json)))
+            from  macro.total_json_response
+            WHERE group_id = '${gen_group_id.group_id}' and tenant_id =  '${tenant_id}' and batch_id='${batch_id}'
+            group by document_id,origin_id,paper_count,file_extension,
+             status, transaction_id,tenant_id,
+                                created_user_id::int8,
+                                last_updated_user_id::int8,
+                                version,
+                                origin_id,
+                                document_id,
+                                file_extension,
+                                created_on,
+                                now();
+
+        "}on-condition if "false"=="true"
+
+
+
+
+}
+catch{
+
+
+}
+finally{
+
+}
+}

@@ -1,0 +1,822 @@
+process "sor.transform.processor"
+{
+	try{
+
+           transform as "Input table for the ocr text comparison" on "intics_zio_db_conn" using
+           {"
+
+
+                    CREATE TABLE IF NOT EXISTS ${temp_schema_name}.vqa_transaction_${init_process_id.process_id} (
+                            transaction_id bigserial NOT NULL,
+                            created_on timestamp NULL,
+                            created_user_id int8 NULL,
+                            last_updated_on timestamp NULL,
+                            last_updated_user_id int8 NULL,
+                            status varchar NULL,
+                            version int4 NULL,
+                            answer varchar NULL,
+                            b_box varchar NULL,
+                            document_id varchar NOT NULL,
+                            extracted_image_unit varchar NULL,
+                            group_id int4 NULL,
+                            image_dpi int8 NULL,
+                            image_height int8 NULL,
+                            image_width int8 NULL,
+                            model_id int8 NULL,
+                            model_info varchar NULL,
+                            origin_id varchar NOT NULL,
+                            paper_no int4 NOT NULL,
+                            question_id int8 NULL,
+                            root_pipeline_id int8 NULL,
+                            score int8 NULL,
+                            sor_item_attribution_id int4 NULL,
+                            sor_item_name varchar NOT NULL,
+                            sor_question varchar NOT NULL,
+                            synonym_id int8 NULL,
+                            tenant_id int8 NOT NULL,
+                            vqa_score float8 NULL,
+                            weight int4 NULL,
+                            model_registry varchar NULL,
+                            category text NULL,
+                            model_registry_id int8 NULL,
+                            stage varchar NULL,
+                            batch_id varchar NOT NULL,
+                            sor_container_name varchar NULL,
+                            sor_container_id int8 NULL,
+                            section_alias varchar NULL,
+                            sor_item_label varchar NULL,
+                            sor_container_instance varchar null
+                    );
+
+                CREATE TABLE IF NOT EXISTS  ${temp_schema_name}.ocr_text_comparison_input_${init_process_id.process_id}(
+                created_on timestamp NULL,
+                created_user_id int4 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int4 NULL,
+                tenant_id int8 NULL,
+                origin_id varchar NULL,
+                group_id int4 NULL,
+                paper_no int4 NULL,
+                sor_question varchar NULL,
+                answer text NULL,
+                vqa_score float8 NULL,
+                score float8 NULL,
+                weight int4 NULL,
+                sor_item_attribution_id int4 NULL,
+                sor_item_name varchar NULL,
+                document_id varchar NULL,
+                b_box varchar NULL,
+                root_pipeline_id int8 NULL,
+                question_id int8 NULL,
+                synonym_id int8 NULL,
+                model_registry varchar NULL,
+                category text NULL,
+                batch_id varchar NULL,
+                is_ocr_field_comparable boolean NULL,
+                extracted_text text NULL,
+                allowed_adapter varchar NULL,
+                is_encrypted boolean NULL,
+                encryption_policy varchar NULL,
+                sor_container_instance varchar null
+                );
+
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.ocr_text_comparison_result_${init_process_id.process_id} (
+                created_on timestamp NOT NULL,
+                created_user_id int4 NOT NULL,
+                last_updated_on timestamp NOT NULL,
+                last_updated_user_id int4 NOT NULL,
+                tenant_id int8 NOT NULL,
+                origin_id varchar NULL,
+                group_id int4 NOT NULL,
+                paper_no int4 NOT NULL,
+                sor_question varchar NULL,
+                answer text NULL,
+                vqa_score float8 NULL,
+                score float8 NULL,
+                weight int4 NULL,
+                sor_item_attribution_id int4 NULL,
+                sor_item_name varchar NOT NULL,
+                document_id varchar NULL,
+                b_box varchar NULL,
+                root_pipeline_id int8 NULL,
+                question_id int8 NULL,
+                synonym_id int8 NULL,
+                model_registry varchar NULL,
+                category text NULL,
+                batch_id varchar NOT NULL,
+                is_ocr_field_comparable boolean NULL,
+                extracted_text text NULL,
+                threshold int8 NULL,
+                best_score int8 NULL,
+                regex_pattern text NULL,
+                candidates text NULL,
+                message varchar null,
+                is_encrypted bool null,
+                encryption_policy varchar null,
+                sor_container_instance varchar null
+                );
+
+                CREATE TABLE if not exists ${temp_schema_name}.multi_value_sor_item_${init_process_id.process_id} (
+                origin_id varchar NULL,
+                sor_item_name varchar NULL,
+                question text NULL,
+                voting_out float4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NULL,
+                predicted_value text NULL,
+                group_id int4 NULL,
+                paper_no int4 NULL,
+                vqa_score float8 NULL,
+                question_id int8 NULL,
+                synonym_id int8 NULL,
+                model_registry varchar NULL,
+                weight int4 NULL,
+                score float8 NULL,
+                document_id varchar NULL,
+                validation_name varchar NULL,
+                b_box varchar NULL,
+                root_pipeline_id int8 null,
+                aggregated_score int8 null,
+                masked_score int8 null,
+                rank int8 null,
+                sor_item_attribution_id int8 null,
+                frequency int8 null,
+                is_encrypted bool null,
+                encryption_policy varchar null,
+                sor_container_instance varchar null
+                );
+
+
+
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.aggregate_cleaned_result_${init_process_id.process_id} (
+                validation_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int4 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int4 NULL,
+                tenant_id int8 NULL,
+                aggregated_score float8 NULL,
+                masked_score float8 NULL,
+                origin_id varchar NULL,
+                paper_no int8 NULL,
+                predicted_value text NULL,
+                rank int4 NULL,
+                sor_item_attribution_id varchar NULL,
+                sor_item_name varchar NULL,
+                document_id varchar NULL,
+                b_box varchar NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                vqa_score float8 NULL,
+                question_id int8 NULL,
+                synonym_id int8 NULL,
+                model_registry varchar NULL,
+                batch_id varchar NULL,
+                frequency int4 NULL,
+                sor_container_instance varchar null
+                );
+
+
+
+                CREATE TABLE if not exists ${temp_schema_name}.aggregation_evaluator_${init_process_id.process_id} (
+                aggregation_evaluator_id bigserial NOT NULL,
+                created_on timestamp NOT NULL,
+                created_user_id varchar NOT NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id varchar NULL,
+                tenant_id int8 NULL,
+                aggregated_score float8 NULL,
+                masked_score float8 NULL,
+                group_id int8 NULL,
+                origin_id varchar NOT NULL,
+                paper_no int4 NOT NULL,
+                predicted_value text NULL,
+                vqa_score float8 NULL,
+                rank int4 NULL,
+                sor_item_attribution_id int4 NOT NULL,
+                sor_item_name varchar NOT NULL,
+                document_id varchar NOT NULL,
+                acc_transaction_id int8 NULL,
+                b_box varchar NULL,
+                root_pipeline_id int8 NULL,
+                frequency int8 NULL,
+                question_id int8 NULL,
+                synonym_id int8 NULL,
+                model_registry varchar NULL,
+                status varchar NULL,
+                version int4 NULL,
+                acc_transcation_id int8 NULL,
+                model_registry_id varchar NULL,
+                batch_id varchar NULL,
+                category text NULL,
+                sor_container_instance varchar null
+                );
+
+
+                 CREATE TABLE IF NOT EXISTS ${temp_schema_name}.cummulative_result_${init_process_id.process_id} (
+                    cummulative_id bigserial NOT NULL,
+                    created_on timestamp NULL,
+                    created_user_id int8 NULL,
+                    last_updated_on timestamp NULL,
+                    last_updated_user_id int8 NULL,
+                    status varchar NULL,
+                    version int4 NULL,
+                    frequency int8 NULL,
+                    b_box varchar NULL,
+                    confidence_score numeric(10, 2) NULL,
+                    extracted_value varchar NULL,
+                    filter_score numeric(10, 2) NULL,
+                    group_id int8 NULL,
+                    maximum_score numeric(10, 2) NULL,
+                    origin_id varchar NULL,
+                    paper_no int8 NULL,
+                    question_id int8 NULL,
+                    root_pipeline_id int8 NULL,
+                    sor_item_name varchar NOT NULL,
+                    synonym_id int8 NULL,
+                    tenant_id int8 NULL,
+                    model_registry varchar NULL,
+                    batch_id varchar not null,
+                    sor_container_instance varchar null
+                );
+
+
+            CREATE TABLE IF NOT EXISTS ${temp_schema_name}.deep_sift_output_${init_process_id.process_id} (
+                id bigserial PRIMARY KEY,
+                origin_id varchar NOT NULL,
+                group_id varchar NOT NULL,
+                input_file_path text NULL,
+                created_on timestamp NOT NULL,
+                created_by varchar NOT NULL,
+                root_pipeline_id int8 NOT NULL,
+                tenant_id int4 NOT NULL,
+                batch_id varchar NOT NULL,
+                extracted_text text NULL,
+                paper_no int4 NOT NULL,
+                source_document_type varchar NOT NULL,
+                model_id int4 NULL,
+                model_name varchar NULL,
+                timetaken_ms BIGINT NULL,
+                status varchar NULL,
+                request TEXT NULL,
+                response TEXT NULL,
+                endpoint TEXT NULL
+            );
+
+
+          "} on-condition if "true"=="true"
+
+
+
+        transform as "Insert into sor_item_multivalue_filtering audits" on "intics_zio_db_conn" using
+        {"
+
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.sor_item_multivalue_filtering_input_${init_process_id.process_id} (
+                transaction_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                answer varchar NULL,
+                b_box varchar NULL,
+                document_id varchar NOT NULL,
+                extracted_image_unit varchar NULL,
+                group_id int4 NULL,
+                image_dpi int8 NULL,
+                image_height int8 NULL,
+                image_width int8 NULL,
+                model_id int8 NULL,
+                model_info varchar NULL,
+                origin_id varchar NOT NULL,
+                paper_no int4 NOT NULL,
+                question_id int8 NULL,
+                root_pipeline_id int8 NULL,
+                score int8 NULL,
+                sor_item_attribution_id int4 NULL,
+                sor_item_name varchar NOT NULL,
+                sor_question varchar NOT NULL,
+                synonym_id int8 NULL,
+                tenant_id int8 NOT NULL,
+                vqa_score float8 NULL,
+                weight int4 NULL,
+                model_registry varchar NULL,
+                category text NULL,
+                model_registry_id int8 NULL,
+                stage varchar NULL,
+                batch_id varchar NOT NULL,
+                line_item_type varchar null,
+                is_encrypted bool NULL,
+                encryption_policy_id int8 NULL,
+                encryption_policy varchar null
+                );
+
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.sor_single_value_filtering_input_${init_process_id.process_id} (
+                transaction_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                answer varchar NULL,
+                b_box varchar NULL,
+                document_id varchar NOT NULL,
+                extracted_image_unit varchar NULL,
+                group_id int4 NULL,
+                image_dpi int8 NULL,
+                image_height int8 NULL,
+                image_width int8 NULL,
+                model_id int8 NULL,
+                model_info varchar NULL,
+                origin_id varchar NOT NULL,
+                paper_no int4 NOT NULL,
+                question_id int8 NULL,
+                root_pipeline_id int8 NULL,
+                score int8 NULL,
+                sor_item_attribution_id int4 NULL,
+                sor_item_name varchar NOT NULL,
+                sor_question varchar NOT NULL,
+                synonym_id int8 NULL,
+                tenant_id int8 NOT NULL,
+                vqa_score float8 NULL,
+                weight int4 NULL,
+                model_registry varchar NULL,
+                category text NULL,
+                model_registry_id int8 NULL,
+                stage varchar NULL,
+                batch_id varchar NOT NULL,
+                line_item_type varchar null,
+                is_encrypted bool NULL,
+                encryption_policy_id int8 NULL,
+                encryption_policy varchar null
+                );
+
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.sor_item_multivalue_filtering_output_${init_process_id.process_id} (
+                    id bigserial not null,
+                    sor_item_attribution_id int8,
+                    root_pipeline_id VARCHAR,
+                    document_id VARCHAR,
+                    group_id int8,
+                    batch_id VARCHAR,
+                    tenant_id int8,
+                    origin_id VARCHAR,
+                    sor_item_name VARCHAR,
+                    answer TEXT,
+                    sor_question TEXT,
+                    line_item_type VARCHAR,
+                    synonym_id int8,
+                    score int8,
+                    vqa_score int8,
+                    category VARCHAR,
+                    stage VARCHAR,
+                    status VARCHAR,
+                    paper_no int8,
+                    question_id int8,
+                    sor_container_instance TEXT,
+                    b_box TEXT,
+                    model_id int8,
+                    model_info TEXT,
+                    model_registry VARCHAR,
+                    is_encrypted BOOLEAN,
+                    encryption_policy_id int8,
+                    encryption_policy TEXT,
+                    is_removed_after_filtering BOOLEAN,
+                    message TEXT,
+                    section_priority_after_filter VARCHAR,
+                    created_on TIMESTAMP ,
+                    last_updated_on TIMESTAMP
+                );
+
+
+                CREATE TABLE IF NOT EXISTS entity_voting.sor_item_multivalue_filtering_input (
+                transaction_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                answer varchar NULL,
+                b_box varchar NULL,
+                document_id varchar NOT NULL,
+                extracted_image_unit varchar NULL,
+                group_id int4 NULL,
+                image_dpi int8 NULL,
+                image_height int8 NULL,
+                image_width int8 NULL,
+                model_id int8 NULL,
+                model_info varchar NULL,
+                origin_id varchar NOT NULL,
+                paper_no int4 NOT NULL,
+                question_id int8 NULL,
+                root_pipeline_id int8 NULL,
+                score int8 NULL,
+                sor_item_attribution_id int4 NULL,
+                sor_item_name varchar NOT NULL,
+                sor_question varchar NOT NULL,
+                synonym_id int8 NULL,
+                tenant_id int8 NOT NULL,
+                vqa_score float8 NULL,
+                weight int4 NULL,
+                model_registry varchar NULL,
+                category text NULL,
+                model_registry_id int8 NULL,
+                stage varchar NULL,
+                batch_id varchar NOT NULL,
+                line_item_type varchar null,
+                is_encrypted bool NULL,
+                encryption_policy_id int8 NULL,
+                encryption_policy varchar null,
+                CONSTRAINT vqa_transaction_multival_pkey PRIMARY KEY (transaction_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS entity_voting.sor_single_value_filtering_input_audit (
+                transaction_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                answer varchar NULL,
+                b_box varchar NULL,
+                document_id varchar NOT NULL,
+                extracted_image_unit varchar NULL,
+                group_id int4 NULL,
+                image_dpi int8 NULL,
+                image_height int8 NULL,
+                image_width int8 NULL,
+                model_id int8 NULL,
+                model_info varchar NULL,
+                origin_id varchar NOT NULL,
+                paper_no int4 NOT NULL,
+                question_id int8 NULL,
+                root_pipeline_id int8 NULL,
+                score int8 NULL,
+                sor_item_attribution_id int4 NULL,
+                sor_item_name varchar NOT NULL,
+                sor_question varchar NOT NULL,
+                synonym_id int8 NULL,
+                tenant_id int8 NOT NULL,
+                vqa_score float8 NULL,
+                weight int4 NULL,
+                model_registry varchar NULL,
+                category text NULL,
+                model_registry_id int8 NULL,
+                stage varchar NULL,
+                batch_id varchar NOT NULL,
+                line_item_type varchar null,
+                is_encrypted bool NULL,
+                encryption_policy_id int8 NULL,
+                encryption_policy varchar null,
+                CONSTRAINT vqa_transaction_single_input_pkey PRIMARY KEY (transaction_id)
+                );
+
+
+
+                CREATE TABLE IF NOT EXISTS entity_voting.sor_item_multivalue_filtering_output_audit (
+                transaction_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                answer varchar NULL,
+                b_box varchar NULL,
+                document_id varchar NOT NULL,
+                extracted_image_unit varchar NULL,
+                group_id int4 NULL,
+                image_dpi int8 NULL,
+                image_height int8 NULL,
+                image_width int8 NULL,
+                model_id int8 NULL,
+                model_info varchar NULL,
+                origin_id varchar NOT NULL,
+                paper_no int4 NOT NULL,
+                question_id int8 NULL,
+                root_pipeline_id int8 NULL,
+                score int8 NULL,
+                sor_item_attribution_id int4 NULL,
+                sor_item_name varchar NOT NULL,
+                sor_question varchar NOT NULL,
+                synonym_id int8 NULL,
+                tenant_id int8 NOT NULL,
+                vqa_score float8 NULL,
+                weight int4 NULL,
+                model_registry varchar NULL,
+                category text NULL,
+                model_registry_id int8 NULL,
+                stage varchar NULL,
+                batch_id varchar NOT NULL,
+                line_item_type varchar null,
+                is_encrypted bool NULL,
+                encryption_policy_id int8 NULL,
+                encryption_policy varchar null,
+                CONSTRAINT multivalue_filtering_output_pkey PRIMARY KEY (transaction_id)
+                );
+
+        "} on-condition if "true"=="true"
+
+
+          multivalueSorItemHandling as "multi-value sorItem handling result"
+          on-resource-conn "intics_zio_db_conn"
+          output-table "${temp_schema_name}.sor_item_multivalue_filtering_output_${init_process_id.process_id}"
+          using {"
+             select vqa.created_on, vqa.created_user_id, vqa.last_updated_on, vqa.last_updated_user_id, vqa.status,
+            vqa.version, vqa.answer , vqa.b_box, vqa.document_id, vqa.extracted_image_unit, vqa.group_id, vqa.image_dpi,
+            vqa.image_height, vqa.image_width, vqa.model_id, vqa.model_info, vqa.origin_id, vqa.paper_no, vqa.question_id,
+            vqa.root_pipeline_id, vqa.vqa_score as score, vqa.sor_item_attribution_id, vqa.sor_item_name, vqa.sor_question, vqa.synonym_id,
+            vqa.tenant_id, vqa.vqa_score, vqa.weight, vqa.model_registry, vqa.category, vqa.model_registry_id, vqa.stage, vqa.batch_id, ep.line_item_type,
+            ep.encryption_policy_id, ep.is_encrypted, ep.encryption_policy, vqa.sor_container_instance, ep.is_multi_entity_enabled, ep.sor_container_name, vqa.section_alias, bs.whitelisted_sections
+            from ${temp_schema_name}.vqa_transaction_${init_process_id.process_id} vqa
+            join ${temp_schema_name}.sor_meta_consolidated_${init_process_id.process_id} ep on vqa.synonym_id=ep.synonym_id and vqa.sor_item_name=ep.sor_item_name and vqa.group_id=ep.group_id
+            LEFT JOIN (
+                                    SELECT
+                                        sor_container_id,
+                                        jsonb_agg(jsonb_build_object('truthEntity',truth_entity,'priorityLevel', priority_level))::varchar AS whitelisted_sections
+                                    FROM sor_meta.truth_entity_priority
+                                    WHERE section_type = 'ALLOWED'
+                                    GROUP BY sor_container_id
+                                ) bs
+                                    ON bs.sor_container_id = ep.sor_container_id
+            where vqa.batch_id='${batch_id}' and vqa.group_id='${gen_group_id.group_id}' and vqa.tenant_id=${tenant_id} and ep.is_multi_entity_enabled=true;
+
+          "} on-condition if "true"=="true"
+
+
+           transform as "Input table for the ocr text comparison" on "intics_zio_db_conn" using
+           {"
+                INSERT INTO ${temp_schema_name}.ocr_text_comparison_input_${init_process_id.process_id}
+                (created_on, created_user_id, last_updated_on,last_updated_user_id,  tenant_id, origin_id, group_id, paper_no, sor_question, answer,
+                vqa_score, score, weight, sor_item_attribution_id, sor_item_name, document_id, b_box, root_pipeline_id, question_id, synonym_id,
+                model_registry, category, batch_id, is_ocr_field_comparable, extracted_text, allowed_adapter, encryption_policy,is_encrypted,sor_container_instance)
+                SELECT now(),${tenant_id}, now(),${tenant_id},${tenant_id}, vt.origin_id, vt.group_id, vt.paper_no, vt.sor_question, vt.answer,
+                vt.vqa_score, vt.score,  0 as weight, vt.sor_item_attribution_id, vt.sor_item_name, vt.document_id, vt.b_box, vt.root_pipeline_id, vt.question_id, vt.synonym_id,
+                vt.model_registry, vt.category, vt.batch_id, meta.is_ocr_field_comparable, dsoa.extracted_text, meta.allowed_adapter, meta.encryption_policy,meta.is_encrypted,vt.sor_container_instance
+                FROM ${temp_schema_name}.sor_item_multivalue_filtering_output_${init_process_id.process_id} vt
+                LEFT JOIN ${temp_schema_name}.deep_sift_output_${init_process_id.process_id} dsoa
+                                    ON dsoa.origin_id = vt.origin_id
+                                          AND dsoa.paper_no = vt.paper_no
+                                          AND dsoa.batch_id = vt.batch_id
+                JOIN ${temp_schema_name}.sor_meta_consolidated_${init_process_id.process_id} meta ON meta.tenant_id = vt.tenant_id
+                       AND meta.group_id = vt.group_id
+                       AND meta.sor_item_name = vt.sor_item_name
+                       AND meta.synonym_id = vt.synonym_id
+                  WHERE vt.group_id = '${group_id}'
+                    AND vt.tenant_id = ${tenant_id}
+                    AND vt.batch_id = '${batch_id}'
+                    AND meta.document_type = '${document_type}'
+                    AND vt.is_removed_after_filtering = false;
+           "} on-condition if "true"=="true"
+
+
+           ocrTextComparator as "Ocr Text Comparator api calling macro"
+           on-resource-conn "intics_zio_db_conn"
+           output-table "${temp_schema_name}.ocr_text_comparison_result_${init_process_id.process_id}"
+           batch-id "${batch_id}"
+           using {"
+            SELECT
+                   ROW_NUMBER() OVER (ORDER BY root_pipeline_id) AS id,
+                   tenant_id,
+                   origin_id,
+                   group_id,
+                   paper_no,
+                   sor_question,
+                   answer,
+                   vqa_score,
+                   score,
+                   weight,
+                   sor_item_attribution_id,
+                   sor_item_name,
+                   document_id,
+                   b_box,
+                   root_pipeline_id,
+                   question_id,
+                   synonym_id,
+                   model_registry,
+                   category,
+                   batch_id,
+                   is_ocr_field_comparable,
+                   extracted_text,
+                   allowed_adapter,
+                   encryption_policy,
+                   is_encrypted,
+                   sor_container_instance
+            FROM ${temp_schema_name}.ocr_text_comparison_input_${init_process_id.process_id}
+            where batch_id='${batch_id}' and is_ocr_field_comparable is true;
+            "}on-condition if "${ocr.text.comparison.validator}"=="true"
+
+           transform as "Output table insert for the ocr text comparison having ocr comparable false" on "intics_zio_db_conn" using
+           {"
+
+               insert into ${temp_schema_name}.ocr_text_comparison_result_${init_process_id.process_id}
+               (created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, origin_id, group_id, paper_no, sor_question, answer,
+               vqa_score, score, weight, sor_item_attribution_id, sor_item_name, document_id, b_box, root_pipeline_id, question_id, synonym_id,
+               model_registry, category, batch_id, is_ocr_field_comparable, extracted_text, message, sor_container_instance)
+               SELECT created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, origin_id, group_id, paper_no, sor_question, answer,
+               vqa_score, score, weight, sor_item_attribution_id, sor_item_name, document_id, b_box, root_pipeline_id, question_id, synonym_id,
+               model_registry, category, batch_id, is_ocr_field_comparable, extracted_text, 'OCR field comparable from meta is false.',sor_container_instance
+               FROM ${temp_schema_name}.ocr_text_comparison_input_${init_process_id.process_id}
+               where batch_id ='${batch_id}' and is_ocr_field_comparable is false ;
+
+           "} on-condition if "${ocr.text.comparison.validator}"=="true"
+
+
+
+           transform as "Output table insert for the ocr text comparison having ocr comparable false" on "intics_zio_db_conn" using
+           {"
+
+               insert into ${temp_schema_name}.ocr_text_comparison_result_${init_process_id.process_id}
+               (created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, origin_id, group_id, paper_no, sor_question, answer,
+               vqa_score, score, weight, sor_item_attribution_id, sor_item_name, document_id, b_box, root_pipeline_id, question_id, synonym_id,
+               model_registry, category, batch_id, is_ocr_field_comparable, extracted_text, message, sor_container_instance)
+               SELECT created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, origin_id, group_id, paper_no, sor_question, answer,
+               vqa_score, score, weight, sor_item_attribution_id, sor_item_name, document_id, b_box, root_pipeline_id, question_id, synonym_id,
+               model_registry, category, batch_id, is_ocr_field_comparable, extracted_text, 'OCR field comparable is disabled [ocr.text.comparison.validator]=${ocr.text.comparison.validator}',sor_container_instance
+               FROM ${temp_schema_name}.ocr_text_comparison_input_${init_process_id.process_id}
+               where batch_id ='${batch_id}' ;
+
+           "} on-condition if "${ocr.text.comparison.validator}"=="false"
+
+            postProcessingExecutor as "insert into aggregator table with post-processing for multiple values"
+            on-resource-conn "intics_zio_db_conn"
+            output-table "${temp_schema_name}.aggregation_evaluator_${init_process_id.process_id}"
+            group-id "${group_id}"
+            batch-id "${batch_id}"
+            using
+            {"
+                   select
+                  a.tenant_id as tenant_id,
+                  a.best_score as aggregated_score,
+                  a.best_score as masked_score,
+                  a.origin_id,
+                  a.paper_no,
+                  a.answer as extracted_value,
+                  a.vqa_score,
+                  a.sor_item_attribution_id as sor_item_attribution_id,
+                  a.sor_item_name,
+                  a.document_id as documentId,
+                  1 as acc_transaction_id,
+                  a.b_box,
+                  a.root_pipeline_id as root_pipeline_id,
+                  1 as frequency,
+                  a.question_id,
+                  a.synonym_id,
+                  a.model_registry,
+                  smca.is_encrypted,
+                  smca.encryption_policy,
+                  smca.line_item_type,
+                  a.sor_container_instance
+                   FROM
+                     ${temp_schema_name}.ocr_text_comparison_result_${init_process_id.process_id} a
+                     JOIN ${temp_schema_name}.sor_meta_consolidated_${init_process_id.process_id} smca ON
+                                     smca.tenant_id = a.tenant_id
+                                     AND smca.group_id = a.group_id
+                                     AND smca.synonym_id = a.synonym_id
+                                     AND smca.sor_item_name = a.sor_item_name
+                   WHERE
+                      a.group_id = '${group_id}'
+                      AND a.tenant_id = ${tenant_id}
+                      AND a.batch_id = '${batch_id}'
+                      AND smca.line_item_type = 'multi_value';
+
+
+           "} on-condition if "true"=="true"
+
+            postProcessingExecutor as "insert into aggregator table with post-processing for single values"
+            on-resource-conn "intics_zio_db_conn"
+            output-table "${temp_schema_name}.aggregation_evaluator_${init_process_id.process_id}"
+            group-id "${group_id}"
+            batch-id "${batch_id}"
+            using
+            {"
+                  SELECT
+                     a.tenant_id as tenant_id,
+                     a.best_score as aggregated_score,
+                     a.best_score as masked_score,
+                     a.origin_id,
+                     a.paper_no,
+                     a.answer as extracted_value,
+                     a.vqa_score,
+                     a.sor_item_attribution_id as sor_item_attribution_id,
+                     a.sor_item_name,
+                     a.document_id as documentId,
+                     1 as acc_transaction_id,
+                     a.b_box,
+                     a.root_pipeline_id as root_pipeline_id,
+                     1 as frequency,
+                     a.question_id,
+                     a.synonym_id,
+                     a.model_registry,
+                     smca.is_encrypted,
+                     smca.encryption_policy,
+                     smca.line_item_type,
+                     a.sor_container_instance
+                   FROM
+                     ${temp_schema_name}.ocr_text_comparison_result_${init_process_id.process_id} a
+                     JOIN ${temp_schema_name}.sor_meta_consolidated_${init_process_id.process_id} smca ON
+                                     smca.tenant_id = a.tenant_id
+                                     AND smca.group_id = a.group_id
+                                     AND smca.synonym_id = a.synonym_id
+                                     AND smca.sor_item_name = a.sor_item_name
+                   WHERE
+                  a.group_id = '${group_id}'
+                      AND a.tenant_id = ${tenant_id}
+                      AND a.batch_id = '${batch_id}'
+                      AND smca.line_item_type <> 'multi_value';
+
+            "} on-condition if "true"=="true"
+
+            multiValueMemberMapper as "AUMI multi-value member mapper voting result"
+            on-resource-conn "intics_zio_db_conn"
+            output-table "${temp_schema_name}.cummulative_result_${init_process_id.process_id}"
+            batch-id "${batch_id}"
+            using {"
+                select ae.root_pipeline_id, ae.batch_id, ae.group_id, ae.origin_id, si.sor_container_name,
+                ae.sor_item_name, ae.predicted_value, ae.paper_no, ae.tenant_id, si.encryption_policy,
+                si.is_encrypted, si.line_item_type,
+                ae.synonym_id , ae.question_id, ae.frequency, ae.vqa_score, ae.b_box,
+                ae.model_registry, ROUND(ae.vqa_score) as confidence_score, si.document_type as document_type, sor_container_instance
+                from ${temp_schema_name}.aggregation_evaluator_${init_process_id.process_id} ae
+                join ${temp_schema_name}.sor_meta_consolidated_${init_process_id.process_id} si
+                                    on si.tenant_id = ae.tenant_id
+                                    and si.sor_item_name = ae.sor_item_name
+                                    and si.synonym_id = ae.synonym_id
+                                    and si.group_id = ae.group_id
+                where ae.root_pipeline_id = '${init_process_id.process_id}'
+                and si.sor_container_name = 'MEMBER_DETAILS'
+                and ae.origin_id='${origin_id}';
+            "} on-condition if "true"=="true"
+
+            transform as "update to failed in sor transaction audit" on "intics_zio_db_conn" using
+                       {"
+                INSERT INTO ${temp_schema_name}.cummulative_result_${init_process_id.process_id} (
+                 tenant_id, batch_id, group_id, origin_id, root_pipeline_id,
+                 paper_no, sor_item_name, question_id,
+                 synonym_id, b_box, extracted_value,
+                 created_on,created_user_id,last_updated_on,last_updated_user_id,status,version,confidence_score, sor_container_instance
+                )
+                SELECT
+                 tenant_id, batch_id, group_id, origin_id, root_pipeline_id,
+                 paper_no, sor_item_name, question_id,
+                 synonym_id, b_box, predicted_value as extracted_value,
+                 now(), ${tenant_id}, now(), ${tenant_id}, 'ACTIVE', 1, vqa_score as confidence_score, sor_container_instance
+                 from ${temp_schema_name}.aggregation_evaluator_${init_process_id.process_id}
+                    where batch_id='${batch_id}'
+                    and tenant_id=${tenant_id}
+                    and group_id=${group_id};
+           "} on-condition if "true"=="true"
+
+	}
+	catch{
+
+
+	}
+	finally{
+            transform as "Insert to audit table for ocr text comparison" on "intics_zio_db_conn" using
+            {"
+                    INSERT INTO macro.ocr_text_comparison_input_audit
+                    (created_on, created_user_id, last_updated_on,last_updated_user_id, tenant_id,origin_id,group_id,paper_no,sor_question,answer,vqa_score,score,weight,sor_item_attribution_id,
+                      sor_item_name,document_id,b_box,root_pipeline_id,question_id,synonym_id,model_registry,
+                      category,batch_id,is_ocr_field_comparable,extracted_text,allowed_adapter,encryption_policy,is_encrypted, sor_container_instance)
+                    SELECT now(),${tenant_id}, now(),${tenant_id},tenant_id,origin_id,group_id,paper_no,sor_question,answer,vqa_score,score,weight,sor_item_attribution_id,
+                         sor_item_name,document_id,b_box,root_pipeline_id,question_id,synonym_id,model_registry,
+                         category,batch_id,is_ocr_field_comparable,extracted_text,allowed_adapter,encryption_policy,is_encrypted, sor_container_instance
+                    FROM ${temp_schema_name}.ocr_text_comparison_input_${init_process_id.process_id}
+                    where batch_id='${batch_id}';
+
+                    INSERT INTO macro.ocr_text_comparison_result
+                    (created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, origin_id, group_id, paper_no, sor_question, answer, vqa_score, score, weight, sor_item_attribution_id, sor_item_name, document_id, b_box, root_pipeline_id, question_id, synonym_id, model_registry, category, batch_id, is_ocr_field_comparable, extracted_text, threshold, best_score, regex_pattern, candidates, sor_container_instance)
+                    SELECT created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, origin_id, group_id, paper_no, sor_question, answer, vqa_score, score, weight, sor_item_attribution_id, sor_item_name, document_id, b_box, root_pipeline_id, question_id, synonym_id, model_registry, category, batch_id, is_ocr_field_comparable, extracted_text, threshold, best_score, regex_pattern, candidates, sor_container_instance
+                    FROM ${temp_schema_name}.ocr_text_comparison_result_${init_process_id.process_id}
+                    where batch_id='${batch_id}' and group_id='${gen_group_id.group_id}' and tenant_id=${tenant_id};
+
+
+                    insert into macro.multi_value_sor_item_audit
+                    ( tenant_id, aggregated_score, masked_score, origin_id,
+                    paper_no, predicted_value, rank, sor_item_attribution_id, sor_item_name, document_id,b_box,group_id, root_pipeline_id,vqa_score,question_id,synonym_id, model_registry, batch_id, frequency, sor_container_instance)
+                    select  tenant_id, aggregated_score, masked_score, origin_id,
+                    paper_no, predicted_value, rank, sor_item_attribution_id, sor_item_name, document_id,b_box,group_id, root_pipeline_id,vqa_score,question_id,synonym_id, model_registry, batch_id, frequency, sor_container_instance
+                    from ${temp_schema_name}.multi_value_sor_item_${init_process_id.process_id};
+
+
+                    INSERT INTO score.aggregation_evaluator
+                    (created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, aggregated_score, masked_score, group_id, origin_id, paper_no, predicted_value, vqa_score, rank, sor_item_attribution_id, sor_item_name, document_id, acc_transaction_id, b_box, root_pipeline_id, frequency, question_id, synonym_id, model_registry, status, version, acc_transcation_id, model_registry_id, batch_id, category, sor_container_instance)
+                    select created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, aggregated_score, masked_score, group_id, origin_id, paper_no, predicted_value, vqa_score, rank, sor_item_attribution_id, sor_item_name, document_id, acc_transaction_id, b_box, root_pipeline_id, frequency, question_id, synonym_id, model_registry, status, version, acc_transcation_id, model_registry_id, batch_id, category, sor_container_instance
+                    from ${temp_schema_name}.aggregation_evaluator_${init_process_id.process_id}
+                    where batch_id='${batch_id}' and group_id='${group_id}' and tenant_id=${tenant_id};
+
+                    INSERT INTO voting.cummulative_result
+                    (created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, frequency, b_box, confidence_score, extracted_value, filter_score, group_id, maximum_score, origin_id, paper_no, question_id, root_pipeline_id, sor_item_name, synonym_id, tenant_id, model_registry, batch_id, sor_container_instance)
+                    select created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, frequency, b_box, confidence_score, extracted_value, filter_score, group_id, maximum_score, origin_id, paper_no, question_id, root_pipeline_id, sor_item_name, synonym_id, tenant_id, model_registry, batch_id, sor_container_instance
+                    from ${temp_schema_name}.cummulative_result_${process-id}
+                    where batch_id='${batch_id}' and group_id='${group_id}' and tenant_id=${tenant_id};
+
+
+              "} on-condition if "true"=="true"
+	}
+
+}

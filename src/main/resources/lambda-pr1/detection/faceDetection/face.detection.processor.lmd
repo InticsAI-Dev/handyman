@@ -1,0 +1,198 @@
+process "face.detection.processor"
+{
+try{
+
+        assign as "face_detection" source "intics_zio_db_conn"
+        using{"
+                SELECT now() as consumed_on_ts;
+        "} on-condition if "true"=="true"
+
+        transform as "Update to inprogress in payload queue" on "intics_zio_db_conn"
+        using {"
+
+                UPDATE face_detection.face_detection_payload_queue
+                SET status='IN_PROGRESS', consumed_on_ts = '${face_detection.consumed_on_ts}', consumer_process_id = '${process-id}'
+                WHERE group_id='${group_id}' AND status='STAGED' AND stage='FACE_DETECTION' AND tenant_id = ${tenant_id} and batch_id='${batch_id}';
+
+                UPDATE batching.sub_batching_process_payload_queue a
+                SET status='IN_PROGRESS',  stage='FACE_DETECTION'
+                WHERE a.group_id='${group_id}'
+                and a.batch_id ='${batch_id}' and a.tenant_id = ${tenant_id};
+
+
+                update ingestion.pipeline_queue_status_audit as a
+                set status = 'IN_PROGRESS' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                where  a.group_id=${group_id}
+                and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='FACE_DETECTION' ;
+
+                INSERT INTO face_detection.face_detection_pipeline_audit
+                (process_id, origin_id, group_id, created_on, status, stage, message,root_pipeline_id,tenant_id, batch_id)
+                select producer_process_id,origin_id,group_id, now(),
+                'STARTED', 'FACE_DETECTION','Face detection process STARTED for group_id ${group_id}','${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}'
+                FROM face_detection.face_detection_payload_queue
+                WHERE group_id='${group_id}' AND status='IN_PROGRESS' AND stage='FACE_DETECTION' AND tenant_id = ${tenant_id} and batch_id='${batch_id}';
+
+        "}on-condition if "true"=="true"
+
+        assign as "gen_directory" source "intics_zio_db_conn" using
+        {"
+                SELECT concat ('${target_directory_path}','/','${group_id}','/face_detection/') as face_detection_dest_path;
+
+        "} on-condition if "true"=="true"
+
+        createDirectory as "creating_directory" using
+        {"
+                ${gen_directory.face_detection_dest_path}
+        "} on-condition if "true"=="true"
+
+
+		transform as "insert into temporary table for the face detection" on "intics_zio_db_conn"
+		using {"
+
+				INSERT INTO ${temp_schema_name}.face_detection_input_${init_process_id.process_id}
+				(origin_id, input_file_path, paper_no, root_pipeline_id, tenant_id, group_id, process_id, process,batch_id)
+				select sot.origin_id, a.file_path as input_file_path ,sot.paper_no , sot.root_pipeline_id ,
+				a.tenant_id , sot.group_id,1 as process_id, 'FACE_DETECTION' as process,q.batch_id
+				from face_detection.face_detection_payload_queue q
+				left join info.source_of_truth sot on q.origin_id = sot.origin_id and q.tenant_id=sot.tenant_id
+				left join info.asset a on a.file_id = sot.preprocessed_file_id and q.tenant_id=a.tenant_id
+				left join sor_meta.asset_info ai on ai.document_type = sot.document_type and ai.template_name = sot.template_name and ai.tenant_id =q.tenant_id
+				left join sor_meta.truth_entity te on te.asset_id = ai.asset_id and te.tenant_id = q.tenant_id and te.sip_type='FACE_DETECTION_SIP'
+				where q.group_id=${group_id} and q.status='IN_PROGRESS' AND q.tenant_id=${tenant_id} and q.batch_id='${batch_id}'  and ai.document_type='${document_type}';
+
+
+		"} on-condition if "true"=="true"
+
+		faceDetection as "Face detection macro for the group_id ${group_id}"
+		on-resource-conn "intics_zio_db_conn"
+		outputDir "${gen_directory.face_detection_dest_path}"
+		copro-url "${copro.face-detection.url}"
+		output-table "face_detection.face_detection_result"
+		using {"
+				SELECT origin_id, input_file_path, paper_no, root_pipeline_id, tenant_id, group_id, process_id, process,batch_id
+				FROM ${temp_schema_name}.face_detection_input_${init_process_id.process_id}
+				where group_id=${group_id} and tenant_id=${tenant_id} and batch_id='${batch_id}';
+		"} on-condition if "true"=="true"
+
+        transform as "insert into audit table for face detection" on "intics_zio_db_conn" using
+        {"
+                insert into audit.process_audit_output
+                (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint,paper_no, batch_id)
+                select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint, ai.paper_no, '${batch_id}'
+                from face_detection.face_detection_result ai
+                where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id} and batch_id='${batch_id}'
+                group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage, ai.paper_no
+        "}  on-condition if "true"=="true"
+
+
+
+        transform as "Update to completed in payload queue" on "intics_zio_db_conn"
+        using {"
+
+                UPDATE face_detection.face_detection_payload_queue a
+                SET status=b.status,stage=b.stage, consumed_on_ts = '${face_detection.consumed_on_ts}', consumer_process_id = '${init_process_id.process_id}'
+                from face_detection.face_detection_result b
+                WHERE  a.origin_id=b.origin_id and a.status='IN_PROGRESS' and b.status='FAILED' and b.tenant_id = ${tenant_id} and a.batch_id='${batch_id}';
+
+                UPDATE face_detection.face_detection_payload_queue a
+                SET status=b.status, consumed_on_ts = '${face_detection.consumed_on_ts}', consumer_process_id = '${init_process_id.process_id}'
+                from face_detection.face_detection_result b
+                WHERE  a.origin_id=b.origin_id and a.status='IN_PROGRESS' and b.status='COMPLETED' and b.tenant_id = ${tenant_id}  and a.batch_id='${batch_id}';
+
+
+                UPDATE batching.sub_batching_process_payload_queue a
+                SET status='COMPLETED',  stage='FACE_DETECTION'
+                WHERE  a.group_id='${group_id}'
+                and a.tenant_id = ${tenant_id} and a.batch_id='${batch_id}';
+
+                INSERT INTO face_detection.face_detection_pipeline_audit
+                (process_id, origin_id, group_id, created_on, status, stage, message, root_pipeline_id, tenant_id, batch_id)
+                select producer_process_id,origin_id,group_id, now(),
+                'COMPLETED', 'FACE_DETECTION','face detection process COMPLETED for group_id ${group_id}','${gen_id.root_pipeline_id}', ${tenant_id},batch_id
+                FROM face_detection.face_detection_payload_queue
+                WHERE group_id='${group_id}' AND status='COMPLETED' AND stage='FACE_DETECTION' and tenant_id = ${tenant_id} and batch_id='${batch_id}';
+
+        "}on-condition if "true"=="true"
+}
+catch{
+        transform as "Update to failed in payload queue" on "intics_zio_db_conn"
+        using {"
+
+                UPDATE face_detection.face_detection_payload_queue
+                SET status='FAILED', consumed_on_ts = '${time_stamp_preprocess.consumed_on_ts}', consumer_process_id = '${init_process_id.process_id}'
+                WHERE group_id='${group_id}' AND status='IN_PROGRESS' and tenant_id = ${tenant_id} and batch_id='${batch_id}';
+
+                INSERT INTO face_detection.face_detection_pipeline_audit
+                (process_id, origin_id, group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+                select '${init_process_id.process_id}',origin_id,group_id, now(),
+                'FAILED', 'FACE_DETECTION','Face detection FAILED for group_id ${group_id}','${gen_id.root_pipeline_id}', ${tenant_id},'${batch_id}'
+                FROM face_detection.face_detection_payload_queue
+                WHERE group_id='${group_id}' AND status='FAILED' AND stage='FACE_DETECTION' and tenant_id = ${tenant_id} and batch_id='${batch_id}';
+
+
+        "}on-condition if "true"=="true"
+}
+finally{
+        transform as "insert into pipeline summary audit face_detection" on "intics_zio_db_conn" using {"
+                INSERT INTO ${temp_schema_name}.summary_audit_papers_${process-id}
+                (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken,root_pipeline_id, tenant_id, batch_id)
+                SELECT ${process-id} , 'FACE_DETECTION' ,'HW_DETECTION',coalesce (sum(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END),0) ,
+                coalesce (sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END),0),min(created_on),max(created_on),
+                EXTRACT(epoch FROM (max(created_on)-min(created_on))),'${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}'
+                FROM face_detection.face_detection_result
+                WHERE group_id='${group_id}' and tenant_id = ${tenant_id}  and batch_id='${batch_id}';
+
+                INSERT INTO ${temp_schema_name}.summary_audit_files_${process-id}
+                (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken,root_pipeline_id, tenant_id, batch_id)
+                SELECT ${process-id} , 'FACE_DETECTION' ,'FACE_DETECTION',sum(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END) ,
+                sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END),min(created_on),max(created_on),
+                EXTRACT(epoch FROM (max(created_on)-min(created_on))),'${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}'
+                FROM face_detection.face_detection_payload_queue
+                WHERE group_id='${group_id}' and tenant_id = ${tenant_id}  and batch_id='${batch_id}';
+
+                INSERT INTO audit.pipeline_summary_audit
+                (process_id, created_on, module_name, macro_process, files_processed_count,papers_processed_count,files_failed_count,papers_failed_count,start_time,end_time, time_taken, group_id, root_pipeline_id, created_user_id, template_id, tenant_id,average_time)
+                SELECT msaf.process_id ,now(),msaf.module_name ,msaf.macro_process ,msaf.completed_count,msap.completed_count,msaf.failed_count,msap.failed_count,msap.min_created_on,msap.max_created_on, EXTRACT(epoch FROM (msap.max_created_on-msap.min_created_on)),
+                '${group_id}','${root-ref-id}','${created_user_id}','${document_id}',${tenant_id},
+                (CASE WHEN (msaf.completed_count+msaf.failed_count)=0 THEN msaf.time_taken WHEN (msaf.time_taken/(msaf.completed_count+msaf.failed_count))=0 THEN msaf.time_taken ELSE (msaf.time_taken/(msaf.completed_count+msaf.failed_count)) END)
+                FROM ${temp_schema_name}.summary_audit_files_${process-id} msaf,
+                ${temp_schema_name}.summary_audit_papers_${process-id} msap
+                WHERE msaf.module_name=msap.module_name AND msaf.macro_process=msap.macro_process AND
+                msaf.module_name='FACE_DETECTION' AND msaf.macro_process='HW_DETECTION' AND msaf.tenant_id = ${tenant_id} and msaf.batch_id='${batch_id}';
+
+        "} on-condition if "true"=="true"
+
+        transform as "moving to payload queue archive" on "intics_zio_db_conn"
+        using {"
+
+
+                update ingestion.pipeline_queue_status_audit as a
+                set status = 'COMPLETED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                where  a.group_id=${group_id}
+                and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='FACE_DETECTION' ;
+
+                INSERT into face_detection.face_detection_payload_queue_archive(producer_process_id, consumer_process_id, origin_id,group_id, created_on,status, stage, consumed_on_ts, root_pipeline_id, tenant_id, batch_id)
+                SELECT producer_process_id, consumer_process_id, origin_id, group_id,created_on, status, stage,consumed_on_ts, root_pipeline_id, ${tenant_id}, batch_id
+                FROM face_detection.face_detection_payload_queue
+                where status='COMPLETED' and stage='FACE_DETECTION' and tenant_id = ${tenant_id}  and batch_id='${batch_id}';
+
+                Delete from face_detection.face_detection_payload_queue
+                where status='COMPLETED' and stage='FACE_DETECTION' and tenant_id = ${tenant_id}  and batch_id='${batch_id}';
+        "}on-condition if "true"=="true"
+
+
+        transform as "moving to payload error" on "intics_zio_db_conn"
+        using {"
+                INSERT into face_detection.face_detection_payload_error_queue(producer_process_id, consumer_process_id, origin_id,group_id, created_on,status, stage, consumed_on_ts, root_pipeline_id, tenant_id,batch_id)
+                SELECT producer_process_id, consumer_process_id, origin_id, group_id,created_on, status, stage,consumed_on_ts, root_pipeline_id, ${tenant_id},batch_id
+                FROM face_detection.face_detection_payload_queue
+                where status='FAILED' and stage='FACE_DETECTION' and tenant_id = ${tenant_id} and batch_id='${batch_id}';
+
+                Delete from face_detection.face_detection_payload_queue
+                where status='FAILED' and stage='FACE_DETECTION' and tenant_id = ${tenant_id} and batch_id='${batch_id}';
+        "}on-condition if "true"=="true"
+
+
+
+}
+}

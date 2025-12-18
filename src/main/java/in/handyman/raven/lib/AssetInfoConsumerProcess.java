@@ -149,9 +149,11 @@ public class AssetInfoConsumerProcess implements CoproProcessor.ConsumerProcess<
     private String getBase64EncodeValue(String fileAbsolutePath, String fileExtension) throws IOException {
         boolean saveBase64Value = Boolean.parseBoolean(action.getContext().getOrDefault(ASSET_INFO_ACTION_BASE_64_STORE_ACTIVATOR, "false"));
         if(saveBase64Value){
+            log.info(marker, "Storing base64 value for the file: {} because {} is enabled", fileAbsolutePath, ASSET_INFO_ACTION_BASE_64_STORE_ACTIVATOR);
             String base64ForPathValue = getBase64ForPath(fileAbsolutePath, fileExtension);
             return encryptRequestResponse(base64ForPathValue);
         }else {
+            log.info(marker, "Skipping base64 value storage for the file: {} because {} is disabled", fileAbsolutePath, ASSET_INFO_ACTION_BASE_64_STORE_ACTIVATOR);
             return "";
         }
     }
@@ -160,9 +162,11 @@ public class AssetInfoConsumerProcess implements CoproProcessor.ConsumerProcess<
         String encryptReqRes = action.getContext().get(ENCRYPT_TEXT_EXTRACTION_OUTPUT);
         String requestStr;
         if ("true".equals(encryptReqRes)) {
+            log.info(marker, "Encrypting the request/response as {} is enabled.", ENCRYPT_TEXT_EXTRACTION_OUTPUT);
             String encryptedRequest = SecurityEngine.getInticsIntegrityMethod(action, log).encrypt(request, "AES256", "BASE64_ENCODED");
             requestStr = encryptedRequest;
         } else {
+            log.info(marker, "Encrypting the request/response as {} is disabled.", ENCRYPT_TEXT_EXTRACTION_OUTPUT);
             requestStr = request;
         }
         return requestStr;

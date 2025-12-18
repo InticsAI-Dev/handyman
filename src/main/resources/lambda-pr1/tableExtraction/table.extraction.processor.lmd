@@ -1,0 +1,386 @@
+process "table.extraction.processor"
+{
+	try{
+
+	        assign as "tab_timesStamp" source "intics_zio_db_conn"
+	        using{"
+	                SELECT now() as consumed_on_ts;
+	        "} on-condition if "true"=="true"
+
+	        assign as "pipeline_train_mode" source "intics_zio_db_conn" using
+            {"
+                    select  (case when '${table.extraction.start.action}'='true' AND '${pipeline.train.mode}'='true' then 'true' else 'false' end) as table_extraction;
+            "}on-condition if "true"=="true"
+
+
+	         transform as "Update to inprogress in payload queue" on "intics_zio_db_conn"
+            using {"
+
+                UPDATE table_extraction.table_extraction_payload_queue
+                SET status='IN_PROGRESS', consumed_on_ts = '${tab_timesStamp.consumed_on_ts}', consumer_process_id = '${process-id}'
+                WHERE group_id='${group_id}' AND status='STAGED'
+                AND stage='TABLE_EXTRACTION' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+
+                UPDATE batching.sub_batching_process_payload_queue a
+                 SET status='IN_PROGRESS',  stage='TABLE_EXTRACTION'
+                 WHERE a.group_id='${group_id}'  and a.batch_id ='${batch_id}'
+                 and a.tenant_id = ${tenant_id} ;
+
+
+                update ingestion.pipeline_queue_status_audit as a
+                set status = 'IN_PROGRESS' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                where  a.group_id=${group_id}
+                and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='TABLE_EXTRACTION' ;
+
+                INSERT INTO table_extraction.table_extraction_pipeline_audit
+                (process_id, origin_id, group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+                select producer_process_id,origin_id,group_id, now(),
+                'STARTED', 'TABLE_EXTRACTION','table extraction process STARTED for group_id ${group_id}','${gen_id.root_pipeline_id}', ${tenant_id},'${batch_id}'
+                FROM table_extraction.table_extraction_payload_queue
+                WHERE group_id='${group_id}' AND status='IN_PROGRESS'
+                AND stage='TABLE_EXTRACTION' AND tenant_id = ${tenant_id}
+                and batch_id = '${batch_id}';
+
+            "}on-condition if "true"=="true"
+
+             assign as "gen_directory" source "intics_zio_db_conn" using
+            {"
+                SELECT concat ('${target_directory_path}','/${tenant_id}','/${group_id}','/${process-id}','/table_extraction-v1') as table_dest_path_v1;
+                SELECT concat ('${target_directory_path}','/${tenant_id}','/${group_id}','/${process-id}','/table_extraction-v2') as table_dest_path_v2;
+                SELECT concat ('${target_directory_path}','/${tenant_id}','/${group_id}','/${process-id}','/table_extraction-v3') as table_dest_path_v3;
+                SELECT concat ('${target_directory_path}','/${tenant_id}','/${group_id}','/${process-id}','/table_extraction-v4') as table_dest_path_v4;
+
+           "} on-condition if "true"=="true"
+
+            createDirectory as "creating_directory-v1" using
+           {
+               "${gen_directory.table_dest_path_v1}"
+           } on-condition if "true"=="true"
+
+            createDirectory as "creating_directory-v2" using
+           {
+               "${gen_directory.table_dest_path_v2}"
+           } on-condition if "true"=="true"
+
+            createDirectory as "creating_directory-v3" using
+           {
+               "${gen_directory.table_dest_path_v3}"
+           } on-condition if "true"=="true"
+
+                coproStart as "Calling table extraction copro start action" for "TABLE_EXTRACTION"
+                copro-server-url "${copro.table.extraction.admin.start.url}"
+                export-command "${copro.table.extraction.export}"
+                process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+                using
+                {"
+                    ${tableExtractionStartCommand}
+
+                "}on-condition if "${pipeline_train_mode.table_extraction}"=="true"
+
+               transform as "temporary input tables for the table extraction" on "intics_zio_db_conn"
+               using {"
+
+                    INSERT INTO ${temp_schema_name}.table_extraction_temp_table_${process-id}
+                    (tenant_id, root_pipeline_id, group_id, origin_id, paper_no, document_type, template_name, truth_entity_name, synonym_array, file_path, model_name, truth_entity_id, sor_container_id,channel_id, batch_id)
+                    select
+                        tepq.tenant_id,
+                        tepq.root_pipeline_id ,
+                        tepq.group_id ,
+                        tepq.origin_id,
+                        sot.paper_no,
+                        ai.document_type ,
+                        ai.template_name ,
+                        te.truth_entity_name ,
+                        array_agg(st.synonym) as synonym_array,
+                        a.file_path,
+                        mr.model_name,
+                        te.truth_entity_id  as truth_entity_id,
+                        sc.sor_container_id as sor_container_id,
+                        ai.asset_id as channel_id,
+                        tepq.batch_id
+                    from table_extraction.table_extraction_payload_queue tepq
+                    join info.source_of_truth sot  on tepq.origin_id =sot.origin_id
+                    join info.asset a on a.asset_id =sot.asset_id
+                    join sor_meta.asset_info ai on lower(sot.template_name) =lower(ai.template_name) and lower(sot.document_type) =lower(ai.document_type) and ai.tenant_id=${tenant_id}
+                    join sor_meta.model_registry mr on ai.model_registry_id=mr.model_id
+                    join sor_meta.truth_entity te on te.asset_id =ai.asset_id
+                    join sor_meta.sor_tsynonym st on st.truth_entity_id  =te.truth_entity_id
+                    join sor_meta.sor_container sc on st.sor_container_id = sc.sor_container_id
+                    where te.sip_type='TABLE_SIP' and mr.sor_item_attribution_id = 3 and sot.tenant_id=${tenant_id} and tepq.group_id='${group_id}' and sot.batch_id ='${batch_id}'  and ai.document_type='${document_type}'
+                    group by
+                        tepq.tenant_id,
+                        tepq.root_pipeline_id ,
+                        tepq.group_id ,
+                        tepq.origin_id,
+                        sot.paper_no,
+                        ai.document_type ,
+                        ai.template_name ,
+                        te.truth_entity_name ,
+                        a.file_path,
+                        tepq.batch_id,
+                        mr.model_name,
+                        te.truth_entity_id,
+                        sc.sor_container_id,
+                        ai.asset_id;
+
+                    INSERT INTO ${temp_schema_name}.table_extraction_line_items_${process-id}
+                    ( tenant_id, root_pipeline_id, group_id, origin_id, paper_no, document_type, template_name, file_path,table_headers, model_name, truth_entity_id, sor_container_id, channel_id, batch_id)
+                      select tenant_id, root_pipeline_id, group_id, origin_id, paper_no, document_type, template_name, file_path,
+                          jsonb_agg(
+                              jsonb_build_object(
+                                  'TruthEntity', truth_entity_name,
+                                  'columnHeaders', synonym_array
+                              )
+                          ) AS table_headers,
+                          model_name,
+                          truth_entity_id as truth_entity_id,
+                          sor_container_id as sor_container_id,
+                          channel_id,
+                          batch_id
+                       from   ${temp_schema_name}.table_extraction_temp_table_${process-id}
+                       where batch_id ='${batch_id}'
+                      group by
+                          tenant_id,
+                          root_pipeline_id,
+                          group_id,
+                          origin_id,
+                          paper_no,
+                          document_type,
+                          template_name,
+                          file_path,
+                          model_name,
+                          truth_entity_id,
+                          sor_container_id,
+                          channel_id,
+                          batch_id;
+
+
+                "}on-condition if "true"=="true"
+
+
+            tableExtraction as "table extraction macro version-1"
+            extraction-url "${copro.table-extraction.url.v1}"
+            outputDir "${gen_directory.table_dest_path_v1}"
+            result-table "table_extraction.table_extraction_result"
+            processId "${init_process_id.process_id}"
+            resource-conn "intics_zio_db_conn"
+            using {"
+
+                SELECT a.origin_id,b.paper_no as paper_no, a.group_id ,c.file_path,b.tenant_id,'1' as template_id,a.producer_process_id as process_id,a.root_pipeline_id,mr.model_name as model_name,truth_entity_id,sor_container_id,channel_id, a.batch_id
+                from table_extraction.table_extraction_payload_queue a
+                join info.source_of_truth b on a.origin_id=b.origin_id and a.batch_id =b.batch_id
+                join info.asset c on b.preprocessed_file_id=c.file_id
+                join sor_meta.asset_info d on lower(b.template_name) = lower(d.template_name) and lower(b.document_type) =lower(d.document_type)
+                inner join sor_meta.model_registry mr on mr.model_id=d.model_registry_id
+                where a.status='IN_PROGRESS' and a.group_id='${group_id}' and b.tenant_id = ${tenant_id} and mr.sor_item_attribution_id=3 and mr.model_name='${NEON_MODEL_NAME}' and a.batch_id ='${batch_id}'  and d.document_type='${document_type}';
+
+            "} on-condition if "false"=="true"
+
+
+            tableExtractionVersion2 as "table extraction macro version-2"
+            extraction-url "${copro.table-extraction.url.v2}"
+            outputDir "${gen_directory.table_dest_path_v2}"
+            result-table "table_extraction.table_extraction_result"
+            processId "${init_process_id.process_id}"
+            resource-conn "intics_zio_db_conn"
+            using {"
+
+                SELECT a.tenant_id, a.root_pipeline_id, a.group_id, a.origin_id, a.paper_no, a.document_type, a.template_name, a.file_path,a.table_headers,a.model_name as model_name,a.truth_entity_id,a.sor_container_id,a.channel_id, b.batch_id
+                from ${temp_schema_name}.table_extraction_line_items_${process-id} a
+                join table_extraction.table_extraction_payload_queue b on a.origin_id=b.origin_id
+                where b.status='IN_PROGRESS' and a.group_id='${group_id}' and a.tenant_id = ${tenant_id} and a.model_name='${ARGON_MODEL_NAME}' and a.batch_id ='${batch_id}';
+
+            "} on-condition if "true"=="true"
+
+
+            tableExtractionVersion2 as "table extraction macro version-3"
+            extraction-url "${copro.table-extraction.url.v3}"
+            outputDir "${gen_directory.table_dest_path_v3}"
+            result-table "table_extraction.table_extraction_result"
+            processId "${init_process_id.process_id}"
+            resource-conn "intics_zio_db_conn"
+            using {"
+
+                    SELECT a.tenant_id, a.root_pipeline_id, a.group_id, a.origin_id, a.paper_no, a.document_type, a.template_name, a.file_path,a.table_headers,a.model_name as model_name,a.truth_entity_id,a.sor_container_id,a.channel_id, a.batch_id
+                    from ${temp_schema_name}.table_extraction_line_items_${process-id} a
+                    join table_extraction.table_extraction_payload_queue b on a.origin_id=b.origin_id and a.batch_id = b.batch_id
+                    where b.status='IN_PROGRESS' and a.group_id='${group_id}' and a.tenant_id = ${tenant_id} and a.model_name='${XENON_MODEL_NAME}' and b.batch_id ='${batch_id}';
+
+            "} on-condition if "true"=="true"
+
+            tableExtractionVersion2 as "table extraction macro version-4"
+            extraction-url "${copro.table-extraction.url.v4}"
+            outputDir "${gen_directory.table_dest_path_v4}"
+            result-table "table_extraction.table_extraction_result"
+            processId "${init_process_id.process_id}"
+            resource-conn "intics_zio_db_conn"
+            using {"
+
+                    SELECT a.tenant_id, a.root_pipeline_id, a.group_id, a.origin_id, a.paper_no, a.document_type, a.template_name, a.file_path,a.table_headers,a.model_name as model_name,a.truth_entity_id,a.sor_container_id,a.channel_id, b.batch_id
+                    from ${temp_schema_name}.table_extraction_line_items_${process-id} a
+                    join table_extraction.table_extraction_payload_queue b on a.origin_id=b.origin_id
+                    where b.status='IN_PROGRESS' and a.group_id='${group_id}' and a.tenant_id = ${tenant_id} and a.model_name='${KRYPTON_MODEL_NAME}' and b.batch_id ='${batch_id}';
+
+            "} on-condition if "true"=="true"
+
+
+            transform as "insert into audit table for table Extraction" on "intics_zio_db_conn" using
+            {"
+                    insert into audit.process_audit_output
+                    (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint, paper_no, batch_id)
+                    select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint, ai.paper_no, '${batch_id}'
+                    from table_extraction.table_extraction_result ai
+                    where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id} and batch_id='${batch_id}'
+                    group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage, ai.paper_no
+            "}  on-condition if "true"=="true"
+
+            callprocess as "calling table extraction outbound builder"
+            with-target "table.outbound.builder"
+            from-file "${basepath}/tableExtraction/table.outbound.builder.lmd"
+            using "intics_zio_db_conn"
+            for-every {"
+                SELECT 1;
+            "} on-condition if "${table.outbound.aggregate.activator}"=="true"
+
+            coproStop as "Calling table extraction copro stop action" for "TABLE_EXTRACTION"
+            copro-server-url "${copro.table.extraction.admin.stop.url}"
+            process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+            using
+            {"
+                    gunicorn
+
+            "}on-condition if "${table.extraction.stop.action}"=="true"
+
+
+
+            transform as "Update to completed in payload queue" on "intics_zio_db_conn"
+            using {"
+
+                UPDATE table_extraction.table_extraction_payload_queue a
+                SET status=b.status,stage=b.stage, consumed_on_ts = '${tab_timesStamp.consumed_on_ts}', consumer_process_id = '${init_process_id.process_id}'
+                from table_extraction.table_extraction_result b
+                WHERE  a.origin_id=b.origin_id and a.status='IN_PROGRESS'
+                and b.status='FAILED' and a.tenant_id = ${tenant_id} and a.batch_id ='${batch_id}';
+
+                UPDATE table_extraction.table_extraction_payload_queue a
+	                SET status=b.status, consumed_on_ts = '${tab_timesStamp.consumed_on_ts}', consumer_process_id = '${init_process_id.process_id}'
+                from table_extraction.table_extraction_result b
+                WHERE  a.origin_id=b.origin_id and a.status='IN_PROGRESS'
+                 and b.status='COMPLETED' and b.tenant_id = ${tenant_id} and a.batch_id ='${batch_id}';
+
+
+                UPDATE batching.sub_batching_process_payload_queue a
+                 SET status='COMPLETED',  stage='TABLE_EXTRACTION'
+                 WHERE a.group_id='${group_id}'  and a.batch_id ='${batch_id}'
+                 and a.tenant_id = ${tenant_id};
+
+                INSERT INTO table_extraction.table_extraction_pipeline_audit
+                (process_id, origin_id, group_id, created_on, status, stage, message, root_pipeline_id, tenant_id, batch_id)
+                select producer_process_id,origin_id,group_id, now(),
+                'COMPLETED', 'TABLE_EXTRACTION','table extraction process COMPLETED for group_id ${group_id}','${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}'
+                 FROM table_extraction.table_extraction_payload_queue
+                 WHERE group_id='${group_id}' AND status='COMPLETED' AND stage='TABLE_EXTRACTION' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+            "}on-condition if "true"=="true"
+	}
+	catch{
+	            transform as "Update to failed in payload queue" on "intics_zio_db_conn"
+                using {"
+
+
+                    UPDATE table_extraction.table_extraction_payload_queue
+                    SET status='FAILED', consumed_on_ts = '${time_stamp_preprocess.consumed_on_ts}', consumer_process_id = '${init_process_id.process_id}'
+                    WHERE group_id='${group_id}' AND status='IN_PROGRESS' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                    INSERT INTO table_extraction.table_extraction_pipeline_audit
+                    (process_id, origin_id, group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+                    select '${init_process_id.process_id}',origin_id,group_id, now(),
+                    'FAILED', 'TABLE_EXTRACTION','table extraction FAILED for group_id ${group_id}','${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}'
+                    FROM table_extraction.table_extraction_payload_queue
+                    WHERE group_id='${group_id}' AND status='IN_PROGRESS' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                "}on-condition if "true"=="true"
+	}
+	finally{
+	            transform as "insert into pipeline summary audit table extraction" on "intics_zio_db_conn" using {"
+					INSERT INTO ${temp_schema_name}.summary_audit_papers_${process-id}
+                    (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken,root_pipeline_id, tenant_id, batch_id)
+                    SELECT ${process-id} , 'TABLE_EXTRACTION' ,'TABLE_EXTRACTION',coalesce (sum(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END),0) ,coalesce (sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END),0),min(created_on),max(created_on), EXTRACT(epoch FROM (max(created_on)-min(created_on))),'${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                    FROM table_extraction.table_extraction_result
+                    WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id ='${batch_id}'
+                    group by batch_id;
+
+					INSERT INTO ${temp_schema_name}.summary_audit_files_${process-id}
+                    (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken,root_pipeline_id, tenant_id, batch_id)
+                    SELECT ${process-id} , 'TABLE_EXTRACTION' ,'TABLE_EXTRACTION',sum(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END) ,sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END),min(created_on),max(created_on), EXTRACT(epoch FROM (max(created_on)-min(created_on))),'${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                    FROM table_extraction.table_extraction_payload_queue
+                    WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id ='${batch_id}'
+                    group by batch_id;
+
+					INSERT INTO audit.pipeline_summary_audit
+                    (process_id, created_on, module_name, macro_process, files_processed_count,papers_processed_count,files_failed_count,papers_failed_count,start_time,end_time, time_taken, group_id, root_pipeline_id, created_user_id, template_id, tenant_id,average_time)
+                    SELECT msaf.process_id ,now(),msaf.module_name ,msaf.macro_process ,msaf.completed_count,msap.completed_count,msaf.failed_count,msap.failed_count,msap.min_created_on,msap.max_created_on, EXTRACT(epoch FROM (msap.max_created_on-msap.min_created_on)),
+                    '${group_id}','${root-ref-id}','${created_user_id}','${document_id}','${tenant_id}',(CASE WHEN (msaf.completed_count+msaf.failed_count)=0 THEN msaf.time_taken WHEN (msaf.time_taken/(msaf.completed_count+msaf.failed_count))=0 THEN msaf.time_taken ELSE (msaf.time_taken/(msaf.completed_count+msaf.failed_count)) END)
+                    FROM ${temp_schema_name}.summary_audit_files_${process-id} msaf,
+                    ${temp_schema_name}.summary_audit_papers_${process-id} msap
+                    WHERE msaf.module_name=msap.module_name AND msaf.macro_process=msap.macro_process AND
+                    msaf.module_name='TABLE_EXTRACTION' AND msaf.macro_process='TABLE_EXTRACTION' and msaf.tenant_id = ${tenant_id} and msaf.batch_id ='${batch_id}';
+
+                    INSERT INTO macro.table_extraction_temp_table_audit
+                    (tenant_id, root_pipeline_id, group_id, origin_id, paper_no, document_type, template_name, truth_entity_name, synonym_array, file_path,model_name,sor_container_id,truth_entity_id,channel_id, batch_id)
+                    select tenant_id, root_pipeline_id, group_id, origin_id, paper_no, document_type, template_name, truth_entity_name, synonym_array, file_path,model_name,sor_container_id,truth_entity_id,channel_id, batch_id
+                    from  ${temp_schema_name}.table_extraction_temp_table_${process-id}
+                    where batch_id='${batch_id}';
+
+                    Delete from ${temp_schema_name}.table_extraction_temp_table_${process-id} where batch_id ='${batch_id}';
+
+                    INSERT INTO macro.table_extraction_line_items_audit
+                    ( tenant_id, root_pipeline_id, group_id, origin_id, paper_no, document_type, template_name, file_path,table_headers,model_name,sor_container_id,truth_entity_id,channel_id, batch_id)
+                    select  tenant_id, root_pipeline_id, group_id, origin_id, paper_no, document_type, template_name, file_path,table_headers,model_name,sor_container_id,truth_entity_id,channel_id, batch_id
+                    from ${temp_schema_name}.table_extraction_line_items_${process-id} where batch_id ='${batch_id}';
+
+                    delete from ${temp_schema_name}.table_extraction_line_items_${process-id} where batch_id ='${batch_id}';
+
+	             "} on-condition if "true"=="true"
+
+	            transform as "insert into signature_extraction payload queue " on "intics_zio_db_conn" using
+                {"
+                    INSERT INTO signature_extraction.signature_extraction_payload_queue
+                    (producer_process_id, origin_id, group_id, created_on, status, stage, root_pipeline_id, tenant_id, batch_id)
+                    SELECT a.producer_process_id, a.origin_id, a.group_id, now(), 'STAGED', 'SOR_TRANSACTION', '${gen_id.root_pipeline_id}', ${tenant_id}, a.batch_id
+                    FROM table_extraction.table_extraction_payload_queue a
+                    WHERE a.status = 'COMPLETED' and a.tenant_id = ${tenant_id} and a.batch_id ='${batch_id}';
+                "}on-condition if "true"=="true"
+
+	            transform as "moving to payload queue archive" on "intics_zio_db_conn"
+                using {"
+
+                        update ingestion.pipeline_queue_status_audit as a
+                        set status = 'COMPLETED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                        where  a.group_id=${group_id}
+                        and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='TABLE_EXTRACTION' ;
+
+                        INSERT into table_extraction.table_extraction_payload_queue_archive(producer_process_id, consumer_process_id, origin_id,group_id, created_on,status, stage, consumed_on_ts, root_pipeline_id,tenant_id, batch_id)
+                        SELECT producer_process_id, consumer_process_id, origin_id, group_id,created_on, status, stage,consumed_on_ts, root_pipeline_id,tenant_id, batch_id
+                        FROM table_extraction.table_extraction_payload_queue
+                        where status='COMPLETED' and stage='TABLE_EXTRACTION' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                        Delete from table_extraction.table_extraction_payload_queue
+                        where status='COMPLETED' and stage='TABLE_EXTRACTION' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+                "}on-condition if "true"=="true"
+
+
+                transform as "moving to payload error" on "intics_zio_db_conn"
+                using {"
+                        INSERT into table_extraction.table_extraction_payload_error_queue(producer_process_id, consumer_process_id, origin_id,group_id, created_on,status, stage, consumed_on_ts, root_pipeline_id, tenant_id, batch_id)
+                        SELECT producer_process_id, consumer_process_id, origin_id, group_id,created_on, status, stage,consumed_on_ts, root_pipeline_id, tenant_id, batch_id
+                        FROM table_extraction.table_extraction_payload_queue
+                        where status='FAILED' and stage='TABLE_EXTRACTION' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                        Delete from table_extraction.table_extraction_payload_queue
+                        where status='FAILED' and stage='TABLE_EXTRACTION' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+                "}on-condition if "true"=="true"
+
+	}
+}

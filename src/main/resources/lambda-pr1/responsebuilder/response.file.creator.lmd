@@ -1,0 +1,33 @@
+process "response.file.creator"
+{
+    try {
+
+        assign as "replace_origin" source "intics_zio_db_conn" using
+        {"
+            select lower(replace('response.identifier_${origin_id}','-','_')) as id ;
+        "} on-condition if "true"=="true"
+
+        assign as "document_sequence" source "intics_zio_db_conn" using {"
+                SELECT nextval('${replace_origin.id}') as identifier;
+        "} on-condition if "true"=="true"
+
+        assign as "json_file_details" source "intics_zio_db_conn" using
+        {"
+           SELECT
+           concat('${zip_path}', '${document_id}', '_', '00', '${document_sequence.identifier}', '.json') as eoc_json_file_path;
+        "} on-condition if "true"=="true"
+
+        jsonToFile as "create EOC json for ${document_id}"
+        export-into "${json_file_details.eoc_json_file_path}"
+        on-resource-conn "intics_zio_db_conn"
+        using {"
+            ${eoc_response}
+        "} on-condition if "true"=="true"
+
+
+    }
+    catch {
+    }
+    finally {
+    }
+}

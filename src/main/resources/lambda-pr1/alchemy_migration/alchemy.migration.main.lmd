@@ -1,0 +1,27 @@
+process "alchemy.migration.main"
+{
+    try{
+        callprocess as "calling alchemy migration ddl"
+        with-target "alchemy.migration.ddl"
+        from-file "${basepath}/alchemy_migration/alchemy.migration.ddl.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+        SELECT 1;
+        "} on-condition if "true"=="true"
+
+        callprocess as "calling alchemy migration processor"
+        with-target "alchemy.migration.processor"
+        from-file "${basepath}/alchemy_migration/alchemy.migration.processor.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+        SELECT 1;
+        "} on-condition if "true"=="true"
+
+    }
+    catch{
+
+    }
+    finally{
+    }
+
+    }

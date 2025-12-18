@@ -1,0 +1,60 @@
+process "question.verse.cleanup"
+{
+try{
+
+        transform as "clean up the question verse and schemas" on "intics_zio_db_conn" using
+        {"
+
+            DELETE FROM
+              sor_meta.sor_question
+            WHERE
+              tenant_id = ${tenant_id};
+
+            DELETE FROM
+              sor_meta.sor_tsynonym
+            WHERE
+              tenant_id = ${tenant_id};
+
+            DELETE FROM
+              sor_meta.truth_entity_placeholder
+            WHERE
+              tenant_id = ${tenant_id};
+
+            DELETE FROM
+              sor_meta.truth_entity
+            WHERE
+              tenant_id = ${tenant_id};
+
+            DELETE FROM
+              sor_meta.asset_info ai
+            where
+              ai.tenant_id = ${tenant_id};
+
+            DELETE FROM
+              sor_meta."document"
+            WHERE
+              tenant_id = '${tenant_id}';
+
+            DELETE FROM
+              sor_meta.sor_container
+            WHERE
+              tenant_id = ${tenant_id};
+
+            DELETE FROM
+              sor_meta.sor_item
+            WHERE
+              tenant_id = ${tenant_id};
+
+        "} on-condition if "true"=="true"
+
+
+}
+catch{
+
+}
+finally{
+
+
+}
+
+}

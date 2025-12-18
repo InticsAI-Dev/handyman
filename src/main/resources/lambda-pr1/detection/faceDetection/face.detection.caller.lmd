@@ -1,0 +1,57 @@
+process "face.detection.caller"
+{
+
+	try {
+             assign as "init_process_id" source "intics_zio_db_conn" using {"
+             SELECT ${process-id} as process_id;
+             "} on-condition if "true"=="true"
+
+		     assign as "pipeline_train_mode" source "intics_zio_db_conn" using
+            {"
+                    select  (case when '${face.detection.start.action}'='true' AND '${pipeline.train.mode}'='true' then 'true' else 'false' end) as face_detection;
+            "}on-condition if "true"=="true"
+
+            callprocess as "calling face detection ddl called"
+            with-target "face.detection.ddl"
+            from-file "${basepath}/detection/faceDetection/face.detection.ddl.lmd"
+            using "intics_zio_db_conn"
+            for-every {"
+                SELECT 1;
+            "} on-condition if "true"=="true"
+
+
+            callprocess as "calling face detection processor"
+            with-target "face.detection.processor"
+            from-file "${basepath}/detection/faceDetection/face.detection.processor.lmd"
+            using "intics_zio_db_conn"
+            for-every {"
+                SELECT 1;
+            "} on-condition if "true"=="true"
+
+
+	}
+	catch{
+			transform as "failed in face detection main caller " on "intics_zio_db_conn" using {"
+					INSERT INTO face_detection.face_detection_pipeline_audit
+					(process_id,group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+					values( ${init_process_id.process_id},'${gen_group_id.group_id}', now(),
+					'FAILED', 'FACE_DETECTION','Face detection main caller FAILED for process_id ${init_process_id.process_id}','${gen_id.root_pipeline_id}', ${tenant_id},'${batch_id}');
+
+			"} on-condition if "true"=="true"
+	}
+	finally{
+
+            transform as "Audit entry for the face detection input table " on "intics_zio_db_conn" using {"
+
+                    INSERT INTO face_detection.face_detection_input_audit
+                    (origin_id, input_file_path, paper_no, root_pipeline_id, tenant_id, group_id, process_id, process, batch_id)
+                    SELECT origin_id, input_file_path, paper_no, root_pipeline_id, tenant_id, group_id, process_id, process, batch_id
+                    FROM ${temp_schema_name}.face_detection_input_${init_process_id.process_id}
+                    where batch_id='${batch_id}';
+
+                    DELETE FROM ${temp_schema_name}.face_detection_input_${init_process_id.process_id};
+            "} on-condition if "true"=="true"
+
+	}
+
+}

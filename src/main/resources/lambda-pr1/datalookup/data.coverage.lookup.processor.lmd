@@ -1,0 +1,312 @@
+process "data.coverage.lookup.processor"
+{
+try{
+
+              transform as "create input and result tables for the control data pipeline ${sor_item_name}" on "intics_zio_db_conn" using {"
+
+
+                        CREATE TABLE IF NOT EXISTS ${CONTROL_DATA}.${sor_item_name}_input(
+                        root_pipeline_id int8 null,
+                        created_on timestamp NULL,
+                        group_id int4 NULL,
+                        batch_id varchar null,
+                        file_name varchar NULL,
+                        origin_id varchar NULL,
+                        paper_no int8 null,
+                        actual_value varchar NULL,
+                        extracted_value text NULL,
+                        tenant_id int8 NULL,
+                        document_type varchar null,
+                        sor_container_id int8 null,
+                        sor_item_id int8 null
+                        );
+
+
+                        CREATE TABLE IF NOT EXISTS ${COVERAGE_REPORT}.${sor_item_name}_result(
+                        root_pipeline_id int8 null,
+                        created_on timestamp NULL,
+                        group_id int4 NULL,
+                        batch_id varchar null,
+                        sor_container_id int8 null,
+                        sor_item_name varchar null,
+                        sor_item_id int8 null,
+                        file_name varchar NULL,
+                        origin_id varchar NULL,
+                        paper_no int8 null,
+                        actual_value varchar NULL,
+                        extracted_value text NULL,
+                        match_status varchar null,
+                        mismatch_count int8 null,
+                        classification varchar null,
+                        tenant_id int8 NULL
+                        );
+
+                        CREATE TABLE IF NOT EXISTS ${COVERAGE_REPORT}.final_result(
+                        id bigserial NOT null,
+                        root_pipeline_id int8 null,
+                        created_on timestamp NULL,
+                        tenant_id int8 NULL,
+                        sor_item_name varchar null,
+                        no_touch int8 NULL,
+                        one_touch int8 NULL,
+                        low_touch int8 NULL,
+                        high_touch int8 NULL
+                );
+
+                    CREATE TABLE IF NOT EXISTS ${COVERAGE_REPORT}.final_result_match_status (
+                        id bigserial NOT null,
+                       root_pipeline_id int8 null,
+                        created_on timestamp NULL,
+                        tenant_id int8 NULL,
+                        sor_item_name varchar null,
+                        true_positive int8 NULL,
+                        false_positive int8 NULL,
+                        false_negative int8 NULL,
+                        true_negative int8 NULL
+                    );
+
+                     CREATE TABLE IF NOT EXISTS macro.coverage_report_sor_item_audit(
+                                            root_pipeline_id int8 null,
+                                            tenant_id int8 NULL,
+                                            sor_container_id int8 null,
+                                            sor_item_id int8 null,
+                                            sor_item_name varchar null,
+                                            file_name varchar NULL,
+                                            origin_id varchar NULL,
+                                            created_on timestamp NULL
+                                            );
+
+
+
+                "} on-condition if "true"=="true"
+          transform as "insert into coverage_report_sor_item_audit" on "intics_zio_db_conn" using
+          {"
+          INSERT INTO macro.coverage_report_sor_item_audit
+          (root_pipeline_id,tenant_id,sor_container_id,sor_item_id,sor_item_name, file_name, origin_id,created_on)
+          select '${init_process_id.process_id}','${tenant_id}','${sor_container_id}','${sor_item_id}','${sor_item_name}',a.file_name,so.origin_id,now()
+          FROM  info.asset a
+          JOIN info.source_of_origin so
+              ON a.file_id  = so.file_id
+          where a.root_pipeline_id ='${init_process_id.process_id}' and a.tenant_id ='${tenant_id}'
+         "}on-condition if "true"=="true"
+
+          transform as "insert into the input table ${sor_item_name}" on "intics_zio_db_conn" using
+            {"
+                    INSERT INTO ${CONTROL_DATA}.${sor_item_name}_input
+                    (root_pipeline_id, batch_id, created_on, group_id, file_name, origin_id, paper_no, actual_value, extracted_value, tenant_id, document_type, sor_container_id, sor_item_id)
+                    select distinct a.root_pipeline_id , d.batch_id , now(), d.group_id ,c.decoded_file_name , b.origin_id , d.paper_no
+                    , h.${sor_item_name} as actual_value , a.predicted_value as extracted_value, a.tenant_id as tenant_id,
+                    d.document_type as document_type, g.sor_container_id as sor_container_id, g.sor_item_id as sor_item_id
+                    from valuation.prediction a
+                    join info.source_of_truth d on d.origin_id = a.origin_id and d.truth_id = a.truth_id and d.tenant_id = a.tenant_id
+                    join info.asset a2 on a2.asset_id =d.asset_id
+                    join info.source_of_origin b on a.origin_id = b.origin_id and a.root_pipeline_id = b.root_pipeline_id
+                    join info.asset c on c.asset_id = b.asset_id and c.tenant_id = b.tenant_id
+                    join sor_meta.sor_container e on e.document_type = d.document_type and e.tenant_id = a.tenant_id
+                    join sor_meta.sor_tsynonym f on f.synonym_id = a.synonym_id and f.tenant_id = a.tenant_id
+                    join sor_meta.sor_item g on g.sor_item_id = f.sor_item_id and g.tenant_id = a.tenant_id
+                    join control_data_org.coverage_report_actual_input h on c.decoded_file_name = h.docid
+                    where h.${sor_item_name} = ${sor_item_name}
+                    and g.sor_item_name = '${sor_item_name}'
+                    and d.document_type = '${document_type}'
+                    and a.root_pipeline_id ='${init_process_id.process_id}'
+                    and e.status = 'ACTIVE' and f.status = 'ACTIVE' and g.status = 'ACTIVE';
+          "} on-condition if "${accuracy_metrics_controller.control_data_without_dcnid}"=="true"
+
+          transform as "insert into the input table using dcnid for ${sor_item_name} " on "intics_zio_db_conn" using
+            {"
+                    INSERT INTO ${CONTROL_DATA}.${sor_item_name}_input
+                    (root_pipeline_id, batch_id, created_on, group_id, file_name, origin_id, paper_no, actual_value, extracted_value, tenant_id, document_type, sor_container_id, sor_item_id)
+                    select distinct a.root_pipeline_id , d.batch_id , now(), d.group_id ,c.decoded_file_name , b.origin_id , d.paper_no
+                    , i.${sor_item_name} as actual_value , a.predicted_value as extracted_value, a.tenant_id as tenant_id,
+                    d.document_type as document_type, g.sor_container_id as sor_container_id, g.sor_item_id as sor_item_id
+                    from valuation.prediction a
+                    join info.source_of_truth d on d.origin_id = a.origin_id and d.truth_id = a.truth_id and d.tenant_id = a.tenant_id
+                    join info.asset a2 on a2.asset_id =d.asset_id
+                    join info.source_of_origin b on a.origin_id = b.origin_id and a.root_pipeline_id = b.root_pipeline_id
+                    join info.asset c on c.asset_id = b.asset_id and c.tenant_id = b.tenant_id
+                    join sor_meta.sor_container e on e.document_type = d.document_type and e.tenant_id = a.tenant_id
+                    join sor_meta.sor_tsynonym f on f.synonym_id = a.synonym_id and f.tenant_id = a.tenant_id
+                    join sor_meta.sor_item g on g.sor_item_id = f.sor_item_id and g.tenant_id = a.tenant_id
+                    join inbound_config.ingestion_downloaded_file_details h on h.file_name = c.decoded_file_name and h.transaction_id=d.transaction_id
+                    join control_data_org.coverage_report_actual_input i on h.document_id = i.docid
+                    where i.${sor_item_name} = ${sor_item_name}
+                    and g.sor_item_name = '${sor_item_name}'
+                    and d.document_type = '${document_type}'
+                    and a.root_pipeline_id ='${init_process_id.process_id}'
+                    and e.status = 'ACTIVE' and f.status = 'ACTIVE' and g.status = 'ACTIVE';
+            "} on-condition if "${accuracy_metrics_controller.control_data_with_dcnid}"=="true"
+
+        controlDataComparison as "insert into control data input details"
+        on-resource-conn "intics_zio_db_conn"
+        input-table "${CONTROL_DATA}.${sor_item_name}_input"
+        output-table "${COVERAGE_REPORT}.${sor_item_name}_result"
+        using {"
+        	SELECT ROW_NUMBER() OVER (ORDER BY a.root_pipeline_id) AS id,a.root_pipeline_id ,now(),a.group_id ,a.file_name ,a.origin_id ,a.paper_no,
+            a.actual_value as  actual_value , a.extracted_value as extracted_value,
+            a.tenant_id, si.allowed_adapter, si.char_limit, si.restricted_adapter, si.sor_item_name, si.is_encrypted, ep.encryption_policy,si.line_item_type, si.sor_container_id
+            FROM ${CONTROL_DATA}.${sor_item_name}_input a
+            JOIN sor_meta.sor_item si ON si.sor_item_id = a.sor_item_id AND si.tenant_id = a.tenant_id AND si.status = 'ACTIVE'
+            JOIN sor_meta.encryption_policies ep ON si.encryption_policy_id=ep.encryption_policy_id
+            WHERE a.root_pipeline_id = '${init_process_id.process_id}';
+        "} on-condition if "true"=="true"
+
+        transform as "insert into the final summary result table for coverage report" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO ${COVERAGE_REPORT}.final_result
+                (root_pipeline_id, created_on, tenant_id, sor_item_name, no_touch, one_touch, low_touch, high_touch,total_origins,no_touch_percentage,one_touch_percentage,low_touch_percentage,high_touch_percentage)
+                SELECT a.root_pipeline_id, now(), a.tenant_id, '${sor_item_name}' AS sor_item_name,
+                       COUNT(CASE WHEN a.match_status = 'NO TOUCH' THEN 1 END) AS no_touch,
+                       COUNT(CASE WHEN a.match_status = 'ONE TOUCH' THEN 1 END) AS one_touch,
+                       COUNT(CASE WHEN a.match_status = 'LOW TOUCH' THEN 1 END) AS low_touch,
+                       COUNT(CASE WHEN a.match_status = 'HIGH TOUCH' THEN 1 END) AS high_touch,
+                       COUNT(a.origin_id) AS total_origins,
+                       ROUND(
+                              (COUNT(CASE WHEN a.match_status = 'NO TOUCH' THEN 1 END)::NUMERIC / COUNT(a.origin_id)) * 100, 2
+                             ) AS no_touch_percentage,
+
+                       ROUND(
+                               (COUNT(CASE WHEN a.match_status IN ('ONE TOUCH') THEN 1 END)::NUMERIC / COUNT(a.origin_id)) * 100, 2
+                             ) AS one_touch_percentage,
+
+                       ROUND(
+                               (COUNT(CASE WHEN a.match_status IN ('LOW TOUCH') THEN 1 END)::NUMERIC / COUNT(a.origin_id)) * 100, 2
+                             ) AS low_touch_percentage,
+
+                       ROUND(
+                               (COUNT(CASE WHEN a.match_status IN ('HIGH TOUCH') THEN 1 END)::NUMERIC / COUNT(a.origin_id)) * 100, 2
+                             ) AS high_touch_percentage
+                FROM ${COVERAGE_REPORT}.${sor_item_name}_result a
+                WHERE a.root_pipeline_id ='${init_process_id.process_id}'
+                GROUP BY a.tenant_id, a.root_pipeline_id;
+
+        "} on-condition if "true"=="true"
+
+    transform as "insert into the final summary for TP/TN/FP/FN result table for coverage report" on "intics_zio_db_conn" using
+        {"
+             INSERT INTO ${COVERAGE_REPORT}.final_result_match_status
+             (
+                 root_pipeline_id,
+                 created_on,
+                 tenant_id,
+                 sor_item_name,
+                 true_positive,
+                 false_positive,
+                 false_negative,
+                 true_negative
+             )
+             SELECT
+                 a.root_pipeline_id,
+                 NOW(),
+                 a.tenant_id,
+                 '${sor_item_name}' AS sor_item_name,
+
+                 COUNT(CASE WHEN a.classification = 'TP' THEN 1 END) AS true_positive,
+                 COUNT(CASE WHEN a.classification = 'FP' THEN 1 END) AS false_positive,
+                 COUNT(CASE WHEN a.classification = 'FN' THEN 1 END) AS false_negative,
+                 COUNT(CASE WHEN a.classification = 'TN' THEN 1 END) AS true_negative
+
+             FROM ${COVERAGE_REPORT}.${sor_item_name}_result a
+             WHERE a.root_pipeline_id = '${init_process_id.process_id}'
+             GROUP BY a.tenant_id, a.root_pipeline_id;
+
+
+        "} on-condition if "true"=="true"
+     transform as "insert the consolidated result table ${sor_item_name}" on "intics_zio_db_conn" using
+             {"
+           INSERT INTO ${COVERAGE_REPORT}.match_summary_report
+           (root_pipeline_id, created_on, tenant_id, sor_item_name, no_touch, one_touch, low_touch, high_touch, total_origins, pass_percentage, fail_percentage)
+           SELECT
+               a.root_pipeline_id,
+               NOW(),
+               a.tenant_id,
+               '${sor_item_name}' AS sor_item_name,
+                   COUNT(CASE WHEN a.match_status = 'NO TOUCH' THEN 1 END) AS no_touch_count,
+               COUNT(CASE WHEN a.match_status = 'ONE TOUCH' THEN 1 END) AS one_touch_count,
+               COUNT(CASE WHEN a.match_status = 'LOW TOUCH' THEN 1 END) AS low_touch_count,
+               COUNT(CASE WHEN a.match_status = 'HIGH TOUCH' THEN 1 END) AS high_touch_count,
+               COUNT(a.origin_id) AS total_origins,
+
+               ROUND(
+                   (COUNT(CASE WHEN a.match_status = 'NO TOUCH' THEN 1 END)::NUMERIC / COUNT(a.origin_id)) * 100, 2
+               ) AS pass_percentage,
+
+               ROUND(
+                   (COUNT(CASE WHEN a.match_status IN ('ONE TOUCH', 'LOW TOUCH', 'HIGH TOUCH') THEN 1 END)::NUMERIC / COUNT(a.origin_id)) * 100, 2
+               ) AS fail_percentage
+
+           FROM ${COVERAGE_REPORT}.${sor_item_name}_result a
+           WHERE a.root_pipeline_id ='${init_process_id.process_id}'
+           GROUP BY a.tenant_id, a.root_pipeline_id;
+
+             "} on-condition if "true"=="true"
+
+
+
+                transform as "insert the consolidated result table ${sor_item_name} for TN/TP/FP/FN" on "intics_zio_db_conn" using
+             {"
+           INSERT INTO ${COVERAGE_REPORT}.classification_match_summary_report
+             (
+               root_pipeline_id,
+               created_on,
+               tenant_id,
+               sor_item_name,
+               true_positive,
+               false_positive,
+               false_negative,
+               true_negative,
+               total_origins,
+               pass_percentage,
+               fail_percentage,
+               field_type,
+               sor_container_name,
+               sor_container_id,
+               sor_item_id
+             )
+           SELECT
+             a.root_pipeline_id,
+             NOW(),
+             a.tenant_id,
+             '${sor_item_name}' AS sor_item_name,
+
+             COUNT(CASE WHEN a.classification = 'TP' THEN 1 END) AS true_positive,
+             COUNT(CASE WHEN a.classification = 'FP' THEN 1 END) AS false_positive,
+             COUNT(CASE WHEN a.classification = 'FN' THEN 1 END) AS false_negative,
+             COUNT(CASE WHEN a.classification = 'TN' THEN 1 END) AS true_negative,
+             COUNT(a.origin_id) AS total_origins,
+
+             -- Custom rounded pass_percentage
+             CASE
+               WHEN ROUND(((COUNT(CASE WHEN a.classification IN ('TN', 'TP') THEN 1 END)::NUMERIC / COUNT(a.origin_id)) * 100)
+                          - FLOOR((COUNT(CASE WHEN a.classification IN ('TN', 'TP') THEN 1 END)::NUMERIC / COUNT(a.origin_id)) * 100), 1) = 0.5
+                 THEN FLOOR((COUNT(CASE WHEN a.classification IN ('TN', 'TP') THEN 1 END)::NUMERIC / COUNT(a.origin_id)) * 100) + 0.5
+               ELSE ROUND((COUNT(CASE WHEN a.classification IN ('TN', 'TP') THEN 1 END)::NUMERIC / COUNT(a.origin_id)) * 100)
+             END AS pass_percentage,
+
+             -- Custom rounded fail_percentage
+             CASE
+               WHEN ROUND(((COUNT(CASE WHEN a.classification IN ('FN', 'FP') THEN 1 END)::NUMERIC / COUNT(a.origin_id)) * 100)
+                          - FLOOR((COUNT(CASE WHEN a.classification IN ('FN', 'FP') THEN 1 END)::NUMERIC / COUNT(a.origin_id)) * 100), 1) = 0.5
+                 THEN FLOOR((COUNT(CASE WHEN a.classification IN ('FN', 'FP') THEN 1 END)::NUMERIC / COUNT(a.origin_id)) * 100) + 0.5
+               ELSE ROUND((COUNT(CASE WHEN a.classification IN ('FN', 'FP') THEN 1 END)::NUMERIC / COUNT(a.origin_id)) * 100)
+             END AS fail_percentage,
+
+             '${field_type}' AS field_type,
+             '${sor_container_name}' AS sor_container_name,
+             ${sor_container_id} AS sor_container_id,
+             ${sor_item_id} AS sor_item_id
+
+           FROM ${COVERAGE_REPORT}.${sor_item_name}_result a
+           WHERE a.root_pipeline_id = '${init_process_id.process_id}'
+           GROUP BY a.tenant_id, a.root_pipeline_id;
+
+             "} on-condition if "true"=="true"
+
+
+
+}
+catch{
+}
+finally{
+}
+}

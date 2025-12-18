@@ -1,0 +1,111 @@
+process "outbound.transform.ddl"
+{
+     try{
+            transform as "create outbound transform asis ddl" on "intics_zio_db_conn" using
+            {"
+
+
+                    CREATE TABLE if not exists outbound_transform_asis.outbound_transform_asis_payload_queue_archive
+                    (
+                    producer_process_id int8 NOT NULL,
+                    consumer_process_id int8 NULL,
+                    batch_id varchar NOT NULL,
+                    group_id int4 NOT NULL,
+                    origin_id varchar NOT NULL,
+                    created_on timestamp NOT NULL,
+                    status varchar NOT NULL,
+                    stage  varchar NOT NULL,
+                    consumed_on_ts timestamp NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL,
+                    CONSTRAINT outbound_transform_asis_payload_queue_archive_pk PRIMARY KEY (group_id,origin_id,tenant_id)
+                    );
+
+                    CREATE TABLE if not exists outbound_transform_asis.outbound_transform_asis_payload_error_queue
+                    (
+                    producer_process_id int8 NOT NULL,
+                    consumer_process_id int8 NULL,
+                    batch_id varchar NOT NULL,
+                    origin_id varchar NOT NULL,
+                    group_id int4 NULL,
+                    created_on timestamp NOT NULL,
+                    status varchar NOT NULL,
+                    stage  varchar NOT NULL,
+                    message varchar NULL,
+                    consumed_on_ts timestamp NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL,
+                    CONSTRAINT outbound_transform_asis_payload_error_queue_pk PRIMARY KEY (producer_process_id, origin_id,tenant_id)
+                    );
+
+
+                    create table if not exists outbound_transform_asis.outbound_transform_asis_result(
+                    transaction_id bigserial NOT NULL,
+                    created_on timestamp NOT NULL,
+                    created_user_id varchar NOT NULL,
+                    last_updated_on timestamp NULL,
+                    last_updated_user_id varchar NULL,
+                    tenant_id int8 NULL,
+                    confidence_score numeric(10, 2) NULL,
+                    origin_id varchar NOT NULL,
+                    paper_no int4 NOT NULL,
+                    template_id varchar NOT NULL,
+                    model_id int8 NULL,
+                    document_type varchar NULL,
+                    status varchar NULL,
+                    stage varchar NULL,
+                    message varchar NULL,
+                    group_id int4 NULL,
+                    root_pipeline_id int8 NULL,
+                    model_name varchar NULL,
+                    model_version varchar NULL,
+                    batch_id varchar NOT NULL,
+                 request text null,
+                 response text null,
+                 endpoint varchar null,
+                    CONSTRAINT outbound_transform_asis_result_pk PRIMARY KEY (transaction_id)
+                    );
+
+                    CREATE TABLE IF NOT EXISTS outbound_transform_asis.outbound_transform_asis_pipeline_audit (
+                    id bigserial NOT NULL,
+                    batch_id varchar NULL,
+                    process_id bigint NULL,
+                    origin_id varchar NULL,
+                    group_id varchar NULL,
+                    created_on varchar NULL,
+                    status varchar NULL,
+                    stage varchar NULL,
+                    message varchar NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL
+                    );
+
+
+                    CREATE TABLE IF NOT EXISTS valuation.asis_prediction (
+                    asis_prediction_id bigserial NOT NULL,
+                    created_on timestamp NULL,
+                    created_user_id varchar NULL,
+                    last_updated_on timestamp NULL,
+                    last_updated_user_id varchar NULL,
+                    status varchar NULL,
+                    version int4 NULL,
+                    response_json jsonb NULL,
+                    feature varchar NOT NULL,
+                    origin_id varchar NOT NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NOT NULL,
+                    transaction_id varchar NULL,
+                    inbound_transaction_id varchar NULL,
+                    truth_id int8 NULL,
+                    batch_id varchar NULL,
+                    CONSTRAINT asis_prediction_pkey PRIMARY KEY (asis_prediction_id)
+                    );
+            "} on-condition if "true"=="true"
+     }
+
+     catch{
+     }
+
+     finally{
+     }
+}

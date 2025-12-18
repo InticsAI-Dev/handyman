@@ -1,0 +1,225 @@
+process "preprocess.agentic.paper.filter"
+{
+	try{
+             transform as "Agentic paper filter temp table insert for container filtering " on "intics_zio_db_conn" using {"
+                        insert into ${temp_schema_name}.agentic_container_filter_base_table_${init_process_id.process_id}
+                        		(origin_id,
+                                paper_no,
+                                container_name,
+                                container_value,
+                                root_pipeline_id,
+                                batch_id,
+                                tenant_id,
+                                group_id,
+                            sor_container_id )
+
+                        SELECT
+                          		sb.origin_id,
+                                sb.paper_no,
+                                sb.container_name,
+                                sb.container_value,
+                                sb.root_pipeline_id,
+                                sb.batch_id,
+                                sb.tenant_id,
+                                sb.group_id,
+                            sc.sor_container_id
+                        FROM (
+                            SELECT
+                                de.origin_id,
+                                de.paper_no,
+                                kv.key AS container_name,
+                                kv.value AS container_value,
+                                de.root_pipeline_id,
+                                de.batch_id,
+                                de.tenant_id,
+                                de.group_id
+                            FROM ${temp_schema_name}.data_extraction_${init_process_id.process_id} de
+                            CROSS JOIN LATERAL jsonb_each_text(
+                                REPLACE(REPLACE(de.extracted_text, '```json', ''), '```', '')::jsonb
+                            ) AS kv
+                            WHERE de.extracted_text <> ''
+                        ) sb
+                        INNER JOIN sor_meta.sor_container sc
+                        ON sc.sor_container_name = sb.container_name
+                        AND sc.tenant_id = sb.tenant_id
+                        where sc.tenant_id=${tenant_id} and sc.document_type='${document_type}' and sb.batch_id='${batch_id}'
+                        and sb.group_id = '${group_id}' ;
+
+
+
+                        insert into ${temp_schema_name}.agentic_paper_level_score_${init_process_id.process_id}
+                        (
+                        	origin_id,
+                        	paper_no,
+                        	root_pipeline_id,
+                        	batch_id,
+                        	tenant_id,
+                        	group_id,
+                        	is_candidate_paper,
+                        	paper_level_score)
+
+                        select
+                        	ssb.origin_id,
+                        	ssb.paper_no,
+                        	ssb.root_pipeline_id,
+                        	ssb.batch_id,
+                        	ssb.tenant_id,
+                        	ssb.group_id,
+                        	case
+                        		when ssb.paper_level_score>0 then 'yes'
+                        		else 'no'
+                        	end as is_candidate_paper,
+                        	ssb.paper_level_score
+                        from
+                        	(
+                        	select
+                        		sb.origin_id,
+                        		sb.paper_no,
+                        		sb.root_pipeline_id,
+                        		sb.batch_id,
+                        		sb.tenant_id,
+                        		sb.group_id,
+                        		sum(sb.entity_score) as paper_level_score
+                        	from
+                        		(
+                        		select
+                        			t.origin_id,
+                        			t.paper_no,
+                        			t.container_name,
+                        			t.container_value,
+                        			t.root_pipeline_id,
+                        			t.batch_id,
+                        			t.tenant_id,
+                        			t.group_id,
+                        			t.is_candidate_paper,
+                        			t.sor_container_id,
+                        			case
+                        				when lower(t.is_candidate_paper)= 'yes' then 1000
+                        				else 0
+                        			end as entity_score
+                        		from
+                        			(
+                        			select
+                        				cf.origin_id,
+                        				cf.paper_no,
+                        				cf.container_name,
+                        				cf.container_value,
+                        				cf.root_pipeline_id,
+                        				cf.batch_id,
+                        				cf.tenant_id,
+                        				cf.group_id,
+                        				cf.sor_container_id,
+                        				case
+                        					when cf.container_value = 'true' then 'Yes'
+                        					else 'No'
+                        				end as is_candidate_paper
+                        			from
+                        				${temp_schema_name}.agentic_container_filter_base_table_${init_process_id.process_id} cf)t)sb
+                        	group by
+                        		sb.origin_id,
+                        		sb.paper_no,sb.root_pipeline_id,
+                        		sb.batch_id,
+                        		sb.tenant_id,
+                        		sb.group_id)ssb
+                        		where  ssb.batch_id='${batch_id}'
+                              and ssb.group_id = '${group_id}' ;
+
+
+
+                        insert into ${temp_schema_name}.agentic_entity_level_score_${init_process_id.process_id}
+                        (origin_id, paper_no,root_pipeline_id,batch_id,tenant_id,group_id, sor_container_id, container_name, container_value, is_candidate_paper)
+                        select cfbt.origin_id, cfbt.paper_no,cfbt.root_pipeline_id,
+                        	cfbt.batch_id,
+                        	cfbt.tenant_id,
+                        	cfbt.group_id, cfbt.sor_container_id, cfbt.container_name, cfbt.container_value, pls.is_candidate_paper
+                        from ${temp_schema_name}.agentic_container_filter_base_table_${init_process_id.process_id} cfbt
+                        inner join ${temp_schema_name}.agentic_paper_level_score_${init_process_id.process_id} pls on cfbt.origin_id = pls.origin_id and cfbt.paper_no = pls.paper_no
+                        where pls.is_candidate_paper ='yes' and cfbt.container_value::boolean=true
+                        and cfbt.batch_id='${batch_id}'
+                        and cfbt.group_id = '${group_id}';
+
+
+                        INSERT INTO ${temp_schema_name}.agentic_entity_level_score_${init_process_id.process_id}
+                        (origin_id, paper_no, root_pipeline_id, batch_id, tenant_id, group_id, sor_container_id, container_name, container_value, is_candidate_paper)
+                        SELECT
+                            cfbt.origin_id,
+                            cfbt.paper_no,
+                            cfbt.root_pipeline_id,
+                            cfbt.batch_id,
+                            cfbt.tenant_id,
+                            cfbt.group_id,
+                            sc.sor_container_id,
+                            sc.sor_container_name AS container_name,
+                            cfbt.container_value,
+                            pls.is_candidate_paper
+                        FROM ${temp_schema_name}.agentic_container_filter_base_table_${init_process_id.process_id} cfbt
+                        INNER JOIN ${temp_schema_name}.agentic_paper_level_score_${init_process_id.process_id} pls
+                            ON cfbt.origin_id = pls.origin_id
+                            AND cfbt.paper_no = pls.paper_no
+                        join sor_meta.sor_container sc on sc.tenant_id =cfbt.tenant_id and sc.sor_container_name ='PROVIDER'
+                        WHERE cfbt.container_name = ANY(string_to_array('${provider.alias.container.names}', ','))
+                        and  pls.is_candidate_paper ='yes' and cfbt.container_value::boolean=true and cfbt.group_id = '${group_id}' and sc.sor_container_name ='PROVIDER' and sc.post_processing =true
+                        group by cfbt.origin_id,
+                                 cfbt.paper_no,
+                                 cfbt.root_pipeline_id,
+                                 cfbt.batch_id,
+                                 cfbt.tenant_id,
+                                 cfbt.group_id,
+                                 sc.sor_container_id,
+                                 sc.sor_container_name,
+                                 cfbt.container_value,
+                                 pls.is_candidate_paper;
+
+              "} on-condition if "true"=="true"
+
+            transform as "Audit table insert for Agentic paper filter " on "intics_zio_db_conn" using {"
+
+                    INSERT INTO paper_filter.agentic_container_filter_base_table_audit
+                    (origin_id, paper_no, container_name, container_value, root_pipeline_id, batch_id, tenant_id, group_id, sor_container_id)
+                    select origin_id, paper_no, container_name, container_value, root_pipeline_id, batch_id, tenant_id, group_id, sor_container_id
+                    from ${temp_schema_name}.agentic_container_filter_base_table_${init_process_id.process_id}
+                    where batch_id='${batch_id}';
+
+                    INSERT INTO paper_filter.agentic_paper_level_score_audit
+                    (origin_id, paper_no, root_pipeline_id, batch_id, tenant_id, group_id, is_candidate_paper, paper_level_score)
+                    select origin_id, paper_no, root_pipeline_id, batch_id, tenant_id, group_id, is_candidate_paper, paper_level_score
+                    from ${temp_schema_name}.agentic_paper_level_score_${init_process_id.process_id}
+                    where batch_id='${batch_id}';
+
+                    INSERT INTO paper_filter.agentic_entity_level_score_audit
+                    (origin_id, paper_no, root_pipeline_id, batch_id, tenant_id, group_id, sor_container_id, container_name, container_value,is_candidate_paper)
+                    select origin_id, paper_no, root_pipeline_id, batch_id, tenant_id, group_id, sor_container_id, container_name, container_value,is_candidate_paper
+                    from ${temp_schema_name}.agentic_entity_level_score_${init_process_id.process_id}
+                    where batch_id='${batch_id}';
+
+                    insert into paper_filter.paper_filter_max_score_papers_audit
+                    (origin_id, paper_no,root_pipeline_id, batch_id, group_id, tenant_id)
+                    SELECT origin_id, paper_no,root_pipeline_id, batch_id, group_id, tenant_id
+                    FROM paper_filter.agentic_paper_level_score_audit a
+                    WHERE (a.origin_id, a.root_pipeline_id, a.batch_id, a.tenant_id, a.group_id, a.paper_level_score) IN
+                    (SELECT origin_id, root_pipeline_id, batch_id, tenant_id, group_id, MAX(paper_level_score)
+                    FROM paper_filter.agentic_paper_level_score_audit
+                    GROUP BY origin_id, root_pipeline_id, batch_id, tenant_id, group_id);
+
+                    insert into paper_filter.paper_filter_only_false_containers_audit
+                    (origin_id,sor_container_id,container_name,root_pipeline_id, batch_id, group_id,tenant_id)
+                    SELECT origin_id,sor_container_id,container_name,root_pipeline_id, batch_id, group_id,tenant_id
+                    FROM ${temp_schema_name}.agentic_container_filter_base_table_${init_process_id.process_id}
+                    WHERE group_id = '${group_id}' and batch_id='${batch_id}'
+                    GROUP BY sor_container_id,origin_id,container_name,root_pipeline_id, batch_id, group_id,tenant_id
+                    HAVING COUNT(DISTINCT CASE WHEN container_value = 'true' THEN paper_no END) = 0;
+
+
+            "} on-condition if "true"=="true"
+
+
+
+
+	}
+	catch{
+
+	}
+	finally{
+
+	}
+}

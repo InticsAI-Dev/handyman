@@ -1,0 +1,43 @@
+process "pipeline.folder.cleanup.ddl"
+{
+try{
+        transform as "create table for multipart info folder delete" on "intics_zio_db_conn" using
+        {"
+                CREATE SCHEMA IF NOT EXISTS multipart_info;
+                CREATE TABLE IF NOT EXISTS multipart_info.multipart_folder_delete (
+                id BIGSERIAL NOT NULL,
+                filepath varchar NULL,
+                message TEXT NULL,
+                status varchar NULL,
+                group_id INT NULL,
+                tenant_id BIGINT NULL,
+                process_id BIGINT NULL,
+                root_pipeline_id BIGINT NULL,
+                deleted_time TIMESTAMP NULL,
+                CONSTRAINT multipart_folder_delete_pkey PRIMARY KEY (id)
+                );
+
+                 CREATE SCHEMA IF NOT EXISTS ingestion;
+                 CREATE TABLE IF NOT EXISTS ingestion.pipeline_directory_info(
+                        id bigserial not null,
+                        target_directory_path varchar null,
+                        tenant_id int8 null,
+                        group_id int8 null,
+                        root_pipeline_id int8 null,
+                        created_on timestamp null,
+                        updated_on timestamp null,
+                        created_user_id int8 null,
+                        last_updated_user_id int8 null,
+                        transaction_id varchar null,
+                        formatted_date varchar null,
+                        process_name varchar null,
+                        current_directory varchar null,
+                        zip_directory varchar null,
+                        status varchar null
+                    );
+        "} on-condition if "true"=="true"
+
+}
+catch{}
+finally{}
+}

@@ -1,0 +1,233 @@
+process "paper.classification.processor"
+{
+try{
+
+        assign as "hw_timesStamp" source "intics_zio_db_conn"
+        using
+        {"
+               SELECT now() as consumed_on_ts;
+        "} on-condition if "true"=="true"
+
+        assign as "pipeline_train_mode" source "intics_zio_db_conn" using
+        {"
+               select  (case when '${paper.classification.start.action}'='true' AND '${pipeline.train.mode}'='true' then 'true' else 'false' end) as paper_classification;
+        "}on-condition if "true"=="true"
+
+        transform as "Update to inprogress in payload queue" on "intics_zio_db_conn"
+        using
+        {"
+
+                UPDATE paper_classification.paper_classification_payload_queue
+                SET status='IN_PROGRESS', consumed_on_ts = '${hw_timesStamp.consumed_on_ts}', consumer_process_id = '${process-id}'
+                WHERE group_id='${group_id}' AND status='STAGED' AND stage='PAPER_CLASSIFICATION' AND tenant_id = ${tenant_id} and batch_id ='${batch_id}' ;
+
+                UPDATE batching.sub_batching_process_payload_queue a
+                SET status='IN_PROGRESS',  stage='PAPER_CLASSIFICATION'
+                WHERE a.group_id='${group_id}'  and a.tenant_id='${tenant_id}'
+                and a.batch_id ='${batch_id}';
+
+                update ingestion.pipeline_queue_status_audit as a
+                set status = 'IN_PROGRESS' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                where  a.group_id=${group_id}
+                and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='PAPER_CLASSIFICATION' ;
+
+                INSERT INTO paper_classification.paper_classification_pipeline_audit
+                (process_id, origin_id, group_id, created_on, status, stage, message,root_pipeline_id,tenant_id, batch_id )
+                select producer_process_id,origin_id,group_id, now(),
+                'STARTED', 'PAPER_CLASSIFICATION','hw classification process STARTED for group_id ${group_id}','${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM paper_classification.paper_classification_payload_queue
+                WHERE group_id='${group_id}' AND status='IN_PROGRESS' AND stage='PAPER_CLASSIFICATION' AND tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+        "}on-condition if "true"=="true"
+
+
+        coproStart as "Calling paper classification copro start action" for "PAPER_CLASSIFICATION"
+        copro-server-url "${copro.paper.classification.admin.start.url}"
+        export-command "${copro.paper.classification.export}"
+        process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+        using
+        {"
+              ${paperClassificationStartCommand}
+
+        "}on-condition if "${pipeline_train_mode.paper_classification}"=="true"
+
+        assign as "gen_directory" source "intics_zio_db_conn" using
+        {"
+               SELECT concat ('${gen_directory.current_directory}','/','${group_id}','/hwdetection/') as hwdetection_dest_path;
+
+        "} on-condition if "true"=="true"
+
+
+        hwDetection as "paper classification macro"
+        on-resource-conn "intics_zio_db_conn"
+        outputDir "${gen_directory.hwdetection_dest_path}"
+        copro-url "${copro.hw-detection.url}"
+        output-table "paper_classification.paper_classification_result"
+        modelPath "${model_path}"
+        using
+        {"
+                SELECT a.origin_id as originId, sot.preprocessed_file_id as preprocessedFileId, a.paper_no as paperNo,
+                b.file_path as filePath, b.created_user_id as createdUserId, b.last_updated_user_id as lastUpdatedUserId,
+                b.tenant_id as tenantId,-1 as templateId, 123 as modelRegistryId, ut.group_id as group_id,
+                '${gen_id.root_pipeline_id}' as root_pipeline_id, ut.batch_id as batch_id,now() as created_on
+                FROM paper.paper_level_score_audit a
+                join ${temp_schema_name}.source_of_truth_${init_process_id.process_id} sot on sot.origin_id=a.origin_id and sot.paper_no=a.paper_no
+                JOIN info.asset b on sot.preprocessed_file_id=b.file_id
+                join paper_classification.paper_classification_payload_queue ut on ut.origin_id=a.origin_id
+                WHERE a.is_candidate_paper = 'yes' and ut.status='IN_PROGRESS' and ut.group_id='${group_id}' and ut.tenant_id = ${tenant_id} and ut.batch_id ='${batch_id}';
+        "} on-condition if "true"=="true"
+
+        coproStop as "Calling paper classification copro stop action" for "PAPER_CLASSIFICATION"
+        copro-server-url "${copro.paper.classification.admin.stop.url}"
+        process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+        using
+        {"
+                gunicorn
+
+        "}on-condition if "${paper.classification.stop.action}"=="true"
+
+
+
+            transform as "insert into audit table for paper classification" on "intics_zio_db_conn" using
+            {"
+                    insert into audit.process_audit_output
+                    (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint,paper_no, batch_id)
+                    select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint, ai.paper_no, '${batch_id}'
+                    from paper_classification.paper_classification_result ai
+                    where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id} and batch_id='${batch_id}'
+                    group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage, ai.paper_no
+            "}  on-condition if "true"=="true"
+
+
+        transform as "Update to completed in payload queue" on "intics_zio_db_conn"
+        using
+        {"
+
+                UPDATE paper_classification.paper_classification_payload_queue a
+                SET status=b.status,stage=b.stage, consumed_on_ts = '${hw_timesStamp.consumed_on_ts}', consumer_process_id = '${init_process_id.process_id}'
+                from paper_classification.paper_classification_result b
+                WHERE  a.origin_id=b.origin_id and a.status='IN_PROGRESS' and b.status='FAILED' and b.tenant_id = ${tenant_id} and a.batch_id ='${batch_id}';
+
+                UPDATE paper_classification.paper_classification_payload_queue a
+                SET status=b.status, consumed_on_ts = '${hw_timesStamp.consumed_on_ts}', consumer_process_id = '${init_process_id.process_id}'
+                from paper_classification.paper_classification_result b
+                WHERE  a.origin_id=b.origin_id and a.status='IN_PROGRESS' and b.status='COMPLETED' and b.tenant_id = ${tenant_id} and a.batch_id ='${batch_id}';
+
+
+                UPDATE batching.sub_batching_process_payload_queue a
+                SET status='COMPLETED',  stage='PAPER_CLASSIFICATION'
+                WHERE a.group_id='${group_id}'  and a.tenant_id='${tenant_id}'
+                and a.batch_id ='${batch_id}';
+
+                INSERT INTO paper_classification.paper_classification_pipeline_audit
+                (process_id, origin_id, group_id, created_on, status, stage, message, root_pipeline_id, tenant_id, batch_id)
+                select producer_process_id,origin_id,group_id, now(),
+                'COMPLETED', 'PAPER_CLASSIFICATION','hw classification process COMPLETED for group_id ${group_id}','${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM paper_classification.paper_classification_payload_queue
+                WHERE group_id='${group_id}' AND status='COMPLETED' AND stage='PAPER_CLASSIFICATION' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+        "}on-condition if "true"=="true"
+}
+
+catch{
+        transform as "Update to failed in payload queue" on "intics_zio_db_conn"
+        using
+        {"
+
+
+                UPDATE paper_classification.paper_classification_payload_queue
+                SET status='FAILED', consumed_on_ts = '${time_stamp_preprocess.consumed_on_ts}', consumer_process_id = '${init_process_id.process_id}'
+                WHERE group_id='${group_id}' AND status='IN_PROGRESS' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                INSERT INTO paper_classification.paper_classification_pipeline_audit
+                (process_id, origin_id, group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id )
+                select producer_process_id,origin_id,group_id, now(),
+                'FAILED', 'PAPER_CLASSIFICATION','hw classification FAILED for group_id ${group_id}','${gen_id.root_pipeline_id}', ${tenant_id}, ${batch_id};
+
+                UPDATE batching.sub_batching_process_payload_queue a
+                SET status='FAILED',  stage='FAILED'
+                WHERE a.group_id='${group_id}'  and a.tenant_id='${tenant_id}'
+                and a.batch_id ='${batch_id}';
+
+        "}on-condition if "true"=="true"
+}
+
+finally{
+
+        transform as "Update to failed in payload queue" on "intics_zio_db_conn"
+        using
+        {"
+                UPDATE paper_classification.paper_classification_payload_queue
+                SET status='FAILED', consumed_on_ts = '${time_stamp_preprocess.consumed_on_ts}', consumer_process_id = '${init_process_id.process_id}'
+                WHERE group_id='${group_id}' AND status='IN_PROGRESS' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+        "}on-condition if "true"=="true"
+
+        transform as "insert into pipeline summary audit paper classification" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO ${temp_schema_name}.summary_audit_papers_${process-id}
+                (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken,root_pipeline_id, tenant_id, batch_id )
+                SELECT ${process-id} , 'PAPER_CLASSIFICATION' ,'HW_DETECTION',coalesce (sum(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END),0) ,coalesce (sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END),0),min(created_on),max(last_updated_on), EXTRACT(epoch FROM (max(last_updated_on)-min(created_on))),'${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM paper_classification.paper_classification_result WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id ='${batch_id}'
+                group by batch_id;
+
+                INSERT INTO ${temp_schema_name}.summary_audit_files_${process-id}
+                (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken,root_pipeline_id, tenant_id, batch_id )
+                SELECT ${process-id} , 'PAPER_CLASSIFICATION' ,'HW_DETECTION',sum(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END) ,sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END),min(created_on),max(created_on), EXTRACT(epoch FROM (max(created_on)-min(created_on))),'${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM paper_classification.paper_classification_payload_queue WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id ='${batch_id}'
+                group by batch_id;
+
+                INSERT INTO audit.pipeline_summary_audit
+                (process_id, created_on, module_name, macro_process, files_processed_count,papers_processed_count,files_failed_count,papers_failed_count,start_time,end_time, time_taken, group_id, root_pipeline_id, created_user_id, template_id, tenant_id,average_time, batch_id)
+                SELECT msaf.process_id ,now(),msaf.module_name ,msaf.macro_process ,msaf.completed_count,msap.completed_count,msaf.failed_count,msap.failed_count,msap.min_created_on,msap.max_created_on, EXTRACT(epoch FROM (msap.max_created_on-msap.min_created_on)),
+                '${group_id}','${root-ref-id}','${created_user_id}','${document_id}',${tenant_id},(CASE WHEN (msaf.completed_count+msaf.failed_count)=0 THEN msaf.time_taken WHEN (msaf.time_taken/(msaf.completed_count+msaf.failed_count))=0 THEN msaf.time_taken ELSE (msaf.time_taken/(msaf.completed_count+msaf.failed_count)) END), msaf.batch_id
+                FROM ${temp_schema_name}.summary_audit_files_${process-id} msaf,
+                ${temp_schema_name}.summary_audit_papers_${process-id} msap
+                WHERE msaf.module_name=msap.module_name AND msaf.macro_process=msap.macro_process AND msaf.batch_id=msap.batch_id AND
+                msaf.module_name='PAPER_CLASSIFICATION' AND msaf.macro_process='HW_DETECTION' AND msaf.tenant_id = ${tenant_id} and msaf.batch_id ='${batch_id}';
+
+
+        "} on-condition if "true"=="true"
+
+        transform as "insert into noise model payload queue after completed" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO noise_model.noise_model_payload_queue
+                (producer_process_id ,
+                group_id,origin_id ,created_on, status,stage,last_updated_on ,root_pipeline_id, batch_id, tenant_id)
+                SELECT  producer_process_id ,group_id,origin_id, now(),'STAGED','NOISE_MODEL',now() ,'${gen_id.root_pipeline_id}', batch_id, tenant_id
+                FROM paper_classification.paper_classification_payload_queue
+                WHERE status = 'COMPLETED' and group_id=${group_id} and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+                "}on-condition if "true"=="true"
+
+                transform as "moving to payload queue archive" on "intics_zio_db_conn"
+                using {"
+
+
+                update ingestion.pipeline_queue_status_audit as a
+                set status = 'COMPLETED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                where  a.group_id=${group_id}
+                and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='PAPER_CLASSIFICATION' ;
+
+                INSERT into paper_classification.paper_classification_payload_queue_archive(producer_process_id, consumer_process_id, origin_id,group_id, created_on,status, stage, consumed_on_ts, root_pipeline_id, tenant_id, batch_id )
+                SELECT producer_process_id, consumer_process_id, origin_id, group_id,created_on, status, stage,consumed_on_ts, root_pipeline_id, ${tenant_id}, batch_id
+                FROM paper_classification.paper_classification_payload_queue
+                where status='COMPLETED' and stage='PAPER_CLASSIFICATION' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                Delete from paper_classification.paper_classification_payload_queue
+                where status='COMPLETED' and stage='PAPER_CLASSIFICATION' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+        "}on-condition if "true"=="true"
+
+
+        transform as "moving to payload error" on "intics_zio_db_conn"
+        using
+        {"
+                INSERT into paper_classification.paper_classification_payload_error_queue(producer_process_id, consumer_process_id, origin_id,group_id, created_on,status, stage, consumed_on_ts, root_pipeline_id, tenant_id, batch_id )
+                SELECT producer_process_id, consumer_process_id, origin_id, group_id,created_on, status, stage,consumed_on_ts, root_pipeline_id, ${tenant_id}, batch_id
+                FROM paper_classification.paper_classification_payload_queue
+                where status='FAILED' and stage='PAPER_CLASSIFICATION' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                Delete from paper_classification.paper_classification_payload_queue
+                where status='FAILED' and stage='PAPER_CLASSIFICATION' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+        "}on-condition if "true"=="true"
+
+}
+}

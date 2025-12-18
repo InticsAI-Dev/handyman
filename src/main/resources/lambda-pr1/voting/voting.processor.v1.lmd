@@ -1,0 +1,290 @@
+process "voting.processor.v1"
+{
+
+		try {
+
+		transform as "insert to completed voting audit" on "intics_zio_db_conn" using
+		{"
+				INSERT INTO sor_transaction.sor_transaction_pipeline_audit
+				(group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+				VALUES('${group_id}', now(), '${created_user_id}', '${created_user_id}', ${tenant_id}, 'STARTED', 'VOTING_V1', 'voting started in voting with group_id ${group_id}', '${gen_id.root_pipeline_id}', '${batch_id}');
+		"} on-condition if "true"=="true"
+
+		transform as "cummulative result for voting out phase" on "intics_zio_db_conn" using {"
+
+				-- This table (Table 1) contains the origin_id and sor_item_name and question and predicted_value with sor container voting_out values ;
+
+				INSERT INTO
+				${temp_schema_name}.voting_out_empty_entries_${init_process_id.process_id}
+				(origin_id, sor_item_name, question, predicted_value, voting_out, tenant_id, batch_id)
+				SELECT sv.origin_id,
+				sv.sor_item_name, sv.question,
+				sv.predicted_value, round(sc.voting_out::numeric,2)*100, ${tenant_id}, sv.batch_id
+				FROM ${temp_schema_name}.scalar_validation_${init_process_id.process_id} sv
+				join sor_transaction.sor_transaction_payload_queue stpq on stpq.origin_id=sv.origin_id
+				inner JOIN sor_meta.sor_item si on si.sor_item_name = sv.sor_item_name
+				inner JOIN sor_meta.sor_container sc on sc.sor_container_id = si.sor_container_id
+				WHERE sv.group_id = '${group_id}' and sv.predicted_value =''
+				and sc.voting_out is not null and sv.tenant_id = ${tenant_id} and sv.batch_id = '${batch_id}';
+
+				-- This table (Table 2) has the count of the empty values FROM the table 1 ;
+
+				INSERT INTO
+				${temp_schema_name}.voting_out_empty_entry_summary_${init_process_id.process_id}
+				(origin_id, sor_item_name, empty_prediction_values, voting_out_threshold, tenant_id, batch_id)
+				SELECT sv.origin_id,
+				sv.sor_item_name,count(*) ,
+				voting_out, ${tenant_id}, sv.batch_id
+				FROM ${temp_schema_name}.voting_out_empty_entries_${init_process_id.process_id} sv
+				where sv.batch_id='${batch_id}'
+				GROUP BY  sv.origin_id,
+				sv.sor_item_name,voting_out,sv.batch_id;
+
+				-- This table(Table 3) contains the count of questions FROM the scalar validation table ;
+
+				INSERT INTO
+				${temp_schema_name}.voting_out_agg_summary_${init_process_id.process_id}
+				(origin_id, sor_item_name, total_questions, tenant_id, batch_id)
+				SELECT sv.origin_id,
+				sv.sor_item_name, count(sv.question), ${tenant_id}, sv.batch_id
+				FROM ${temp_schema_name}.scalar_validation_${init_process_id.process_id} sv
+				inner JOIN sor_meta.sor_item si on si.sor_item_name = sv.sor_item_name
+				inner JOIN sor_meta.sor_container sc on sc.sor_container_id = si.sor_container_id
+				where sv.batch_id='${batch_id}'
+				GROUP BY sv.origin_id,
+				sv.sor_item_name, sv.batch_id;
+
+				-- This table(Table 4) evaluate the score and compare that with the threshold value FROM the container table and validate and give out the result;
+
+				INSERT INTO
+				${temp_schema_name}.voting_out_empty_summary_percentage_${init_process_id.process_id}
+				(origin_id, sor_item_name, total_questions, empty_prediction_values, empty_percentage, voting_out_threshold, voting_out_empty_flag, tenant_id, batch_id)
+				SELECT vs.origin_id,
+				vs.sor_item_name,vs.total_questions,
+				ve.empty_prediction_values,
+				(ve.empty_prediction_values/vs.total_questions::float)*100 ,
+				ve.voting_out_threshold,
+				case when ((ve.empty_prediction_values/vs.total_questions::float)*100) >= ve.voting_out_threshold
+				then 'yes' else 'no' end, ${tenant_id}, vs.batch_id
+				FROM ${temp_schema_name}.voting_out_agg_summary_${init_process_id.process_id} vs
+				inner JOIN ${temp_schema_name}.voting_out_empty_entry_summary_${init_process_id.process_id} ve
+				on ve.origin_id =vs.origin_id
+				and ve.sor_item_name = vs.sor_item_name
+				where vs.batch_id = '${batch_id}';
+
+				-- This will UPDATE the sor item name with empty under the origin id ;
+
+				UPDATE ${temp_schema_name}.scalar_validation_${init_process_id.process_id}
+				set predicted_value = '' , b_box='' , score=0
+				WHERE (${temp_schema_name}.scalar_validation_${init_process_id.process_id}.origin_id,${temp_schema_name}.scalar_validation_${init_process_id.process_id}.sor_item_name)
+				IN(SELECT origin_id,sor_item_name FROM ${temp_schema_name}.voting_out_empty_summary_percentage_${init_process_id.process_id} WHERE
+				voting_out_empty_flag='yes' and tenant_id = ${tenant_id} and batch_id = '${batch_id}');
+
+		"} on-condition if "true"=="true"
+
+		transform as "cummulative voting for first box" on "intics_zio_db_conn" using
+		{"
+
+				--There are three boxes of predicted values for every sor item, paper and document ;
+				--The most rarest one - sor items that have multiple predicted values coming FROM different group of questions with same maximum score ;
+				--The rarest one that follows - sor items that have multiple predicted values coming with duplicate maximum score irrespective of questions ;
+				--Then the normal box  ;
+				--Find out the maximum score of predicted values FROM the valuation outcome for every sor item, paper number, document. please remember there is no predicted value here, only the maximum score and there is no reference to quetions also;
+
+                INSERT INTO ${temp_schema_name}.a_agg_occur_max_${init_process_id.process_id}
+                (group_id, origin_id, paper_no, sor_item_name, predicted_value, max_score, tenant_id, occur_count, batch_id)
+                SELECT ae.group_id, ae.origin_id ,ae.paper_no ,ae.sor_item_name, ae.predicted_value,
+                max(ae.vqa_score) as max_score, ${tenant_id} as tenant_id, count(*) as occur_count, batch_id
+                FROM ${temp_schema_name}.scalar_validation_${init_process_id.process_id} ae
+                WHERE  ae.group_id='${group_id}' and ae.tenant_id = '${tenant_id}' and ae.predicted_value!='' and ae.batch_id = '${batch_id}'
+                GROUP BY ae.group_id,ae.origin_id ,ae.paper_no ,ae.sor_item_name,ae.predicted_value,ae.batch_id;
+
+                INSERT INTO ${temp_schema_name}.b_max_occur_item_${init_process_id.process_id}
+                (group_id, origin_id, paper_no, sor_item_name, tenant_id, occur_count, batch_id)
+                select group_id,origin_id,paper_no,sor_item_name,tenant_id, max(occur_count) as occur_count, aaom.batch_id
+                from ${temp_schema_name}.a_agg_occur_max_${init_process_id.process_id} aaom
+                where aaom.group_id='${group_id}' and aaom.batch_id = '${batch_id}'
+                group by group_id,origin_id,paper_no,sor_item_name,tenant_id,batch_id;
+
+
+                INSERT INTO
+                ${temp_schema_name}.a_agg_input_table_${init_process_id.process_id}
+                (origin_id, paper_no, sor_item_name, predicted_value, vqa_score, tenant_id, batch_id)
+                select aaom.origin_id,aaom.paper_no,aaom.sor_item_name,aaom.predicted_value,aaom.max_score,aaom.tenant_id, aaom.batch_id
+                from ${temp_schema_name}.a_agg_occur_max_${init_process_id.process_id} aaom
+                join ${temp_schema_name}.b_max_occur_item_${init_process_id.process_id} sv
+                on sv.origin_id =aaom.origin_id
+                and sv.paper_no =aaom.paper_no
+                and sv.sor_item_name =aaom.sor_item_name
+                and sv.occur_count = aaom.occur_count
+                where aaom.group_id ='${group_id}' and aaom.tenant_id ='${tenant_id}'  and aaom.batch_id = '${batch_id}';
+
+				"} on-condition if "true"=="true"
+
+
+				transform as " cummulative voting for second box" on "intics_zio_db_conn" using {"
+
+				--This box/table addresses predicted values that have duplicate maximum scores for every sor item, paper number, document. ;
+
+				INSERT INTO
+				${temp_schema_name}.b1_scalar_max_score_multi_occur_${init_process_id.process_id}
+				(origin_id, paper_no, sor_item_name, occur_count, vqa_score, tenant_id, batch_id)
+				SELECT origin_id ,paper_no,sor_item_name,count(*) ,vqa_score, ${tenant_id}, batch_id
+				FROM ${temp_schema_name}.a_agg_input_table_${init_process_id.process_id}
+				where batch_id='${batch_id}'
+				GROUP BY origin_id ,paper_no,sor_item_name,vqa_score,batch_id
+				HAVING count(*)>1;
+
+				--This box/table addresses predicted values that have maximum score across all questions ;
+
+				INSERT INTO
+				${temp_schema_name}.b2_scalar_max_score_single_occur_${init_process_id.process_id}
+				(origin_id, paper_no, sor_item_name, occur_count, vqa_score, tenant_id, batch_id)
+				SELECT sv.origin_id ,sv.paper_no,sv.sor_item_name,
+				count(*) ,sv.vqa_score, ${tenant_id}, agg.batch_id
+				FROM ${temp_schema_name}.a_agg_input_table_${init_process_id.process_id} agg
+				inner JOIN ${temp_schema_name}.scalar_validation_${init_process_id.process_id} sv on
+				sv.origin_id = agg.origin_id and sv.paper_no = agg.paper_no and sv.sor_item_name = agg.sor_item_name
+				and sv.vqa_score = agg.vqa_score
+				where agg.batch_id='${batch_id}'
+				GROUP BY sv.origin_id ,sv.paper_no,sv.sor_item_name,sv.vqa_score,agg.batch_id
+				having count(*)=1;
+
+
+
+				--This table is the origin table to find out the second rarest box collecting all sor items that have different predicted values with duplicate maximum score across different set of questions ;
+
+				INSERT INTO
+				 ${temp_schema_name}.c_multi_occur_freq_for_scalar_${init_process_id.process_id}
+				(origin_id, paper_no, sor_item_name, predicted_value, freq, vqa_score, tenant_id, batch_id)
+				SELECT ae.origin_id ,ae.paper_no ,ae.sor_item_name ,ae.predicted_value ,
+				count(*) , ae.vqa_score, ${tenant_id}, ae.batch_id
+				FROM ${temp_schema_name}.scalar_validation_${init_process_id.process_id} ae
+				INNER JOIN ${temp_schema_name}.b1_scalar_max_score_multi_occur_${init_process_id.process_id} sm
+				on sm.origin_id= ae.origin_id
+				and sm.paper_no = ae.paper_no and sm.sor_item_name = ae.sor_item_name
+				and sm.vqa_score = ae.vqa_score
+				where ae.batch_id ='${batch_id}'
+				GROUP BY ae.origin_id ,ae.paper_no ,ae.sor_item_name ,
+				ae.predicted_value,ae.vqa_score,ae.batch_id  ;
+
+
+				--This table helps finding out the maximum frequency of a predicted answer across multiple questions ;
+
+				INSERT INTO
+				 ${temp_schema_name}.d_max_freq_FROM_multi_occur_${init_process_id.process_id}
+				(origin_id, paper_no, sor_item_name, freq, tenant_id, batch_id)
+				SELECT mo.origin_id, mo.paper_no, mo.sor_item_name,
+				max(mo.freq), ${tenant_id},  mo.batch_id
+				FROM  ${temp_schema_name}.c_multi_occur_freq_for_scalar_${init_process_id.process_id} mo
+				where mo.batch_id ='${batch_id}'
+				GROUP BY mo.origin_id, mo.paper_no, mo.sor_item_name, mo.batch_id;
+
+
+				--This table contains final results of sor items with predicted values that have the maximum frequency ;
+
+				INSERT INTO
+				 ${temp_schema_name}.e_final_result_for_freq_${init_process_id.process_id}
+				(origin_id, paper_no, sor_item_name, predicted_value, freq, vqa_score, tenant_id, batch_id)
+				SELECT mo.origin_id, mo.paper_no, mo.sor_item_name, mo.predicted_value, mo.freq, mo.vqa_score, ${tenant_id},  mo.batch_id
+				FROM  ${temp_schema_name}.c_multi_occur_freq_for_scalar_${init_process_id.process_id} mo
+				INNER JOIN
+				 ${temp_schema_name}.d_max_freq_FROM_multi_occur_${init_process_id.process_id} fr on fr.origin_id = mo.origin_id
+				and fr.paper_no = mo.paper_no and fr.sor_item_name = mo.sor_item_name
+				and fr.freq = mo.freq
+				where mo.batch_id ='${batch_id}';
+				"} on-condition if "true"=="true"
+
+				transform as " cummulative voting for Third box" on "intics_zio_db_conn" using {"
+
+				--This table addresses the box WHERE we collect all sor items that have duplicate max score but with different predicted values and ;
+				--different frequency ;
+
+				INSERT INTO
+				 ${temp_schema_name}f1_single_freq_occur_${init_process_id.process_id}
+				(origin_id, paper_no, sor_item_name, vqa_score, freq, predicted_value, tenant_id, batch_id)
+				SELECT origin_id, paper_no, sor_item_name,vqa_score,freq,predicted_value, ${tenant_id}, batch_id
+				FROM  ${temp_schema_name}.e_final_result_for_freq_${init_process_id.process_id}
+				where batch_id ='${batch_id}'
+				GROUP BY origin_id, paper_no, sor_item_name,vqa_score,freq,predicted_value,batch_id
+				having count(*)=1;
+
+				--This table addresses the box WHERE we collect all sor items that have duplicate max score with different predicted values and same frequency ;
+				--This table aggregates all the answers which have same frequency also ;
+
+				INSERT INTO  ${temp_schema_name}.f2_group_concat_based_on_freq_${init_process_id.process_id}
+				(origin_id, paper_no, sor_item_name, vqa_score, freq, predicted_value, tenant_id, batch_id)
+				SELECT origin_id, paper_no, sor_item_name,vqa_score,freq,
+				string_agg(predicted_value, ' OR '), ${tenant_id}, batch_id
+				FROM  ${temp_schema_name}.e_final_result_for_freq_${init_process_id.process_id}
+				 where batch_id ='${batch_id}'
+				GROUP BY origin_id, paper_no, sor_item_name,vqa_score,freq,predicted_value,batch_id
+				having count(*)>1;
+
+				INSERT INTO  ${temp_schema_name}.final_valuation_result_${init_process_id.process_id}
+				(origin_id, paper_no, sor_item_name, b_box, rnk, predicted_value, vqa_score, freq,question_id,synonym_id, tenant_id, model_registry, batch_id)
+				SELECT t.* FROM (SELECT sv.origin_id, sv.paper_no,sv.sor_item_name, sv.b_box, row_number()
+				over(partition by sv.origin_id, sv.paper_no,sv.sor_item_name
+				order by sv.origin_id, sv.paper_no,sv.sor_item_name) as rnk, gc.predicted_value, gc.vqa_score, gc.freq,sv.question_id,sv.synonym_id, ${tenant_id}, sv.model_registry, sv.batch_id
+				FROM  ${temp_schema_name}.f2_group_concat_based_on_freq_${init_process_id.process_id} gc
+				inner JOIN ${temp_schema_name}.scalar_validation_${init_process_id.process_id} sv on sv.origin_id = gc.origin_id
+				and sv.paper_no = gc.paper_no and sv.sor_item_name = gc.sor_item_name
+				where sv.batch_id ='${batch_id}')t
+				WHERE t.rnk=1;
+
+				INSERT INTO  ${temp_schema_name}.final_valuation_result_${init_process_id.process_id}
+				(origin_id, paper_no, sor_item_name, b_box, rnk, predicted_value, vqa_score, freq,question_id,synonym_id, tenant_id, model_registry, batch_id)
+				SELECT t.origin_id,t.paper_no,t.sor_item_name,t.b_box,1,t.predicted_value,t.vqa_score,t.freq,t.question_id,t.synonym_id, t.tenant_id, t.model_registry, t.batch_id
+				FROM (SELECT sv.origin_id, sv.paper_no,sv.sor_item_name, sv.b_box, row_number()
+				over(partition by sv.origin_id, sv.paper_no,sv.sor_item_name
+				order by sv.origin_id, sv.paper_no,sv.sor_item_name) as rnk, gc.predicted_value, gc.vqa_score, gc.freq,sv.question_id,sv.synonym_id,${tenant_id} as tenant_id, sv.model_registry, sv.batch_id
+				FROM  ${temp_schema_name}.f1_single_freq_occur_${init_process_id.process_id} gc
+				inner JOIN ${temp_schema_name}.scalar_validation_${init_process_id.process_id} sv on sv.origin_id = gc.origin_id
+				and sv.paper_no = gc.paper_no and sv.sor_item_name = gc.sor_item_name
+				where sv.batch_id ='${batch_id}')t
+				WHERE t.rnk=1 ;
+
+				INSERT INTO  ${temp_schema_name}.final_valuation_result_${init_process_id.process_id}
+				(origin_id, paper_no, sor_item_name, b_box, rnk, predicted_value, vqa_score, freq,question_id,synonym_id,tenant_id, model_registry, batch_id)
+				SELECT a.origin_id,a.paper_no,a.sor_item_name,sv.b_box , 1, sv.predicted_value,sv.vqa_score, a.occur_count,sv.question_id,sv.synonym_id, ${tenant_id}, sv.model_registry,sv.batch_id
+				FROM ${temp_schema_name}.b2_scalar_max_score_single_occur_${init_process_id.process_id} a
+				inner JOIN ${temp_schema_name}.a_agg_input_table_${init_process_id.process_id} agg on a.origin_id =agg.origin_id and a.paper_no=agg.paper_no and a.sor_item_name=agg.sor_item_name and a.vqa_score =agg.vqa_score
+				inner JOIN ${temp_schema_name}.scalar_validation_${init_process_id.process_id} sv on
+				sv.origin_id = agg.origin_id and sv.paper_no = agg.paper_no and sv.sor_item_name = agg.sor_item_name
+				and sv.vqa_score = agg.vqa_score
+				WHERE sv.group_id='${group_id}' and sv.tenant_id = ${tenant_id} and sv.batch_id ='${batch_id}';
+		"} on-condition if "true"=="true"
+
+		transform as "final insert into aggregator table " on "intics_zio_db_conn" using {"
+
+				INSERT INTO ${temp_schema_name}.aggregation_evaluator_${init_process_id.process_id}
+				(created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, aggregated_score, masked_score, group_id, origin_id, paper_no, predicted_value, vqa_score, rank, sor_item_attribution_id, sor_item_name, document_id, acc_transaction_id, b_box, root_pipeline_id,frequency,question_id,synonym_id, model_registry, batch_id)
+				SELECT now(),'${created_user_id}',now(),'${created_user_id}',${tenant_id},0,0,'${group_id}',a.origin_id,a.paper_no,a.predicted_value,a.vqa_score,
+				'1','1',a.sor_item_name, '${document_id}',1,a.b_box,'${gen_id.root_pipeline_id}',a.freq,a.question_id,a.synonym_id, a.model_registry, a.batch_id
+				FROM  ${temp_schema_name}.final_valuation_result_${init_process_id.process_id} a
+				where a.batch_id = '${batch_id}';
+
+		"} on-condition if "true"=="true"
+
+
+		transform as "insert to completed voting audit" on "intics_zio_db_conn" using
+		{"
+				INSERT INTO sor_transaction.sor_transaction_pipeline_audit
+				(group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+				VALUES('${group_id}', now(), '${created_user_id}', '${created_user_id}', ${tenant_id}, 'COMPLETED', 'VOTING', 'voting completed for voting with group_id ${group_id}', '${gen_id.root_pipeline_id}', '${batch_id}');
+		"} on-condition if "true"=="true"
+
+		}
+		catch{
+		transform as "insert to completed voting audit" on "intics_zio_db_conn" using
+		{"
+				INSERT INTO sor_transaction.sor_transaction_pipeline_audit
+				(group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+				VALUES('${group_id}', now(), '${created_user_id}', '${created_user_id}', ${tenant_id}, 'FAILED', 'VOTING', 'voting failed for voting with group_id ${group_id}', '${gen_id.root_pipeline_id}', '${batch_id}');
+		"} on-condition if "true"=="true"
+
+		}
+		finally{
+
+		}
+}

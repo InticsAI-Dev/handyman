@@ -1,8 +1,9 @@
 package in.handyman.raven.lib.model.paperitemizer;
 
 import in.handyman.raven.core.utils.FileProcessingUtils;
-import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import in.handyman.raven.lib.services.paperitemizer.PaperItemizerInputTable;
+import in.handyman.raven.lib.services.paperitemizer.PaperItemizerOutputTable;
 import lombok.extern.slf4j.Slf4j;
 import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
@@ -18,18 +19,13 @@ import org.slf4j.MarkerFactory;
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.awt.image.ConvolveOp;
-import java.awt.image.Kernel;
-import java.awt.image.RescaleOp;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.List;
 
 
@@ -248,8 +244,8 @@ public void contextLoads() throws IOException {
 
 
 private void writeOutputItemizedImages(List<PaperItemizerOutputTable> parentObj, PaperItemizerInputTable entity,
-                                        Path basePath, String originalPageName, int tileIndex, BufferedImage image,
-                                        String normalizedFormat, int pageCount, Timestamp startTime) throws IOException {
+                                       Path basePath, String originalPageName, int tileIndex, BufferedImage image,
+                                       String normalizedFormat, int pageCount, Timestamp startTime) throws IOException {
 // Use timestamp to ensure unique filenames
         String timestamp = String.valueOf(System.currentTimeMillis());
         String fileName = "output_image_" + timestamp + "_" + (tileIndex + 1) + "." + normalizedFormat;

@@ -1,6 +1,10 @@
 package in.handyman.raven.lib.model.paperitemizer;
 
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import in.handyman.raven.lib.services.paperitemizer.PaperItemizerInputTable;
+import in.handyman.raven.lib.services.paperitemizer.PaperItemizerOutputTable;
+import in.handyman.raven.lib.services.paperitemizer.PdfItemizerWithStreaming;
+import in.handyman.raven.lib.services.paperitemizer.PdfToPaperItemizer;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;

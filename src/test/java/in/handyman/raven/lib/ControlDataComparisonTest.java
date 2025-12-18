@@ -7,7 +7,7 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.adapters.comparison.DateComparisonAdapter;
 import in.handyman.raven.lib.adapters.comparison.SimilarityComparisonAdapter;
 import in.handyman.raven.lib.model.ControlDataComparison;
-import in.handyman.raven.lib.model.controldatacomaprison.ControlDataComparisonQueryInputTable;
+import in.handyman.raven.lib.services.controldatacomaprison.ControlDataComparisonQueryInputTable;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;

@@ -1,8 +1,8 @@
 package in.handyman.raven.lib.contracts;
 
 import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
-import in.handyman.raven.lib.model.soritemhandling.MultiValueOutputResult;
-import in.handyman.raven.lib.model.soritemhandling.MultivalueSorItemHandlingActionInput;
+import in.handyman.raven.lib.services.soritemhandling.MultiValueOutputResult;
+import in.handyman.raven.lib.services.soritemhandling.MultivalueSorItemHandlingActionInput;
 import org.jdbi.v3.core.Jdbi;
 
 import java.util.List;

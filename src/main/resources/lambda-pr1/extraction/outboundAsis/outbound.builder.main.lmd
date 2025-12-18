@@ -1,0 +1,35 @@
+process "outbound.builder.main"
+{
+
+try{
+        assign as "asis_outbound_timesStamp" source "intics_zio_db_conn"
+        using
+        {"
+               SELECT now() as consumed_on_ts;
+        "} on-condition if "true"=="true"
+
+            callprocess as "calling outbound builder asis processor ddl called"
+            with-target "outbound.builder.ddl"
+            from-file "${basepath}/extraction/outboundAsis/outbound.builder.ddl.lmd"
+            using "intics_zio_db_conn"
+            for-every {"
+                SELECT 1;
+            "} on-condition if "true"=="true"
+
+            callprocess as "calling outbound builder asis processor called"
+            with-target "outbound.builder.processor"
+            from-file "${basepath}/extraction/outboundAsis/outbound.builder.processor.lmd"
+            using "intics_zio_db_conn"
+            for-every {"
+
+                SELECT inbound_transaction_id
+                FROM info.inbound_transaction
+                where transaction_status='COMPLETED' and tenant_id ='${tenant_id}' and inbound_transaction_id='${inbound.transaction.id}';
+
+            "} on-condition if "true"=="true"
+}catch{
+
+}finally{
+
+}
+}

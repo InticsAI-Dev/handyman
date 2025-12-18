@@ -1,0 +1,41 @@
+process "sanitary.hub.main.caller"
+{
+    try{
+         assign as "init_process_id" source "intics_zio_db_conn" using {"
+         SELECT ${process-id} as process_id;
+         "} on-condition if "true"=="true"
+
+		assign as "time_stamp_sanitary_hub" source "intics_zio_db_conn" using
+        {"
+                SELECT now() as consumed_on_ts;
+        "} on-condition if "true"=="true"
+
+
+        callprocess as "calling sanitary hub ddl"
+        with-target "sanitary.hub.ddl"
+        from-file "${basepath}/sanitaryHub/database/sanitary.hub.ddl.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+            SELECT 1;
+        "} on-condition if "true"=="true"
+
+        callprocess as "calling database backup ease processor"
+        with-target "db.backup.ease.processor"
+        from-file "${basepath}/sanitaryHub/database/data.shield.processor.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+            SELECT 1;
+        "} on-condition if "true"=="true"
+
+        transform as "Drop temporary table for sanitary hub" on "intics_zio_db_conn" using
+        {"
+            DROP TABLE IF EXISTS ${temp_schema_name}.table_truncate_input_${init_process_id.process_id};
+            DROP TABLE IF EXISTS ${temp_schema_name}.table_backup_input_${init_process_id.process_id};
+        "} on-condition if "true"=="true"
+
+    } catch {
+
+    } finally {
+
+    }
+}

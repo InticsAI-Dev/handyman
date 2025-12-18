@@ -1,0 +1,920 @@
+process "batch.processor"
+{
+try {
+
+        transform as "Batch insert for preprocess and outbound payload queue" on "intics_zio_db_conn" using
+        {"
+
+                UPDATE batching.sub_batching_process_payload_queue
+                SET status='IN_PROGRESS', consumed_on_ts = now(), consumer_process_id = '${process-id}'
+                WHERE status='STAGED' and group_id='${gen_group_id.group_id}' and batch_id ='${batch_id}' and tenant_id = ${tenant_id};
+
+                INSERT INTO preprocess.preprocess_payload_queue
+                ( producer_process_id, origin_id,group_id, batch_id, created_on, status, stage,root_pipeline_id, tenant_id)
+                select producer_process_id,origin_id,group_id, batch_id,now(), 'STAGED', 'PREPROCESS',root_pipeline_id, tenant_id
+                from batching.sub_batching_process_payload_queue
+                where batch_id ='${batch_id}' and group_id='${gen_group_id.group_id}' and tenant_id = ${tenant_id};
+
+                INSERT INTO ingestion.pipeline_queue_status_audit
+                (producer_process_id, consumer_process_id, origin_id,batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, origin_type)
+                select producer_process_id, consumer_process_id, origin_id, batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, '${origin_type}'
+                from preprocess.preprocess_payload_queue
+                where group_id='${gen_group_id.group_id}' and batch_id='${batch_id}' and tenant_id =${tenant_id};
+
+                INSERT INTO outbound.outbound_payload_queue
+                (producer_process_id, origin_id, group_id, batch_id, created_on, status, stage,root_pipeline_id, tenant_id)
+                select producer_process_id,origin_id,group_id, batch_id,now(), 'STAGED', 'OUTBOUND',root_pipeline_id, ${tenant_id}
+                from batching.sub_batching_process_payload_queue
+                where batch_id ='${batch_id}' and group_id='${gen_group_id.group_id}' and tenant_id = ${tenant_id} and '${origin_type}'='TRANSACTION' and '${response.builder.activator}'='true';
+
+                INSERT INTO ingestion.pipeline_queue_status_audit
+                (producer_process_id, consumer_process_id, origin_id,batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, origin_type)
+                select producer_process_id, consumer_process_id, origin_id, batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, '${origin_type}'
+                from outbound.outbound_payload_queue
+                where group_id='${gen_group_id.group_id}' and batch_id='${batch_id}' and tenant_id =${tenant_id} and '${origin_type}'='TRANSACTION' and '${response.builder.activator}'='true';
+
+
+                INSERT INTO control_data.control_data_payload_queue
+                (producer_process_id, origin_id, group_id, batch_id, created_on, status, stage, root_pipeline_id, tenant_id)
+                SELECT producer_process_id, origin_id, group_id, batch_id, now(),'STAGED', 'CONTROL_DATA', root_pipeline_id, ${tenant_id}
+                from batching.sub_batching_process_payload_queue
+                where batch_id ='${batch_id}' and group_id='${gen_group_id.group_id}' and tenant_id = ${tenant_id} and '${origin_type}'='TRANSACTION';
+
+                INSERT INTO alchemy_migration.alchemy_migration_payload_queue
+                (producer_process_id, origin_id, group_id, created_on, status, stage, root_pipeline_id,tenant_id, batch_id)
+                SELECT producer_process_id, origin_id, group_id, cast(created_on as TIMESTAMP), 'STAGED', 'ALCHEMY_MIGRATION', root_pipeline_id, ${tenant_id}, batch_id
+                from batching.sub_batching_process_payload_queue
+                where batch_id ='${batch_id}' and group_id=${gen_group_id.group_id} and tenant_id = ${tenant_id} and '${origin_type}'='TRANSACTION' and '${alchemy.migration.activator}'='true';
+
+                INSERT INTO ingestion.pipeline_queue_status_audit
+                (producer_process_id, consumer_process_id, origin_id,batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, origin_type)
+                select producer_process_id, consumer_process_id, origin_id, batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, '${origin_type}'
+                from alchemy_migration.alchemy_migration_payload_queue
+                where group_id=${gen_group_id.group_id} and batch_id='${batch_id}' and tenant_id =${tenant_id} and '${origin_type}'='TRANSACTION' and '${alchemy.migration.activator}'='true';
+
+                INSERT INTO product_outbound.product_outbound_payload_queue
+                (producer_process_id, origin_id, group_id, created_on, status, stage, root_pipeline_id,tenant_id,batch_id)
+                SELECT producer_process_id, origin_id, group_id, cast(created_on as TIMESTAMP), 'STAGED', 'PRODUCT_OUTBOUND', root_pipeline_id,tenant_id,batch_id
+                from batching.sub_batching_process_payload_queue
+                where batch_id ='${batch_id}' and group_id='${gen_group_id.group_id}' and tenant_id = ${tenant_id} and '${origin_type}'='TRANSACTION' and '${product.response.builder.activator}'='true';
+
+                INSERT INTO ingestion.pipeline_queue_status_audit
+                (producer_process_id, consumer_process_id, origin_id,batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, origin_type)
+                select producer_process_id, consumer_process_id, origin_id, batch_id, group_id, created_on, status, stage, consumed_on_ts::timestamp , root_pipeline_id, tenant_id, '${origin_type}'
+                from product_outbound.product_outbound_payload_queue
+                where group_id='${gen_group_id.group_id}' and batch_id='${batch_id}' and tenant_id =${tenant_id} and '${origin_type}'='TRANSACTION' and '${product.response.builder.activator}'='true';
+
+        "} on-condition if "${ingestion.main.caller.activator}"=="true"
+
+            transform as "Batch insert for DocEyeCue payload queue" on "intics_zio_db_conn" using
+        {"
+            INSERT INTO doc_eyecue.doc_eyecue_payload_queue (
+                producer_process_id,
+                consumer_process_id,
+                origin_id,
+                group_id,
+                batch_id,
+                tenant_id,
+                root_pipeline_id,
+                transaction_id,
+                source,
+                status,
+                stage,
+                created_on,
+                last_updated_on,
+                consumed_on_ts
+            )
+            SELECT
+                sbpq.producer_process_id,
+                NULL AS consumer_process_id,
+                sbpq.origin_id,
+                sbpq.group_id,
+                sbpq.batch_id,
+                sbpq.tenant_id,
+                soo.root_pipeline_id,
+                idfd.transaction_id,
+                ifd.source,
+                'STAGED',
+                'DOC_EYE_CUE',
+                NOW(),
+                NULL,
+                NULL
+            FROM batching.sub_batching_process_payload_queue sbpq
+            INNER JOIN ${temp_schema_name}.source_of_origin_${init_process_id.process_id} soo
+                ON sbpq.root_pipeline_id = soo.root_pipeline_id
+               AND sbpq.origin_id = soo.origin_id
+               AND sbpq.batch_id = soo.batch_id
+               AND sbpq.tenant_id = soo.tenant_id
+            INNER JOIN ${temp_schema_name}.asset_${init_process_id.process_id} a
+                ON soo.asset_id = a.asset_id
+            INNER JOIN inbound_config.ingestion_downloaded_file_details idfd
+                ON a.file_name = idfd.file_name
+               AND soo.transaction_id = idfd.transaction_id
+            INNER JOIN inbound_config.ingestion_file_details ifd
+                ON idfd.inbound_transaction_id = ifd.inbound_transaction_id
+            WHERE sbpq.group_id = '${gen_group_id.group_id}'
+              AND sbpq.batch_id = '${batch_id}'
+              AND sbpq.tenant_id = ${tenant_id}
+              AND ifd.source = 'Filenet';
+
+            INSERT INTO doc_eyecue.doc_eyecue_pipeline_audit
+                (origin_id, group_id, tenant_id, process_id, created_on, status, stage, message, root_pipeline_id, batch_id)
+            SELECT
+                sbpq.origin_id,
+                sbpq.group_id,
+                sbpq.tenant_id,
+                ${init_process_id.process_id},
+                NOW(),
+                'FAILED',
+                'DOC_EYE_CUE',
+                CASE
+                    WHEN ifd.source IS NULL THEN 'Source file is not from Filenet'
+                    WHEN ifd.source <> 'Filenet' THEN concat('Source file is not from Filenet. Found source: ', ifd.source)
+                    ELSE 'Unknown condition – skipped from payload queue'
+                END,
+                soo.root_pipeline_id,
+                sbpq.batch_id
+            FROM batching.sub_batching_process_payload_queue sbpq
+            INNER JOIN ${temp_schema_name}.source_of_origin_${init_process_id.process_id} soo
+                ON sbpq.root_pipeline_id = soo.root_pipeline_id
+               AND sbpq.origin_id = soo.origin_id
+               AND sbpq.batch_id = soo.batch_id
+               AND sbpq.tenant_id = soo.tenant_id
+            INNER JOIN ${temp_schema_name}.asset_${init_process_id.process_id} a
+                ON soo.asset_id = a.asset_id
+            LEFT JOIN inbound_config.ingestion_downloaded_file_details idfd
+                ON a.file_name = idfd.file_name
+               AND soo.transaction_id = idfd.transaction_id
+            LEFT JOIN inbound_config.ingestion_file_details ifd
+                ON idfd.inbound_transaction_id = ifd.inbound_transaction_id
+            WHERE sbpq.group_id = '${gen_group_id.group_id}'
+              AND sbpq.batch_id = '${batch_id}'
+              AND sbpq.tenant_id = ${tenant_id}
+              AND (
+                    ifd.source IS NULL
+                    OR ifd.source <> 'Filenet'
+                  );
+        "} on-condition if "${doc.eyecue.activator}"=="true"
+
+
+        transform as "Batch insert for Asis pipeline" on "intics_zio_db_conn" using
+        {"
+
+                INSERT INTO text_extraction.text_extraction_payload_queue
+                (producer_process_id, origin_id, group_id, created_on, status, stage, root_pipeline_id,tenant_id,batch_id)
+                SELECT producer_process_id, origin_id, group_id, cast(created_on as TIMESTAMP), 'STAGED', 'TEXT_EXTRACTION', root_pipeline_id,'${tenant_id}','${batch_id}'
+                from batching.sub_batching_process_payload_queue
+                where batch_id ='${batch_id}' and group_id='${gen_group_id.group_id}' and tenant_id = ${tenant_id} and '${origin_type}'='TRANSACTION' and '${text.extraction.asis.activator}'='true';
+
+                INSERT INTO kvp_extraction.kvp_extraction_payload_queue
+                (producer_process_id, origin_id, group_id, created_on, status, stage, root_pipeline_id,tenant_id,batch_id)
+                SELECT producer_process_id, origin_id, group_id, cast(created_on as TIMESTAMP), 'STAGED', 'KVP_EXTRACTION', root_pipeline_id,'${tenant_id}','${batch_id}'
+                from batching.sub_batching_process_payload_queue
+                where batch_id ='${batch_id}' and group_id='${gen_group_id.group_id}' and tenant_id = ${tenant_id} and '${origin_type}'='TRANSACTION' and '${kvp.extraction.asis.activator}'='true';
+
+                INSERT INTO table_extraction_info.table_extraction_payload_queue
+                (producer_process_id, origin_id, group_id, created_on, status, stage, root_pipeline_id,tenant_id,batch_id)
+                SELECT producer_process_id, origin_id, group_id, cast(created_on as TIMESTAMP), 'STAGED', 'TABLE_EXTRACTION', root_pipeline_id,'${tenant_id}','${batch_id}'
+                from batching.sub_batching_process_payload_queue
+                where batch_id ='${batch_id}' and group_id='${gen_group_id.group_id}' and tenant_id = ${tenant_id} and '${origin_type}'='TRANSACTION' and '${table.extraction.asis.krypton.activator}'='true';
+
+                INSERT INTO outbound_transform_asis.outbound_transform_asis_payload_queue
+                (producer_process_id, origin_id, group_id, created_on, status, stage, root_pipeline_id,tenant_id,batch_id)
+                SELECT producer_process_id, origin_id, group_id, cast(created_on as TIMESTAMP), 'STAGED', 'OUTBOUND_TRANSFORM_ASIS', root_pipeline_id,'${tenant_id}','${batch_id}'
+                from batching.sub_batching_process_payload_queue
+                where batch_id ='${batch_id}' and group_id='${gen_group_id.group_id}' and tenant_id = ${tenant_id} and '${origin_type}'='TRANSACTION' and '${outbound.asis.transform.activator}'='true';
+
+
+                INSERT INTO outbound_asis.outbound_asis_payload_queue
+                (producer_process_id, origin_id, group_id, created_on, status, stage, root_pipeline_id,tenant_id,batch_id)
+                SELECT producer_process_id, origin_id, group_id, cast(created_on as TIMESTAMP), 'STAGED', 'OUTBOUND_ASIS', root_pipeline_id,'${tenant_id}','${batch_id}'
+                from batching.sub_batching_process_payload_queue
+                where batch_id ='${batch_id}' and group_id='${gen_group_id.group_id}' and tenant_id = ${tenant_id} and '${origin_type}'='TRANSACTION' and '${outbound.asis.builder.activator}'='true';
+
+
+                 INSERT INTO ingestion.pipeline_queue_status_audit
+                (producer_process_id, consumer_process_id, origin_id,batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, origin_type)
+                select producer_process_id, consumer_process_id, origin_id, batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, '${origin_type}'
+                from text_extraction.text_extraction_payload_queue
+                where group_id='${gen_group_id.group_id}' and batch_id='${batch_id}' and tenant_id =${tenant_id};
+
+                INSERT INTO ingestion.pipeline_queue_status_audit
+                (producer_process_id, consumer_process_id, origin_id,batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, origin_type)
+                select producer_process_id, consumer_process_id, origin_id, batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, '${origin_type}'
+                from kvp_extraction.kvp_extraction_payload_queue
+                where group_id='${gen_group_id.group_id}' and batch_id='${batch_id}' and tenant_id =${tenant_id};
+
+                INSERT INTO ingestion.pipeline_queue_status_audit
+                (producer_process_id, consumer_process_id, origin_id,batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, origin_type)
+                select producer_process_id, consumer_process_id, origin_id, batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, '${origin_type}'
+                from checkbox_extraction.checkbox_extraction_payload_queue
+                where group_id='${gen_group_id.group_id}' and batch_id='${batch_id}' and tenant_id =${tenant_id};
+
+                INSERT INTO ingestion.pipeline_queue_status_audit
+                (producer_process_id, consumer_process_id, origin_id,batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, origin_type)
+                select producer_process_id, consumer_process_id, origin_id, batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, '${origin_type}'
+                from table_extraction_info.table_extraction_payload_queue
+                where group_id='${gen_group_id.group_id}' and batch_id='${batch_id}' and tenant_id =${tenant_id};
+
+                INSERT INTO ingestion.pipeline_queue_status_audit
+                (producer_process_id, consumer_process_id, origin_id,batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, origin_type)
+                select producer_process_id, consumer_process_id, origin_id, batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, '${origin_type}'
+                from outbound_transform_asis.outbound_transform_asis_payload_queue
+                where group_id='${gen_group_id.group_id}' and batch_id='${batch_id}' and tenant_id =${tenant_id};
+
+                INSERT INTO ingestion.pipeline_queue_status_audit
+                (producer_process_id, consumer_process_id, origin_id,batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, origin_type)
+                select producer_process_id, consumer_process_id, origin_id, batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, '${origin_type}'
+                from outbound_asis.outbound_asis_payload_queue
+                where group_id='${gen_group_id.group_id}' and batch_id='${batch_id}' and tenant_id =${tenant_id};
+
+        "} on-condition if "false"=="true"
+
+
+        assign as "pipeline_bus_mode" source "intics_zio_db_conn" using
+        {"
+                select  (case when '${noise.model.start.action}'='true' AND '${noise.model.caller.activator}'='true'  AND '${pipeline.bus.mode}'='true' then 'true' else 'false' end) as noise_model;
+                select  (case when '${zero.shot.start.action}'='true' AND '${root.filter.activator}'='true'  AND '${pipeline.bus.mode}'='true' then 'true' else 'false' end) as zero_shot;
+                select  (case when '${phrase.match.start.action}'='true' AND '${root.filter.activator}'='true'  AND '${pipeline.bus.mode}'='true' then 'true' else 'false' end) as phrase_match;
+
+                select  (case when '${paper.classification.start.action}'='true' AND '${paper.classification.activator}'='true'  AND '${pipeline.bus.mode}'='true' then 'true' else 'false' end) as paper_classificationr;
+                select  (case when '${qr.extraction.start.action}'='true' AND '${qr.extraction.processor.activator}'='true'  AND '${pipeline.bus.mode}'='true' then 'true' else 'false' end) as qr_extraction;
+                select  (case when '${ut.model.start.action}'='true' AND '${ut.model.activator}'='true'  AND '${pipeline.bus.mode}'='true' then 'true' else 'false' end) as ut_model;
+
+
+                select  (case when '${handwritten.start.action}'='true' AND '${sor.transaction.activator}'='true'  AND '${pipeline.bus.mode}'='true' then 'true' else 'false' end) as vqa_handwritten;
+                select  (case when '${printed.start.action}'='true' AND '${sor.transaction.activator}'='true'  AND '${pipeline.bus.mode}'='true' then 'true' else 'false' end) as vqa_printed;
+                select  (case when '${validation.start.action}'='true' AND '${sor.transaction.activator}'='true'  AND '${pipeline.bus.mode}'='true' then 'true' else 'false' end) as validation;
+
+                select  (case when '${merger.start.action}'='true' AND '${response.builder.activator}'='true'  then 'true' else 'false' end) as merger_start;
+                select  (case when '${merger.stop.action}'='true' AND '${response.builder.activator}'='true' then 'true' else 'false' end) as merger_stop;
+
+        "}on-condition if "true"=="true"
+
+
+
+        coproStart as "Calling zero shot classifier copro start action" for "ZERO_SHOT_CLASSIFIER"
+        copro-server-url "${copro.zero.shot.admin.start.url}"
+        export-command "${copro.zero.shot.admin.export}"
+        process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+        using
+        {"
+             ${zeroShotStartCommand}
+
+        "} on-condition if "${pipeline_bus_mode.zero_shot}"=="true"
+
+        coproStart as "Calling phrase match copro start action" for "PHRASE_MATCH"
+        copro-server-url "${copro.phrase.match.admin.start.url}"
+        export-command "${copro.phrase.match.export}"
+        process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+        using
+        {"
+                ${phraseMatchStartCommand}
+
+        "} on-condition if "${pipeline_bus_mode.phrase_match}"=="true"
+
+        callprocess as "Insert into synonym and question tables"
+        with-target "template.questions.onboarding"
+        from-file "${basepath}/preprocess/template.questions.onboarding.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "true"=="true"
+
+        spawn as "DocEyeCue spawn caller spawn process enabled"
+        with-target "spawn.doceyecue.process"
+        from-file "${basepath}/batchProcess/spawn.doceyecue.process.lmd"
+        on-condition if "${doc.eyecue.spawn.activator}"=="true"
+
+        callprocess as "DocEyeCue spawn caller spawn process disabled"
+        with-target "spawn.doceyecue.process"
+        from-file "${basepath}/batchProcess/spawn.doceyecue.process.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${doc.eyecue.spawn.activator}"=="false"
+
+        callprocess as "calling optimized preprocess main caller"
+        with-target "preprocess.main.caller"
+        from-file "${basepath}/preprocess/preprocess.main.caller.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${preprocess.main.caller.activator}"=="true"
+
+
+                        callprocess as "calling text extraction main caller"
+                        with-target "text.extraction.main.caller"
+                        from-file "${basepath}/extraction/text/text.extraction.main.caller.lmd"
+                        using "intics_zio_db_conn"
+                        for-every {"
+                                SELECT 1;
+                        "} on-condition if "${text.extraction.asis.activator}"=="true"
+
+                        callprocess as "calling KVP extraction main caller"
+                        with-target "kvp.extraction.main.caller"
+                        from-file "${basepath}/extraction/kvp/kvp.extraction.main.caller.lmd"
+                        using "intics_zio_db_conn"
+                        for-every {"
+                                SELECT 1;
+                        "} on-condition if "${kvp.extraction.asis.activator}"=="true"
+
+                        callprocess as "calling table extraction main caller"
+                        with-target "table.extraction.main.caller"
+                        from-file "${basepath}/extraction/table/table.extraction.main.caller.lmd"
+                        using "intics_zio_db_conn"
+                        for-every {"
+                                SELECT 1;
+                        "} on-condition if "${table.extraction.asis.krypton.activator}"=="true"
+
+                        callprocess as "calling checkbox extraction main caller"
+                        with-target "checkbox.extraction.main.caller"
+                        from-file "${basepath}/extraction/checkbox/checkbox.extraction.main.caller.lmd"
+                        using "intics_zio_db_conn"
+                        for-every {"
+                                SELECT 1;
+                        "} on-condition if "${checkbox.extraction.asis.activator}"=="true"
+
+
+
+                        callprocess as "calling outbound response insert caller"
+                        with-target "outbound.response.insert"
+                        from-file "${basepath}/extraction/outbound/outbound.response.insert.lmd"
+                        using "intics_zio_db_conn"
+                        for-every {"
+                                SELECT 1;
+                        "} on-condition if "${outbound.asis.transform.activator}"=="true"
+
+
+                        callprocess as "calling outbound.transform.main "
+                        with-target "outbound.transform.main.lmd"
+                        from-file "${basepath}/extraction/outboundTransform/outbound.transform.main.lmd"
+                        using "intics_zio_db_conn"
+                        for-every {"
+                                SELECT 1;
+                        "} on-condition if "${outbound.asis.transform.activator}"=="true"
+
+                        callprocess as "calling outbound.builder.main "
+                        with-target "outbound.builder.main.lmd"
+                        from-file "${basepath}/extraction/outboundAsis/outbound.builder.main.lmd"
+                        using "intics_zio_db_conn"
+                        for-every {"
+                                SELECT 1;
+                        "} on-condition if "${outbound.asis.builder.activator}"=="true"
+
+
+        coproStart as "Calling noise Model copro start action" for "NOISE_MODEL"
+        copro-server-url "${copro.noise.model.admin.start.url}"
+        export-command "${copro.noisemodel.export}"
+        process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+        using
+        {"
+                ${noiseModelStartCommand}
+
+        "}on-condition if "${pipeline_bus_mode.noise_model}" == "true"
+
+
+        coproStart as "Calling paper classification copro start action" for "PAPER_CLASSIFICATION"
+        copro-server-url "${copro.paper.classification.admin.start.url}"
+        export-command "${copro.paper.classification.export}"
+        process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+        using
+        {"
+                ${paperClassificationStartCommand}
+
+        "}on-condition if "${pipeline_bus_mode.paper_classificationr}"=="true"
+
+        coproStart as "Calling QR extraction copro start action" for "QR_EXTRACTION"
+        copro-server-url "${copro.qr.extraction.admin.start.url}"
+        export-command "${copro.qr.extraction.export}"
+        process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+        using
+        {"
+                ${qrExtractionStartCommand}
+
+        "}on-condition if "${pipeline_bus_mode.qr_extraction}"=="true"
+
+
+        coproStart as "Calling Urgency triage Model copro start action" for "UT_MODEL"
+        copro-server-url "${copro.ut.model.admin.start.url}"
+        export-command "${copro.utmodel.export}"
+        process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+        using
+        {"
+                ${utModelStartCommand}
+
+        "}on-condition if "${pipeline_bus_mode.ut_model}"=="true"
+
+        callprocess as "calling root filter lambda"
+        with-target "root.filter"
+        from-file "${basepath}/filter/root.filter.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+
+        "} on-condition if "${root.filter.activator}"=="true"
+
+        multitude as "multitude execution for deep sift and agentic paper filter" on "PARALLEL" using
+        {
+            callprocess as "calling agentic paper filter process multitude execution"
+            with-target "batch.process.multitude"
+            from-file "${basepath}/batchProcess/batch.process.multitude.lmd"
+            using "intics_zio_db_conn"
+            for-every
+            {"
+                SELECT 1;
+            "} on-condition if "${agentic.paper.filter.activator}" == "true"
+
+            callprocess as "calling deep sift extraction"
+            with-target "deep.sift.main"
+            from-file "${basepath}/deepSiftExtraction/deep.sift.main.lmd"
+            using "intics_zio_db_conn"
+            for-every
+            {"
+                SELECT 1;
+            "} on-condition if "${deep.sift.extraction.activator}" == "true"
+
+        } on-condition if "true" == "true"
+
+        callprocess as "calling sor validation legacy main "
+        with-target "sor.validation.main"
+        from-file "${basepath}/sorValidation/legacy/sor.validation.main.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT DISTINCT group_id
+                FROM sor_validation.sor_validation_payload_queue
+                WHERE status='STAGED' AND stage='SOR_VALIDATION' AND tenant_id = ${tenant_id} and group_id = '${gen_group_id.group_id}' and batch_id = '${batch_id}';
+        "} on-condition if "${sor.validation.legacy.activator}"=="true"
+
+        callprocess as "calling sor validation nextgen main "
+        with-target "sor.validation.main"
+        from-file "${basepath}/sorValidation/nextgen/sor.validation.main.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT DISTINCT group_id
+                FROM sor_validation.sor_validation_payload_queue
+                WHERE status='STAGED' AND stage='SOR_VALIDATION' AND tenant_id = ${tenant_id} and group_id = '${gen_group_id.group_id}' and batch_id = '${batch_id}';
+        "} on-condition if "${sor.validation.nextgen.activator}"=="true"
+
+
+        callprocess as "calling sor grouping legacy main "
+        with-target "sor.grouping.main.caller"
+        from-file "${basepath}/sorGrouping/sor.grouping.main.caller.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+            SELECT DISTINCT group_id
+            FROM sor_grouping.sor_grouping_payload_queue
+            WHERE status='STAGED' AND stage='SOR_GROUPING' AND tenant_id = ${tenant_id} and group_id = '${gen_group_id.group_id}' and batch_id = '${batch_id}';
+        "} on-condition if "${eoc.splitting.legacy.activator}"=="true"
+
+        callprocess as "calling sor grouping legacy main "
+        with-target "sor.grouping.main.caller"
+        from-file "${basepath}/sorGrouping/sor.grouping.main.caller.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+            SELECT DISTINCT group_id
+            FROM sor_grouping.sor_grouping_payload_queue
+            WHERE status='STAGED' AND stage='SOR_GROUPING' AND tenant_id = ${tenant_id} and group_id = '${gen_group_id.group_id}' and batch_id = '${batch_id}';
+        "} on-condition if "${eoc.splitting.nextgen.activator}"=="true"
+
+
+
+        multitude as "multitude execution for currency, bulletin, kvp, table extraction, paragraph, bulletin , face , figure detections"
+                on "PARALLEL" using
+                {
+
+                        callprocess as "calling currency detection processor lambda"
+                        with-target "currency.detection.main"
+                        from-file "${basepath}/currencyDetection/currency.detection.main.lmd"
+                        using "intics_zio_db_conn"
+                        for-every {"
+                                SELECT DISTINCT group_id
+                                FROM currency_detection.currency_detection_payload_queue
+                                WHERE STATUS='STAGED' AND STAGE='CURRENCY_DETECTION' AND tenant_id = ${tenant_id} and group_id=${group_id};
+                        "} on-condition if "${currency.detection.processor.activator}"=="true"
+
+
+                        callprocess as "calling paragraph extraction caller lambda"
+                        with-target "paragraph.extraction.caller"
+                        from-file "${basepath}/paragraphExtraction/paragraph.extraction.caller.lmd"
+                        using "intics_zio_db_conn"
+                        for-every {"
+                                SELECT DISTINCT group_id
+                                FROM paragraph_extraction.paragraph_extraction_payload_queue
+                                WHERE STATUS='STAGED' AND STAGE='PARAGRAPH_EXTRACTION' AND tenant_id = ${tenant_id} and group_id=${group_id};
+                        "} on-condition if "${paragraph.extraction.processor.activator}"=="true"
+
+
+                        callprocess as "calling bulletin extraction caller lambda"
+                        with-target "bulletin.extraction.caller"
+                        from-file "${basepath}/bulletinExtraction/bulletin.extraction.caller.lmd"
+                        using "intics_zio_db_conn"
+                        for-every {"
+                                SELECT DISTINCT group_id
+                                FROM bulletin_extraction.bulletin_extraction_payload_queue
+                                WHERE STATUS='STAGED' AND STAGE='BULLETIN_EXTRACTION' AND tenant_id = ${tenant_id} and group_id=${group_id};
+                        "} on-condition if "${bulletin.extraction.processor.activator}"=="true"
+
+
+                        callprocess as "calling optimized face detection main caller"
+                        with-target "face.detection.caller"
+                        from-file "${basepath}/detection/faceDetection/face.detection.caller.lmd"
+                        using "intics_zio_db_conn"
+                        for-every {"
+                            SELECT 1;
+                        "} on-condition if "${face.detection.activator}"=="true"
+
+                        callprocess as "calling optimized figure detection main caller"
+                        with-target "figure.detection.caller"
+                        from-file "${basepath}/detection/figureDetection/figure.detection.caller.lmd"
+                        using "intics_zio_db_conn"
+                        for-every {"
+                              SELECT 1;
+                        "} on-condition if "${figure.detection.activator}"=="true"
+
+
+
+                        callprocess as "calling optimized table extraction main caller"
+                        with-target "table.extraction.processor"
+                        from-file "${basepath}/tableExtraction/table.extraction.processor.lmd"
+                        using "intics_zio_db_conn"
+                        for-every {"
+                                SELECT 1;
+                        "} on-condition if "${table.extraction.activator}"=="true"
+
+
+                } on-condition if "true"=="true" fielding "8"
+              transform as "Delete from  temporary tables for bulletin extraction with process_id ${init_process_id.process_id}" on "intics_zio_db_conn" using
+                     {"
+              INSERT INTO bulletin_extraction.bulletin_extraction_input_table_audit
+             ( origin_id, paper_no, group_id, file_path, tenant_id, process_id, output_dir, root_pipeline_id, process, synonym_id, prompt, section_header)
+             SELECT origin_id, paper_no, group_id, file_path, tenant_id, process_id, output_dir, root_pipeline_id, process, synonym_id, prompt, section_header
+             FROM ${temp_schema_name}.bulletin_extraction_input_table_${process-id};
+
+             delete from ${temp_schema_name}.bulletin_extraction_input_table_${process-id};
+     "} on-condition if "${bulletin.extraction.processor.activator}"=="true"
+
+      transform as "Delete from  temporary tables for paragraph extraction with process_id ${init_process_id.process_id}" on "intics_zio_db_conn" using
+         {"
+                 INSERT INTO paragraph_extraction.paragraph_extraction_input_table_audit
+                 ( origin_id, paper_no, group_id, file_path, tenant_id, process_id, output_dir, root_pipeline_id, process, synonym_id, prompt, section_header)
+                 SELECT origin_id, paper_no, group_id, file_path, tenant_id, process_id, output_dir, root_pipeline_id, process, synonym_id, prompt, section_header
+                 FROM ${temp_schema_name}.paragraph_extraction_input_table_${process-id};
+
+                 delete from ${temp_schema_name}.paragraph_extraction_input_table_${process-id};
+         "} on-condition if "${paragraph.extraction.processor.activator}"=="true"
+
+        callprocess as "calling dynamic prompt generator processor "
+        with-target "sor.dynamic.prompt.gen.processor"
+        from-file "${basepath}/sorTransaction/nextgen/archive/sor.dynamic.prompt.gen.processor.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                        SELECT DISTINCT group_id
+                        FROM sor_transaction.sor_transaction_payload_queue
+                        WHERE status='STAGED' and tenant_id = '${tenant_id}' and group_id = '${gen_group_id.group_id}';
+        "} on-condition if "${sor.transaction.nextgen.activator}"=="none"
+
+
+        multitude as "multitude execution for paper classification and QR and urgency triage "
+        on "${multitude.pre.vqa.option}" using
+        {
+
+        callprocess as "calling handwritten api"
+        with-target "paper.classification.processor"
+        from-file "${basepath}/paperClassification/paper.classification.processor.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT DISTINCT group_id
+                FROM paper_classification.paper_classification_payload_queue
+                WHERE status='STAGED' AND stage='PAPER_CLASSIFICATION' and tenant_id = ${tenant_id} and group_id=${group_id} and batch_id ='${batch_id}' ;
+        "} on-condition if "${paper.classification.activator}"=="true"
+
+        callprocess as "calling qr extraction processor lambda"
+        with-target "qr.extraction.processor"
+        from-file "${basepath}/sorGrouping/qrExtraction/qr.extraction.processor.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT DISTINCT group_id
+                FROM qr_extraction.qr_extraction_payload_queue
+                WHERE STATUS='STAGED' AND STAGE='QR_EXTRACTION' AND tenant_id = ${tenant_id} and group_id=${group_id} and batch_id = '${batch_id}';
+        "} on-condition if "${qr.extraction.processor.activator}"=="true"
+
+        coproStart as "Calling valuation handwritten copro start action" for "VQA_HANDWRITTEN"
+        copro-server-url "${copro.valuation.handwritten.admin.start.url}"
+        export-command "${copro.valuation.handwritten.export}"
+        process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+        using
+        {"
+                ${handwrittenStartCommand}
+
+        "} on-condition if "${pipeline_bus_mode.vqa_handwritten}"=="true"
+
+
+        coproStart as "Calling  copro valuation printed start action" for "VQA_PRINTED"
+        copro-server-url "${copro.valuation.printed.admin.start.url}"
+        export-command "${copro.printed.export}"
+        process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+        using
+        {"
+                ${printedStartCommand}
+
+        "} on-condition if "${pipeline_bus_mode.vqa_printed}"=="true"
+
+        coproStart as "Calling validation copro start action" for "VALIDATION"
+        copro-server-url "${copro.validation.admin.start.url}"
+        export-command "${copro.validation.export}"
+        process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+        using
+        {"
+                ${validationStartCommand}
+
+        "} on-condition if "${pipeline_bus_mode.validation}"=="true"
+        } on-condition if "${multitude.pre.vqa.activator}"=="true" fielding "${multitude.pre.vqa.thread.count}"
+
+        callprocess as "calling urgency triage beta main caller lambda"
+        with-target "urgency.triage.beta.main"
+        from-file "${basepath}/urgencyTriageBeta/urgency.triage.beta.main.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${ut.model.beta.activator}"=="true"
+
+        callprocess as "calling urgency triage main caller lambda"
+        with-target "ut.model.main"
+        from-file "${basepath}/utModel/ut.model.main.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${ut.model.activator}"=="true"
+
+        callprocess as "calling noise model main"
+        with-target "noise.model.main"
+        from-file "${basepath}/noiseDetection/noise.model.main.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${noise.model.caller.activator}"=="true"
+
+
+        callprocess as "Calling error.queue.main.caller "
+        with-target "error.queue.main.caller"
+        from-file "${basepath}/error.queue/error.queue.main.caller.lmd"
+        using "intics_zio_db_conn"
+        for-every{"
+                select 1;
+        "}on-condition if "true"=="true"
+
+          callprocess as "calling invoice validator main caller"
+                with-target "invoice.validator.process"
+                from-file "${basepath}/invoiceValidator/invoice.validator.process.lmd"
+                using "intics_zio_db_conn"
+                for-every {"
+                        SELECT 1;
+                "} on-condition if "${invoice.validator.activator}"=="true"
+
+
+        callprocess as "calling custom transformer main "
+        with-target "transformer.processor"
+        from-file "${basepath}/responsebuilder/outboundTransformer/transformer.processor.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+        SELECT DISTINCT group_id
+        from  eoc_transformer.eoc_transformer_payload_queue
+        where status='STAGED' and tenant_id = ${tenant_id} and group_id = '${gen_group_id.group_id}'  and batch_id = '${batch_id}';
+        "} on-condition if "${eoc.transform.activator}"=="true"
+
+
+        callprocess as "calling master data lookup main caller"
+        with-target "master.data.caller"
+        from-file "${basepath}/masterDataLookup/master.data.caller.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+        SELECT 1;
+        "} on-condition if "${masterdata.processor.activator}"=="true"
+
+        coproStart as "Calling merger copro start action" for "MERGER"
+        copro-server-url "${copro.merger.admin.start.url}"
+        export-command "${copro.merger.export}"
+        process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+        using
+        {"
+        ${mergerStartCommand}
+
+        "}on-condition if "${pipeline_bus_mode.merger_start}"=="true"
+
+        callprocess as "calling outbound main "
+        with-target "response.main.lmd"
+        from-file "${basepath}/responsebuilder/response.main.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+        SELECT DISTINCT group_id,origin_id
+        from outbound.outbound_payload_queue
+        where status='STAGED' and group_id = '${gen_group_id.group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+        "} on-condition if "${response.builder.activator}"=="true" on-parallel-fielding "${sys_thread_count}"
+
+
+
+           transform as "Insert into pipeline directory info" on "intics_zio_db_conn" using
+           {"
+           INSERT INTO ingestion.pipeline_directory_info
+           (target_directory_path, tenant_id, group_id, root_pipeline_id, created_on, updated_on, created_user_id, last_updated_user_id,
+            transaction_id, formatted_date, current_directory, zip_directory, process_name, status)
+           select '${target_directory_path}',${tenant_id},${gen_group_id.group_id},${root-ref-id},now(),now(),'${created_user_id}','${last_updated_user_id}',
+           '${transaction_id}','${gen_id.formatted_date}','${gen_directory.zip_directory}','${gen_directory.zip_directory}','RESPONSE_ARTIFACT','STAGED';
+
+           "} on-condition if "true"=="true"
+
+        coproStop as "Calling merger copro stop action" for "MERGER"
+        copro-server-url "${copro.merger.admin.stop.url}"
+        process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+        using
+        {"
+        gunicorn
+
+        "} on-condition if "${pipeline_bus_mode.merger_stop}"=="true"
+
+        callprocess as "calling alchemy migration main"
+        with-target "alchemy.migration.main"
+        from-file "${basepath}/alchemy_migration/alchemy.migration.main.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT distinct group_id,batch_id
+                from  alchemy_migration.alchemy_migration_payload_queue
+                where status='STAGED' AND tenant_id = ${tenant_id} and  group_id =${gen_group_id.group_id};
+        "} on-condition if "${alchemy.migration.activator}"=="true"
+
+
+        callprocess as "calling coverage report main caller"
+        with-target "coverage.processor"
+        from-file "${basepath}/coverageReport/coverage.processor.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${coveragereport.processor.activator}"=="none"
+
+        callprocess as "calling custom product outbound main"
+        with-target "product.outbound.main"
+        from-file "${basepath}/productOutbound/product.outbound.main.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT DISTINCT group_id
+                from  product_outbound.product_outbound_payload_queue
+                where status='STAGED' AND tenant_id = ${tenant_id} and  group_id = '${gen_group_id.group_id}';
+        "} on-condition if "${product.response.builder.activator}"=="true"
+
+
+        transform as "Batch process update to completed " on "intics_zio_db_conn" using
+        {"
+        UPDATE batching.sub_batching_process_payload_queue a
+        SET status='FAILED'
+        WHERE a.status='FAILED' and a.group_id='${group_id}' and a.batch_id='${batch_id}'
+         and a.batch_id ='${batch_id}' and a.tenant_id = ${tenant_id};
+
+        "} on-condition if "true"=="true"
+
+}
+catch{
+
+        transform as "Batch process update to failed " on "intics_zio_db_conn" using
+         {"
+                UPDATE batching.sub_batching_process_payload_queue
+                SET status='FAILED'
+                WHERE status='IN_PROGRESS' and group_id='${gen_group_id.group_id}' and batch_id ='${batch_id}' and tenant_id = ${tenant_id};
+        "} on-condition if "true"=="true"
+
+        }
+        finally{
+
+        transform as "move to archive after completed" on "intics_zio_db_conn" using
+        {"
+
+                INSERT INTO ${temp_schema_name}.summary_audit_files_${init_process_id.process_id}
+                (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken, tenant_id, batch_id)
+                SELECT ${init_process_id.process_id} , 'OUTBOUND' ,'OUTBOUND',coalesce (sum(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END),0) ,coalesce (sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END),0),min(consumed_on_ts) as min_created_on,now() as max_created_on , EXTRACT(epoch FROM (now()-min(consumed_on_ts))), '${tenant_id}','${batch_id}'
+                FROM outbound.outbound_payload_queue
+                WHERE group_id='${gen_group_id.group_id}' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                INSERT INTO audit.pipeline_summary_audit
+                (process_id, created_on, module_name, macro_process, files_processed_count,files_failed_count,start_time,end_time, time_taken, group_id, root_pipeline_id, created_user_id, template_id, tenant_id,average_time, batch_id)
+                SELECT msaf.process_id ,now(),msaf.module_name ,msaf.macro_process ,msaf.completed_count,msaf.failed_count,msaf.min_created_on,msaf.max_created_on, EXTRACT(epoch FROM (msaf.max_created_on-msaf.min_created_on)),
+                '${gen_group_id.group_id}','${root-ref-id}','${created_user_id}','${document_id}','${tenant_id}',
+                (CASE WHEN (msaf.completed_count+msaf.failed_count)=0 THEN msaf.time_taken WHEN (msaf.time_taken/(msaf.completed_count+msaf.failed_count))=0 THEN msaf.time_taken ELSE (msaf.time_taken/(msaf.completed_count+msaf.failed_count)) END), msaf.batch_id
+                FROM ${temp_schema_name}.summary_audit_files_${init_process_id.process_id} msaf
+                WHERE msaf.module_name='OUTBOUND' AND msaf.macro_process='OUTBOUND' and msaf.tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                update ingestion.pipeline_queue_status_audit as a
+                set status = 'FAILED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                where  a.group_id=${group_id}
+                and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage <> 'PRODUCT_OUTBOUND' and a.status='IN_PROGRESS' ;
+
+                update ingestion.pipeline_queue_status_audit as a
+                set status = 'COMPLETED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                where  a.group_id=${group_id}
+                and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='PRODUCT_OUTBOUND' and a.status='IN_PROGRESS' ;
+
+                INSERT INTO outbound.outbound_payload_queue_archive
+                (producer_process_id, consumer_process_id, origin_id,group_id, created_on, status, stage, consumed_on_ts,root_pipeline_id, tenant_id, batch_id)
+                SELECT producer_process_id, consumer_process_id, origin_id, group_id, created_on, status, stage,consumed_on_ts,root_pipeline_id, ${tenant_id}, batch_id
+                FROM outbound.outbound_payload_queue
+                where status='COMPLETED' and stage='OUTBOUND' and group_id = '${gen_group_id.group_id}' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                Delete from outbound.outbound_payload_queue
+                where status='COMPLETED' and stage='OUTBOUND' and group_id = '${gen_group_id.group_id}' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+        "} on-condition if "${response.builder.activator}"=="true"
+
+         transform as "Move to archive after failed" on "intics_zio_db_conn" using {"
+                INSERT INTO outbound.outbound_payload_error_queue
+                (producer_process_id, consumer_process_id, origin_id,group_id, created_on, status, stage, message, consumed_on_ts,root_pipeline_id, tenant_id, batch_id)
+                SELECT producer_process_id, consumer_process_id,origin_id, group_id, created_on, status, stage, 'outbound Processor failed for group_id ${group_id} and origin_id ${origin_id}',
+                consumed_on_ts,root_pipeline_id, ${tenant_id},batch_id
+                FROM outbound.outbound_payload_queue where status='FAILED' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                Delete from outbound.outbound_payload_queue
+                where status='FAILED' and stage='OUTBOUND' and group_id = '${gen_group_id.group_id}' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+         "} on-condition if "${response.builder.activator}"=="true"
+
+        transform as "move to preprocess archive after completed from batching payload" on "intics_zio_db_conn" using
+        {"
+        INSERT INTO batching.batching_process_payload_queue_archive
+        (producer_process_id, consumer_process_id, group_id,batch_id , origin_id, created_on, status, stage, consumed_on_ts,root_pipeline_id, tenant_id)
+        SELECT producer_process_id, consumer_process_id, '${group_id}', batch_id ,origin_id, now(), status, stage, consumed_on_ts,root_pipeline_id, ${tenant_id}
+        FROM batching.sub_batching_process_payload_queue
+        where status='COMPLETED' and group_id='${gen_group_id.group_id}' and  batch_id ='${batch_id}' and tenant_id = ${tenant_id};
+
+
+        INSERT INTO batching.batching_process_payload_error_queue
+        (producer_process_id, consumer_process_id,group_id, batch_id,origin_id, created_on, status, stage, message, consumed_on_ts,root_pipeline_id, tenant_id)
+        SELECT  producer_process_id, consumer_process_id,'${group_id}', batch_id, origin_id, now(),status,stage,'error in batch processing for batch_id ${batch_id}',consumed_on_ts,root_pipeline_id, ${tenant_id}
+        FROM batching.sub_batching_process_payload_queue
+        where status = 'FAILED' and group_id='${gen_group_id.group_id}' and batch_id ='${batch_id}' and tenant_id = ${tenant_id};
+
+        DELETE FROM batching.sub_batching_process_payload_queue
+        WHERE status='FAILED' and group_id='${gen_group_id.group_id}' and batch_id ='${batch_id}' and tenant_id = ${tenant_id};
+
+        INSERT INTO batching.batching_process_payload_error_queue
+        (producer_process_id, consumer_process_id,group_id, batch_id,origin_id, created_on, status, stage, message, consumed_on_ts,root_pipeline_id, tenant_id)
+        SELECT  producer_process_id, consumer_process_id,'${group_id}', batch_id, origin_id, now(),status,stage,'deep_sift stage aborted batch_id=${batch_id} | root_pipeline_id=${root_pipeline_id} | group_id=${group_id} | transaction_id=${transaction_id} | reason=execution time exceeded the threshold limit',consumed_on_ts,root_pipeline_id, ${tenant_id}
+        FROM batching.sub_batching_process_payload_queue
+        where status = 'ABORTED' and group_id='${gen_group_id.group_id}' and batch_id ='${batch_id}' and tenant_id = ${tenant_id};
+
+        DELETE FROM batching.sub_batching_process_payload_queue
+        WHERE status='ABORTED' and group_id='${gen_group_id.group_id}' and batch_id ='${batch_id}' and tenant_id = ${tenant_id};
+
+        DELETE FROM batching.batching_process_payload_queue
+        WHERE group_id='${gen_group_id.group_id}' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+        "} on-condition if "true"=="true"
+
+        transform as "delete from sub batching after completed from batching payload" on "intics_zio_db_conn" using
+        {"
+
+        DELETE FROM batching.sub_batching_process_payload_queue
+        WHERE status='COMPLETED' and group_id='${gen_group_id.group_id}' and batch_id ='${batch_id}' and tenant_id = ${tenant_id};
+
+        DELETE FROM batching.sub_batching_process_payload_queue
+        WHERE status='FAILED' and group_id='${gen_group_id.group_id}' and batch_id ='${batch_id}' and tenant_id = ${tenant_id};
+        DELETE FROM batching.batching_process_payload_queue
+        WHERE group_id='${gen_group_id.group_id}' and tenant_id = ${tenant_id} and batch_id ='${batch_id}' ;
+
+        "} on-condition if "true"=="none"
+
+
+        transform as "Drop table extraction temporary tables" on "intics_zio_db_conn" using
+        {"
+
+                DROP TABLE IF EXISTS  ${temp_schema_name}.table_extraction_temp_table_${process-id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.table_extraction_line_items_${process-id};
+        "} on-condition if "${table.extraction.activator}"=="true"
+
+
+        transform as "Drop table extraction temporary tables" on "intics_zio_db_conn" using
+        {"
+
+                DROP TABLE IF EXISTS  ${temp_schema_name}.currency_detection_payload_input_table_${init_process_id.process_id};
+        "} on-condition if "${currency.detection.processor.activator}"=="true"
+
+        transform as "move to archive after completed" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO outbound.outbound_payload_queue_archive
+                (producer_process_id, consumer_process_id, origin_id,group_id, created_on, status, stage, consumed_on_ts,root_pipeline_id, tenant_id)
+                SELECT producer_process_id, consumer_process_id, origin_id, group_id, created_on, status, stage,consumed_on_ts,root_pipeline_id, '${tenant_id}'
+                FROM outbound.outbound_payload_queue
+                where status='COMPLETED' and stage='OUTBOUND' and group_id = '${gen_group_id.group_id}' and tenant_id = '${tenant_id}' and batch_id='${batch_id}';
+
+                Delete from outbound.outbound_payload_queue
+                where status='COMPLETED' and stage='OUTBOUND' and group_id = '${gen_group_id.group_id}' and tenant_id = '${tenant_id}' and batch_id='${batch_id}';
+                "} on-condition if "${response.builder.activator}"=="true"
+
+                transform as "move to archive after failed" on "intics_zio_db_conn" using {"
+                INSERT INTO outbound.outbound_payload_error_queue
+                (producer_process_id, consumer_process_id, origin_id,group_id, created_on, status, stage, message, consumed_on_ts,root_pipeline_id, tenant_id)
+                SELECT producer_process_id, consumer_process_id,origin_id, group_id, created_on, status, stage, 'outbound Processor failed for group_id ${group_id} and origin_id ${origin_id}',
+                consumed_on_ts,root_pipeline_id, ${tenant_id}
+                FROM outbound.outbound_payload_queue where status='FAILED' and tenant_id = ${tenant_id} and batch_id='${batch_id}';
+
+                Delete from outbound.outbound_payload_queue
+                where status='FAILED' and stage='OUTBOUND' and group_id = '${gen_group_id.group_id}' and tenant_id = ${tenant_id} and batch_id='${batch_id}';
+        "} on-condition if "${response.builder.activator}"=="true"
+}
+
+}

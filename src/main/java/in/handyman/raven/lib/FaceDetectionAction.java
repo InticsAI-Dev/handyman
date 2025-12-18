@@ -1,16 +1,15 @@
 package in.handyman.raven.lib;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.net.MediaType;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.FaceDetection;
-import in.handyman.raven.lib.model.face.detection.FaceDetectionConsumerProcess;
-import in.handyman.raven.lib.model.face.detection.FaceDetectionQueryInputTable;
-import in.handyman.raven.lib.model.face.detection.FaceDetectionQueryOutputTable;
+import in.handyman.raven.lib.services.detection.FaceDetectionConsumerProcess;
+import in.handyman.raven.lib.services.detection.FaceDetectionQueryInputTable;
+import in.handyman.raven.lib.services.detection.FaceDetectionQueryOutputTable;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;

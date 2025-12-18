@@ -1,0 +1,200 @@
+process "outbound.transform.processor"
+{
+try{
+
+        transform as "Update to in_progress in payload queue" on "intics_zio_db_conn"
+        using
+        {"
+
+                UPDATE outbound_asis.outbound_asis_payload_queue
+                SET status='IN_PROGRESS', consumed_on_ts = '${asis_outbound_timesStamp.consumed_on_ts}', consumer_process_id = '${process-id}'
+                WHERE group_id='${group_id}' AND status='STAGED' AND stage='OUTBOUND_ASIS' AND tenant_id = ${tenant_id} and batch_id ='${batch_id}' ;
+
+                UPDATE batching.sub_batching_process_payload_queue a
+                SET status='STAGED',  stage='OUTBOUND_ASIS'
+                WHERE a.group_id='${group_id}' and a.batch_id ='${batch_id}' and a.tenant_id = ${tenant_id};
+
+                INSERT INTO outbound_asis.outbound_asis_pipeline_audit
+                (process_id, origin_id, group_id, created_on, status, stage, message,root_pipeline_id,tenant_id, batch_id )
+                select producer_process_id,origin_id,group_id, now(),
+                'STARTED', 'OUTBOUND_ASIS','outbound builder asis process STARTED for group_id ${group_id}','${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM outbound_asis.outbound_asis_payload_queue
+                WHERE group_id='${group_id}' AND status='IN_PROGRESS' AND stage='OUTBOUND_ASIS' AND tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+
+               update ingestion.pipeline_queue_status_audit as a
+               set status = 'IN_PROGRESS' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+               where  a.group_id=${group_id}
+               and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='OUTBOUND_ASIS' ;
+
+
+        "}on-condition if "true"=="true"
+
+
+        alchemyAuthToken as "alchemy auth token"
+        on-resource-conn "intics_zio_db_conn"
+        using {
+        } on-condition if "true"=="true"
+
+          assign as "notify_zip" source "intics_zio_db_conn" using
+          {"
+               SELECT concat('${outbound.doc.delivery.notify.url.elv}') as file_uri;
+          "} on-condition if "true"=="true"
+
+
+        transform as "update transaction table to completed if origin mode is transaction" on "intics_zio_db_conn" using
+        {"
+
+                UPDATE info.transaction
+                SET transaction_status='COMPLETED' , last_updated_on=now()
+                WHERE transaction_id='${transaction_id}' and tenant_id=${tenant_id};
+
+        "} on-condition if "${origin_type}"=="TRANSACTION"
+
+
+        productResponse as "outbound response insertion and generation"
+        tenantId "${alchemyAuth.tenantId}"
+        auth-token ""
+        result-table "outbound_asis.outbound_alchemy_asis_response"
+        on-resource-conn "intics_zio_db_conn"
+        using  {"
+                 SELECT '' as origin_id, '${inbound.transaction.id}' as transaction_id,'${gen_id.root_pipeline_id}' as process_id,
+                 '${group_id}' as group_id,
+                    ampq.tenant_id, '${gen_id.root_pipeline_id}' as root_pipeline_id, 'OUTBOUND_ASIS' as feature, '${batch_id}' as batch_id
+                    FROM info.inbound_transaction ampq
+                    where ampq.inbound_transaction_id='${inbound.transaction.id}' and ampq.transaction_status = 'COMPLETED'
+                    and ampq.tenant_id = ${tenant_id} ;
+
+        "}  on-condition if "true"=="true"
+
+
+        outbound-delivery-notify as "outbound zip to delivery"
+        document-id "${inbound_transaction_id}"
+        intics-zip-uri "${notify_zip.file_uri}"
+        checksum "${zip_file_checksum}"
+        resource-conn "intics_zio_db_conn"
+        using  { "
+              select file_name as file_name, '' as file_uri,'' as zip_file_check_sum,
+              '${notify_zip.file_uri}' as endpoint,'${outbound.appId}' as app_id,'${outbound.appKeyId}' as app_secret_key,product_response as outbound_json
+              ,'${outbound.ganda.context.condition}' as outbound_condition, '${inbound.transaction.id}' as document_id
+              from outbound_asis.outbound_alchemy_asis_response
+              where group_id=${group_id} and tenant_id = ${tenant_id} ;
+
+        " } on-condition if "true"=="true"
+
+
+        transform as "Update to completed in payload queue" on "intics_zio_db_conn"
+        using
+        {"
+
+                UPDATE outbound_asis.outbound_asis_payload_queue a
+                SET status=b.status,stage=b.stage, consumed_on_ts = '${asis_outbound_timesStamp.consumed_on_ts}', consumer_process_id = '${init_process_id.process_id}'
+                from outbound_asis.outbound_alchemy_asis_response b
+                WHERE a.root_pipeline_id=b.root_pipeline_id and a.status='IN_PROGRESS' and b.status='COMPLETED' and b.tenant_id = ${tenant_id} and a.batch_id ='${batch_id}';
+
+                UPDATE batching.sub_batching_process_payload_queue a
+                SET status='COMPLETED',  stage='OUTBOUND_ASIS'
+                WHERE a.group_id='${group_id}'
+                and a.batch_id ='${batch_id}' and a.tenant_id = ${tenant_id};
+
+                INSERT INTO outbound_asis.outbound_asis_pipeline_audit
+                (process_id, origin_id, group_id, created_on, status, stage, message, root_pipeline_id, tenant_id, batch_id)
+                select producer_process_id,origin_id,group_id, now(),
+                'COMPLETED', 'OUTBOUND_ASIS','outbound builder asis process COMPLETED for group_id ${group_id}','${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM outbound_asis.outbound_asis_payload_queue
+                WHERE group_id='${group_id}' AND status='COMPLETED' AND stage='OUTBOUND_ASIS' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+
+               update ingestion.pipeline_queue_status_audit as a
+               set status = 'COMPLETED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+               where  a.group_id=${group_id}
+               and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='OUTBOUND_ASIS' ;
+
+        "}on-condition if "true"=="true"
+}
+
+catch{
+        transform as "Update to failed in payload queue" on "intics_zio_db_conn"
+        using
+        {"
+
+
+                UPDATE outbound_asis.outbound_asis_payload_queue
+                SET status='FAILED', consumed_on_ts = '${asis_outbound_timesStamp.consumed_on_ts}', consumer_process_id = '${init_process_id.process_id}'
+                WHERE group_id='${group_id}' AND status='IN_PROGRESS' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                INSERT INTO outbound_asis.outbound_asis_pipeline_audit
+                (process_id, origin_id, group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id )
+                select producer_process_id,origin_id,group_id, now(),
+                'FAILED', 'OUTBOUND_ASIS','outbound builder asis FAILED for group_id ${group_id}','${gen_id.root_pipeline_id}', ${tenant_id}, ${batch_id};
+
+               update ingestion.pipeline_queue_status_audit as a
+               set status = 'FAILED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+               where  a.group_id=${group_id}
+               and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='OUTBOUND_ASIS' ;
+        "}on-condition if "true"=="true"
+}
+
+finally{
+
+        transform as "Update to failed if in_progress in payload queue" on "intics_zio_db_conn"
+        using
+        {"
+                UPDATE outbound_asis.outbound_asis_payload_queue
+                SET status='FAILED', consumed_on_ts = '${asis_outbound_timesStamp.consumed_on_ts}', consumer_process_id = '${init_process_id.process_id}'
+                WHERE group_id='${group_id}' AND status='IN_PROGRESS' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+        "}on-condition if "true"=="true"
+
+        transform as "insert into pipeline summary audit outbound builder asis" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO ${temp_schema_name}.summary_audit_papers_${process-id}
+                (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken,root_pipeline_id, tenant_id, batch_id )
+                SELECT ${process-id} , 'OUTBOUND_ASIS' ,'OUTBOUND',coalesce (sum(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END),0) ,coalesce (sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END),0),min(created_on),max(last_updated_on), EXTRACT(epoch FROM (max(last_updated_on)-min(created_on))),'${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM outbound_asis.outbound_alchemy_asis_response WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id ='${batch_id}'
+                group by batch_id;
+
+                INSERT INTO ${temp_schema_name}.summary_audit_files_${process-id}
+                (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken,root_pipeline_id, tenant_id, batch_id )
+                SELECT ${process-id} , 'OUTBOUND_ASIS' ,'OUTBOUND',sum(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END) ,sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END),min(created_on),max(created_on), EXTRACT(epoch FROM (max(created_on)-min(created_on))),'${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM outbound_asis.outbound_asis_payload_queue WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id ='${batch_id}'
+                group by batch_id;
+
+                INSERT INTO audit.pipeline_summary_audit
+                (process_id, created_on, module_name, macro_process, files_processed_count,papers_processed_count,files_failed_count,papers_failed_count,start_time,end_time, time_taken, group_id, root_pipeline_id, created_user_id, template_id, tenant_id,average_time, batch_id)
+                SELECT msaf.process_id ,now(),msaf.module_name ,msaf.macro_process ,msaf.completed_count,msap.completed_count,msaf.failed_count,msap.failed_count,msap.min_created_on,msap.max_created_on, EXTRACT(epoch FROM (msap.max_created_on-msap.min_created_on)),
+                '${group_id}','${root-ref-id}','${created_user_id}','${document_id}',${tenant_id},(CASE WHEN (msaf.completed_count+msaf.failed_count)=0 THEN msaf.time_taken WHEN (msaf.time_taken/(msaf.completed_count+msaf.failed_count))=0 THEN msaf.time_taken ELSE (msaf.time_taken/(msaf.completed_count+msaf.failed_count)) END), msaf.batch_id
+                FROM ${temp_schema_name}.summary_audit_files_${process-id} msaf,
+                ${temp_schema_name}.summary_audit_papers_${process-id} msap
+                WHERE msaf.module_name=msap.module_name AND msaf.macro_process=msap.macro_process AND msaf.batch_id=msap.batch_id AND
+                msaf.module_name='OUTBOUND_ASIS' AND msaf.macro_process='OUTBOUND' AND msaf.tenant_id = ${tenant_id} and msaf.batch_id ='${batch_id}';
+
+
+        "} on-condition if "true"=="true"
+
+
+        transform as "moving to payload queue archive" on "intics_zio_db_conn"
+                using {"
+                INSERT into outbound_asis.outbound_asis_payload_queue_archive(producer_process_id, consumer_process_id, origin_id,group_id, created_on,status, stage, consumed_on_ts, root_pipeline_id, tenant_id, batch_id )
+                SELECT producer_process_id, consumer_process_id, origin_id, group_id,created_on, status, stage,consumed_on_ts, root_pipeline_id, ${tenant_id}, batch_id
+                FROM outbound_asis.outbound_asis_payload_queue
+                where status='COMPLETED' and stage='OUTBOUND_ASIS' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                Delete from outbound_asis.outbound_asis_payload_queue
+                where status='COMPLETED' and stage='OUTBOUND_ASIS' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+        "}on-condition if "true"=="true"
+
+
+        transform as "moving to payload error" on "intics_zio_db_conn"
+        using
+        {"
+                INSERT into outbound_asis.outbound_asis_payload_error_queue(producer_process_id, consumer_process_id, origin_id,group_id, created_on,status, stage, consumed_on_ts, root_pipeline_id, tenant_id, batch_id )
+                SELECT producer_process_id, consumer_process_id, origin_id, group_id,created_on, status, stage,consumed_on_ts, root_pipeline_id, ${tenant_id}, batch_id
+                FROM outbound_asis.outbound_asis_payload_queue
+                where status='FAILED' and stage='OUTBOUND_ASIS' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                Delete from outbound_asis.outbound_asis_payload_queue
+                where status='FAILED' and stage='OUTBOUND_ASIS' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+        "}on-condition if "true"=="true"
+
+}
+}

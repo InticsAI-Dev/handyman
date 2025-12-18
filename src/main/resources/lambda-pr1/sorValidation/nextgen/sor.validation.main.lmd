@@ -1,0 +1,43 @@
+process "sor.validation.main"
+{
+try{
+
+		assign as "time_stamp_sor_validation" source "intics_zio_db_conn" using
+        {"
+                SELECT now() as consumed_on_ts;
+        "} on-condition if "true"=="true"
+
+        callprocess as "calling sor_validation processor"
+        with-target "sor.validation.processor"
+        from-file "${basepath}/sorValidation/nextgen/sor.validation.processor.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                        SELECT DISTINCT group_id
+                        FROM sor_validation.sor_validation_payload_queue
+                        WHERE status='STAGED' and tenant_id = ${tenant_id} and group_id = '${gen_group_id.group_id}' and batch_id = '${batch_id}';
+        "} on-condition if "true"=="true"
+
+	}
+	catch{
+			transform as "update to failed in sor validation audit" on "intics_zio_db_conn" using
+           {"
+                INSERT INTO sor_validation.sor_validation_pipeline_audit
+                (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+                VALUES('${gen_group_id.group_id}', now(), '${created_user_id}', '${created_user_id}',
+                 ${tenant_id}, 'FAILED', 'MAIN_SOR_VALIDATION',
+                 'Sor validation failed in main caller with group_id ${gen_group_id.group_id}', '${gen_id.root_pipeline_id}', '${batch_id}');
+           "} on-condition if "true"=="true"
+
+	}
+	finally{
+            transform as "update to failed in sor validation audit" on "intics_zio_db_conn" using
+            {"
+                    INSERT INTO sor_validation.sor_validation_pipeline_audit
+                    (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+                    VALUES('${gen_group_id.group_id}', now(), '${created_user_id}', '${created_user_id}',
+                    ${tenant_id}, 'COMPLETED', 'MAIN_SOR_VALIDATION',
+                    'Sor validation completed in main caller with group_id ${gen_group_id.group_id}', '${gen_id.root_pipeline_id}', '${batch_id}');
+            "} on-condition if "true"=="true"
+
+
+	}

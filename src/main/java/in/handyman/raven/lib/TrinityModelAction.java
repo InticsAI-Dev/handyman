@@ -2,7 +2,6 @@ package in.handyman.raven.lib;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
 import in.handyman.raven.exception.HandymanException;
@@ -11,8 +10,7 @@ import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.TrinityModel;
-import in.handyman.raven.lib.model.trinitymodel.*;
-import in.handyman.raven.lib.model.trinitymodel.copro.TrinityModelDataItemCopro;
+import in.handyman.raven.lib.services.trinitymodel.*;
 import in.handyman.raven.util.CommonQueryUtil;
 import in.handyman.raven.util.ExceptionUtil;
 import org.jdbi.v3.core.Jdbi;
@@ -21,7 +19,6 @@ import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
-import java.sql.ResultSet;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -66,7 +63,7 @@ public class TrinityModelAction implements IActionExecution {
         httpClientTimeout = Optional.ofNullable(action.getContext().get("okhttp.client.timeout")).orElse("100");
     }
 
-    private List<TrinityInputAttribute> attributeList(ObjectMapper objectMapper,String jsonString)throws JsonProcessingException{
+    private List<TrinityInputAttribute> attributeList(ObjectMapper objectMapper, String jsonString)throws JsonProcessingException{
         List<TrinityInputAttribute> customObjects = objectMapper.readValue(jsonString, new TypeReference<>() {
         });
         return customObjects;

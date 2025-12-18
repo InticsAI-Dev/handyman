@@ -1,0 +1,89 @@
+process "template.questions.onboarding"
+{
+try{
+
+        assign as "get_count" source "intics_zio_db_conn" using
+        {"
+              select count(st.synonym) as synonym_count
+              from sor_meta.sor_tsynonym st
+              where st.synonym ='Template Name' and st.tenant_id=${tenant_id};
+
+              select max(synonym_id)+1 as max_synonym_id
+              from sor_meta.sor_tsynonym st ;
+
+        "} on-condition if "true"=="true"
+
+        assign as "get_activator" source "intics_zio_db_conn" using
+        {"
+          select (case when ${get_count.synonym_count} > 0 then false
+                    when  ${get_count.synonym_count} = 0 then true
+                    end) as template_onboard;
+
+        "} on-condition if "true"=="true"
+
+        transform as "insert into sor tsynonym table for the Template name synonym " on "intics_zio_db_conn" using
+        {"
+
+            INSERT INTO sor_meta.sor_tsynonym
+            (synonym_id, synonym, sor_item_id, truth_entity_id, sor_container_id, weights, created_on, created_user_id, last_updated_on, last_updated_user_id, status, feature, priority_idx, category, tenant_id, version)
+            VALUES(${get_count.max_synonym_id},'Template Name', NULL, NULL, NULL, NULL, now(), '${tenant_id}',  now(), '${tenant_id}', 'ACTIVE', 'KIE', 1, 'CONTEXT', ${tenant_id}, 1);
+
+        "}  on-condition if "${get_activator.template_onboard}"=="true"
+
+        transform as "Insert into questions table for the  " on "intics_zio_db_conn" using
+        {"
+
+                INSERT INTO sor_meta.sor_question
+                (synonym_id, question, weights, category, created_on, created_user_id, last_updated_on, last_updated_user_id, status, priority_idx, question_mapping, model_id, tenant_id, version, model_registry_id)
+                VALUES(${get_count.max_synonym_id}, 'what is logo name', 150, 'CONTEXT', now(), ${tenant_id}, now(), ${tenant_id}, 'ACTIVE', 0, NULL, NULL, ${tenant_id}, 1, 1);
+                INSERT INTO sor_meta.sor_question
+                (synonym_id, question, weights, category, created_on, created_user_id, last_updated_on, last_updated_user_id, status, priority_idx, question_mapping, model_id, tenant_id, version, model_registry_id)
+                VALUES(${get_count.max_synonym_id}, 'What is the logo in this document', 150, 'CONTEXT', now(), ${tenant_id}, now(), ${tenant_id}, 'ACTIVE', 0, NULL, NULL, ${tenant_id}, 1, 1);
+                INSERT INTO sor_meta.sor_question
+                (synonym_id, question, weights, category, created_on, created_user_id, last_updated_on, last_updated_user_id, status, priority_idx, question_mapping, model_id, tenant_id, version, model_registry_id)
+                VALUES(${get_count.max_synonym_id}, 'What is the company name', 150, 'CONTEXT', now(), ${tenant_id}, now(), ${tenant_id}, 'ACTIVE', 0, NULL, NULL, ${tenant_id}, 1, 1);
+                INSERT INTO sor_meta.sor_question
+                (synonym_id, question, weights, category, created_on, created_user_id, last_updated_on, last_updated_user_id, status, priority_idx, question_mapping, model_id, tenant_id, version, model_registry_id)
+                VALUES(${get_count.max_synonym_id}, 'What is the agency name', 150, 'CONTEXT', now(), ${tenant_id}, now(), ${tenant_id}, 'ACTIVE', 0, NULL, NULL, ${tenant_id}, 1, 1);
+                INSERT INTO sor_meta.sor_question
+                (synonym_id, question, weights, category, created_on, created_user_id, last_updated_on, last_updated_user_id, status, priority_idx, question_mapping, model_id, tenant_id, version, model_registry_id)
+                VALUES(${get_count.max_synonym_id}, 'What is the largest word in this document', 150, 'CONTEXT', now(), ${tenant_id}, now(), ${tenant_id}, 'ACTIVE', 0, NULL, NULL, ${tenant_id}, 1, 1);
+                INSERT INTO sor_meta.sor_question
+                (synonym_id, question, weights, category, created_on, created_user_id, last_updated_on, last_updated_user_id, status, priority_idx, question_mapping, model_id, tenant_id, version, model_registry_id)
+                VALUES(${get_count.max_synonym_id}, 'What is organization name', 150, 'CONTEXT', now(), ${tenant_id}, now(), ${tenant_id}, 'ACTIVE', 0, NULL, NULL, ${tenant_id}, 1, 1);
+
+        "}  on-condition if "${get_activator.template_onboard}"=="none"
+
+       transform as "Insert into questions table for the kissflow " on "intics_zio_db_conn" using
+      {"
+
+        INSERT INTO sor_meta.sor_question
+        (synonym_id, question, weights, category, created_on, created_user_id, last_updated_on, last_updated_user_id, status, priority_idx, question_mapping, model_id, tenant_id, version, model_registry_id)
+        VALUES(${get_count.max_synonym_id}, 'Which org this document belong to', 150, 'CONTEXT', now(), ${tenant_id}, now(), ${tenant_id}, 'ACTIVE', 0, NULL, NULL, ${tenant_id}, 1, 1);
+        INSERT INTO sor_meta.sor_question
+        (synonym_id, question, weights, category, created_on, created_user_id, last_updated_on, last_updated_user_id, status, priority_idx, question_mapping, model_id, tenant_id, version, model_registry_id)
+        VALUES(${get_count.max_synonym_id}, 'What is the logo name', 150, 'CONTEXT', now(), ${tenant_id}, now(), ${tenant_id}, 'ACTIVE', 0, NULL, NULL, ${tenant_id}, 1, 1);
+        INSERT INTO sor_meta.sor_question
+        (synonym_id, question, weights, category, created_on, created_user_id, last_updated_on, last_updated_user_id, status, priority_idx, question_mapping, model_id, tenant_id, version, model_registry_id)
+        VALUES(${get_count.max_synonym_id}, 'Which organization this document belong', 150, 'CONTEXT', now(), ${tenant_id}, now(), ${tenant_id}, 'ACTIVE', 0, NULL, NULL, ${tenant_id}, 1, 1);
+
+        "}  on-condition if "${get_activator.template_onboard}"=="true"
+
+
+        transform as "set the maximum value for the synonym and question  " on "intics_zio_db_conn" using
+        {"
+
+                SELECT setval('sor_meta.sor_tsynonym_synonym_id_seq'::regclass, (SELECT max(synonym_id) FROM sor_meta.sor_tsynonym));
+                SELECT setval('sor_meta.sor_question_question_id_seq'::regclass, (SELECT max(question_id) FROM sor_meta.sor_question));
+
+        "}  on-condition if "${get_activator.template_onboard}"=="true"
+
+}
+catch{
+
+}
+finally{
+
+}
+
+}

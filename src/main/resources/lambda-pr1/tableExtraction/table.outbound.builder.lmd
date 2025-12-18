@@ -1,0 +1,65 @@
+process "table.outbound.builder"
+
+{
+
+try{
+                transform as "Insert the input values from the sormeta" on "intics_zio_db_conn"
+                using {"
+                    INSERT INTO ${temp_schema_name}.table_extraction_outbound_input_${process-id}
+                    (process_id, group_id, tenant_id, template_id, origin_id, paper_no,
+                    processed_file_path, table_response, status, stage, message, created_on,
+                    root_pipeline_id, bboxes, croppedimage, column_header, truth_entity_name, model_name, sor_item_id, table_aggregate_function,batch_id)
+                    SELECT a.process_id, a.group_id, a.tenant_id, a.template_id, a.origin_id, a.paper_no,
+                    a.processed_file_path, a.table_response, a.status, a.stage, a.message, a.created_on,
+                    a.root_pipeline_id, a.bboxes, a.croppedimage, st.synonym as column_header, a.truth_entity_name, a.model_name,si.sor_item_id,
+                    si.table_aggregate_function, a.batch_id
+                    FROM table_extraction.table_extraction_result a
+                    join info.source_of_truth sot on sot.origin_id = a.origin_id and sot.paper_no =a.paper_no
+                    join sor_meta.asset_info ai on lower(ai.template_name)=lower(sot.template_name) and a.tenant_id  = ai.tenant_id
+                    join sor_meta.truth_entity te on ai.asset_id = te.asset_id and te.tenant_id  = a.tenant_id
+                    join sor_meta.sor_tsynonym st on st.truth_entity_id =te.truth_entity_id
+                    join sor_meta.sor_item si on si.sor_item_id =st.sor_item_id
+                    where si.table_aggregate_function = 'SUM' and a.tenant_id =${tenant_id} and te.sip_type ='TABLE_SIP' and a.group_id=${gen_group_id.group_id}
+                    and a.batch_id='${batch_id}';
+
+                "}on-condition if "true"=="true"
+
+                TableExtractionOutbound as "table extraction outbound"
+                result-table "table_extraction.table_extraction_outbound_output_audit"
+                processId "${process-id}"
+                resource-conn "intics_zio_db_conn"
+                input-from "csv"
+                using {"
+                        SELECT process_id, group_id, tenant_id, template_id, origin_id, paper_no,
+                        processed_file_path, table_response, status, stage, message, created_on,
+                        root_pipeline_id, bboxes, croppedimage, column_header, truth_entity_name, model_name, sor_item_id,table_aggregate_function,batch_id
+                        FROM ${temp_schema_name}.table_extraction_outbound_input_${process-id};
+                "} on-condition "true"=="true"
+
+
+
+}
+catch{
+
+}
+finally{
+            transform as "insert into input table audit for the extraction" on "intics_zio_db_conn"
+            using {"
+                    INSERT INTO table_extraction.table_extraction_outbound_input_audit
+                    (process_id, group_id, tenant_id, template_id, origin_id, paper_no,
+                    processed_file_path, table_response, status, stage, message, created_on,
+                    root_pipeline_id, bboxes, croppedimage, column_header, truth_entity_name, model_name, sor_item_id,batch_id)
+                    select process_id, group_id, tenant_id, template_id, origin_id, paper_no,
+                    processed_file_path, table_response, status, stage, message, created_on,
+                    root_pipeline_id, bboxes, croppedimage, column_header, truth_entity_name, model_name, sor_item_id,batch_id
+                    from ${temp_schema_name}.table_extraction_outbound_input_${process-id};
+
+                    DELETE FROM ${temp_schema_name}.table_extraction_outbound_input_${process-id};
+            "} on-condition if "true"=="true"
+
+}
+
+}
+
+
+

@@ -1,0 +1,258 @@
+process "product.outbound.ddl"
+{
+
+try{
+          transform as "create eoc response, ddl audit,payload, outbound zip file details, completion summary details," on "intics_zio_db_conn" using {"
+
+                CREATE TABLE IF NOT EXISTS macro.cleaned_pdf_input (
+                	origin_id varchar NULL,
+                	output_file_name text NULL,
+                	group_id int4 NULL,
+                	filepaths _varchar NULL,
+                	tenant_id int8 NULL,
+                	root_pipeline_id int8 NULL,
+                	process_id int8 NULL,
+                	batch_id varchar NULL
+                );
+
+
+                    CREATE SCHEMA IF NOT EXISTS product_outbound;
+                    CREATE TABLE IF NOT EXISTS product_outbound.product_outbound_payload_queue_archive (
+                    producer_process_id int8 NOT NULL,
+                    consumer_process_id int8 NULL,
+                    origin_id varchar NOT NULL,
+                    batch_id varchar NULL,
+                    group_id int4 NULL,
+                    created_on timestamp NULL,
+                    consumed_on_ts varchar NULL,
+                    status varchar NULL,
+                    stage varchar NULL,
+                    tenant_id int8 NULL,
+                    root_pipeline_id int8 NULL,
+                    CONSTRAINT outbound_payload_queue_archive_pk PRIMARY KEY (producer_process_id, origin_id,tenant_id)
+                    );
+
+        			    CREATE TABLE IF NOT EXISTS product_outbound.product_outbound_payload_error_queue (
+                                 producer_process_id int8 NOT NULL,
+                                 consumer_process_id int8 NULL,
+                                 batch_id varchar NULL,
+                                 origin_id varchar NOT NULL,
+                                 created_on timestamp NOT NULL,
+                                 group_id int4 not null,
+                                 status varchar NOT NULL,
+                                 stage  varchar NOT NULL,
+                                 message varchar NULL,
+                                 consumed_on_ts timestamp NULL,
+                                 tenant_id int8 NULL,
+                                 root_pipeline_id int8 NULL,
+                                 CONSTRAINT outbound_payload_error_queue_pk PRIMARY KEY ( origin_id,tenant_id)
+        			    );
+
+        			 CREATE TABLE IF NOT EXISTS product_outbound.product_outbound_pipeline_audit (
+                               id bigserial NOT NULL,
+                               process_id bigint  NULL,
+                               batch_id varchar NULL,
+                               origin_id varchar  NULL,
+                               group_id varchar NULL,
+                               created_on varchar  NULL,
+                               status varchar  NULL,
+                               stage varchar  NULL,
+                               message varchar  NULL,
+                               tenant_id int8 NULL,
+                               root_pipeline_id int8 NULL
+        			);
+
+                    CREATE TABLE IF NOT EXISTS product_outbound.product_outbound_zip_file_input(
+                                origin_id varchar NOT NULL,
+                                root_pipeline_id int8 null,
+                                group_id int8 null,
+                                batch_id varchar NULL,
+                                process_id int8 null,
+                                cleaned_pdf_path varchar null,
+                                origin_pdf_path varchar null,
+                                product_json varchar null,
+                                kvp_response varchar null,
+                                table_response varchar null,
+                                tenant_id int8 null,
+                                file_name varchar null,
+                                alchemy_origin_id varchar null
+                    );
+
+                    CREATE TABLE IF NOT EXISTS product_outbound.product_outbound_zip_file_details(
+                                origin_id varchar NOT NULL,
+                                root_pipeline_id int8 null,
+                                group_id int8 null,
+                                batch_id varchar NULL,
+                                process_id int8 null,
+                                cleaned_pdf_path varchar null,
+                                origin_pdf_path varchar null,
+                                product_json varchar null,
+                                kvp_response varchar null,
+                                table_response varchar null,
+                                tenant_id int8 null,
+                                zip_file_path varchar null,
+                                status varchar null,
+                                stage varchar null,
+                                message varchar null,
+                                file_name varchar null,
+                                alchemy_origin_id varchar null,
+                                CONSTRAINT product_outbound_zip_file_details_pk PRIMARY KEY ( origin_id,tenant_id)
+                                );
+
+                    CREATE SCHEMA IF NOT EXISTS alchemy_response;
+
+                    CREATE TABLE IF NOT EXISTS alchemy_response.cleaned_pdf_info(
+                            id bigserial  not null,
+                            process_id int8  NULL,
+                            group_id int8  NULL,
+                            batch_id varchar NULL,
+                            origin_id varchar  NULL,
+                            processed_file_path varchar  null,
+                            file_name varchar  null,
+                            created_on timestamp  NULL,
+                            last_updated_on timestamp  NULL,
+                            tenant_id int8 NULL,
+                            root_pipeline_id int8 NULL,
+                            status varchar null,
+                            stage varchar null,
+                            message varchar null,
+                            height float4 null,
+                            width float4 null,
+                            dpi int4 NULL,
+                            model_name varchar null,
+                            model_version varchar null,
+                            CONSTRAINT cleaned_pdf_info_pk PRIMARY KEY (id)
+
+                    );
+
+                    CREATE TABLE IF NOT EXISTS alchemy_response.origin_pdf_info(
+                            id bigserial not null,
+                            process_id int8 NOT NULL,
+                            group_id int4 NOT NULL,
+                            batch_id varchar NULL,
+                            origin_id varchar NOT NULL,
+                            origin_file_path varchar not null,
+                            file_name varchar not null,
+                            created_on timestamp NOT NULL,
+                            last_updated_on timestamp NOT NULL,
+                            tenant_id int8 NULL,
+                            root_pipeline_id int8 NULL,
+                        CONSTRAINT origin_pdf_info_pk PRIMARY KEY (id)
+
+                    );
+
+                    CREATE TABLE IF NOT EXISTS alchemy_response.alchemy_kvp_response (
+                    	id bigserial NOT NULL,
+                    	process_id int8 NULL,
+                    	group_id int4 NULL,
+                    	batch_id varchar NULL,
+                    	alchemy_origin_id varchar NULL,
+                    	kvp_response varchar NULL,
+                    	file_name varchar NULL,
+                    	created_on timestamp NULL DEFAULT now(),
+                    	last_updated_on timestamp NULL DEFAULT now(),
+                    	tenant_id int8 NULL,
+                    	root_pipeline_id int8 NULL,
+                    	pipeline_origin_id varchar NULL,
+                    	status varchar NULL,
+                    	stage varchar NULL,
+                    	message varchar NULL,
+                        CONSTRAINT alchemy_kvp_response_pk PRIMARY KEY (id)
+
+                    );
+
+
+                    CREATE TABLE IF NOT EXISTS alchemy_response.alchemy_table_response (
+                    	id bigserial NOT NULL,
+                    	process_id int8 NULL,
+                    	group_id int4 NULL,
+                    	batch_id varchar NULL,
+                    	alchemy_origin_id varchar NULL,
+                    	table_response varchar NULL,
+                    	paper_no int8 NULL,
+                    	created_on timestamp NULL DEFAULT now(),
+                    	last_updated_on timestamp NULL DEFAULT now(),
+                    	tenant_id int8 NULL,
+                    	root_pipeline_id int8 NULL,
+                    	pipeline_origin_id varchar NULL,
+                    	status varchar NULL,
+                    	stage varchar NULL,
+                    	message varchar NULL,
+                        CONSTRAINT alchemy_table_response_pk PRIMARY KEY (id)
+
+                    );
+
+
+                    "}  on-condition if "true"=="true"
+
+        			transform as "error json ddl creation" on "intics_zio_db_conn" using {"
+
+
+        	            CREATE TABLE IF NOT EXISTS product_outbound.error_document_detail (
+        	                    error_document_id bigserial NOT NULL,
+        	                    document_id varchar NULL,
+        	                    origin_id varchar NULL,
+        	                    batch_id varchar NULL,
+        	                    group_id varchar NULL,
+        	                    uploaded_on timestamp NULL,
+        	                    process_failed_on timestamp NULL,
+        	                    total_processed_duration int8 NULL,
+        	                    total_no_of_pages int8 NULL,
+        	                    failed_on_stage varchar NULL,
+        	                    stages json NULL,
+        	                    message varchar NULL,
+        	                    tenant_id int8 NULL,
+        	                    root_pipeline_id int8 NULL,
+        	                    CONSTRAINT error_document_detail_pk PRIMARY KEY (error_document_id)
+        	                 );
+
+                 "} on-condition if "true"=="true"
+
+
+                 transform as "Kafka production api comparison" on "intics_zio_db_conn" using {"
+
+
+                     CREATE TABLE IF NOT EXISTS product_outbound.kafka_production_response (
+                         id bigserial NOT NULL,
+                         created_on timestamp NULL,
+                         created_user_id int8 NULL,
+                         last_updated_on timestamp NULL,
+                         last_updated_user_id int8 NULL,
+                         status varchar NULL,
+                         version varchar NULL,
+                         production_response jsonb NULL,
+                         document_id varchar NULL,
+                         extension varchar NULL,
+                         origin_id varchar NULL,
+                         tenant_id int8 NULL,
+                         transaction_id varchar NULL,
+                         requesttxnid varchar NULL,
+                         filename varchar NULL,
+                         batch_id varchar NULL,
+                         message text NULL
+                     );
+
+                     CREATE TABLE IF NOT EXISTS audit.kafka_outbound_comparison_audit (
+                         audit_id bigserial NOT NULL,
+                         transaction_id varchar  NULL,
+                         request_txn_id varchar  NULL,
+                         document_id varchar NULL,
+                         batch_id varchar NULL,
+                         status varchar  NULL,
+                         message text NULL,
+                         created_on timestamp  NULL,
+                         pipeline_name varchar NULL,
+                         error_details text NULL,
+                         tenant_id int4 NULL,
+                         CONSTRAINT kafka_outbound_comparison_audit_pkey PRIMARY KEY (audit_id)
+                     );
+                 "} on-condition if "${kafka.production.activator}"=="true"
+}
+catch{
+
+}
+finally{
+
+
+}
+}

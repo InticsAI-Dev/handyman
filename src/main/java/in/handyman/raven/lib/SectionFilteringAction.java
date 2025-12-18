@@ -59,7 +59,7 @@ public class SectionFilteringAction implements IActionExecution {
                     "sor_item_name, sor_item_label, section_alias, answer, confidence, bbox, " +
                     "bbox_asis, paper_no, origin_id, extracted_image_unit, image_dpi, image_height, " +
                     "image_width, is_label_matching, label_match_message, " +
-                    " is_encrypted, encryption_policy,sor_container_instance";
+                    " is_encrypted, encryption_policy, sor_container_instance";
 
     public static final String INSERT_INTO_VALUES_UPDATED =
             "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?," +
@@ -96,8 +96,6 @@ public class SectionFilteringAction implements IActionExecution {
               decryptLabels(tableInfos, encryption);
               decryptSectionAlias(tableInfos,encryption);
           }
-
-
       }
       log.info(aMarker, "Decryption completed for fetched records {}", tableInfos.size());
 
@@ -293,6 +291,7 @@ public class SectionFilteringAction implements IActionExecution {
                     table.setLabelMatching(false);
                     table.setLabelMatchMessage("Filtered out by blacklist adapter.");
                 }
+
             } catch (Exception e) {
                 HandymanException handymanException= new HandymanException(e);
                 HandymanException.insertException("Section Filtering getting error for in merging the extracted result with tableInfo ",handymanException,action);

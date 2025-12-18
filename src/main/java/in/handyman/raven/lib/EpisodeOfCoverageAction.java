@@ -122,7 +122,7 @@ public class EpisodeOfCoverageAction implements IActionExecution {
         log.info("patient instance check for Eoc id in aggregation count {} is activate {}", eocIdCount, eocActivator);
         if(Boolean.TRUE.equals(eocActivator)){
             EocIdCoverage eocIdCoverage = new EocIdCoverage(log, episodeOfCoverage, aMarker, action);
-            Map<String, List<Integer>> sorIdPageNumbers = eocIdCoverage.SplitByEocId(jdbi, "patient_eoc");
+            Map<String, List<Integer>> sorIdPageNumbers = eocIdCoverage.SplitByEocId(jdbi, "member_id");
             OutputQueryExecutor(jdbi, "EID", sorIdPageNumbers);
             log.info("patient instance checked for Eoc id in aggregation and the output result is {}", sorIdPageNumbers);
             return sorIdPageNumbers.isEmpty();

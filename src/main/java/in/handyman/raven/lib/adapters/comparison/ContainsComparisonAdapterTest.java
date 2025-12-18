@@ -2,10 +2,9 @@ package in.handyman.raven.lib.adapters.comparison;
 
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.ControlDataComparisonAction;
-import in.handyman.raven.lib.model.controldatacomaprison.ControlDataComparisonQueryInputTable;
+import in.handyman.raven.lib.services.controldatacomaprison.ControlDataComparisonQueryInputTable;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
 
 import static org.junit.jupiter.api.Assertions.*;
 

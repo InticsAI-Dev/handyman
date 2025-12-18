@@ -1,0 +1,24 @@
+process "error.json.creator"
+{
+    try {
+
+               assign as "json_file_details" source "intics_zio_db_conn" using
+               {"
+                  SELECT
+                  concat('${zip_path}', '${file_name}', '.json') as eoc_error_json_file_path;
+                "} on-condition if "true"=="true"
+
+                jsonToFile as "create error json for ${file_name}"
+                export-into "${json_file_details.eoc_error_json_file_path}"
+                on-resource-conn "intics_zio_db_conn"
+                using {"
+                    ${error_response}
+                "} on-condition if "true"=="true"
+
+    }
+    catch {
+    }
+    finally {
+
+    }
+}

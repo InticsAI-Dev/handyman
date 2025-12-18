@@ -1,0 +1,63 @@
+process "paragraph.extraction.caller"
+{
+
+	try {
+             assign as "init_process_id" source "intics_zio_db_conn" using {"
+             SELECT ${process-id} as process_id;
+             "} on-condition if "true"=="true"
+
+		     assign as "pipeline_train_mode" source "intics_zio_db_conn" using
+                    {"
+                            select  (case when '${paragraph.extraction.start.action}'='true' AND '${pipeline.train.mode}'='true' then 'true' else 'false' end) as paragraph_extraction;
+                    "}on-condition if "true"=="true"
+
+            callprocess as "calling paragraph_extraction ddl called"
+            with-target "paragraph.extraction.ddl"
+            from-file "${basepath}/paragraphExtraction/paragraph.extraction.ddl.lmd"
+            using "intics_zio_db_conn"
+            for-every {"
+                SELECT 1;
+            "} on-condition if "true"=="true"
+
+            coproStart as "Calling paragraph extraction Model copro start action" for "PARAGRAPH_EXTRACTION"
+            copro-server-url "${copro.paragraph.extraction.admin.start.url}"
+            export-command "${copro.paragraph.extraction.export}"
+            process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+            using
+            {"
+                ${paragraphExtractionModelStartCommand}
+
+            "}on-condition if "${pipeline_train_mode.paragraph_extraction}" == "true"
+
+            callprocess as "calling paragraph_extraction paragraph_extraction processor"
+            with-target "paragraph.extraction.processor"
+            from-file "${basepath}/paragraphExtraction/paragraph.extraction.processor.lmd"
+            using "intics_zio_db_conn"
+            for-every {"
+                SELECT 1;
+            "} on-condition if "true"=="true"
+
+            coproStop as "Calling paragraph extraction copro stop action" for "PARAGRAPH_EXTRACTION"
+            copro-server-url "${copro.paragraph.extraction.admin.stop.url}"
+            process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+            using
+            {"
+                gunicorn
+
+            "}on-condition if "${paragraph.extraction.stop.action}"=="true"
+
+	}
+	catch{
+			transform as "failed in paragraph_extraction main caller " on "intics_zio_db_conn" using {"
+					INSERT INTO paragraph_extraction.paragraph_extraction_pipeline_audit
+					(process_id,group_id, created_on, status, stage, message,root_pipeline_id, tenant_id,batch_id)
+					values( ${init_process_id.process_id},'${gen_group_id.group_id}', now(),
+					'FAILED', 'PARAGRAPH_EXTRACTION',' paragraph_extraction main caller FAILED for process_id ${init_process_id.process_id}','${gen_id.root_pipeline_id}', ${tenant_id},'${batch_id}');
+
+			"} on-condition if "true"=="true"
+	}
+	finally{
+
+	}
+
+}

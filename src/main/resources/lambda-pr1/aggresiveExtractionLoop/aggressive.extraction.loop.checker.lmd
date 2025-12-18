@@ -1,0 +1,32 @@
+process "aggressive.extraction.loop.checker"
+{
+try{
+
+        transform as "Aggressive extraction checker loop started" on "intics_zio_db_conn" using
+        {"
+            DELETE FROM ${temp_schema_name}.agentic_paper_filter_input_data_${init_process_id.process_id};
+            DELETE FROM ${temp_schema_name}.agentic_paper_filter_output_${init_process_id.process_id};
+            DELETE FROM ${temp_schema_name}.agentic_paper_level_score_${init_process_id.process_id};
+            DELETE FROM ${temp_schema_name}.agentic_entity_level_score_${init_process_id.process_id};
+            DELETE FROM ${temp_schema_name}.agentic_container_filter_base_table_${init_process_id.process_id};
+
+        "}on-condition if "true"=="true"
+
+
+        callprocess as "calling Agentic paper filter  lamba"
+        with-target "agentic.paper.filter.main"
+        from-file "${basepath}/agenticPaperFilter/agentic.paper.filter.main.lmd"
+        using "intics_zio_db_conn"
+        for-every
+        {"
+            SELECT 1;
+        "} on-condition if "${agentic.paper.filter.activator}"=="true"
+
+
+
+}catch{
+
+}finally{
+}
+
+}

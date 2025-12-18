@@ -1,0 +1,111 @@
+process "tenant.migration.main.caller"
+{
+try{
+
+
+            transform as "insert into document in sor_meta" on "intics_zio_db_conn" using {"
+
+            create schema if not exists meta_bootstraping;
+
+            create table IF NOT EXISTS meta_bootstraping.import_excel_input_table(
+            migration_Id bigserial not null,
+            group_id int8 null,
+            tenant_id int8 null,
+            file_path varchar null,
+            root_pipeline_id int8 null,
+            created_on timestamp null,
+            created_user_id int8 null,
+            last_updated_on timestamp null,
+            last_updated_user_id int8 null,
+            status varchar null,
+            version int8 null
+            );
+
+
+            CREATE TABLE IF NOT EXISTS meta_bootstraping.imported_csv_data_placeholder_audit (
+            	document_type text NULL,
+            	template_name text NULL,
+            	sor_container_name text NULL,
+            	truth_entity_name text NULL,
+            	truth_entity_placeholder_value text NULL,
+            	tenant_id int8 null,
+            	root_pipeline_id int8 null
+            );
+
+
+            CREATE TABLE IF NOT EXISTS meta_bootstraping.imported_csv_data_question_audit (
+            	document_type text NULL,
+            	template_name text NULL,
+            	sor_container_name text NULL,
+            	truth_entity_name text NULL,
+            	sip_type text NULL,
+            	sor_item_name text NULL,
+            	synonym text NULL,
+            	question text NULL,
+                tenant_id int8 null,
+                root_pipeline_id int8 null
+            );
+
+            CREATE TABLE  IF NOT EXISTS meta_bootstraping.import_excel_output_table (
+                                migration_id bigserial NOT NULL,
+                                group_id int8 NULL,
+                                tenant_id int8 NULL,
+                                root_pipeline_id int8 null,
+                                created_on timestamp null,
+                                created_user_id int8 null,
+                                file_path varchar null,
+                                table_name varchar null,
+                                last_updated_on timestamp null,
+                                last_updated_user_id int8 null,
+                                status varchar null,
+                                version int8 null,
+                                meta_mapping varchar null
+            );
+
+            CREATE TABLE IF NOT EXISTS meta_bootstraping.final_sanitizer_summary_audit (
+            	id bigserial NOT NULL,
+            	row_count int4 NULL,
+            	correct_row_count int4 NULL,
+            	error_row_count int4 NULL,
+            	comments varchar NULL,
+            	created_at timestamp NULL,
+            	process_id int8 NULL,
+            	root_pipeline_id int8 NULL,
+            	tenant_id int8 NULL
+            );
+
+
+
+
+            INSERT INTO meta_bootstraping.import_excel_input_table
+            ( tenant_id, file_path,root_pipeline_id,created_on, created_user_id, last_updated_on, last_updated_user_id, status, version)
+            select ${tenant_id},'${dir_path}',${process-id},now(), ${tenant_id}, now(), ${tenant_id}, 'ACTIVE', 1;
+
+            "} on-condition if "true"=="true"
+
+            convert-excel-to-database as "convert the excel into database table"
+            on-resource-conn "intics_zio_db_conn"
+            fileType "Excel"
+            target "intics_zio_db_conn"
+            using {"
+                    SELECT migration_id, group_id, tenant_id, file_path,root_pipeline_id
+                    FROM meta_bootstraping.import_excel_input_table
+                    where root_pipeline_id=${process-id};
+            "} on-condition if "true"=="true"
+
+
+            callprocess as "calling tenant migration import "
+            with-target "tenant.migration.import"
+            from-file "${basepath}/tenant/migration/tenant.migration.import.lmd"
+            using "intics_zio_db_conn"
+            for-every {"
+                SELECT table_name as import_table_name,meta_mapping
+                FROM meta_bootstraping.import_excel_output_table
+                WHERE tenant_id = ${tenant_id} and root_pipeline_id =${process-id};
+            "} on-condition if "true"=="true"
+
+
+}
+catch{}
+finally{}
+}

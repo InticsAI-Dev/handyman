@@ -1,0 +1,1655 @@
+process "pipeline.cleanup.dml"
+{
+try{
+
+
+        assign as "sor_transaction" source "intics_zio_db_conn" using
+        {"
+                select (case when '${sor.transaction.activator}'='true' or '${sor.transaction.nextgen.activator}'='true' then 'true' else 'false' end) as activator
+        "}on-condition if "true"=="true"
+
+        assign as "bbox" source "intics_zio_db_conn" using
+        {"
+                select  (case when '${sor.transaction.nextgen.bbox.outbound.activator}'='true' AND '${sor.transaction.radon.kvp.bbox.activator}'='true' then 'true' else 'false' end) as radon_bbox_activator;
+                select  (case when '${sor.transaction.legacy.bbox.outbound.activator}'='true' AND '${sor.transaction.radon.kvp.bbox.activator}'='true' then 'true' else 'false' end) as legacy_bbox_activator;
+        "}on-condition if "true"=="true"
+
+        transform as "Move data from downloaded_asset_source_details temp table to main table" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO info.downloaded_asset_source_details
+                (origin_id, asset_id, document_id, file_downloaded_time, inbound_transaction_id, downloaded_file_path, request_txn_id, file_id, file_name, file_size, total_pages, file_path, height, width, file_checksum, file_extension, transaction_id, group_id, root_pipeline_id, batch_id, tenant_id, reference_id)
+                SELECT origin_id, asset_id, document_id, file_downloaded_time, inbound_transaction_id, downloaded_file_path, request_txn_id, file_id, file_name, file_size, total_pages, file_path, height, width, file_checksum, file_extension, transaction_id, group_id, root_pipeline_id, batch_id, tenant_id, reference_id
+                FROM ${temp_schema_name}.downloaded_asset_source_details_${init_process_id.process_id};
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.downloaded_asset_source_details_${init_process_id.process_id};
+        "} on-condition if "true"=="true"
+
+        transform as "insert into audit tables for ingestion with process_id ${init_process_id.process_id}" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO macro.batch_split_id_generation_audit
+                (file_id, file_name, decoded_file_name, file_checksum, file_path, file_extension, file_size, status, version, root_pipeline_id, tenant_id,channel_id, created_user_id, created_on, last_updated_user_id, last_updated_on, height, width, dpi, row_count, split_count)
+                SELECT file_id, file_name, decoded_file_name, file_checksum, file_path, file_extension, file_size, status, version, '${gen_id.root_pipeline_id}', tenant_id,channel_id, created_user_id, created_on, last_updated_user_id, last_updated_on, height, width, dpi, row_count, split_count
+                FROM ${temp_schema_name}.batch_split_id_generation_${init_process_id.process_id};
+
+
+                INSERT INTO ingestion.final_sanitizer_summary_audit
+                (row_count, correct_row_count, error_row_count, comments, created_at,process_id,root_pipeline_id, tenant_id)
+                SELECT row_count, correct_row_count, error_row_count, comments, created_at,'${init_process_id.process_id}','${gen_id.root_pipeline_id}', '${tenant_id}'
+                FROM ${temp_schema_name}.sanitizer_summary_origin_audit_${init_process_id.process_id};
+
+                INSERT INTO macro.file_details_origin_audit
+                (file_id, process_id, file_checksum, file_extension, file_name, decoded_file_name, file_path, file_size, root_pipeline_id, tenant_id,encode, height, width, dpi, batch_id)
+                SELECT file_id, process_id, file_checksum, file_extension, file_name, decoded_file_name, file_path, file_size,'${gen_id.root_pipeline_id}', '${tenant_id}',encode, height, width, dpi, batch_id
+                FROM ${temp_schema_name}.file_details_origin_${init_process_id.process_id};
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.source_of_origin_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.asset_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.sanitizer_summary_origin_audit_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.file_details_origin_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.batch_split_id_generation_${init_process_id.process_id};
+
+
+        "} on-condition if "${ingestion.main.caller.activator}"=="true"
+
+        transform as "Delete from  temporary tables for preprocess with process_id ${init_process_id.process_id}" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO preprocess.final_sanitizer_summary_audit
+                (row_count, correct_row_count, error_row_count, comments, created_at,process_id,root_pipeline_id, tenant_id, batch_id)
+                SELECT row_count, correct_row_count, error_row_count, comments, created_at,'${init_process_id.process_id}','${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM ${temp_schema_name}.sanitizer_summary_truth_audit_${init_process_id.process_id};
+
+                INSERT INTO template_detection.b_template_response_group_audit
+                (origin_id, tenant_id, paper_no, template_name, occurance_count, batch_id, root_pipeline_id)
+                SELECT origin_id, tenant_id, paper_no, template_name, occurance_count, batch_id, root_pipeline_id
+                FROM ${temp_schema_name}.b_template_response_group_${init_process_id.process_id};
+
+                INSERT INTO template_detection.c_template_max_occurance_audit
+                (origin_id, template_name, tenant_id, paper_no, occurance_count, batch_id, root_pipeline_id)
+                SELECT origin_id, template_name, tenant_id, paper_no, occurance_count, batch_id, root_pipeline_id
+                FROM ${temp_schema_name}.c_template_max_occurance_${init_process_id.process_id};
+
+                INSERT INTO template_detection.d_template_name_match_audit
+                (paper_no, tenant_id, origin_id, template_name, batch_id)
+                SELECT paper_no, tenant_id, origin_id, template_name, batch_id
+                FROM ${temp_schema_name}.d_template_name_match_${init_process_id.process_id};
+
+                INSERT INTO template_detection.e_template_name_fuzzy_match_audit
+                (origin_id, tenant_id, predicted_template_name, template_name, fuzzy_score, batch_id, root_pipeline_id, document_type)
+                SELECT origin_id, tenant_id, predicted_template_name, template_name, fuzzy_score, batch_id, root_pipeline_id,document_type
+                FROM ${temp_schema_name}.e_template_name_fuzzy_match_${init_process_id.process_id};
+
+                INSERT INTO template_detection.f_template_name_max_fuzzy_match_audit
+                (origin_id, tenant_id, max, batch_id)
+                SELECT origin_id, tenant_id, max, batch_id
+                FROM ${temp_schema_name}.f_template_name_max_fuzzy_match_${init_process_id.process_id};
+
+                INSERT INTO template_detection.g_final_template_match_audit
+                (origin_id, tenant_id, template_name, fuzzy_score, batch_id)
+                SELECT origin_id, tenant_id, template_name, fuzzy_score, batch_id
+                FROM ${temp_schema_name}.g_final_template_match_${init_process_id.process_id};
+
+                INSERT INTO template_detection.template_detection_result_audit
+                (process_id, origin_id, group_id, template_name, score, tenant_id, template_id, created_on, root_pipeline_id, batch_id)
+                SELECT process_id, origin_id, group_id, template_name, score, tenant_id, template_id, created_on, root_pipeline_id, batch_id
+                FROM ${temp_schema_name}.template_detection_result_${init_process_id.process_id};
+
+                INSERT INTO template_detection.a_template_detection_response_audit
+                (process_id, origin_id, paper_no, group_id, batch_id, processed_file_path, question, predictedAttribution_value, score, bboxes, image_width, image_height, image_DPI, extracted_image_unit, tenant_id, template_id, status, stage, message, created_on, last_updated_on, root_pipeline_id, model_name, model_version, model_registry_id, request, response, endpoint)
+                SELECT process_id, origin_id, paper_no, group_id, batch_id, processed_file_path, question, predictedAttribution_value, score, bboxes, image_width, image_height, image_DPI, extracted_image_unit, tenant_id, template_id, status, stage, message, created_on, last_updated_on, root_pipeline_id, model_name, model_version, model_registry_id, request, response, endpoint
+                FROM ${temp_schema_name}.a_template_detection_response_${init_process_id.process_id};
+
+
+                INSERT INTO macro.file_details_truth_audit
+                (file_id, process_id, root_pipeline_id, tenant_id, batch_id, file_checksum, file_extension, file_name, decoded_file_name, file_path, file_size, height, width, dpi, encode)
+                select file_id, process_id, '${gen_id.root_pipeline_id}', tenant_id, batch_id, file_checksum, file_extension, file_name, decoded_file_name, file_path, file_size, height, width, dpi, encode
+                from ${temp_schema_name}.file_details_truth_${init_process_id.process_id};
+
+        "} on-condition if "${preprocess.main.caller.activator}"=="true"
+
+        transform as "DROP TABLE QUERIES to clean up the temp tables" on "intics_zio_db_conn" using
+        {"
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.model_score_result_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.zero_shot_classifier_filtering_result_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.paper_filter_zsc_pm_input_aggregate_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.paper_filter_zsc_pm_input_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.synonym_level_score_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.potential_triage_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.potential_synonyms_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.potential_paper_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.potential_feature_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.batching_potential_feature_queue_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.phrase_match_filtering_result_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.paper_level_score_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.entity_level_score_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.agg_doc_score_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.agg_phrase_match_score_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.agg_zero_shot_classifier_score_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.max_doc_score_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.max_entity_score_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.max_phrase_match_score_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.max_zero_shot_classifier_score_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.model_level_score_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.zero_shot_classifier_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.phrase_match_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.paper_filter_score_${init_process_id.process_id};
+
+        "} on-condition if "${root.filter.activator}"=="true"
+
+
+        transform as "move to audit for pipeline summary audit" on "intics_zio_db_conn" using
+        {"
+
+                INSERT INTO macro.summary_audit_files_archive
+                (module_name, macro_process, completed_count, failed_count, min_created_on, max_created_on, time_taken, process_id, root_pipeline_id, tenant_id, batch_id)
+                SELECT module_name, macro_process, completed_count, failed_count, min_created_on, max_created_on, time_taken, process_id, '${gen_id.root_pipeline_id}', '${tenant_id}', batch_id
+                FROM ${temp_schema_name}.summary_audit_files_${init_process_id.process_id};
+
+                INSERT INTO macro.summary_audit_papers_archive
+                (module_name, macro_process, completed_count, failed_count, min_created_on, max_created_on, time_taken, process_id, root_pipeline_id, tenant_id, batch_id)
+                SELECT module_name, macro_process, completed_count, failed_count, min_created_on, max_created_on, time_taken, process_id, '${gen_id.root_pipeline_id}', '${tenant_id}', batch_id
+                FROM ${temp_schema_name}.summary_audit_papers_${init_process_id.process_id};
+
+        "} on-condition if "true"=="true"
+
+        transform as "Move temporary tables data for sor transaction with process id ${init_process_id.process_id}" on "intics_zio_db_conn" using
+        {"
+
+                INSERT INTO sor_transaction.final_sanitizer_summary_audit
+                (row_count, correct_row_count, error_row_count, created_at,process_id,root_pipeline_id, tenant_id)
+                SELECT  row_count, correct_row_count, error_row_count, created_at,'${init_process_id.process_id}','${gen_id.root_pipeline_id}', ${tenant_id}
+                FROM ${temp_schema_name}.sanitizer_summary_${init_process_id.process_id};
+
+                INSERT INTO macro.sor_transaction_tqa_audit
+                (tqa_id, template_name, truth_entity, sor_item_name, group_id, synonym, question, question_id,weights, synonym_id, origin_id, paper_no, file_path, root_pipeline_id, document_type,tenant_id,model_name, model_version, model_registry, batch_id)
+                SELECT tqa_id, template_name, truth_entity, sor_item_name, group_id, synonym, question, question_id,weights, synonym_id, origin_id, paper_no, file_path, root_pipeline_id, document_type, ${tenant_id},model_name, model_version, model_registry, batch_id
+                FROM ${temp_schema_name}.sor_transaction_tqa_${init_process_id.process_id};
+
+                INSERT INTO macro.sor_transaction_tqa_grouping_duplicates_a_audit
+                (tqa_id, template_name, truth_entity, sor_item_name, group_id, synonym, question, question_id, weights, synonym_id, origin_id, paper_no, file_path, root_pipeline_id, document_type, tenant_id, batch_id)
+                SELECT a.tqa_id, a.template_name, a.truth_entity, a.sor_item_name, a.group_id, a.synonym, a.question,
+                a.question_id, a.weights, a.synonym_id, a.origin_id, a.paper_no, a.file_path, '${gen_id.root_pipeline_id}', a.document_type, a.tenant_id, batch_id
+                FROM
+                ${temp_schema_name}.sor_transaction_tqa_grouping_duplicates_a_${init_process_id.process_id} a;
+
+                INSERT INTO macro.sor_transaction_tqa_grouping_duplicates_b_audit
+                (max_question_id, question, file_path,root_pipeline_id,document_type,truth_entity,sor_item_name,synonym, batch_id)
+                SELECT max_question_id, question, file_path,'${gen_id.root_pipeline_id}',document_type,truth_entity,sor_item_name,synonym, batch_id
+                FROM ${temp_schema_name}.sor_transaction_tqa_grouping_duplicates_b_${init_process_id.process_id};
+
+                INSERT INTO macro.sor_transaction_final_tqa_audit
+                (questions,sor_item_name,question_id, synonym_id, weights, file_path, paper_type, model_registry,model_registry_id, tenant_id, origin_id,group_id, paper_no, category, root_pipeline_id, batch_id)
+                SELECT questions,sor_item_name,question_id, synonym_id, weights, file_path, paper_type, model_registry,model_registry_id, tenant_id, origin_id,group_id, paper_no, category, '${gen_id.root_pipeline_id}', batch_id
+                FROM ${temp_schema_name}.sor_transaction_final_tqa_${init_process_id.process_id};
+
+        "} on-condition if "${sor_transaction.activator}"=="true"
+
+
+
+        transform as "Move temporary tables data into main audit table in voting" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO macro.a_agg_input_table_audit
+                (origin_id, paper_no, sor_item_name, predicted_value, vqa_score,root_pipeline_id, tenant_id, batch_id)
+                SELECT origin_id, paper_no, sor_item_name, predicted_value, vqa_score, '${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM ${temp_schema_name}.a_agg_input_table_${init_process_id.process_id};
+
+                INSERT INTO macro.b1_scalar_max_score_multi_occur_audit
+                (origin_id, paper_no, sor_item_name, occur_count, vqa_score,root_pipeline_id, tenant_id, batch_id)
+                SELECT origin_id, paper_no, sor_item_name, occur_count, vqa_score, '${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM ${temp_schema_name}.b1_scalar_max_score_multi_occur_${init_process_id.process_id};
+
+                INSERT INTO macro.b2_scalar_max_score_single_occur_audit
+                (origin_id, paper_no, sor_item_name, occur_count, vqa_score,root_pipeline_id, tenant_id, batch_id)
+                SELECT origin_id, paper_no, sor_item_name, occur_count, vqa_score, '${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM ${temp_schema_name}.b2_scalar_max_score_single_occur_${init_process_id.process_id};
+
+                INSERT INTO macro.c_multi_occur_freq_for_scalar_audit
+                (origin_id, paper_no, sor_item_name, predicted_value, freq, vqa_score,root_pipeline_id, tenant_id, batch_id)
+                SELECT origin_id, paper_no, sor_item_name, predicted_value, freq, vqa_score, '${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM  ${temp_schema_name}.c_multi_occur_freq_for_scalar_${init_process_id.process_id};
+
+                INSERT INTO macro.d_max_freq_from_multi_occur_audit
+                (origin_id, paper_no, sor_item_name, freq,root_pipeline_id, tenant_id, batch_id)
+                SELECT origin_id, paper_no, sor_item_name, freq, '${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM  ${temp_schema_name}.d_max_freq_from_multi_occur_${init_process_id.process_id};
+
+                INSERT INTO macro.e_final_result_for_freq_audit
+                (origin_id, paper_no, sor_item_name, predicted_value, freq, vqa_score,root_pipeline_id, tenant_id, batch_id)
+                SELECT origin_id, paper_no, sor_item_name, predicted_value, freq, vqa_score, '${gen_id.root_pipeline_id}', ${tenant_id},batch_id
+                FROM  ${temp_schema_name}.e_final_result_for_freq_${init_process_id.process_id};
+
+                INSERT INTO macro.f1_single_freq_occur_audit
+                (origin_id, paper_no, sor_item_name, vqa_score, freq, predicted_value,root_pipeline_id, tenant_id, batch_id)
+                SELECT origin_id, paper_no, sor_item_name, vqa_score, freq, predicted_value, '${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM  ${temp_schema_name}.f1_single_freq_occur_${init_process_id.process_id};
+
+                INSERT INTO macro.f2_group_concat_based_on_freq_audit
+                (origin_id, paper_no, sor_item_name, vqa_score, freq, predicted_value,root_pipeline_id, tenant_id, batch_id)
+                SELECT origin_id, paper_no, sor_item_name, vqa_score, freq, predicted_value, '${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM  ${temp_schema_name}.f2_group_concat_based_on_freq_${init_process_id.process_id};
+
+                INSERT INTO macro.final_valuation_result_audit
+                (origin_id, paper_no, sor_item_name, b_box, rnk, predicted_value, vqa_score, freq,root_pipeline_id,question_id,synonym_id, tenant_id, batch_id)
+                SELECT origin_id, paper_no, sor_item_name, b_box, rnk, predicted_value, vqa_score, freq, '${gen_id.root_pipeline_id}',question_id,synonym_id, ${tenant_id}, batch_id
+                FROM  ${temp_schema_name}.final_valuation_result_${init_process_id.process_id};
+
+                INSERT INTO macro.voting_out_agg_summary_audit
+                (origin_id, sor_item_name, total_questions,root_pipeline_id, tenant_id, batch_id)
+                SELECT origin_id, sor_item_name, total_questions, '${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM ${temp_schema_name}.voting_out_agg_summary_${init_process_id.process_id};
+
+                INSERT INTO macro.voting_out_empty_entries_audit
+                (origin_id, sor_item_name, question, predicted_value, voting_out,root_pipeline_id, tenant_id, batch_id)
+                SELECT origin_id, sor_item_name, question, predicted_value, voting_out, '${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM ${temp_schema_name}.voting_out_empty_entries_${init_process_id.process_id};
+
+                INSERT INTO macro.voting_out_empty_entry_summary_audit
+                (origin_id, sor_item_name, empty_prediction_values, voting_out_threshold,root_pipeline_id, tenant_id, batch_id)
+                SELECT origin_id, sor_item_name, empty_prediction_values, voting_out_threshold,'${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM ${temp_schema_name}.voting_out_empty_entry_summary_${init_process_id.process_id};
+
+                INSERT INTO macro.voting_out_empty_summary_percentage_audit
+                (origin_id, sor_item_name, total_questions, empty_prediction_values, empty_percentage, voting_out_threshold, voting_out_empty_flag,root_pipeline_id, tenant_id, batch_id)
+                SELECT origin_id, sor_item_name, total_questions, empty_prediction_values, empty_percentage, voting_out_threshold, voting_out_empty_flag,'${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM ${temp_schema_name}.voting_out_empty_summary_percentage_${init_process_id.process_id};
+
+                INSERT INTO macro.sor_item_based_max_value_audit
+                (origin_id, paper_no, sor_item_name, max_score, root_pipeline_id,tenant_id, batch_id)
+                SELECT origin_id, paper_no, sor_item_name, max_score ,'${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM ${temp_schema_name}.sor_item_based_max_value_${init_process_id.process_id};
+
+                INSERT INTO macro.a_agg_occur_max_audit
+                (group_id, origin_id, paper_no, sor_item_name, predicted_value, max_score, tenant_id, occur_count, batch_id, root_pipeline_id)
+                select group_id, origin_id, paper_no, sor_item_name, predicted_value, max_score, tenant_id, occur_count, batch_id, '${gen_id.root_pipeline_id}'
+                from ${temp_schema_name}.a_agg_occur_max_${init_process_id.process_id};
+
+                INSERT INTO macro.b2_scalar_max_score_multi_occur_freq_audit
+                (origin_id, paper_no, sor_item_name, tenant_id, vqa_score, occur_count, batch_id, root_pipeline_id)
+                select origin_id, paper_no, sor_item_name, tenant_id, vqa_score, occur_count, batch_id, '${gen_id.root_pipeline_id}'
+                from ${temp_schema_name}.b2_scalar_max_score_multi_occur_freq_${init_process_id.process_id};
+
+                INSERT INTO macro.b_max_occur_item_audit
+                (group_id, origin_id, paper_no, sor_item_name, tenant_id, occur_count, batch_id, root_pipeline_id)
+                select group_id, origin_id, paper_no, sor_item_name, tenant_id, occur_count, batch_id, '${gen_id.root_pipeline_id}'
+                from ${temp_schema_name}.b_max_occur_item_${init_process_id.process_id};
+
+                INSERT INTO voting.final_valuation_result_audit
+                (origin_id, paper_no, sor_item_name, b_box, rnk, predicted_value, vqa_score, freq, question_id, synonym_id, tenant_id, model_registry, batch_id, root_pipeline_id)
+                select origin_id, paper_no, sor_item_name, b_box, rnk, predicted_value, vqa_score, freq, question_id, synonym_id, tenant_id, model_registry, batch_id, '${gen_id.root_pipeline_id}'
+                from ${temp_schema_name}.final_valuation_result_${init_process_id.process_id};
+
+                INSERT INTO voting.c3_scalar_max_score_multi_line_audit
+                (origin_id, paper_no, sor_item_name, b_box, rnk, predicted_value, vqa_score, occur_count, question_id, synonym_id, tenant_id, model_registry, batch_id, root_pipeline_id)
+                select origin_id, paper_no, sor_item_name, b_box, rnk, predicted_value, vqa_score, occur_count, question_id, synonym_id, tenant_id, model_registry, batch_id, '${gen_id.root_pipeline_id}'
+                from ${temp_schema_name}.c3_scalar_max_score_multi_line_${init_process_id.process_id};
+
+                INSERT INTO voting.c2_scalar_max_score_multi_occur_freq_audit
+                (origin_id, paper_no, sor_item_name, tenant_id, vqa_score, occur_count, batch_id, root_pipeline_id)
+                select origin_id, paper_no, sor_item_name, tenant_id, vqa_score, occur_count, batch_id, '${gen_id.root_pipeline_id}'
+                from ${temp_schema_name}.c2_scalar_max_score_multi_occur_freq_${init_process_id.process_id};
+
+                INSERT INTO voting.c1_rank_based_valuation_result_audit
+                (origin_id, paper_no, sor_item_name, b_box, rnk, predicted_value, vqa_score, freq, question_id, synonym_id, tenant_id, model_registry, batch_id, root_pipeline_id)
+                select origin_id, paper_no, sor_item_name, b_box, rnk, predicted_value, vqa_score, freq, question_id, synonym_id, tenant_id, model_registry, batch_id, '${gen_id.root_pipeline_id}'
+                from ${temp_schema_name}.c1_rank_based_valuation_result_${init_process_id.process_id};
+
+                INSERT INTO voting.b3_scalar_multi_line_single_occur_audit
+                (origin_id, paper_no, sor_item_name, occur_count, vqa_score, tenant_id, sv_occur_count, batch_id, root_pipeline_id)
+                select origin_id, paper_no, sor_item_name, occur_count, vqa_score, tenant_id, sv_occur_count, batch_id, '${gen_id.root_pipeline_id}'
+                from ${temp_schema_name}.b3_scalar_multi_line_single_occur_${init_process_id.process_id};
+
+                INSERT INTO voting.b2_scalar_single_line_single_occur_audit
+                (origin_id, paper_no, sor_item_name, occur_count, max_vqa_score, tenant_id, sv_occur_count, batch_id, root_pipeline_id)
+                select origin_id, paper_no, sor_item_name, occur_count, max_vqa_score, tenant_id, sv_occur_count, batch_id, '${gen_id.root_pipeline_id}'
+                from ${temp_schema_name}.b2_scalar_single_line_single_occur_${init_process_id.process_id};
+
+                INSERT INTO voting.b1_scalar_multi_line_multi_occur_audit
+                (origin_id, paper_no, sor_item_name, occur_count, tenant_id, sv_occur_count, batch_id, root_pipeline_id)
+                select origin_id, paper_no, sor_item_name, occur_count, tenant_id, sv_occur_count, batch_id, '${gen_id.root_pipeline_id}'
+                from ${temp_schema_name}.b1_scalar_multi_line_multi_occur_${init_process_id.process_id};
+
+                INSERT INTO voting.a3_agg_input_table_audit
+                (origin_id, paper_no, sor_item_name, predicted_value, vqa_score, tenant_id, occur_count, batch_id, root_pipeline_id)
+                select origin_id, paper_no, sor_item_name, predicted_value, vqa_score, tenant_id, occur_count, batch_id, '${gen_id.root_pipeline_id}'
+                from ${temp_schema_name}.a3_agg_input_table_${init_process_id.process_id};
+
+                INSERT INTO voting.a2_max_occur_item_audit
+                (group_id, origin_id, paper_no, sor_item_name, tenant_id, occur_count, batch_id, root_pipeline_id)
+                select group_id, origin_id, paper_no, sor_item_name, tenant_id, occur_count, batch_id, '${gen_id.root_pipeline_id}'
+                from ${temp_schema_name}.a2_max_occur_item_${init_process_id.process_id};
+
+                INSERT INTO voting.a1_agg_occur_count_audit
+                (group_id, origin_id, paper_no, sor_item_name, predicted_value, max_score, tenant_id, occur_count, batch_id, root_pipeline_id)
+                select  group_id, origin_id, paper_no, sor_item_name, predicted_value, max_score, tenant_id, occur_count, batch_id, '${gen_id.root_pipeline_id}'
+                from ${temp_schema_name}.a1_agg_occur_count_${init_process_id.process_id};
+
+
+        "} on-condition if "${voting.v3.activator}"=="true"
+
+        transform as "Move data from temporary table to main audit tables" on "intics_zio_db_conn" using
+        {"
+
+                INSERT INTO voting.paper_unnest_audit
+                (origin_id, pahub_id, paper_number, root_pipeline_id, tenant_id, batch_id)
+                SELECT  origin_id, pahub_id, paper_number, root_pipeline_id, ${tenant_id}, batch_id
+                FROM ${temp_schema_name}.paper_unnest_${init_process_id.process_id};
+
+                INSERT INTO voting.name_score_audit
+                (origin_id, paper_no, sor_item_name, weight_score, predicted_value, b_box, confidence_score, root_pipeline_id, frequency, cummulative_score, filter_score,question_id,synonym_id, tenant_id, batch_id)
+                SELECT  origin_id, paper_no, sor_item_name, weight_score, predicted_value, b_box, confidence_score, '${gen_id.root_pipeline_id}', frequency, cummulative_score, filter_score,question_id,synonym_id, ${tenant_id}, batch_id
+                FROM ${temp_schema_name}.name_score_${init_process_id.process_id};
+
+                INSERT INTO voting.cummulative_score_audit
+                (origin_id, sor_item_name, max_cummulative_score, root_pipeline_id, tenant_id, batch_id)
+                SELECT origin_id, sor_item_name, max_cummulative_score ,'${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM ${temp_schema_name}.cummulative_score_${init_process_id.process_id};
+
+                INSERT INTO voting.score_count_audit
+                (origin_id, sor_item_name, max_cummulative_score, score_count, root_pipeline_id, tenant_id, batch_id)
+                SELECT origin_id, sor_item_name, max_cummulative_score, score_count ,'${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM ${temp_schema_name}.score_count_${init_process_id.process_id};
+
+                INSERT INTO voting.cummulative_final_audit
+                (min_score_id, origin_id, sor_item_name, cummulative_score, root_pipeline_id, tenant_id, batch_id)
+                SELECT min_score_id, origin_id, sor_item_name, cummulative_score,'${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM ${temp_schema_name}.cummulative_final_${init_process_id.process_id};
+
+
+                INSERT INTO voting.cummulative_max_filter_score_audit
+                (score_id, origin_id, paper_no, sor_item_name, cummulative_score, max_filter_score, root_pipeline_id, tenant_id, batch_id)
+                SELECT score_id, origin_id, paper_no, sor_item_name, cummulative_score, max_filter_score,'${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM ${temp_schema_name}.cummulative_max_filter_score_${init_process_id.process_id};
+
+
+                INSERT INTO voting.voting_phase_2_result_audit
+                (min_score_id, origin_id, paper_no, sor_item_name, weight_score, predicted_value, b_box, confidence_score, frequency, cummulative_score,root_pipeline_id,question_id,synonym_id, tenant_id, batch_id)
+                SELECT min_score_id, origin_id, paper_no, sor_item_name, weight_score, predicted_value, b_box, confidence_score, frequency, cummulative_score,'${gen_id.root_pipeline_id}',question_id,synonym_id, ${tenant_id}, batch_id
+                FROM ${temp_schema_name}.voting_phase_2_${init_process_id.process_id}_result;
+
+                INSERT INTO sor_grouping.eoc_result_audit
+                (pahub_id, origin_id, group_id, source_of_pahub, paper_no, created_on, status, stage, message, root_pipeline_id, tenant_id, batch_id)
+                SELECT pahub_id, origin_id, group_id, source_of_pahub, paper_no, created_on, status, stage, message,'${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM ${temp_schema_name}.eoc_result_${init_process_id.process_id};
+
+                INSERT INTO voting.cumulative_patient_name_audit
+                (patient_first_name_b_box, patient_last_name_b_box, patient_first_name_confidence_score, patient_last_name_confidence_score, patient_first_name, patient_last_name, patient_first_name_filter_score, patient_last_name_filter_score, group_id, patient_first_name_maximum_score, patient_last_name_maximum_score, origin_id, paper_no, root_pipeline_id, tenant_id, model_registry, batch_id)
+                SELECT patient_first_name_b_box, patient_last_name_b_box, patient_first_name_confidence_score, patient_last_name_confidence_score, patient_first_name, patient_last_name, patient_first_name_filter_score, patient_last_name_filter_score, group_id, patient_first_name_maximum_score, patient_last_name_maximum_score, origin_id, paper_no, '${gen_id.root_pipeline_id}', tenant_id, model_registry, batch_id
+                FROM ${temp_schema_name}.cumulative_patient_name_${init_process_id.process_id};
+
+                INSERT INTO voting.cumulative_prescriber_name_audit
+                (prescriber_first_name_b_box, prescriber_last_name_b_box, prescriber_first_name_confidence_score, prescriber_last_name_confidence_score, prescriber_first_name, prescriber_last_name, prescriber_first_name_filter_score, prescriber_last_name_filter_score, group_id, prescriber_first_name_maximum_score, prescriber_last_name_maximum_score, origin_id, paper_no, root_pipeline_id, tenant_id, batch_id)
+                SELECT prescriber_first_name_b_box, prescriber_last_name_b_box, prescriber_first_name_confidence_score, prescriber_last_name_confidence_score, prescriber_first_name, prescriber_last_name, prescriber_first_name_filter_score, prescriber_last_name_filter_score, group_id, prescriber_first_name_maximum_score, prescriber_last_name_maximum_score, origin_id, paper_no, '${gen_id.root_pipeline_id}', tenant_id, batch_id
+                FROM ${temp_schema_name}.cumulative_prescriber_name_${init_process_id.process_id};
+
+                INSERT INTO voting.cumulative_provider_name_audit
+                (provider_first_name_b_box, provider_last_name_b_box, provider_first_name_confidence_score, provider_last_name_confidence_score, provider_first_name, provider_last_name, provider_first_name_filter_score, provider_last_name_filter_score, group_id, provider_first_name_maximum_score, provider_last_name_maximum_score, origin_id, paper_no, root_pipeline_id, tenant_id, batch_id)
+                SELECT provider_first_name_b_box, provider_last_name_b_box, provider_first_name_confidence_score, provider_last_name_confidence_score, provider_first_name, provider_last_name, provider_first_name_filter_score, provider_last_name_filter_score, group_id, provider_first_name_maximum_score, provider_last_name_maximum_score, origin_id, paper_no, '${gen_id.root_pipeline_id}', tenant_id, batch_id
+                FROM ${temp_schema_name}.cumulative_provider_name_${init_process_id.process_id};
+
+                INSERT INTO voting.cumulative_result_p2p_result_table_audit
+                (b_box, confidence_score, extracted_value, filter_score, group_id, maximum_score, origin_id, paper_no, root_pipeline_id, sor_item_name, tenant_id, model_registry, batch_id)
+                SELECT b_box, confidence_score, extracted_value, filter_score, group_id, maximum_score, origin_id, paper_no, '${gen_id.root_pipeline_id}', sor_item_name, tenant_id, model_registry, batch_id
+                FROM ${temp_schema_name}.cumulative_result_p2p_result_table_${init_process_id.process_id};
+
+                INSERT INTO voting.p2p_result_temp_table_audit
+                (b_box, confidence_score, extracted_value, filter_score, group_id, maximum_score, origin_id, paper_no, root_pipeline_id, sor_item_name, tenant_id, synonym_id, question_id, model_registry, batch_id)
+                select b_box, confidence_score, extracted_value, filter_score, group_id, maximum_score, origin_id, paper_no, '${gen_id.root_pipeline_id}', sor_item_name, tenant_id, synonym_id, question_id, model_registry, batch_id
+                from ${temp_schema_name}.p2p_result_temp_table_${init_process_id.process_id};
+
+        "} on-condition if "${eoc.splitting.main.activator}"=="true"
+
+        transform as "insert into audit tables for voting precedence principle" on "intics_zio_db_conn" using
+        {"
+
+                INSERT INTO macro.temp_aggregation_evaluator_audit
+                (created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id,
+                aggregated_score, masked_score, group_id, origin_id, paper_no, predicted_value,
+                vqa_score, rank, sor_item_attribution_id, sor_item_name, document_id,
+                acc_transaction_id, b_box, root_pipeline_id, frequency, question_id,
+                synonym_id, model_registry, status, version, acc_transcation_id,
+                model_registry_id, batch_id, category)
+                SELECT created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id,
+                aggregated_score, masked_score, group_id, origin_id, paper_no, predicted_value,
+                vqa_score, rank, sor_item_attribution_id, sor_item_name, document_id,
+                acc_transaction_id, b_box, root_pipeline_id, frequency, question_id,
+                synonym_id, model_registry, status, version, acc_transcation_id,
+                model_registry_id, batch_id, category
+                FROM ${temp_schema_name}.temp_aggregation_evaluator_${init_process_id.process_id};
+
+
+                INSERT INTO macro.sor_item_name_counts_per_file_audit
+                (tenant_id, batch_id, group_id, origin_id, sor_item_name, sor_item_count)
+                SELECT
+                tenant_id, batch_id, group_id, origin_id, sor_item_name, sor_item_count
+                FROM
+                ${temp_schema_name}.sor_item_name_counts_per_file_${init_process_id.process_id};
+
+
+                INSERT INTO macro.final_cumulative_results_audit
+                (tenant_id, batch_id, group_id, origin_id, root_pipeline_id, paper_no, sor_item_attribution_id, sor_item_name, question_id, synonym_id, b_box, predicted_value)
+                SELECT
+                tenant_id, batch_id, group_id, origin_id, root_pipeline_id, paper_no, sor_item_attribution_id, sor_item_name, question_id, synonym_id, b_box, predicted_value
+                FROM ${temp_schema_name}.final_cumulative_results_${init_process_id.process_id};
+
+
+                INSERT INTO macro.white_listed_entries_audit
+                (tenant_id, batch_id, group_id, origin_id, root_pipeline_id, paper_no, sor_item_attribution_id, sor_item_name, question_id, synonym_id, b_box, predicted_value, whitelist_key)
+                SELECT
+                tenant_id, batch_id, group_id, origin_id, root_pipeline_id, paper_no, sor_item_attribution_id, sor_item_name, question_id, synonym_id, b_box, predicted_value, whitelist_key
+                FROM ${temp_schema_name}.white_listed_entries_${init_process_id.process_id};
+
+                INSERT INTO macro.multi_sor_items_to_evaluate_audit
+                (tenant_id, batch_id, group_id, origin_id, root_pipeline_id, paper_no, sor_item_attribution_id, sor_item_name, question_id, synonym_id, b_box, predicted_value)
+                SELECT tenant_id, batch_id, group_id, origin_id, root_pipeline_id, paper_no, sor_item_attribution_id, sor_item_name, question_id, synonym_id, b_box, predicted_value
+                FROM ${temp_schema_name}.multi_sor_items_to_evaluate_${init_process_id.process_id};
+
+
+                INSERT INTO macro.non_empty_predicted_values_audit
+                (tenant_id, batch_id, group_id, origin_id, root_pipeline_id, paper_no, sor_item_attribution_id, sor_item_name, question_id, synonym_id, b_box, predicted_value)
+                SELECT tenant_id, batch_id, group_id, origin_id, root_pipeline_id, paper_no, sor_item_attribution_id, sor_item_name, question_id, synonym_id, b_box, predicted_value
+                FROM ${temp_schema_name}.non_empty_predicted_values_${init_process_id.process_id};
+
+
+                INSERT INTO macro.predicted_value_occurrence_counts_audit
+                (tenant_id, batch_id, group_id, origin_id, sor_item_name, predicted_value, predicted_value_count)
+                SELECT tenant_id, batch_id, group_id, origin_id, sor_item_name, predicted_value, predicted_value_count
+                FROM ${temp_schema_name}.predicted_value_occurrence_counts_${init_process_id.process_id};
+
+
+                INSERT INTO macro.single_predicted_value_items_audit
+                (tenant_id, batch_id, group_id, origin_id, sor_item_name)
+                SELECT tenant_id, batch_id, group_id, origin_id, sor_item_name
+                FROM ${temp_schema_name}.single_predicted_value_items_${init_process_id.process_id};
+
+
+                INSERT INTO macro.tied_sor_items_audit
+                (tenant_id, batch_id, group_id, origin_id, sor_item_name, sor_container_id, sor_container_name)
+                SELECT tenant_id, batch_id, group_id, origin_id, sor_item_name, sor_container_id, sor_container_name
+                FROM ${temp_schema_name}.tied_sor_items_${init_process_id.process_id};
+
+
+                INSERT INTO macro.predicted_values_joined_audit
+                (tenant_id, batch_id, group_id, origin_id, root_pipeline_id, paper_no, sor_item_name, predicted_value, sor_container_id, sor_container_name)
+                SELECT tenant_id, batch_id, group_id, origin_id, root_pipeline_id, paper_no, sor_item_name, predicted_value, sor_container_id, sor_container_name
+                FROM ${temp_schema_name}.predicted_values_joined_${init_process_id.process_id};
+
+
+                INSERT INTO macro.predicted_value_global_counts_audit
+                (tenant_id, batch_id, group_id, origin_id, paper_no, predicted_value_count)
+                SELECT tenant_id, batch_id, group_id, origin_id, paper_no, predicted_value_count
+                FROM ${temp_schema_name}.predicted_value_global_counts_${init_process_id.process_id};
+
+
+                INSERT INTO macro.most_common_sor_items_in_ties_audit
+                (tenant_id, batch_id, group_id, origin_id, paper_no, sor_container_id, sor_container_name)
+                SELECT tenant_id, batch_id, group_id, origin_id, paper_no, sor_container_id, sor_container_name
+                FROM ${temp_schema_name}.most_common_sor_items_in_ties_${init_process_id.process_id};
+
+
+                INSERT INTO macro.remaining_tied_candidates_audit
+                (tenant_id, batch_id, group_id, origin_id, root_pipeline_id, paper_no, sor_item_attribution_id, sor_item_name, question_id, synonym_id, b_box, predicted_value)
+                SELECT tenant_id, batch_id, group_id, origin_id, root_pipeline_id, paper_no, sor_item_attribution_id, sor_item_name, question_id, synonym_id, b_box, predicted_value
+                FROM ${temp_schema_name}.remaining_tied_candidates_${init_process_id.process_id};
+
+
+                INSERT INTO macro.tie_break_by_min_paper_no_audit
+                (tenant_id, batch_id, group_id, origin_id, sor_item_name)
+                SELECT tenant_id, batch_id, group_id, origin_id, sor_item_name
+                FROM ${temp_schema_name}.tie_break_by_min_paper_no_${init_process_id.process_id};
+
+                -- Audit insert for empty_predicted_min_paper
+                INSERT INTO macro.empty_predicted_min_paper_audit
+                (tenant_id, batch_id, group_id, sor_item_name, origin_id, min_paper_no)
+                SELECT
+                tenant_id,
+                batch_id,
+                group_id,
+                sor_item_name,
+                origin_id,
+                min_paper_no
+                FROM ${temp_schema_name}.empty_predicted_min_paper_${init_process_id.process_id};
+
+                -- Audit insert for non_empty_min_paper
+                INSERT INTO macro.non_empty_min_paper_audit
+                (tenant_id, batch_id, group_id, sor_item_name, origin_id, min_paper_no)
+                SELECT
+                tenant_id,
+                batch_id,
+                group_id,
+                sor_item_name,
+                origin_id,
+                min_paper_no
+                FROM ${temp_schema_name}.non_empty_min_paper_${init_process_id.process_id};
+
+                -- Audit insert for min_final_cumulative_papers
+                INSERT INTO macro.min_final_cumulative_papers_audit
+                (tenant_id, batch_id, group_id, origin_id, sor_item_name, min_paper_no)
+                SELECT
+                tenant_id,
+                batch_id,
+                group_id,
+                origin_id,
+                sor_item_name,
+                min_paper_no
+                FROM ${temp_schema_name}.min_final_cumulative_papers_${init_process_id.process_id};
+
+
+        "} on-condition if "${eoc.splitting.main.activator}"=="true"
+
+
+
+        transform as "Drop audit tables for voting precedence principle" on "intics_zio_db_conn" using {"
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.temp_aggregation_evaluator_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.sor_item_name_counts_per_file_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.final_cumulative_results_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.multi_sor_items_to_evaluate_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.non_empty_predicted_values_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.predicted_value_occurrence_counts_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.single_predicted_value_items_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.tied_sor_items_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.predicted_values_joined_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.predicted_value_global_counts_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.most_common_sor_items_in_ties_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.remaining_tied_candidates_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.tie_break_by_min_paper_no_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.empty_predicted_min_paper_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.non_empty_min_paper_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.min_final_cumulative_papers_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.white_listed_entries_${init_process_id.process_id};
+
+        "} on-condition if "${eoc.splitting.main.activator}"=="true"
+
+        transform as "drop temporary table for the pipeline execution audit" on "intics_zio_db_conn"
+        using {"
+                DROP TABLE IF EXISTS ${temp_schema_name}.process_failed_status_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.summary_audit_files_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.summary_audit_papers_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.temp_error_document_detail_${init_process_id.process_id};
+        "}on-condition if "true"=="true"
+
+        transform as "move temporary tables to main audit tables  in qr extraction" on "intics_zio_db_conn" using
+        {"
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.qr_candidate_result_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.qr_extraction_result_${init_process_id.process_id};
+
+        "} on-condition if "${qr.extraction.processor.activator}"=="true"
+
+
+        transform as "Drop temporary tables for preprocess with process_id ${init_process_id.process_id}" on "intics_zio_db_conn" using
+        {"
+                DROP TABLE IF EXISTS ${temp_schema_name}.sanitizer_summary_truth_audit_${init_process_id.process_id};
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.b_template_response_group_${init_process_id.process_id} CASCADE;
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.c_template_max_occurance_${init_process_id.process_id} CASCADE;
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.d_template_name_match_${init_process_id.process_id} CASCADE;
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.e_template_name_fuzzy_match_${init_process_id.process_id} CASCADE;
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.f_template_name_max_fuzzy_match_${init_process_id.process_id} CASCADE;
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.g_final_template_match_${init_process_id.process_id} CASCADE;
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.template_detection_result_${init_process_id.process_id} CASCADE;
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.a_template_detection_response_${init_process_id.process_id} CASCADE;
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.final_template_match_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.file_details_truth_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.source_of_truth_${init_process_id.process_id};
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.paper_itemizer_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.auto_rotation_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.data_extraction_${init_process_id.process_id};
+
+        "} on-condition if "${preprocess.main.caller.activator}"=="true"
+
+
+        transform as "Drop temporary tables for sor transaction with process id ${init_process_id.process_id}" on "intics_zio_db_conn" using
+        {"
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.adapter_result_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.sanitizer_summary_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.sor_transaction_tqa_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.sor_transaction_delete_duplicate_tqa_${init_process_id.process_id};
+                DROP TABLE IF EXISTS  ${temp_schema_name}.sor_transaction_tqa_grouping_duplicates_a_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.sor_transaction_tqa_grouping_duplicates_b_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.sor_transaction_final_tqa_${init_process_id.process_id};
+
+        "} on-condition if "true"=="true"
+
+
+        transform as "Drop table for voting" on "intics_zio_db_conn" using
+        {"
+                DROP TABLE if exists ${temp_schema_name}.final_valuation_result_${init_process_id.process_id};
+                DROP TABLE if exists ${temp_schema_name}.c3_scalar_max_score_multi_line_${init_process_id.process_id};
+                DROP TABLE if exists ${temp_schema_name}.c2_scalar_max_score_multi_occur_freq_${init_process_id.process_id};
+                DROP TABLE if exists ${temp_schema_name}.c1_rank_based_valuation_result_${init_process_id.process_id};
+                DROP TABLE if exists ${temp_schema_name}.b3_scalar_multi_line_single_occur_${init_process_id.process_id};
+                DROP TABLE if exists ${temp_schema_name}.b2_scalar_single_line_single_occur_${init_process_id.process_id};
+                DROP TABLE if exists ${temp_schema_name}.b1_scalar_multi_line_multi_occur_${init_process_id.process_id};
+                DROP TABLE if exists ${temp_schema_name}.a3_agg_input_table_${init_process_id.process_id};
+                DROP TABLE if exists ${temp_schema_name}.a2_max_occur_item_${init_process_id.process_id};
+                DROP TABLE if exists ${temp_schema_name}.a1_agg_occur_count_${init_process_id.process_id};
+                DROP TABLE if exists ${temp_schema_name}.final_valuation_result_${init_process_id.process_id};
+                DROP TABLE if exists ${temp_schema_name}.a_agg_occur_max_${init_process_id.process_id};
+                DROP TABLE if exists ${temp_schema_name}.voting_out_empty_entries_${init_process_id.process_id};
+                DROP TABLE if exists ${temp_schema_name}.voting_out_empty_entry_summary_${init_process_id.process_id};
+                DROP TABLE if exists ${temp_schema_name}.voting_out_agg_summary_${init_process_id.process_id};
+                DROP TABLE if exists ${temp_schema_name}.voting_out_empty_summary_percentage_${init_process_id.process_id};
+                DROP TABLE if exists ${temp_schema_name}.a_agg_input_table_${init_process_id.process_id};
+                DROP TABLE if exists ${temp_schema_name}.b1_scalar_max_score_multi_occur_${init_process_id.process_id};
+                DROP TABLE if exists ${temp_schema_name}.b2_scalar_max_score_single_occur_${init_process_id.process_id};
+                DROP TABLE if exists ${temp_schema_name}.c_multi_occur_freq_for_scalar_${init_process_id.process_id};
+                DROP TABLE if exists ${temp_schema_name}.d_max_freq_from_multi_occur_${init_process_id.process_id};
+                DROP TABLE if exists ${temp_schema_name}.e_final_result_for_freq_${init_process_id.process_id};
+                DROP TABLE if exists ${temp_schema_name}.f1_single_freq_occur_${init_process_id.process_id};
+                DROP TABLE if exists ${temp_schema_name}.f2_group_concat_based_on_freq_${init_process_id.process_id};
+                DROP TABLE if exists ${temp_schema_name}.sor_item_based_max_value_${init_process_id.process_id};
+                DROP TABLE if exists ${temp_schema_name}.b2_scalar_max_score_multi_occur_freq_${init_process_id.process_id};
+                DROP TABLE if exists ${temp_schema_name}.b_max_occur_item_${init_process_id.process_id};
+
+
+        "} on-condition if "true"=="true"
+
+
+
+        transform as "drop temporary table for sor grouping " on "intics_zio_db_conn" using
+        {"
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.paper_unnest_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.name_score_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.cummulative_score_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.score_count_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.cummulative_final_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.cummulative_max_filter_score_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.voting_phase_2_${init_process_id.process_id}_result;
+                DROP TABLE IF EXISTS ${temp_schema_name}.eoc_result_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.cumulative_prescriber_name_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.cumulative_result_p2p_result_table_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.cumulative_patient_name_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.cumulative_provider_name_${init_process_id.process_id};
+                Drop TABLE IF EXISTS ${temp_schema_name}.p2p_result_temp_table_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.cummulative_result_${process-id};
+
+
+        "} on-condition if "${eoc.splitting.main.activator}"=="true"
+
+        transform as "drop temporary table for urgency triage " on "intics_zio_db_conn" using
+        {"
+                DROP TABLE IF EXISTS ${temp_schema_name}.ut_payload_input_table_${init_process_id.process_id}
+        "} on-condition if "${ut.model.activator}"=="true"
+
+        transform as "drop temporary table for pdf merger " on "intics_zio_db_conn" using
+        {"
+                insert into macro.pdf_merger_input_audit
+                (origin_id, output_file_name, group_id, file_paths, tenant_id, root_pipeline_id, process_id, batch_id)
+                select  origin_id, output_file_name, group_id, file_paths, tenant_id, root_pipeline_id, process_id, batch_id
+                from ${temp_schema_name}.pdf_merger_input_${init_process_id.process_id}
+                where tenant_id='${tenant_id}' and group_id='${gen_group_id.group_id}';
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.pdf_merger_input_${init_process_id.process_id};
+                "} on-condition if "${eoc.transform.activator}"=="true"
+
+
+                transform as "drop temporary table for sor transaction nextgen " on "intics_zio_db_conn" using
+                {"
+                INSERT INTO dynamic_prompt_gen.latest_entries_audit
+                (summary_id, created_at, total_document_type_count, total_container_count, total_field_count, total_channel_count, total_sip_count, total_filter_count, total_synonym_count, total_question_count, root_pipeline_id, tenant_id, batch_id)
+                select summary_id, created_at, total_document_type_count, total_container_count, total_field_count, total_channel_count, total_sip_count, total_filter_count, total_synonym_count, total_question_count, root_pipeline_id, tenant_id, batch_id
+                from ${temp_schema_name}.latest_entries_${init_process_id.process_id};
+
+                INSERT INTO sor_transaction.radon_kvp_bbox_output_audit
+                (sor_container_name, sor_item_name, answer, value_type, b_box, vqa_score, paper_no, origin_id, input_file_path, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, status, stage, message, sor_container_id)
+                SELECT sor_container_name, sor_item_name, answer, value_type, b_box, vqa_score, paper_no, origin_id, input_file_path, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, status, stage, message, sor_container_id
+                FROM ${temp_schema_name}.radon_kvp_bbox_output_${init_process_id.process_id};
+
+                INSERT INTO dynamic_prompt_gen.container_list_audit
+                (created_at, container_list, tenant_id, asset_id, root_pipeline_id, origin_id, group_id,batch_id)
+                SELECT created_at, container_list, tenant_id, asset_id, root_pipeline_id, origin_id, group_id,batch_id
+                FROM ${temp_schema_name}.container_list_${init_process_id.process_id};
+
+                INSERT INTO dynamic_prompt_gen.concat_sor_item_list_audit
+                (created_at, sor_container_name, concat_sor_item_list, tenant_id, asset_id, root_pipeline_id, origin_id, group_id, batch_id)
+                SELECT created_at, sor_container_name, concat_sor_item_list, tenant_id, asset_id, root_pipeline_id, origin_id, group_id, batch_id
+                FROM ${temp_schema_name}.concat_sor_item_list_${init_process_id.process_id};
+
+                INSERT INTO dynamic_prompt_gen.sor_item_list_audit
+                (created_at, sor_item_list, tenant_id, asset_id, root_pipeline_id, origin_id, group_id)
+                SELECT created_at, sor_item_list, tenant_id, asset_id, root_pipeline_id, origin_id, group_id
+                FROM ${temp_schema_name}.sor_item_list_${init_process_id.process_id};
+
+                INSERT INTO dynamic_prompt_gen.concat_entity_list_audit
+                (created_at, sor_container_name, concat_entity_list, tenant_id, asset_id, root_pipeline_id, origin_id, group_id, batch_id)
+                SELECT created_at, sor_container_name, concat_entity_list, tenant_id, asset_id, root_pipeline_id, origin_id, group_id, batch_id
+                FROM ${temp_schema_name}.concat_entity_list_${init_process_id.process_id};
+
+                INSERT INTO dynamic_prompt_gen.entity_list_audit
+                ( created_at, entity_list, tenant_id, asset_id, root_pipeline_id, origin_id, group_id, batch_id)
+                SELECT created_at, entity_list, tenant_id, asset_id, root_pipeline_id, origin_id, group_id, batch_id
+                FROM ${temp_schema_name}.entity_list_${init_process_id.process_id};
+
+                INSERT INTO dynamic_prompt_gen.concat_synonym_list_audit
+                (created_at,sor_item_name, concat_synonym_list, tenant_id, asset_id, root_pipeline_id, origin_id, group_id,batch_id)
+                SELECT created_at,sor_item_name, concat_synonym_list, tenant_id, asset_id, root_pipeline_id, origin_id, group_id,batch_id
+                FROM ${temp_schema_name}.concat_synonym_list_${init_process_id.process_id};
+
+                INSERT INTO dynamic_prompt_gen.synonym_list_audit
+                (created_at, synonym_list, tenant_id, asset_id, root_pipeline_id, origin_id, group_id, batch_id)
+                SELECT created_at, synonym_list, tenant_id, asset_id, root_pipeline_id, origin_id, group_id, batch_id
+                FROM ${temp_schema_name}.synonym_list_${init_process_id.process_id};
+
+                INSERT INTO dynamic_prompt_gen.inner_nest_json_contract_audit
+                (created_at, sor_container_name, inner_nest_json_contract, tenant_id, root_pipeline_id, origin_id, group_id, asset_id, batch_id)
+                SELECT created_at, sor_container_name, inner_nest_json_contract, tenant_id, root_pipeline_id, origin_id, group_id, asset_id, batch_id
+                FROM ${temp_schema_name}.inner_nest_json_contract_${init_process_id.process_id};
+
+                INSERT INTO dynamic_prompt_gen.json_contract_audit
+                (created_at, json_contract, tenant_id, root_pipeline_id, origin_id, group_id, asset_id,batch_id)
+                SELECT created_at, json_contract, tenant_id, root_pipeline_id, origin_id, group_id, asset_id,batch_id
+                FROM ${temp_schema_name}.json_contract_${init_process_id.process_id};
+
+                INSERT INTO dynamic_prompt_gen.replace_container_list_audit
+                (prompt_id, channel_id, base_prompt, modified_prompt_cont_list, created_time, last_modified_time, version, status, tenant_id, root_pipeline_id, group_id, origin_id, batch_id)
+                SELECT prompt_id, channel_id, base_prompt, modified_prompt_cont_list, created_time, last_modified_time, version, status, tenant_id, root_pipeline_id, group_id, origin_id, batch_id
+                FROM ${temp_schema_name}.replace_container_list_${init_process_id.process_id};
+
+                INSERT INTO dynamic_prompt_gen.replace_entity_list_audit
+                (prompt_id, channel_id, base_prompt, modified_prompt_entity_list, created_time, last_modified_time, version, status, tenant_id, root_pipeline_id, group_id, origin_id, batch_id)
+                SELECT prompt_id, channel_id, base_prompt, modified_prompt_entity_list, created_time, last_modified_time, version, status, tenant_id, root_pipeline_id, group_id, origin_id, batch_id
+                FROM ${temp_schema_name}.replace_entity_list_${init_process_id.process_id};
+
+                INSERT INTO dynamic_prompt_gen.replace_item_list_audit
+                ( prompt_id, channel_id, base_prompt, modified_prompt_item_list, created_time, last_modified_time, version, status, tenant_id, root_pipeline_id, group_id, origin_id, batch_id)
+                SELECT prompt_id, channel_id, base_prompt, modified_prompt_item_list, created_time, last_modified_time, version, status, tenant_id, root_pipeline_id, group_id, origin_id, batch_id
+                FROM ${temp_schema_name}.replace_item_list_${init_process_id.process_id};
+
+                INSERT INTO dynamic_prompt_gen.replace_synonym_list_audit
+                ( prompt_id, channel_id, base_prompt, modified_prompt_synonym_list, created_time, last_modified_time, version, status, tenant_id, root_pipeline_id, group_id, origin_id, batch_id)
+                SELECT prompt_id, channel_id, base_prompt, modified_prompt_synonym_list, created_time, last_modified_time, version, status, tenant_id, root_pipeline_id, group_id, origin_id, batch_id
+                FROM ${temp_schema_name}.replace_synonym_list_${init_process_id.process_id};
+
+                INSERT INTO dynamic_prompt_gen.replace_json_contract_audit
+                (prompt_id, channel_id, base_prompt, modified_prompt_json_contract, created_time, last_modified_time, version, status, tenant_id, root_pipeline_id, group_id, origin_id, batch_id)
+                SELECT prompt_id, channel_id, base_prompt, modified_prompt_json_contract, created_time, last_modified_time, version, status, tenant_id, root_pipeline_id, group_id, origin_id, batch_id
+                FROM ${temp_schema_name}.replace_json_contract_${init_process_id.process_id};
+
+                insert into macro.sor_meta_consolidated_audit
+                (root_pipeline_id, group_id, batch_id,tenant_id,document_type,
+                template_name ,sor_container_id ,sor_container_name ,sor_item_id,sor_item_name,
+                truth_entity_id ,truth_entity_name,synonym_id ,synonym ,
+                question_id ,question,is_encrypted, encryption_policy_id, line_item_type,
+                model_id, model_name, sor_item_attribution_id,encryption_policy)
+                select root_pipeline_id, group_id, batch_id,tenant_id,document_type,
+                template_name ,sor_container_id ,sor_container_name ,sor_item_id,sor_item_name,
+                truth_entity_id ,truth_entity_name,synonym_id ,synonym ,
+                question_id ,question,is_encrypted, encryption_policy_id, line_item_type,
+                model_id, model_name, sor_item_attribution_id, encryption_policy
+                from ${temp_schema_name}.sor_meta_consolidated_${init_process_id.process_id};
+
+                INSERT INTO macro.vqa_missing_meta_keys_audit (
+                question_id, synonym_id, sor_item_name,
+                group_id, origin_id, paper_no, batch_id,
+                root_pipeline_id, tenant_id
+                )
+                select  question_id, synonym_id, sor_item_name,
+                group_id, origin_id, paper_no, batch_id,
+                root_pipeline_id, tenant_id
+                from ${temp_schema_name}.vqa_missing_meta_keys_${init_process_id.process_id};
+
+                INSERT INTO macro.vqa_missing_paper_filter_keys_audit (
+                question_id, synonym_id, sor_item_name,
+                group_id, origin_id, paper_no, batch_id,
+                root_pipeline_id, tenant_id
+                )
+                select question_id, synonym_id, sor_item_name,
+                group_id, origin_id, paper_no, batch_id,
+                root_pipeline_id, tenant_id
+                from ${temp_schema_name}.vqa_missing_paper_filter_keys_${init_process_id.process_id};
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.vqa_missing_paper_filter_keys_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.vqa_missing_meta_keys_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.latest_entries_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.radon_kvp_bbox_output_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.container_list_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.concat_sor_item_list_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.sor_item_list_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.concat_entity_list_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.entity_list_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.concat_synonym_list_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.synonym_list_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.inner_nest_json_contract_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.json_contract_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.replace_container_list_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.replace_entity_list_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.replace_item_list_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.replace_synonym_list_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.replace_json_contract_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.neon_kvp_input_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.channel_based_prompt_${init_process_id.process_id}_table;
+                DROP TABLE IF EXISTS ${temp_schema_name}.sor_meta_consolidated_${init_process_id.process_id};
+
+
+        "} on-condition if "${sor.transaction.nextgen.activator}"=="true"
+
+        transform as "drop temporary table for radon " on "intics_zio_db_conn" using
+        {"
+                INSERT INTO sor_transaction.radon_kvp_input_audit
+                (input_file_path, user_prompt, system_prompt, process, paper_no, origin_id, process_id, group_id, tenant_id, root_pipeline_id, model_registry, batch_id, category, sor_container_id)
+                SELECT input_file_path, user_prompt, system_prompt, process, paper_no, origin_id, process_id, group_id, tenant_id, root_pipeline_id, model_registry, batch_id, category, sor_container_id
+                FROM ${temp_schema_name}.radon_kvp_input_${init_process_id.process_id};
+
+                INSERT INTO sor_transaction.radon_kvp_output_audit
+                (created_on, created_user_id, last_updated_on, last_updated_user_id, input_file_path, total_response_json, paper_no, origin_id, process_id, action_id, process, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, status, stage, message, category, sor_container_id, sor_container_instance )
+                SELECT created_on, created_user_id, last_updated_on, last_updated_user_id, input_file_path, total_response_json, paper_no, origin_id, process_id, action_id, process, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, status, stage, message, category, sor_container_id, sor_container_instance
+                FROM ${temp_schema_name}.radon_kvp_output_${init_process_id.process_id};
+
+                INSERT INTO sor_transaction.llm_json_parser_input_audit
+                (response,paper_no,origin_id,group_id,tenant_id,root_pipeline_id,batch_id,model_registry,category,created_on,sor_container_id,sor_meta_detail,image_dpi,image_width,image_height,is_encrypted,encryption_policy)
+                SELECT response,paper_no,origin_id,group_id,tenant_id,root_pipeline_id,batch_id,model_registry,category,created_on,sor_container_id,sor_meta_detail,image_dpi,image_width,image_height,is_encrypted,encryption_policy
+                FROM ${temp_schema_name}.llm_json_parser_input_${init_process_id.process_id};
+
+
+                INSERT INTO sor_transaction.llm_json_parser_output_audit
+                (created_on,created_user_id, last_updated_on, last_updated_user_id,sor_container_name,sor_item_name, answer, paper_no, origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, extracted_image_unit, image_dpi, image_height, image_width, confidence, bbox, sor_container_id, sor_item_label,section_alias,bbox_asis,is_label_matching,label_match_message,is_encrypted,encryption_policy)
+                SELECT created_on,created_user_id, last_updated_on, last_updated_user_id,sor_container_name,sor_item_name, answer, paper_no, origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, extracted_image_unit, image_dpi, image_height, image_width, confidence, bbox, sor_container_id, sor_item_label,section_alias,bbox_asis,is_label_matching,label_match_message,is_encrypted,encryption_policy
+                FROM ${temp_schema_name}.llm_json_parser_output_${init_process_id.process_id};
+
+                INSERT INTO sor_transaction.selection_over_filtering_input_audit
+                (answer, paper_no, origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, created_on, created_user_id, last_updated_on, last_updated_user_id, sor_container_name, extracted_image_unit, confidence, bbox, bbox_asis, is_label_matching, label_match_message, sor_container_id, sor_item_name, section_alias, sor_item_label, image_dpi, image_width, image_height, blacklisted_labels, blacklisted_sections, is_encrypted, encryption_policy, whitelisted_labels)
+                select answer, paper_no, origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, created_on, created_user_id, last_updated_on, last_updated_user_id, sor_container_name, extracted_image_unit, confidence, bbox, bbox_asis, is_label_matching, label_match_message, sor_container_id, sor_item_name, section_alias, sor_item_label, image_dpi, image_width, image_height, blacklisted_labels, blacklisted_sections, is_encrypted, encryption_policy, whitelisted_labels
+                from ${temp_schema_name}.selection_over_filtering_input_${init_process_id.process_id};
+
+                INSERT INTO sor_transaction.selection_over_filtering_output_audit
+                (answer, paper_no, origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, created_on, created_user_id, last_updated_on, last_updated_user_id, sor_container_name, extracted_image_unit, confidence, bbox, bbox_asis, is_label_matching, label_match_message, sor_container_id, sor_item_name, section_alias, sor_item_label, image_dpi, image_width, image_height, blacklisted_labels, blacklisted_sections, is_encrypted, encryption_policy)
+                select answer, paper_no, origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, created_on, created_user_id, last_updated_on, last_updated_user_id, sor_container_name, extracted_image_unit, confidence, bbox, bbox_asis, is_label_matching, label_match_message, sor_container_id, sor_item_name, section_alias, sor_item_label, image_dpi, image_width, image_height, blacklisted_labels, blacklisted_sections, is_encrypted, encryption_policy
+                from ${temp_schema_name}.selection_over_filtering_output_${init_process_id.process_id};
+
+                INSERT INTO sor_transaction.flat_blacklist_keywords_audit (
+                origin_id,
+                group_id,
+                tenant_id,
+                root_pipeline_id,
+                sor_item_id,
+                sor_item_name,
+                blacklisted_label,
+                sor_container_id
+                )
+                SELECT
+                origin_id,
+                group_id,
+                tenant_id,
+                root_pipeline_id,
+                sor_item_id,
+                sor_item_name,
+                blacklisted_label,
+                sor_container_id
+                FROM ${temp_schema_name}.flat_blacklist_keywords_${init_process_id.process_id};
+
+                INSERT INTO sor_transaction.filtered_llm_json_parser_output_audit
+                (created_on,created_user_id, last_updated_on, last_updated_user_id,
+                sor_container_name,sor_item_name, answer, paper_no, origin_id,
+                group_id, tenant_id, root_pipeline_id, batch_id, model_registry,
+                extracted_image_unit, image_dpi, image_height, image_width,
+                confidence, bbox, sor_item_label, sor_container_id)
+                SELECT created_on,created_user_id, last_updated_on, last_updated_user_id,
+                sor_container_name,sor_item_name, answer, paper_no, origin_id,
+                group_id, tenant_id, root_pipeline_id, batch_id, model_registry,
+                extracted_image_unit, image_dpi, image_height, image_width,
+                confidence, bbox, sor_item_label, sor_container_id
+                FROM ${temp_schema_name}.filtered_llm_json_parser_output_${init_process_id.process_id};
+
+                INSERT INTO sor_transaction.after_filtered_llm_json_parser_output_audit
+                (created_on,created_user_id, last_updated_on, last_updated_user_id,
+                sor_container_name,sor_item_name, answer, paper_no, origin_id,
+                group_id, tenant_id, root_pipeline_id, batch_id, model_registry,
+                extracted_image_unit, image_dpi, image_height, image_width,
+                sor_container_id,confidence, bbox, sor_item_label, sor_item_id)
+                SELECT created_on,created_user_id, last_updated_on, last_updated_user_id,
+                sor_container_name,sor_item_name, answer, paper_no, origin_id,
+                group_id, tenant_id, root_pipeline_id, batch_id, model_registry,
+                extracted_image_unit, image_dpi, image_height, image_width,
+                sor_container_id,confidence, bbox, sor_item_label, sor_item_id
+                FROM ${temp_schema_name}.after_filtered_llm_json_parser_output_${init_process_id.process_id};
+
+                INSERT INTO sor_transaction.llm_json_parser_label_input_audit
+                (paper_no, origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, category, created_on, sor_item_id, sor_item_name, sor_container_id, black_list_labels)
+                SELECT paper_no, origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, category, created_on, sor_item_id, sor_item_name, sor_container_id, black_list_labels
+                FROM ${temp_schema_name}.llm_json_parser_label_input_${init_process_id.process_id};
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.vqa_transaction_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.scalar_validation_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.aggregation_evaluator_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.llm_json_provider_parser_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.radon_kvp_input_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.radon_kvp_output_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.llm_json_parser_input_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.llm_json_parser_output_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.filtered_llm_json_parser_output_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.flat_blacklist_keywords_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.after_filtered_llm_json_parser_output_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.llm_json_parser_label_input_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.selection_over_filtering_input_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.selection_over_filtering_output_${init_process_id.process_id};
+
+        "} on-condition if "${radon.prompt.activator}"=="true"
+
+        transform as "Insert into audit tables and drop temp tables for section alias priority"
+        on "intics_zio_db_conn" using
+        {"
+
+                INSERT INTO sor_transaction.section_alias_priority_audit (
+                id,
+                created_on,
+                created_user_id,
+                last_updated_on,
+                last_updated_user_id,
+                sor_container_name,
+                sor_item_name,
+                answer,
+                paper_no,
+                origin_id,
+                group_id,
+                tenant_id,
+                root_pipeline_id,
+                model_registry,
+                extracted_image_unit,
+                image_dpi,
+                image_width,
+                image_height,
+                batch_id,
+                confidence,
+                bbox,
+                sor_container_id,
+                sor_item_label,
+                section_alias,
+                priority_level
+                )
+                SELECT
+                id,
+                created_on,
+                created_user_id,
+                last_updated_on,
+                last_updated_user_id,
+                sor_container_name,
+                sor_item_name,
+                answer,
+                paper_no,
+                origin_id,
+                group_id,
+                tenant_id,
+                root_pipeline_id,
+                model_registry,
+                extracted_image_unit,
+                image_dpi,
+                image_width,
+                image_height,
+                batch_id,
+                confidence,
+                bbox,
+                sor_container_id,
+                sor_item_label,
+                section_alias,
+                priority_level
+                FROM ${temp_schema_name}.section_alias_priority_${init_process_id.process_id};
+
+                INSERT INTO sor_transaction.non_section_alias_priority_audit (
+                id,
+                created_on,
+                created_user_id,
+                last_updated_on,
+                last_updated_user_id,
+                sor_container_name,
+                sor_item_name,
+                answer,
+                paper_no,
+                origin_id,
+                group_id,
+                tenant_id,
+                root_pipeline_id,
+                model_registry,
+                extracted_image_unit,
+                image_dpi,
+                image_width,
+                image_height,
+                batch_id,
+                confidence,
+                bbox,
+                sor_container_id,
+                sor_item_label,
+                section_alias,
+                priority_level
+                )
+                SELECT
+                id,
+                created_on,
+                created_user_id,
+                last_updated_on,
+                last_updated_user_id,
+                sor_container_name,
+                sor_item_name,
+                answer,
+                paper_no,
+                origin_id,
+                group_id,
+                tenant_id,
+                root_pipeline_id,
+                model_registry,
+                extracted_image_unit,
+                image_dpi,
+                image_width,
+                image_height,
+                batch_id,
+                confidence,
+                bbox,
+                sor_container_id,
+                sor_item_label,
+                section_alias,
+                priority_level
+                FROM ${temp_schema_name}.non_section_alias_priority_${init_process_id.process_id};
+
+                INSERT INTO sor_transaction.highest_priority_section_alias_audit (
+                id,
+                created_on,
+                created_user_id,
+                last_updated_on,
+                last_updated_user_id,
+                sor_container_name,
+                sor_item_name,
+                answer,
+                paper_no,
+                origin_id,
+                group_id,
+                tenant_id,
+                root_pipeline_id,
+                model_registry,
+                extracted_image_unit,
+                image_dpi,
+                image_width,
+                image_height,
+                batch_id,
+                confidence,
+                bbox,
+                sor_container_id,
+                sor_item_label,
+                section_alias,
+                priority_level
+                )
+                SELECT
+                id,
+                created_on,
+                created_user_id,
+                last_updated_on,
+                last_updated_user_id,
+                sor_container_name,
+                sor_item_name,
+                answer,
+                paper_no,
+                origin_id,
+                group_id,
+                tenant_id,
+                root_pipeline_id,
+                model_registry,
+                extracted_image_unit,
+                image_dpi,
+                image_width,
+                image_height,
+                batch_id,
+                confidence,
+                bbox,
+                sor_container_id,
+                sor_item_label,
+                section_alias,
+                priority_level
+                FROM ${temp_schema_name}.highest_priority_section_alias_${init_process_id.process_id};
+
+                INSERT INTO sor_transaction.removed_section_alias_priority_audit (
+                id,
+                created_on,
+                created_user_id,
+                last_updated_on,
+                last_updated_user_id,
+                sor_container_name,
+                sor_item_name,
+                answer,
+                paper_no,
+                origin_id,
+                group_id,
+                tenant_id,
+                root_pipeline_id,
+                model_registry,
+                extracted_image_unit,
+                image_dpi,
+                image_width,
+                image_height,
+                batch_id,
+                confidence,
+                bbox,
+                sor_container_id,
+                sor_item_label,
+                section_alias,
+                priority_level
+                )
+                SELECT
+                id,
+                created_on,
+                created_user_id,
+                last_updated_on,
+                last_updated_user_id,
+                sor_container_name,
+                sor_item_name,
+                answer,
+                paper_no,
+                origin_id,
+                group_id,
+                tenant_id,
+                root_pipeline_id,
+                model_registry,
+                extracted_image_unit,
+                image_dpi,
+                image_width,
+                image_height,
+                batch_id,
+                confidence,
+                bbox,
+                sor_container_id,
+                sor_item_label,
+                section_alias,
+                priority_level
+                FROM ${temp_schema_name}.removed_section_alias_priority_${init_process_id.process_id};
+
+                INSERT INTO sor_transaction.section_alias_priority_filter (
+                id, created_on, created_user_id, last_updated_on, last_updated_user_id,
+                sor_container_name, sor_item_name, answer, paper_no, origin_id, group_id,
+                tenant_id, root_pipeline_id, model_registry, extracted_image_unit,
+                image_dpi, image_width, image_height, batch_id, confidence, bbox,
+                sor_container_id, sor_item_label, section_alias, priority_level
+                )
+                SELECT
+                id, created_on, created_user_id, last_updated_on, last_updated_user_id,
+                sor_container_name, sor_item_name, answer, paper_no, origin_id, group_id,
+                tenant_id, root_pipeline_id, model_registry, extracted_image_unit,
+                image_dpi, image_width, image_height, batch_id, confidence, bbox,
+                sor_container_id, sor_item_label, section_alias, priority_level
+                FROM ${temp_schema_name}.section_alias_priority_filter_${init_process_id.process_id};
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.section_alias_priority_filter_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.section_alias_priority_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.non_section_alias_priority_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.highest_priority_section_alias_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.removed_section_alias_priority_${init_process_id.process_id};
+
+        "} on-condition if "${section.alias.priority.activator}" == "true"
+
+
+        transform as "drop temporary table for neon " on "intics_zio_db_conn" using
+        {"
+
+                INSERT INTO sor_transaction.neon_kvp_input_audit
+                (input_file_path, prompt, text_model, process, paper_type, paper_no, origin_id, process_id, group_id, tenant_id, root_pipeline_id, model_registry, response_format)
+                SELECT input_file_path, prompt, text_model, process, paper_type, paper_no, origin_id, process_id, group_id, tenant_id, root_pipeline_id, model_registry, response_format
+                FROM ${temp_schema_name}.neon_kvp_input_${init_process_id.process_id};
+
+                INSERT INTO sor_transaction.neon_kvp_output_audit
+                (created_user_id,created_on,last_updated_user_id,  last_updated_on, input_file_path, total_response_json,text_model,paper_type, paper_no,origin_id ,process_id,process, group_id, tenant_id, action_id, root_pipeline_id, batch_id , model_registry, response_format, image_dpi, image_width, image_height, extracted_image_unit , status, stage, message)
+                SELECT created_user_id,created_on,last_updated_user_id,  last_updated_on, input_file_path, total_response_json,text_model,paper_type, paper_no,origin_id ,process_id,process, group_id, tenant_id, action_id, root_pipeline_id, batch_id , model_registry, response_format, image_dpi, image_width, image_height, extracted_image_unit , status, stage, message
+                FROM ${temp_schema_name}.neon_kvp_output_${init_process_id.process_id};
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.neon_kvp_input_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.neon_kvp_output_${init_process_id.process_id};
+
+        "} on-condition if "${neon.prompt.activator}"=="true"
+
+        transform as "drop temporary table for text extraction with krypton " on "intics_zio_db_conn" using
+        {"
+
+                INSERT INTO text_extraction.text_extraction_input_audit
+                (input_file_path, system_prompt, user_prompt, process, paper_no, origin_id, process_id, group_id,
+                tenant_id, root_pipeline_id, batch_id, model_registry, category, created_on, document_type)
+                SELECT input_file_path, system_prompt, user_prompt, process, paper_no, origin_id, process_id, group_id,
+                tenant_id, root_pipeline_id, batch_id, model_registry, category, created_on, document_type
+                FROM ${temp_schema_name}.text_extraction_input_${init_process_id.process_id};
+
+                INSERT INTO text_extraction.text_extraction_output_audit
+                (created_user_id,created_on,last_updated_user_id,  last_updated_on, input_file_path, total_response_json, paper_no,origin_id ,process_id,process, group_id, tenant_id, action_id, root_pipeline_id, batch_id , model_registry,   status, stage, message , category, request, response, endpoint )
+                SELECT created_user_id,created_on,last_updated_user_id,  last_updated_on, input_file_path, total_response_json, paper_no,origin_id ,process_id,process, group_id, tenant_id, action_id, root_pipeline_id, batch_id , model_registry,   status, stage, message, category, request, response, endpoint
+                FROM ${temp_schema_name}.text_extraction_output_${init_process_id.process_id};
+
+                insert into text_extraction.text_extraction_llm_json_parser_audit
+                (created_on, created_user_id, last_updated_on, last_updated_user_id, root_pipeline_id, tenant_id, group_id, batch_id, origin_id, paper_no, response, model_registry, extracted_image_unit, image_dpi, image_height, image_width)
+                SELECT created_on, created_user_id, last_updated_on, last_updated_user_id, root_pipeline_id, tenant_id, group_id, batch_id, origin_id, paper_no, response, model_registry, extracted_image_unit, image_dpi, image_height, image_width
+                FROM ${temp_schema_name}.text_extraction_llm_json_parser_${init_process_id.process_id};
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.text_extraction_input_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.text_extraction_output_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.text_extraction_llm_json_parser_${init_process_id.process_id};
+
+        "} on-condition if "${text.extraction.asis.activator}"=="true"
+
+
+        transform as "drop temporary table for kvp extraction with krypton " on "intics_zio_db_conn" using
+        {"
+
+                INSERT INTO kvp_extraction.kvp_extraction_input_audit
+                (input_file_path, system_prompt, user_prompt, process, paper_no, origin_id, process_id, group_id,
+                tenant_id, root_pipeline_id, batch_id, model_registry, category, created_on, document_type)
+                SELECT input_file_path, system_prompt, user_prompt, process, paper_no, origin_id, process_id, group_id,
+                tenant_id, root_pipeline_id, batch_id, model_registry, category, created_on, document_type
+                FROM ${temp_schema_name}.kvp_extraction_input_${init_process_id.process_id};
+
+                INSERT INTO kvp_extraction.kvp_extraction_output_audit
+                (created_user_id,created_on,last_updated_user_id,  last_updated_on, input_file_path, total_response_json, paper_no,origin_id ,process_id,process, group_id, tenant_id, action_id, root_pipeline_id, batch_id , model_registry,   status, stage, message, category, request, response, endpoint)
+                SELECT created_user_id,created_on,last_updated_user_id,  last_updated_on, input_file_path, total_response_json, paper_no,origin_id ,process_id,process, group_id, tenant_id, action_id, root_pipeline_id, batch_id , model_registry,   status, stage, message, category, request, response, endpoint
+                FROM ${temp_schema_name}.kvp_extraction_output_${init_process_id.process_id};
+
+
+                INSERT INTO kvp_extraction.kvp_extraction_llm_json_parser_audit
+                ( created_on, created_user_id, last_updated_on, last_updated_user_id, root_pipeline_id, tenant_id, group_id, batch_id, origin_id, paper_no, kvp_results, model_registry, extracted_image_unit, image_dpi, image_height, image_width)
+                SELECT created_on, created_user_id, last_updated_on, last_updated_user_id, root_pipeline_id, tenant_id, group_id, batch_id, origin_id, paper_no, kvp_results, model_registry, extracted_image_unit, image_dpi, image_height, image_width
+                FROM ${temp_schema_name}.kvp_extraction_llm_json_parser_${init_process_id.process_id};
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.kvp_extraction_input_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.kvp_extraction_output_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.kvp_extraction_llm_json_parser_${init_process_id.process_id};
+
+        "} on-condition if "${kvp.extraction.asis.activator}"=="true"
+
+        transform as "drop temporary table for table extraction with krypton " on "intics_zio_db_conn" using
+        {"
+
+                INSERT INTO table_extraction_info.table_extraction_input_audit
+                (input_file_path, system_prompt, user_prompt, process, paper_no, origin_id, process_id, group_id,
+                tenant_id, root_pipeline_id, batch_id, model_registry, category, created_on, document_type)
+                SELECT input_file_path, system_prompt, user_prompt, process, paper_no, origin_id, process_id, group_id,
+                tenant_id, root_pipeline_id, batch_id, model_registry, category, created_on, document_type
+                FROM ${temp_schema_name}.table_extraction_input_${init_process_id.process_id};
+
+                INSERT INTO table_extraction_info.table_extraction_output_audit
+                (created_user_id,created_on,last_updated_user_id,  last_updated_on, input_file_path, total_response_json, paper_no,origin_id ,process_id,process, group_id, tenant_id, action_id, root_pipeline_id, batch_id , model_registry,   status, stage, message, category, request, response, endpoint )
+                SELECT created_user_id,created_on,last_updated_user_id,  last_updated_on, input_file_path, total_response_json, paper_no,origin_id ,process_id,process, group_id, tenant_id, action_id, root_pipeline_id, batch_id , model_registry,   status, stage, message, category, request, response, endpoint
+                FROM ${temp_schema_name}.table_extraction_output_${init_process_id.process_id};
+
+                INSERT INTO table_extraction_info.table_extraction_llm_json_parser_audit
+                ( created_on, created_user_id, last_updated_on, last_updated_user_id, root_pipeline_id, tenant_id, group_id, batch_id, origin_id, paper_no, table_response, model_registry, extracted_image_unit, image_dpi, image_height, image_width)
+                SELECT created_on, created_user_id, last_updated_on, last_updated_user_id, root_pipeline_id, tenant_id, group_id, batch_id, origin_id, paper_no, table_response, model_registry, extracted_image_unit, image_dpi, image_height, image_width
+                FROM ${temp_schema_name}.table_extraction_llm_json_parser_${init_process_id.process_id};
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.table_extraction_input_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.table_extraction_output_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.table_extraction_llm_json_parser_${init_process_id.process_id};
+
+        "} on-condition if "${table.extraction.asis.krypton.activator}"=="true"
+
+        transform as "drop temporary table for checkbox extraction with krypton " on "intics_zio_db_conn" using
+        {"
+                INSERT INTO checkbox_extraction.checkbox_extraction_input_audit
+                (input_file_path, system_prompt, user_prompt, process, paper_no, origin_id, process_id, group_id,
+                tenant_id, root_pipeline_id, batch_id, model_registry, category, created_on, document_type)
+                SELECT input_file_path, system_prompt, user_prompt, process, paper_no, origin_id, process_id, group_id,
+                tenant_id, root_pipeline_id, batch_id, model_registry, category, created_on, document_type
+                FROM ${temp_schema_name}.checkbox_extraction_input_${init_process_id.process_id};
+
+                INSERT INTO checkbox_extraction.checkbox_extraction_output_audit
+                (created_user_id,created_on,last_updated_user_id,  last_updated_on, input_file_path, total_response_json, paper_no,origin_id ,process_id,process, group_id, tenant_id, action_id, root_pipeline_id, batch_id , model_registry,   status, stage, message, category, request, response, endpoint )
+                SELECT created_user_id,created_on,last_updated_user_id,  last_updated_on, input_file_path, total_response_json, paper_no,origin_id ,process_id,process, group_id, tenant_id, action_id, root_pipeline_id, batch_id , model_registry,   status, stage, message, category, request, response, endpoint
+                FROM ${temp_schema_name}.checkbox_extraction_output_${init_process_id.process_id};
+
+                INSERT INTO checkbox_extraction.checkbox_extraction_llm_json_parser_audit
+                (created_on, created_user_id, last_updated_on, last_updated_user_id, root_pipeline_id, tenant_id, group_id, batch_id, origin_id, paper_no, response, model_registry, extracted_image_unit, image_dpi, image_height, image_width)
+                SELECT created_on, created_user_id, last_updated_on, last_updated_user_id, root_pipeline_id, tenant_id, group_id, batch_id, origin_id, paper_no, response, model_registry, extracted_image_unit, image_dpi, image_height, image_width
+                FROM ${temp_schema_name}.checkbox_extraction_llm_json_parser_${init_process_id.process_id};
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.checkbox_extraction_input_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.checkbox_extraction_output_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.checkbox_extraction_llm_json_parser_${init_process_id.process_id};
+
+        "} on-condition if "${checkbox.extraction.asis.activator}"=="true"
+
+        transform as "drop temporary table for bbox " on "intics_zio_db_conn" using
+        {"
+
+                INSERT INTO sor_transaction.radon_bbox_input_audit
+                (input_file_path, input_response_json, user_prompt, process, paper_no, origin_id, process_id, group_id, tenant_id, root_pipeline_id,
+                    model_registry, batch_id, category, created_on, sor_container_id, system_prompt)
+                SELECT input_file_path, input_response_json, user_prompt, process, paper_no, origin_id, process_id, group_id, tenant_id, root_pipeline_id,
+                           model_registry, batch_id, category, created_on, sor_container_id, system_prompt
+                FROM ${temp_schema_name}.radon_bbox_input_${init_process_id.process_id};
+
+                INSERT INTO sor_transaction.radon_bbox_output_audit
+                (created_on, created_user_id, last_updated_on, last_updated_user_id, input_file_path, input_response_json, total_response_json, paper_no, origin_id, process_id, action_id, process, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, status, stage, message, category, request, response, endpoint, sor_container_id)
+                SELECT created_on, created_user_id, last_updated_on, last_updated_user_id, input_file_path, input_response_json, total_response_json, paper_no, origin_id, process_id, action_id, process, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, status, stage, message, category, request, response, endpoint, sor_container_id
+                FROM ${temp_schema_name}.radon_bbox_output_${init_process_id.process_id};
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.radon_bbox_input_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.radon_bbox_output_${init_process_id.process_id};
+
+        "} on-condition if "${bbox.radon_bbox_activator}"=="true"
+
+
+        transform as "drop temporary mandatory field data tables " on "intics_zio_db_conn" using {"
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.mandatory_sor_item_aggregate_${init_process_id.process_id};
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.error_queue_mandatory_json_creator_${init_process_id.process_id};
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.mandatory_sor_item_list_${init_process_id.process_id};
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.cummulative_result_eq_${init_process_id.process_id};
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.sor_item_eq_${init_process_id.process_id};
+
+        "} on-condition if "true"=="true"
+
+        transform as "Drop table for Agentic paper filter " on "intics_zio_db_conn" using {"
+
+
+                INSERT INTO paper_filter.agentic_paper_level_score_audit
+                (origin_id, paper_no, root_pipeline_id, batch_id, tenant_id, group_id, is_candidate_paper, paper_level_score)
+                select origin_id, paper_no, root_pipeline_id, batch_id, tenant_id, group_id, is_candidate_paper, paper_level_score
+                from ${temp_schema_name}.agentic_paper_level_score_${init_process_id.process_id};
+
+                INSERT INTO paper_filter.agentic_entity_level_score_audit
+                (origin_id, paper_no, root_pipeline_id, batch_id, tenant_id, group_id, sor_container_id, container_name, container_value,is_candidate_paper,file_path)
+                select origin_id, paper_no, root_pipeline_id, batch_id, tenant_id, group_id, sor_container_id, container_name, container_value,is_candidate_paper,file_path
+                from ${temp_schema_name}.agentic_entity_level_score_${init_process_id.process_id};
+
+                insert into paper_filter.paper_filter_max_score_papers_audit
+                (origin_id, paper_no,root_pipeline_id, batch_id, group_id, tenant_id)
+                SELECT origin_id, paper_no,root_pipeline_id, batch_id, group_id, tenant_id
+                FROM ${temp_schema_name}.agentic_paper_level_score_${init_process_id.process_id} a
+                WHERE (a.origin_id, a.root_pipeline_id, a.batch_id, a.tenant_id, a.group_id, a.paper_level_score) IN
+                (SELECT origin_id, root_pipeline_id, batch_id, tenant_id, group_id, MAX(paper_level_score)
+                FROM ${temp_schema_name}.agentic_paper_level_score_${init_process_id.process_id}
+                GROUP BY origin_id, root_pipeline_id, batch_id, tenant_id, group_id);
+
+
+                insert into paper_filter.paper_filter_only_false_containers_audit
+                (origin_id,sor_container_id,container_name,root_pipeline_id, batch_id, group_id,tenant_id)
+                SELECT ps.origin_id, sc.sor_container_id, ps.container_name, ps.root_pipeline_id, ps.batch_id, ps.group_id,ps.tenant_id
+                FROM  ${temp_schema_name}.agentic_paper_filter_output_${init_process_id.process_id} ps
+                INNER JOIN sor_meta.sor_container sc ON sc.sor_container_name = ps.container_name AND sc.tenant_id = ps.tenant_id
+                WHERE group_id = '${group_id}'
+                and batch_id='${batch_id}'
+                and  sc.tenant_id=${tenant_id}
+                and sc.document_type='${document_type}'
+                GROUP BY sc.sor_container_id,ps.origin_id,ps.container_name,ps.root_pipeline_id, ps.batch_id, ps.group_id,ps.tenant_id
+                HAVING COUNT(DISTINCT CASE WHEN container_value = 'true' THEN paper_no END) = 0;
+
+
+                INSERT INTO paper_filter.agentic_paper_filter_input_data_audit (process_id, tenant_id, template_id,
+                group_id, origin_id, paper_no, file_path, root_pipeline_id, template_name, batch_id, created_on, user_prompt,
+                system_prompt) SELECT process_id, tenant_id, template_id, group_id, origin_id, paper_no, file_path,
+                root_pipeline_id, template_name, batch_id, created_on, user_prompt, system_prompt
+                FROM ${temp_schema_name}.agentic_paper_filter_input_data_${init_process_id.process_id};
+
+
+                INSERT INTO paper_filter.agentic_paper_filter_output_audit
+                (process_id, tenant_id, template_id, group_id, batch_id, origin_id, paper_no, file_path, file_name,
+                extracted_text, status, stage, message, template_name, is_blank_page, created_on, last_updated_on,
+                root_pipeline_id, model_name, model_version, container_name, container_value,container_id,prompt_type)
+                SELECT process_id, tenant_id, template_id, group_id, batch_id, origin_id, paper_no, file_path, file_name,
+                extracted_text, status, stage, message, template_name, is_blank_page, created_on, last_updated_on,
+                root_pipeline_id, model_name, model_version, container_name, container_value,container_id,prompt_type
+                FROM ${temp_schema_name}.agentic_paper_filter_output_${init_process_id.process_id};
+
+                INSERT INTO paper_filter.agentic_container_filter_base_table_audit
+                (origin_id, paper_no, container_name, container_value, root_pipeline_id, batch_id, tenant_id, group_id, sor_container_id)
+                select a.origin_id, a.paper_no, a.container_name, a.container_value, a.root_pipeline_id, a.batch_id, a.tenant_id, a.group_id, sc.sor_container_id
+                from ${temp_schema_name}.agentic_paper_filter_output_${init_process_id.process_id} a
+                JOIN sor_meta.sor_container sc on a.container_name=sc.sor_container_name AND a.tenant_id=sc.tenant_id
+                where sc.document_type='${document_type}';
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.agentic_container_filter_base_table_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.agentic_paper_level_score_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.agentic_entity_level_score_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.agentic_paper_filter_input_data_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.agentic_paper_filter_output_${init_process_id.process_id};
+
+        "} on-condition if "${agentic.paper.filter.activator}"=="true"
+
+
+        transform as "Drop table for sor validation" on "intics_zio_db_conn" using {"
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.ocr_text_comparison_input_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.ocr_text_comparison_result_${init_process_id.process_id};
+
+        "} on-condition if "${sor.validation.main.activator}"=="true"
+
+
+        transform as "Drop table for cpt-code multi value sor-item " on "intics_zio_db_conn" using {"
+
+                insert into macro.multi_value_sor_item_audit
+                ( tenant_id, aggregated_score, masked_score, origin_id,
+                paper_no, predicted_value, rank, sor_item_attribution_id, sor_item_name, document_id,b_box,group_id, root_pipeline_id,vqa_score,question_id,synonym_id, model_registry, batch_id, frequency)
+                select  tenant_id, aggregated_score, masked_score, origin_id,
+                paper_no, predicted_value, rank, sor_item_attribution_id, sor_item_name, document_id,b_box,group_id, root_pipeline_id,vqa_score,question_id,synonym_id, model_registry, batch_id, frequency
+                from ${temp_schema_name}.multi_value_sor_item_${init_process_id.process_id};
+
+                insert into macro.max_conf_table_audit
+                (origin_id ,sor_item_name, b_box, vqa_score, root_pipeline_id, batch_id,tenant_id)
+                select origin_id ,sor_item_name, b_box, vqa_score,root_pipeline_id, batch_id,tenant_id
+                from ${temp_schema_name}.max_conf_table_${init_process_id.process_id};
+
+                insert into macro.multi_value_sor_item_page_clean_up_audit
+                (tenant_id, aggregated_score, masked_score, origin_id,
+                paper_no, predicted_value, rank, sor_item_attribution_id, sor_item_name, document_id,b_box,group_id,
+                root_pipeline_id,vqa_score,question_id,synonym_id, model_registry, batch_id, frequency)
+                select tenant_id, aggregated_score, masked_score, origin_id,
+                paper_no, predicted_value, rank, sor_item_attribution_id, sor_item_name, document_id,b_box,group_id,
+                root_pipeline_id,vqa_score,question_id,synonym_id, model_registry, batch_id, frequency
+                from ${temp_schema_name}.multi_value_sor_item_page_clean_up_${init_process_id.process_id};
+
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.multi_value_sor_item_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.max_conf_table_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.multi_value_sor_item_page_clean_up_${init_process_id.process_id};
+
+        "} on-condition if "${voting.multi.value.line.item.activator}"=="true"
+
+        transform as "Temp table drop for Eye Cue" on "intics_zio_db_conn" using {"
+               INSERT INTO doc_eyecue.doc_eyecue_input_table_audit
+               (origin_id, batch_id, process_id, group_id, tenant_id, template_id, root_pipeline_id, input_file_path, created_on, document_id, file_name)
+               select origin_id, batch_id, process_id, group_id, tenant_id, template_id, root_pipeline_id, input_file_path, created_on, document_id, file_name
+                FROM ${temp_schema_name}.doc_eyecue_input_table_${init_process_id.process_id}
+                where tenant_id='${tenant_id}' and group_id='${group_id}';
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.doc_eyecue_pipeline_result_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.doc_eyecue_input_table_${init_process_id.process_id};
+        "} on-condition if "${doc.eyecue.activator}" == "true"
+
+        transform as "drop deep sift data in temporary tables" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO deep_sift.deep_sift_input_audit (
+                origin_id, group_id, input_file_path, created_on, created_by, root_pipeline_id,
+                tenant_id, batch_id, paper_no, source_document_type,
+                model_id, model_name, base_prompt, system_prompt
+                )
+                SELECT
+                origin_id, group_id, input_file_path, created_on, created_by, root_pipeline_id,
+                tenant_id, batch_id, paper_no, source_document_type,
+                model_id, model_name, base_prompt, system_prompt
+                FROM ${temp_schema_name}.deep_sift_input_${init_process_id.process_id}
+                where tenant_id='${tenant_id}' and group_id='${group_id}' and batch_id='${batch_id}';
+
+                INSERT INTO deep_sift.deep_sift_output_audit (
+                origin_id, group_id, input_file_path, created_on, created_by, root_pipeline_id,
+                tenant_id, batch_id, extracted_text, paper_no, source_document_type,
+                model_id, model_name, timetaken_ms, status, request, response, endpoint
+                )
+                SELECT
+                origin_id, group_id, input_file_path, created_on, created_by, root_pipeline_id,
+                tenant_id, batch_id, extracted_text, paper_no, source_document_type,
+                model_id, model_name, timetaken_ms, status, request, response, endpoint
+                FROM ${temp_schema_name}.deep_sift_output_${init_process_id.process_id}
+                where tenant_id='${tenant_id}' and group_id='${group_id}' and batch_id='${batch_id}';
+
+                INSERT INTO deep_sift.deep_search_input_audit (
+                origin_id,
+                group_id,
+                created_on,
+                created_by,
+                extracted_text,
+                root_pipeline_id,
+                tenant_id,
+                batch_id,
+                paper_no,
+                source_document_type,
+                sor_container_id,
+                sor_container_name,
+                sor_item_id,
+                sor_item_name,
+                search_id,
+                search_name,
+                keywords
+                )
+                SELECT
+                origin_id,
+                group_id,
+                created_on,
+                created_by,
+                extracted_text,
+                root_pipeline_id,
+                tenant_id,
+                batch_id,
+                paper_no,
+                source_document_type,
+                sor_container_id,
+                sor_container_name,
+                sor_item_id,
+                sor_item_name,
+                search_id,
+                search_name,
+                keywords
+                FROM ${temp_schema_name}.deep_search_input_${init_process_id.process_id}
+                where tenant_id='${tenant_id}' and group_id='${group_id}' and batch_id='${batch_id}';
+
+                INSERT INTO deep_sift.deep_search_output_audit (
+                origin_id,
+                group_id,
+                created_on,
+                created_by,
+                root_pipeline_id,
+                tenant_id,
+                batch_id,
+                paper_no,
+                source_document_type,
+                sor_container_id,
+                sor_container_name,
+                sor_item_id,
+                sor_item_name,
+                search_id,
+                search_name,
+                search_output,
+                timetaken_ms,
+                status
+                )
+                SELECT
+                origin_id,
+                group_id,
+                created_on,
+                created_by,
+                root_pipeline_id,
+                tenant_id,
+                batch_id,
+                paper_no,
+                source_document_type,
+                sor_container_id,
+                sor_container_name,
+                sor_item_id,
+                sor_item_name,
+                search_id,
+                search_name,
+                search_output,
+                timetaken_ms,
+                status
+                FROM ${temp_schema_name}.deep_search_output_${init_process_id.process_id}
+                where tenant_id='${tenant_id}' and group_id='${group_id}' and batch_id='${batch_id}';
+
+                INSERT INTO deep_sift.final_deep_search_audit (
+                origin_id, group_id, created_on, created_by, root_pipeline_id, tenant_id, batch_id,
+                source_document_type, sor_container_id, sor_container_name, sor_item_id, sor_item_name,
+                search_id, comma_separated_search_outputs, min_paper_no)
+                SELECT origin_id, group_id, created_on, created_by, root_pipeline_id, tenant_id, batch_id,
+                source_document_type, sor_container_id, sor_container_name, sor_item_id, sor_item_name,
+                search_id, comma_separated_search_outputs, min_paper_no
+                FROM ${temp_schema_name}.final_deep_search_${init_process_id.process_id}
+                where tenant_id= ${tenant_id} and group_id='${group_id}' and batch_id='${batch_id}';
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.deep_sift_input_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.deep_sift_output_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.deep_search_input_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.deep_search_output_${init_process_id.process_id};
+                DROP TABLE IF EXISTS ${temp_schema_name}.final_deep_search_${init_process_id.process_id};
+        "} on-condition if "${deep.sift.extraction.activator}"=="true"
+}
+catch{
+
+}
+finally{
+
+        transform as "update transaction table to completed if origin mode is transaction" on "intics_zio_db_conn" using
+        {"
+
+                UPDATE info.transaction
+                SET transaction_status='COMPLETED' , last_updated_on=now(), time_taken=EXTRACT(EPOCH FROM (now() - created_on))
+                WHERE transaction_id='${transaction_id}' and tenant_id=${tenant_id};
+
+        "} on-condition if "${origin_type}"=="TRANSACTION"
+
+
+        assign as "gen_id" source "intics_zio_db_conn" using
+        {"
+                select reference_id
+                from inbound_config.ingestion_downloaded_file_details
+                where transaction_id='${transaction_id}';
+
+        "} on-condition if "${origin_type}"=="TRANSACTION"
+
+        assign as "reference" source "intics_zio_db_conn" using
+        {"
+                select count(*) as total_count
+                from inbound_config.filenet_queue fq
+                join inbound_config.ingestion_file_details ifd on fq.reference_id=ifd.reference_id and fq.tenant_id =ifd.tenant_id
+                join inbound_config.ingestion_downloaded_file_details idfd
+                on idfd.inbound_transaction_id = ifd.inbound_transaction_id
+                and idfd.tenant_id = ifd.tenant_id
+                where idfd.reference_id=fq.reference_id and fq.tenant_id='${tenant_id}' AND fq.reference_id = '${gen_id.reference_id}';
+
+                select count(*) as comp_count
+                from inbound_config.filenet_queue fq
+                join inbound_config.ingestion_file_details ifd on fq.reference_id=ifd.reference_id and fq.tenant_id =ifd.tenant_id
+                join inbound_config.ingestion_downloaded_file_details idfd
+                on idfd.inbound_transaction_id = ifd.inbound_transaction_id
+                and idfd.tenant_id = ifd.tenant_id
+                join info.transaction t on t.transaction_id =idfd.transaction_id and t.tenant_id=idfd.tenant_id
+                where idfd.reference_id=fq.reference_id and t.transaction_status='COMPLETED' AND fq.tenant_id='${tenant_id}' AND fq.reference_id = '${gen_id.reference_id}';
+
+                select count(*) as fail_count
+                from inbound_config.filenet_queue fq
+                join inbound_config.ingestion_file_details ifd on fq.reference_id=ifd.reference_id and fq.tenant_id =ifd.tenant_id
+                join inbound_config.ingestion_downloaded_file_details idfd
+                on idfd.inbound_transaction_id = ifd.inbound_transaction_id
+                and idfd.tenant_id = ifd.tenant_id
+                join info.transaction t on t.transaction_id =idfd.transaction_id and t.tenant_id=idfd.tenant_id
+                where idfd.reference_id=fq.reference_id and t.transaction_status='FAILED' AND fq.tenant_id='${tenant_id}' AND fq.reference_id = '${gen_id.reference_id}';
+
+        "} on-condition if "${origin_type}"=="TRANSACTION"
+
+
+        transform as "update to completed for inbound_config.filenet_queue table" on "intics_zio_db_conn" using
+        {"
+                update inbound_config.filenet_queue fq
+                    set status = (case when '${reference.total_count}'='${reference.comp_count}' then 'COMPLETED'
+                            when '${reference.total_count}'='${reference.fail_count}' then 'FAILED'
+                            WHEN '${reference.total_count}'::int8=('${reference.fail_count}'::int8+'${reference.comp_count}'::int8) then 'FAILED'
+                            else  fq.status
+                            end)
+                where fq.reference_id = '${gen_id.reference_id}' and fq.tenant_id ='${tenant_id}';
+
+        "} on-condition if "${origin_type}"=="TRANSACTION"
+}
+
+}

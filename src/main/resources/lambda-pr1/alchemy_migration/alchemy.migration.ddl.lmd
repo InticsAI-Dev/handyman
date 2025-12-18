@@ -1,0 +1,178 @@
+process "alchemy.migration.ddl"
+{
+    try{
+
+        transform as "create error queue, audit and archive for alchemy migration" on "intics_zio_db_conn" using
+        {"
+            CREATE TABLE IF NOT EXISTS alchemy_migration.alchemy_migration_payload_queue_archive (
+                producer_process_id int8 NOT NULL,
+                consumer_process_id int8 NULL,
+                batch_id varchar NULL,
+                origin_id varchar NOT NULL,
+                group_id int4 NULL,
+                created_on timestamp NULL,
+                consumed_on_ts timestamp NULL,
+                status varchar NULL,
+                stage varchar NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                CONSTRAINT alchemy_migration_payload_queue_archive_pk PRIMARY KEY (producer_process_id, origin_id,tenant_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS alchemy_migration.alchemy_migration_payload_error_queue (
+                 producer_process_id int8 NOT NULL,
+                 consumer_process_id int8 NULL,
+                 batch_id varchar NULL,
+                 origin_id varchar NOT NULL,
+                 created_on timestamp NOT NULL,
+                 group_id int4 not null,
+                 status varchar NOT NULL,
+                 stage  varchar NOT NULL,
+                 message varchar NULL,
+                 consumed_on_ts timestamp NULL,
+                 root_pipeline_id int8 NULL,
+                 tenant_id int8 NULL,
+                 CONSTRAINT alchemy_migration_payload_error_queue_pk PRIMARY KEY (origin_id,tenant_id)
+            );
+
+             CREATE TABLE IF NOT EXISTS alchemy_migration.alchemy_migration_pipeline_audit (
+                    id bigserial NOT NULL,
+                    batch_id varchar NULL,
+                    group_id int4 NOT NULL,
+                    created_on timestamp NOT NULL,
+                    created_by varchar NOT NULL,
+                    user_id varchar NOT NULL,
+                    tenant_id int8 NULL,
+                    status varchar NOT NULL,
+                    stage varchar NOT NULL,
+                    message varchar NOT NULL,
+                    root_pipeline_id int8 NULL
+            );
+
+            CREATE SCHEMA IF NOT EXISTS alchemy_response;
+            CREATE TABLE IF NOT EXISTS alchemy_response.alchemy_product_response (
+                id bigserial PRIMARY KEY NOT NULL,
+                process_id int8 NULL,
+                group_id int4 NULL,
+                product_response varchar NULL,
+                file_name varchar NULL,
+                created_on timestamp DEFAULT now() NULL,
+                last_updated_on timestamp DEFAULT now() NULL,
+                tenant_id int8 NULL,
+                root_pipeline_id int8 NULL,
+                origin_id varchar NULL,
+                status varchar NULL,
+                stage varchar NULL,
+                message varchar NULL,
+                triggered_url varchar NULL,
+                feature varchar NULL,
+                batch_id varchar NULL,
+                endpoint varchar NULL,
+                request text NULL,
+                response text NULL,
+                inbound_transaction_id varchar NULL
+            );
+
+        "}on-condition if "true"=="true"
+
+        transform as "create alchemy papers table " on "intics_zio_db_conn" using
+        {"
+            CREATE TABLE IF NOT EXISTS alchemy_migration.alchemy_papers (
+                id serial4 NOT NULL,
+                tenant_id int8 null,
+                group_id int4  NULL,
+                batch_id varchar NULL,
+                file_name varchar NULL,
+                paper_no int4  NULL,
+                pipeline_origin_id varchar NULL,
+                alchemy_origin_id varchar NULL,
+                origin_file_path varchar NULL,
+                encode text NULL,
+                width int4 NULL,
+                height int4 NULL,
+                created_on timestamp NULL,
+                root_pipeline_id int8 NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS alchemy_migration.alchemy_response (
+                id serial4 NOT NULL,
+                batch_id varchar NULL,
+            	bbox json NULL,
+            	alchemy_origin_id varchar NULL,
+            	pipeline_origin_id varchar NULL,
+            	paper_no int4 NULL,
+            	tenant_id int8 NULL,
+            	group_id int4 NULL,
+            	root_pipeline_id int8 NULL,
+            	confidence_score int8 NULL,
+            	extracted_value text NULL,
+            	sor_item_name varchar NULL,
+            	synonym_id int8 NULL,
+            	question_id int8 NULL
+            );
+
+             CREATE TABLE IF NOT EXISTS alchemy_response.cleaned_pdf_info(
+                    id bigserial  not null,
+                    process_id int8  NULL,
+                    group_id int8  NULL,
+                    origin_id varchar  NULL,
+                    processed_file_path varchar  null,
+                    file_name varchar  null,
+                    created_on timestamp  NULL,
+                    last_updated_on timestamp  NULL,
+                    tenant_id int8 NULL,
+                    root_pipeline_id int8 NULL,
+                    status varchar null,
+                    stage varchar null,
+                    message varchar null,
+                    height float4 null,
+                    width float4 null,
+                    dpi int4 NULL,
+                    model_name varchar null,
+                    model_version varchar null,
+                    batch_id varchar NULL,
+                    request text NULL,
+                    response text NULL,
+                    endpoint varchar NULL,
+                    CONSTRAINT cleaned_pdf_info_pk PRIMARY KEY (id)
+
+            );
+
+            CREATE TABLE IF NOT EXISTS alchemy_response.pipeline_error_details (
+                    id bigserial not null,
+                    tenant_id int8 NULL,
+                    transaction_id varchar NULL,
+                    origin_id varchar NULL,
+                    status varchar null,
+                    error_code varchar null,
+                    error_message varchar null,
+                    error_message_detail varchar null,
+                    failure_stage varchar null,
+                    failure_timestamp varchar null,
+                    created_on TIMESTAMP null,
+                    CONSTRAINT pipeline_error_details_pk PRIMARY KEY (id)
+            );
+
+
+            CREATE TABLE IF NOT EXISTS alchemy_migration.alchemy_transform_output_table (
+                origin_id VARCHAR NULL,
+                root_pipeline_id BIGINT NULL,
+                tenant_id BIGINT NULL,
+                group_id BIGINT NULL,
+                request TEXT NULL,
+                response TEXT NULL,
+                endpoint VARCHAR NULL,
+                status VARCHAR NULL,
+                stage VARCHAR NULL,
+                created_on TIMESTAMP NULL,
+                completed_on TIMESTAMP NULL
+            );
+        "} on-condition if "true"=="true"
+    }
+    catch{
+
+    }
+    finally{
+    }
+
+}

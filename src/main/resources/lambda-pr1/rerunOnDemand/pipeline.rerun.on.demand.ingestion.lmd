@@ -1,0 +1,17 @@
+process "pipeline.rerun.on.demand.ingestion"
+{
+try{
+
+        transform as "creating sequence for inbound_id and group id" on "intics_zio_db_conn" using
+        {"
+
+        "} on-condition if "true"=="true"
+
+
+}
+catch{
+
+}
+finally{
+}
+}

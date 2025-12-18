@@ -1,27 +1,9 @@
 package in.handyman.raven.lib;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lib.model.AssetInfo;
 import in.handyman.raven.lib.model.DockerInspect;
-import in.handyman.raven.lib.model.dockerinspect.dto.ContainerInfoDTO;
-import in.handyman.raven.lib.model.dockerinspect.dto.DockerInspectApiResponseDTO;
-import in.handyman.raven.lib.model.dockerinspect.dto.DockerInspectInputTable;
 import lombok.extern.slf4j.Slf4j;
-import okhttp3.OkHttpClient;
-import okhttp3.Response;
-import org.jdbi.v3.core.Jdbi;
-import org.jdbi.v3.core.statement.Update;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ExecutorService;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 @Slf4j
 class DockerInspectActionTest {

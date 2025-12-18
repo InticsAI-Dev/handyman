@@ -1,0 +1,751 @@
+process "sor.transaction.ddl"
+{
+	try{
+
+			transform as "create vqa_transaction, payload queue, adapter result table, create scalar and aggregator in sor_transaction schema" on "intics_zio_db_conn" using
+			{"
+					CREATE SCHEMA IF NOT EXISTS sor_transaction;
+                    CREATE TABLE IF NOT EXISTS sor_transaction.vqa_transaction (
+                    	transaction_id bigserial NOT NULL,
+                    	created_on timestamp NOT NULL,
+                    	created_user_id varchar NOT NULL,
+                    	last_updated_on timestamp NULL,
+                    	last_updated_user_id varchar NULL,
+                    	tenant_id int8 NULL,
+                    	vqa_score numeric(10, 2) NULL,
+                    	origin_id varchar NOT NULL,
+                    	paper_no int4 NOT NULL,
+                    	group_id int4 null,
+                    	sor_item_attribution_id int4 NULL,
+                    	sor_item_name varchar NOT NULL,
+                    	document_id varchar NULL,
+                    	model_id int8 NULL,
+                    	answer text NULL,
+                    	score  int8 null,
+                    	weight int4 NULL,
+                    	sor_question varchar NOT NULL,
+                    	question_id int8 null,
+                    	synonym_id int8 null,
+                    	b_box varchar null,
+                        image_dpi int8 NULL,
+                        image_width int8 NULL,
+                        image_height int8 NULL,
+                        extracted_image_unit varchar NULL,
+                        root_pipeline_id int8 NULL,
+                        model_info varchar NULL,
+                        model_registry varchar NULL,
+                        category text NULL,
+                        model_registry_id int8 NULL,
+                        batch_id varchar NOT NULL,
+                        status varchar NULL,
+                        stage varchar NULL,
+                        section_alias varchar null,
+                    	CONSTRAINT vqa_transaction_pkey PRIMARY KEY (transaction_id)
+                    );
+
+                    CREATE TABLE IF NOT EXISTS sor_transaction.sor_transaction_payload_queue_archive (
+                        producer_process_id int8 NOT NULL,
+                        consumer_process_id int8 NULL,
+                        origin_id varchar NOT NULL,
+                        group_id int4 NULL,
+                        created_on timestamp NULL,
+                        consumed_on_ts timestamp NULL,
+                        status varchar NULL,
+                        stage varchar NULL,
+                        root_pipeline_id int8 NULL,
+                        tenant_id int8 NULL,
+                        batch_id varchar NOT NULL,
+                        CONSTRAINT sor_transaction_payload_queue_archive_pk PRIMARY KEY (producer_process_id, origin_id,tenant_id)
+                        );
+
+                    CREATE TABLE IF NOT EXISTS sor_transaction.sor_transaction_payload_error_queue (
+                         producer_process_id int8 NOT NULL,
+                         consumer_process_id int8 NULL,
+                         origin_id varchar NOT NULL,
+                         created_on timestamp NOT NULL,
+                         group_id int4 not null,
+                         status varchar NOT NULL,
+                         stage  varchar NOT NULL,
+                         message varchar NULL,
+                         consumed_on_ts timestamp NULL,
+                         root_pipeline_id int8 NULL,
+                         tenant_id int8 NULL,
+                         batch_id varchar NOT NULL,
+                         CONSTRAINT sor_transaction_payload_error_queue_pk PRIMARY KEY ( origin_id,tenant_id)
+                    );
+
+                     CREATE TABLE IF NOT EXISTS sor_transaction.sor_transaction_pipeline_audit (
+                            id bigserial NOT NULL,
+                            group_id int4 NOT NULL,
+                            created_on timestamp NOT NULL,
+                            created_by varchar NOT NULL,
+                            user_id varchar NOT NULL,
+                            tenant_id int8 NULL,
+                            status varchar NOT NULL,
+                            stage varchar NOT NULL,
+                            message varchar NOT NULL,
+                            root_pipeline_id int8 NULL,
+                            batch_id varchar NULL
+                    );
+
+                    CREATE TABLE if not exists sor_transaction.accumulated_sor_transaction (
+                            adapter_id int4 NULL,
+                            acc_transaction_id bigserial NOT NULL,
+                            created_on timestamp NOT NULL,
+                            created_user_id varchar NOT NULL,
+                            last_updated_on timestamp NULL,
+                            last_updated_user_id varchar NULL,
+                            tenant_id int8 NULL,
+                            accumulated_weight float8 NULL,
+                            frequency int4 NULL,
+                            origin_id varchar NOT NULL,
+                            paper_no int4 NOT NULL,
+                            predicted_value text NULL,
+                            sor_item_attribution_id int4 NOT NULL,
+                            sor_item_name varchar NOT NULL,
+                            root_pipeline_id int8 NULL,
+                            model_registry varchar NULL,
+                            batch_id varchar NOT NULL,
+                            CONSTRAINT accumulated_sor_transaction_pkey PRIMARY KEY (acc_transaction_id)
+                    );
+
+
+						CREATE TABLE if not exists ${temp_schema_name}.adapter_result_${init_process_id.process_id} (
+						id bigserial not null,
+						origin_id varchar NULL,
+						paper_no int4 NULL,
+						group_id int4 NULL,
+						process_id varchar NULL,
+						sor_id int4 NULL,
+						sor_item_id int4 NULL,
+						sor_item_name varchar NULL,
+						question varchar NULL,
+						question_id int8 null,
+						synonym_id int8 null,
+						answer text NULL,
+						vqa_score float8 NULL,
+						weight int4 NULL,
+						created_user_id varchar NULL,
+						tenant_id int8 NULL,
+						created_on timestamp NULL,
+						word_score int8 NOT NULL,
+						char_score int8 NULL,
+						validator_score_allowed int8 NULL,
+						validator_score_negative int8 NULL,
+						confidence_score int8 NULL,
+						validation_name varchar NULL,
+						b_box varchar NULL,
+						status varchar NULL,
+					    stage varchar  NULL,
+					    category varchar null,
+					    message varchar NULL,
+					    root_pipeline_id int8 NULL,
+					    model_name varchar NULL,
+					    model_version varchar NULL,
+					    model_registry varchar NULL,
+					    batch_id varchar NOT NULL
+						);
+
+							CREATE TABLE if not exists sor_transaction.adapter_result_audit (
+                                id bigserial not null,
+                                origin_id varchar NULL,
+                                paper_no int4 NULL,
+                                group_id int4 NULL,
+                                process_id varchar NULL,
+                                sor_id int4 NULL,
+                                sor_item_id int4 NULL,
+                                sor_item_name varchar NULL,
+                                question varchar NULL,
+                                answer text NULL,
+                                vqa_score float8 NULL,
+                                weight int4 NULL,
+                                created_user_id varchar NULL,
+                                tenant_id int8 NULL,
+                                created_on timestamp NULL,
+                                word_score int8 NOT NULL,
+                                char_score int8 NULL,
+                                validator_score_allowed int8 NULL,
+                                validator_score_negative int8 NULL,
+                                confidence_score int8 NULL,
+                                validation_name varchar NULL,
+                                b_box varchar NULL,
+                                status varchar NULL,
+                                stage varchar  NULL,
+                                message varchar NULL,
+                                root_pipeline_id int8 NULL,
+                                question_id int8 null,
+                                synonym_id int8 null,
+                                category varchar null,
+                                model_name varchar NULL,
+                                model_version varchar NULL,
+                                model_registry varchar NULL,
+                                batch_id varchar NOT NULL
+                                );
+
+						CREATE TABLE  IF NOT EXISTS  ${temp_schema_name}.sanitizer_summary_${process-id}
+						    (id serial4 NOT NULL,row_count int4 NOT NULL,
+						    tenant_id int8 NULL,
+						    correct_row_count int4 NOT NULL,
+						    error_row_count int4 NOT NULL,
+						    created_at timestamp NOT NULL,
+						    batch_id varchar NULL);
+
+
+                    CREATE SCHEMA if not exists score;
+
+						CREATE TABLE if not exists score.aggregation_evaluator (
+								aggregation_evaluator_id bigserial NOT NULL,
+								created_on timestamp NOT NULL,
+								created_user_id varchar NOT NULL,
+								last_updated_on timestamp NULL,
+								last_updated_user_id varchar NULL,
+								tenant_id int8 NULL,
+								aggregated_score float8 NULL,
+								masked_score float8 NULL,
+								group_id int8 NULL,
+								origin_id varchar NOT NULL,
+								paper_no int4 NOT NULL,
+								predicted_value text NULL,
+								vqa_score float8 NULL,
+								rank int4 NULL,
+								sor_item_attribution_id int4 NOT NULL,
+								sor_item_name varchar NOT NULL,
+								document_id varchar NOT NULL,
+								acc_transaction_id int8 NULL,
+								b_box varchar NULL,
+								root_pipeline_id int8 NULL,
+								frequency int8 NULL,
+								question_id int8 null,
+								synonym_id int8 null,
+								model_registry varchar NULL,
+								category text NULL,
+								batch_id varchar NOT NULL,
+								CONSTRAINT aggregation_evaluator_pkey PRIMARY KEY (aggregation_evaluator_id)
+						);
+
+						CREATE TABLE if not exists score.scalar_validation (
+								validation_id bigserial NOT NULL,
+								created_on timestamp NOT NULL,
+								created_user_id varchar NOT NULL,
+								last_updated_on timestamp NULL,
+								last_updated_user_id varchar NULL,
+								tenant_id int8 NULL,
+								origin_id varchar NOT NULL,
+								group_id int4 NOT NULL,
+								paper_no int4 NOT NULL,
+								question varchar NULL,
+								predicted_value text NULL,
+								vqa_score float8 NULL,
+								score float8 NULL,
+								weight int4 NULL,
+								sor_item_attribution_id int4 NULL,
+								sor_item_name varchar NOT NULL,
+								document_id varchar NULL,
+								validation_name varchar NULL,
+								b_box varchar NULL,
+								root_pipeline_id int8 NULL,
+								question_id int8 null,
+								synonym_id int8 null,
+								model_registry varchar NULL,
+								category text NULL,
+								batch_id varchar NOT NULL,
+								CONSTRAINT scalar_validation_pkey PRIMARY KEY (validation_id)
+						);
+
+						 CREATE TABLE if not exists score.consolidated_accumulated_eval_result (
+                                  origin_id varchar NULL,
+                                  paper_no int4 NULL,
+                                  adapter_id int4 null,
+                                  process_id int8 NULL,
+                                  group_id varchar NULL,
+                                  sor_item_id int4 NULL,
+                                  sor_item_name varchar NULL,
+                                  answer text NULL,
+                                  confidence_score float NULL,
+                                  weight_rank int4 null,
+                                  acc_transaction_id int4 null,
+                                  root_pipeline_id int8 NULL,
+                                  model_registry varchar NULL,
+                                  tenant_id int8 NULL,
+                                  batch_id varchar NOT NULL
+                         );
+                      CREATE TABLE IF NOT EXISTS sor_grouping.sor_grouping_payload_queue (
+                                      producer_process_id int8 NOT NULL,
+                                      consumer_process_id int8 NULL,
+                                      origin_id varchar  NULL,
+                                      group_id int4  NULL,
+                                      created_on timestamp  NULL,
+                                      status varchar  NULL,
+                                      stage varchar  NULL,
+                                      consumed_on_ts timestamp NULL,
+                                      root_pipeline_id int8 NULL,
+                                      tenant_id int8 NULL,
+                                      batch_id varchar NOT NULL,
+                                      CONSTRAINT sor_grouping_payload_queue_pk PRIMARY KEY ( origin_id,tenant_id)
+                                  );
+
+                                    CREATE TABLE IF NOT EXISTS sor_transaction.final_sanitizer_summary_audit (
+                                        id bigserial NOT NULL,
+	                                    row_count int4 NULL,
+	                                    correct_row_count int4 NULL,
+	                                    error_row_count int4 NULL,
+	                                    comments varchar NULL,
+	                                    created_at timestamp NULL,
+	                                    process_id int8 NULL,
+	                                    root_pipeline_id int8 NULL,
+	                                    tenant_id int8 NULL
+                                  );
+
+
+                                   CREATE TABLE if not exists ${temp_schema_name}.sor_transaction_tqa_${init_process_id.process_id} (
+                                   	id bigserial NOT NULL,
+                                   	tqa_id int8 NULL,
+                                   	template_name varchar NULL,
+                                   	truth_entity varchar NULL,
+                                   	sor_item_name varchar NULL,
+                                   	group_id int4 NULL,
+                                   	synonym varchar NULL,
+                                   	question varchar NULL,
+                                   	weights int8 NULL,
+                                   	synonym_id int8 NULL,
+                                   	question_id int8 NULL,
+                                   	origin_id varchar NULL,
+                                   	paper_no int4 NULL,
+                                   	file_path varchar NULL,
+                                   	root_pipeline_id int8 NULL,
+                                   	tenant_id int8 NULL,
+                                   	document_type varchar NULL,
+                                   	model_name varchar NULL,
+                                    model_version varchar NULL,
+                                    model_registry varchar NULL,
+                                    category text NULL,
+                                    model_registry_id int8 NULL,
+                                    batch_id varchar NOT NULL
+                                   );
+
+                                    CREATE TABLE IF NOT EXISTS ${temp_schema_name}.sor_transaction_final_tqa_${init_process_id.process_id} (
+                                   questions varchar NULL,
+                                   sor_item_name varchar NULL,
+                                   question_id int8 NULL,
+                                   weights int8 NULL,
+                                   synonym_id int8 NULL,
+                                   file_path varchar NULL,
+                                   category text NULL,
+                                   paper_type varchar NULL,
+                                   model_registry text NULL,
+                                   group_id int4 NULL,
+                                   paper_no int4 NULL,
+                                   tenant_id int8 NULL,
+                                   origin_id varchar NULL,
+                                   root_pipeline_id int8 NULL,
+                                   model_registry_id int8 NULL,
+                                   batch_id varchar NOT NULL
+                                    );
+                                CREATE TABLE IF NOT EXISTS macro.sor_transaction_final_tqa_audit (
+                                questions varchar NULL,
+                                sor_item_name varchar NULL,
+                                question_id int8 NULL,
+                                weights int8 NULL,
+                                synonym_id int8 NULL,
+                                file_path varchar NULL,
+                                category text NULL,
+                                paper_type varchar NULL,
+                                model_registry text NULL,
+                                group_id int4 NULL,
+                                paper_no int4 NULL,
+                                tenant_id int8 NULL,
+                                origin_id varchar NULL,
+                                root_pipeline_id int8 NULL,
+                                model_registry_id int8 NULL,
+                                batch_id varchar NOT NULL
+                            );
+
+
+                                   CREATE TABLE IF NOT EXISTS macro.sor_transaction_tqa_audit (
+		                                   id bigserial not null,
+		                                    tqa_id int8 NULL,
+		                                    template_name varchar NULL,
+		                                    truth_entity varchar NULL,
+		                                    sor_item_name varchar NULL,
+		                                    group_id int4 NULL,
+		                                    synonym varchar NULL,
+		                                    question varchar NULL,
+		                                    question_id int8 NULL,
+		                                    category text NULL,
+		                                    weights int8 NULL,
+		                                    synonym_id int8 NULL,
+		                                    origin_id varchar NULL,
+		                                    paper_no int4 NULL,
+		                                    file_path varchar NULL,
+		                                    root_pipeline_id int8 NULL,
+		                                    tenant_id int8 NULL,
+		                                    document_type varchar NULL,
+		                                    model_name varchar NULL,
+                                            model_version varchar NULL,
+                                            model_registry varchar NULL,
+                                            model_registry_id int8 NULL,
+                                            batch_id varchar NOT NULL
+                                   );
+
+                    create table if not exists macro.sor_transaction_delete_duplicate_tqa_audit(
+                    max_id int8 null,
+                    batch_id varchar NOT NULL,
+                    question_count int8 null,
+                    question varchar null,
+                    file_path varchar null,
+                    root_pipeline_id int8 null
+                    );
+
+                    CREATE TABLE IF NOT EXISTS  ${temp_schema_name}.sor_transaction_tqa_grouping_duplicates_a_${init_process_id.process_id} (
+                    	tqa_id int8 NULL,
+                    	template_name text NULL,
+                    	truth_entity varchar NULL,
+                    	sor_item_name varchar NULL,
+                    	group_id int4 NULL,
+                    	synonym varchar NULL,
+                    	question varchar NULL,
+                    	question_id int8 NULL,
+                    	category text NULL,
+                    	weights int8 NULL,
+                    	synonym_id int8 NULL,
+                    	origin_id varchar NULL,
+                    	paper_no int4 NULL,
+                    	file_path varchar NULL,
+                    	root_pipeline_id int8 NULL,
+                    	document_type varchar NULL,
+                    	tenant_id int4 NULL,
+                    	model_registry varchar NULL,
+                    	model_registry_id int8 NULL,
+                    	batch_id varchar NOT NULL
+                    );
+
+                    CREATE TABLE IF NOT EXISTS  macro.sor_transaction_tqa_grouping_duplicates_a_audit (
+                    	tqa_id int8 NULL,
+                    	template_name text NULL,
+                    	truth_entity varchar NULL,
+                    	sor_item_name varchar NULL,
+                    	group_id int4 NULL,
+                    	synonym varchar NULL,
+                    	question varchar NULL,
+                    	question_id int8 NULL,
+                    	category text NULL,
+                    	weights int8 NULL,
+                    	synonym_id int8 NULL,
+                    	origin_id varchar NULL,
+                    	paper_no int4 NULL,
+                    	file_path varchar NULL,
+                    	root_pipeline_id int8 NULL,
+                    	document_type varchar NULL,
+                    	tenant_id int4 NULL,
+                    	model_registry varchar NULL,
+                    	model_registry_id int8 NULL,
+                    	batch_id varchar NOT NULL
+                    );
+
+                    CREATE TABLE IF NOT EXISTS ${temp_schema_name}.sor_transaction_tqa_grouping_duplicates_b_${init_process_id.process_id} (
+                    max_question_id int8 NULL,
+                    batch_id varchar NOT NULL,
+                    question varchar NULL,
+                    file_path varchar null,
+                    document_type varchar null,
+                    truth_entity  varchar null,
+                    sor_item_name varchar null,
+                    synonym varchar null,
+                    model_registry varchar null,
+                    model_registry_id int8 NULL,
+                  	category text NULL
+                    );
+
+                    CREATE TABLE  IF NOT EXISTS macro.sor_transaction_tqa_grouping_duplicates_b_audit (
+                    max_question_id int8 NULL,
+                    question varchar NULL,
+                    file_path varchar null,
+                    root_pipeline_id int8 null,
+                    document_type varchar null,
+                    truth_entity  varchar null,
+                    sor_item_name varchar null,
+                    synonym varchar null,
+                    model_registry varchar null,
+                    model_registry_id int8 NULL,
+                    category text NULL,
+                    batch_id varchar NOT NULL
+                 );
+
+                 CREATE TABLE IF NOT EXISTS ${temp_schema_name}.legacy_sor_transaction_chrono_clash_input_${init_process_id.process_id} (
+                     root_pipeline_id int8 NOT NULL,
+                     created_on timestamp NULL,
+                     updated_on timestamp NULL,
+                     batch_id varchar NOT NULL,
+                     group_id int4 NULL,
+                     origin_id varchar NOT NULL,
+                     tenant_id int8 NOT NULL,
+                     time_frame int4 NULL,
+                     stage varchar NULL,
+                     status varchar NULL,
+                     transaction_id varchar NOT NULL,
+                     downloaded_time timestamp NULL,
+                     remaining_time interval NULL,
+                     CONSTRAINT legacy_sor_transaction_chrono_clash_input_${init_process_id.process_id}_pk PRIMARY KEY (origin_id,tenant_id,root_pipeline_id,transaction_id)
+                 );
+
+            "}on-condition if "true"=="true"
+
+        transform as "DDL FOR RADON" on "intics_zio_db_conn" using
+        {"
+
+                create table if not exists ${temp_schema_name}.radon_kvp_input_${init_process_id.process_id}(
+                id bigserial not null,
+                input_file_path text null,
+                prompt text null,
+                process varchar null,
+                paper_no int8 null,
+                origin_id varchar null,
+                process_id int8 null,
+                group_id int8 null,
+                tenant_id int8 null,
+                root_pipeline_id int8 null,
+                batch_id varchar null,
+                model_registry varchar null,
+                category varchar null
+                );
+
+                CREATE TABLE IF NOT EXISTS sor_transaction.radon_kvp_input_audit (
+                    id bigserial NOT NULL,
+                    input_file_path text NULL,
+                    system_prompt text NULL,
+                    process varchar NULL,
+                    paper_no int8 NULL,
+                    origin_id varchar NULL,
+                    process_id int8 NULL,
+                    group_id int8 NULL,
+                    tenant_id int8 NULL,
+                    root_pipeline_id int8 NULL,
+                    batch_id varchar NULL,
+                    model_registry varchar NULL,
+                    category varchar NULL,
+                    sor_container_id int8 NULL,
+                    user_prompt text NULL
+                );
+
+
+
+                create table if not exists ${temp_schema_name}.radon_kvp_output_${init_process_id.process_id}(
+                id bigserial not null,
+                created_on timestamp NULL,
+                created_user_id varchar NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id varchar NULL,
+                input_file_path varchar null,
+                total_response_json text null,
+                paper_no int8 null,
+                origin_id varchar null,
+                process_id int8 null,
+                action_id int8 null,
+                process varchar null,
+                group_id int8 null,
+                tenant_id int8 null,
+                root_pipeline_id int8 null,
+                batch_id varchar null,
+                model_registry varchar null,
+                status varchar NULL,
+                stage  varchar NULL,
+                message varchar NULL,
+                category varchar null,
+                sor_container_instance varchar NULL
+                );
+
+                create table if not exists sor_transaction.radon_kvp_output_audit(
+                id bigserial not null,
+                created_on timestamp NULL,
+                created_user_id varchar NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id varchar NULL,
+                input_file_path varchar null,
+                total_response_json text null,
+                paper_no int8 null,
+                origin_id varchar null,
+                process_id int8 null,
+                action_id int8 null,
+                process varchar null,
+                group_id int8 null,
+                tenant_id int8 null,
+                root_pipeline_id int8 null,
+                batch_id varchar null,
+                model_registry varchar null,
+                status varchar NULL,
+                stage  varchar NULL,
+                message varchar NULL,
+                category varchar null,
+                sor_container_id int8 null,
+                sor_container_instance varchar null
+                );
+
+
+                 create table if not exists ${temp_schema_name}.llm_json_parser_output_${init_process_id.process_id}(
+                    id bigserial not null,
+                    created_on timestamp NULL,
+                    created_user_id varchar NULL,
+                    last_updated_on timestamp NULL,
+                    last_updated_user_id varchar NULL,
+                    sor_container_name varchar null,
+                    sor_item_name varchar null,
+                    answer varchar null,
+                    paper_no int8 null,
+                    origin_id varchar null,
+                    group_id int8 null,
+                    tenant_id int8 null,
+                    root_pipeline_id int8 null,
+                    model_registry varchar null,
+                    extracted_image_unit varchar null,
+                    image_dpi int8 null,
+                    image_width int8 null,
+                    image_height int8 null,
+                    category varchar null,
+                    batch_id varchar NULL,
+                    sor_item_label varchar NULL.
+                    section_alias varchar NULL
+                 );
+
+
+                create table if not exists sor_transaction.llm_json_parser_output_audit(
+                    id bigserial not null,
+                    created_on timestamp NULL,
+                    created_user_id varchar NULL,
+                    last_updated_on timestamp NULL,
+                    last_updated_user_id varchar NULL,
+                    sor_container_name varchar null,
+                    sor_item_name varchar null,
+                    answer varchar null,
+                    paper_no int8 null,
+                    origin_id varchar null,
+                    group_id int8 null,
+                    tenant_id int8 null,
+                    root_pipeline_id int8 null,
+                    model_registry varchar null,
+                    extracted_image_unit varchar null,
+                    image_dpi int8 null,
+                    image_width int8 null,
+                    image_height int8 null,
+                    batch_id varchar NULL,
+                    confidence double,
+                    sor_container_id int8 null,
+                    sor_item_label varchar NULL,
+                    section_alias vachar NULL
+                );
+
+                create table if not exists ${temp_schema_name}.filtered_llm_json_parser_output_${init_process_id.process_id}(
+                    id bigserial not null,
+                    created_on timestamp NULL,
+                    created_user_id varchar NULL,
+                    last_updated_on timestamp NULL,
+                    last_updated_user_id varchar NULL,
+                    sor_container_name varchar null,
+                    sor_item_name varchar null,
+                    answer varchar null,
+                    paper_no int8 null,
+                    origin_id varchar null,
+                    group_id int8 null,
+                    tenant_id int8 null,
+                    root_pipeline_id int8 null,
+                    model_registry varchar null,
+                    extracted_image_unit varchar null,
+                    image_dpi int8 null,
+                    image_width int8 null,
+                    image_height int8 null,
+                    category varchar null,
+                    batch_id varchar NULL,
+                    sor_item_label varchar NULL
+                 );
+
+                 create table if not exists sor_transaction.filtered_llm_json_parser_output_audit(
+                         id bigserial not null,
+                         created_on timestamp NULL,
+                         created_user_id varchar NULL,
+                         last_updated_on timestamp NULL,
+                         last_updated_user_id varchar NULL,
+                         sor_container_name varchar null,
+                         sor_item_name varchar null,
+                         answer varchar null,
+                         paper_no int8 null,
+                         origin_id varchar null,
+                         group_id int8 null,
+                         tenant_id int8 null,
+                         root_pipeline_id int8 null,
+                         model_registry varchar null,
+                         extracted_image_unit varchar null,
+                         image_dpi int8 null,
+                         image_width int8 null,
+                         image_height int8 null,
+                         batch_id varchar NULL,
+                         confidence double,
+                         sor_container_id int8 null,
+                         sor_item_label varchar NULL
+                     );
+
+                 create table if not exists ${temp_schema_name}.after_filtered_llm_json_parser_output_${init_process_id.process_id}(
+                     id bigserial not null,
+                     created_on timestamp NULL,
+                     created_user_id varchar NULL,
+                     last_updated_on timestamp NULL,
+                     last_updated_user_id varchar NULL,
+                     sor_container_name varchar null,
+                     sor_item_name varchar null,
+                     answer varchar null,
+                     paper_no int8 null,
+                     origin_id varchar null,
+                     group_id int8 null,
+                     tenant_id int8 null,
+                     root_pipeline_id int8 null,
+                     model_registry varchar null,
+                     extracted_image_unit varchar null,
+                     image_dpi int8 null,
+                     image_width int8 null,
+                     image_height int8 null,
+                     category varchar null,
+                     batch_id varchar NULL,
+                     sor_container_id int8 null,
+                     sor_item_label varchar NULL
+                  );
+
+                  create table if not exists sor_transaction.after_filtered_llm_json_parser_output_audit(
+                      id bigserial not null,
+                      created_on timestamp NULL,
+                      created_user_id varchar NULL,
+                      last_updated_on timestamp NULL,
+                      last_updated_user_id varchar NULL,
+                      sor_container_name varchar null,
+                      sor_item_name varchar null,
+                      answer varchar null,
+                      paper_no int8 null,
+                      origin_id varchar null,
+                      group_id int8 null,
+                      tenant_id int8 null,
+                      root_pipeline_id int8 null,
+                      model_registry varchar null,
+                      extracted_image_unit varchar null,
+                      image_dpi int8 null,
+                      image_width int8 null,
+                      image_height int8 null,
+                      category varchar null,
+                      batch_id varchar NULL,
+                      sor_container_id int8 null,
+                      sor_item_label varchar NULL
+                      );
+
+
+        "}on-condition if "${radon.prompt.activator}"=="true"
+
+
+
+	}
+	catch{
+			transform as "update to failed sor transaction payload queue" on "intics_zio_db_conn" using
+           {"
+                INSERT INTO sor_transaction.sor_transaction_pipeline_audit
+                (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id)
+                VALUES('${gen_group_id.group_id}', now(), '${created_user_id}', '${created_user_id}', ${tenant_id}, 'FAILED', 'DDL_SOR_TRANSACTION', 'Sor transaction failed in ddl with group_id ${gen_group_id.group_id}','${gen_id.root_pipeline_id}');
+           "} on-condition if "true"=="true"
+	}
+	finally{
+	}
+}

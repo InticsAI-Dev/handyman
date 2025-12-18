@@ -1,0 +1,26 @@
+process "testing.callprocess.main"
+{
+
+try{
+         consumer as "consumer" pop-event-from "
+                                SELECT group_id
+                                FROM eoc_transformer.eoc_transformer_payload_queue
+                                where group_id<10 limit 10;
+                         " on-resource "intics_zio_db_conn" execute {
+
+                    callprocess as "calling testing.callprocess.called.lmd"
+                    with-target "testing.callprocess.called.lmd"
+                    from-file "${basepath}/testing/testing.callprocess.called.lmd"
+                    using "intics_zio_db_conn"
+                    for-every
+                        {"
+                        SELECT 1;
+                        "} on-condition if "true"=="true"
+          } on-standalone if "true"=="true"
+        }
+
+}catch{
+
+}finally{
+}
+}

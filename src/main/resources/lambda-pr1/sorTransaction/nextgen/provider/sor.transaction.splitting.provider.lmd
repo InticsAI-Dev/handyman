@@ -1,0 +1,57 @@
+process "sor.transaction.splitting.provider"
+{
+try{
+
+        assign as "gen_output_table" source "intics_zio_db_conn" using
+        {"
+            SELECT concat ('${temp_schema_name}','.','llm_json_provider_parser_','${init_process_id.process_id}') as name;
+        "} on-condition if "true"=="true"
+
+
+        provider-container-mapper as "Provider custom implementation from the bsh script"
+        on-resource-conn "intics_zio_db_conn"
+        name-mapping-details "
+        select document_type,tenant_id,jsonb_object_agg(sor_item_name,sor_item_ref)::varchar AS sor_item_mappings_json
+                               from sor_meta_mapper.radon_prompt_json_sor_meta_mapper
+                               where tenant_id = '${tenant_id}'
+                               group by document_type,tenant_id;
+                               "
+        meta-container-entity-details "
+                                SELECT sc.document_type,sc.tenant_id,sc.sor_container_name , jsonb_agg(te.truth_entity_name) AS truth_entity_names_json
+                                from sor_meta.sor_container sc
+                                join sor_meta.truth_entity te on sc.sor_container_id =te.sor_container_id
+                                where sc.document_type ='${document_type}' and sc.tenant_id ='${tenant_id}' and sc.status ='ACTIVE' and te.status ='ACTIVE'
+                                group by sc.document_type,sc.sor_container_name,sc.tenant_id ;
+                                                               "
+        container-item-details "
+                                SELECT sc.document_type, sc.sor_container_name ,sc.tenant_id,  jsonb_agg(si.sor_item_name)::varchar AS sor_item_names_json
+                                from sor_meta.sor_container sc
+                                join sor_meta.sor_item si on sc.sor_container_id =si.sor_container_id
+                                where sc.document_type ='${document_type}' and sc.tenant_id ='${tenant_id}' and sc.status ='ACTIVE' and si.status ='ACTIVE'
+                                group by sc.document_type,sc.sor_container_name ,sc.tenant_id;
+                                "
+        paper-filter-mapper ""
+        using {"
+                        select  response, paper_no, origin_id, group_id, tenant_id, root_pipeline_id, batch_id, model_registry, category, created_on, sor_meta_detail
+                        from ${temp_schema_name}.llm_json_parser_input_${init_process_id.process_id} ljpoa
+                        where ljpoa.tenant_id ='${tenant_id}' and ljpoa.group_id ='${group_id}' and ljpoa.batch_id ='${batch_id}';
+        "} on-condition if "true"=="true"
+
+
+        transform as "Sor meta binding for the table : ${temp_schema_name}.llm_json_provider_parser_${init_process_id.process_id} " on "intics_zio_db_conn" using {"
+            insert into ${temp_schema_name}.llm_json_parser_output_${init_process_id.process_id}
+            (created_on, created_user_id, last_updated_on, last_updated_user_id, sor_container_name, sor_item_name, answer, paper_no, origin_id, group_id, tenant_id, root_pipeline_id, model_registry, extracted_image_unit, image_dpi, image_width, image_height, batch_id, confidence, bbox, sor_container_id, sor_item_label)
+            SELECT a.created_on, a.created_user_id, a.last_updated_on, a.last_updated_user_id, a.sor_container_name, a.sor_item_name, a.answer, a.paper_no, a.origin_id, a.group_id, a.tenant_id, a.root_pipeline_id, a.model_registry, a.extracted_image_unit, a.image_dpi, a.image_width, a.image_height, a.batch_id, a.confidence, a.bbox, sc.sor_container_id
+            FROM ${temp_schema_name}.llm_json_provider_parser_${init_process_id.process_id} a
+            join sor_meta.sor_container sc on sc.sor_container_name=a.sor_container_name and a.tenant_id = sc.tenant_id
+            where sc.tenant_id=${tenant_id} and sc.document_type='${document_type}' and a.root_pipeline_id='${init_process_id.process_id}' and a.batch_id='${batch_id}' and a.group_id ='${group_id}';
+
+        "} on-condition if "true"=="true"
+
+
+}
+catch{
+}
+finally{
+}
+}

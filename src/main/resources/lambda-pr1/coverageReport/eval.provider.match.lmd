@@ -1,0 +1,548 @@
+process "eval.provider.match"
+{
+    try {
+
+             transform as "inserting audit for provider match started" on "intics_zio_db_conn" using
+            {"
+
+                INSERT INTO control_data.control_data_pipeline_audit
+                (process_id,origin_id, created_on, group_id,  status, stage, message,root_pipeline_id,batch_id)
+                SELECT '${init_process_id.process_id}',a.origin_id,now(),'${gen_group_id.group_id}','STARTED','CONTROL_DATA','Control data match started for provider match','${gen_id.root_pipeline_id}', batch_id
+                from  control_data.control_data_payload_queue a where group_id='${gen_group_id.group_id}' and batch_id= '${batch_id}';
+
+            "}  on-condition if "true"=="true"
+
+            transform as "insert data into provider name,address " on "intics_zio_db_conn" using
+            {"
+
+                INSERT INTO control_data_macro.provider_name_similarity_input
+                (actual_value, origin_id, created_on, group_id, root_pipeline_id, extracted_value, confidence_score, file_name, tenant_id,batch_id)
+                SELECT
+                concat(a.provider_firstname,' ',a.provider_lastname) as actual_value ,
+                b.origin_id,
+                b.created_on,
+                b.group_id,
+                b.root_pipeline_id,
+                b.provider_name  as extracted_value,
+                c.confidence_score,
+                b.file_name,
+                ${tenant_id},
+		        b.batch_id
+                FROM public.fax_data_2411 a
+                JOIN control_data.evaluation_transposed b
+                ON LOWER(a.agadiadocid)=LOWER(b.file_name)  JOIN voting.cummulative_result c on b.origin_id=c.origin_id
+                 join control_data.control_data_payload_queue d on b.origin_id=d.origin_id
+                 WHERE   c.sor_item_name ='provider_name' and  b.group_id='${gen_group_id.group_id}' and b.tenant_id = ${tenant_id} and b.batch_id= '${batch_id}';
+
+
+                INSERT INTO control_data_macro.provider_address_similarity_input
+                (actual_value, origin_id, created_on, group_id, root_pipeline_id, extracted_value, confidence_score, file_name, tenant_id,batch_id)
+                SELECT
+                concat(a.provider_addrline1 ,' ',a.provider_addrline2) as actual_value ,
+                b.origin_id,
+                b.created_on,
+                b.group_id,
+                b.root_pipeline_id,
+                b.provider_address  as extracted_value,
+                c.confidence_score,
+                b.file_name,
+                ${tenant_id},
+		        b.batch_id
+                FROM public.fax_data_2411 a
+                JOIN control_data.evaluation_transposed b
+                ON LOWER(a.agadiadocid)=LOWER(b.file_name)  JOIN voting.cummulative_result c on b.origin_id=c.origin_id
+                 join control_data.control_data_payload_queue d on b.origin_id=d.origin_id
+                    WHERE   c.sor_item_name ='provider_address' and  b.group_id='${gen_group_id.group_id}' and b.tenant_id = ${tenant_id} and b.batch_id= '${batch_id}';
+
+            "}  on-condition if "true"=="true"
+
+            transform as "insert into  provider npi and city " on "intics_zio_db_conn" using
+            {"
+
+                INSERT INTO control_data_macro.provider_city_similarity_input
+                (actual_value, origin_id, created_on, group_id, root_pipeline_id, extracted_value, confidence_score, file_name, tenant_id,batch_id)
+                SELECT
+                a.provider_city as actual_value,
+                b.origin_id,
+                b.created_on,
+                b.group_id,
+                b.root_pipeline_id,
+                b.provider_city  as extracted_value,
+                c.confidence_score,
+                b.file_name,
+                ${tenant_id},
+		        b.batch_id
+                FROM public.fax_data_2411 a
+                JOIN control_data.evaluation_transposed b
+                ON LOWER(a.agadiadocid)=LOWER(b.file_name)  JOIN voting.cummulative_result c on b.origin_id=c.origin_id
+                 join control_data.control_data_payload_queue d on b.origin_id=d.origin_id
+                WHERE   c.sor_item_name ='provider_city' and  b.group_id='${gen_group_id.group_id}' and b.tenant_id = ${tenant_id} and b.batch_id= '${batch_id}';
+
+                INSERT INTO control_data_macro.provider_npi_similarity_input
+                (actual_value, origin_id, created_on, group_id, root_pipeline_id, extracted_value, confidence_score, file_name, tenant_id,batch_id)
+                SELECT
+                a.provider_npi as actual_value ,
+                b.origin_id,
+                b.created_on,
+                b.group_id,
+                b.root_pipeline_id,
+                b.provider_npi  as extracted_value,
+                c.confidence_score,
+                b.file_name,
+                ${tenant_id},
+	            b.batch_id
+                FROM public.fax_data_2411 a
+                JOIN control_data.evaluation_transposed b
+                ON LOWER(a.agadiadocid)=LOWER(b.file_name)  JOIN voting.cummulative_result c on b.origin_id=c.origin_id
+                 join control_data.control_data_payload_queue d on b.origin_id=d.origin_id
+                WHERE   c.sor_item_name ='provider_npi' and  b.group_id='${gen_group_id.group_id}' and b.tenant_id = ${tenant_id} and b.batch_id= '${batch_id}';
+
+
+            "}  on-condition if "true"=="true"
+
+            transform as "insert into  provider  state and taxid " on "intics_zio_db_conn" using
+            {"
+
+
+                INSERT INTO control_data_macro.provider_state_similarity_input
+                (actual_value, origin_id, created_on, group_id, root_pipeline_id, extracted_value, confidence_score, file_name, tenant_id,batch_id)
+                SELECT
+                a.provider_state as actual_value ,
+                b.origin_id,
+                b.created_on,
+                b.group_id,
+                b.root_pipeline_id,
+                b.provider_state  as extracted_value,
+                c.confidence_score,
+                b.file_name,
+                ${tenant_id},
+		        b.batch_id
+                FROM public.fax_data_2411 a
+                JOIN control_data.evaluation_transposed b
+                ON LOWER(a.agadiadocid)=LOWER(b.file_name)  JOIN voting.cummulative_result c on b.origin_id=c.origin_id
+                 join control_data.control_data_payload_queue d on b.origin_id=d.origin_id
+                WHERE   c.sor_item_name ='provider_state' and  b.group_id='${gen_group_id.group_id}' and b.tenant_id = ${tenant_id} and b.batch_id= '${batch_id}';
+
+
+                INSERT INTO control_data_macro.provider_taxid_similarity_input
+                (actual_value, origin_id, created_on, group_id, root_pipeline_id, extracted_value, confidence_score, file_name, tenant_id,batch_id)
+                SELECT
+                a.provider_taxid as actual_value ,
+                b.origin_id,
+                b.created_on,
+                b.group_id,
+                b.root_pipeline_id,
+                b.provider_tax_id  as extracted_value,
+                c.confidence_score,
+                b.file_name,
+                ${tenant_id},
+	        	b.batch_id
+                FROM public.fax_data_2411 a
+                JOIN control_data.evaluation_transposed b
+                ON LOWER(a.agadiadocid)=LOWER(b.file_name)  JOIN voting.cummulative_result c on b.origin_id=c.origin_id
+                 join control_data.control_data_payload_queue d on b.origin_id=d.origin_id
+                WHERE   c.sor_item_name ='provider_tax_id' and  b.group_id='${gen_group_id.group_id}' and b.tenant_id = ${tenant_id} and b.batch_id= '${batch_id}';
+
+
+            "}  on-condition if "true"=="true"
+
+            transform as "insert into  provider zip " on "intics_zio_db_conn" using
+            {"
+
+                INSERT INTO control_data_macro.provider_zip_similarity_input
+                (actual_value, origin_id, created_on, group_id, root_pipeline_id, extracted_value, confidence_score, file_name, tenant_id,batch_id)
+                SELECT
+                a.provider_zip as actual_value,
+                b.origin_id,
+                b.created_on,
+                b.group_id,
+                b.root_pipeline_id,
+                b.provider_zip  as extracted_value,
+                c.confidence_score,
+                b.file_name,
+                ${tenant_id},
+		        b.batch_id
+                FROM public.fax_data_2411 a
+                JOIN control_data.evaluation_transposed b
+                ON LOWER(a.agadiadocid)=LOWER(b.file_name)
+                JOIN voting.cummulative_result c on b.origin_id=c.origin_id
+                 join control_data.control_data_payload_queue d on b.origin_id=d.origin_id
+                WHERE   c.sor_item_name ='provider_zip' and  b.group_id='${gen_group_id.group_id}' and b.tenant_id = ${tenant_id} and b.batch_id= '${batch_id}';
+
+            "}  on-condition if "true"=="true"
+
+
+
+                    intellimatch as "matched provider_name"
+                    on-resource-conn "intics_zio_db_conn"
+                    match-result "control_data_macro.eval_provider_name"
+                    using {"
+
+                    SELECT actual_value ,origin_id,created_on,group_id,root_pipeline_id,extracted_value,confidence_score,file_name,tenant_id,batch_id
+                    FROM control_data_macro.provider_name_similarity_input
+                    WHERE group_id='${gen_group_id.group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                    "} on-condition if "true"=="true"
+
+                    intellimatch as "matched provider_address"
+                    on-resource-conn "intics_zio_db_conn"
+                    match-result "control_data_macro.eval_provider_address"
+                    using {"
+
+                    SELECT actual_value ,origin_id,created_on,group_id,root_pipeline_id,extracted_value,confidence_score,file_name,tenant_id,batch_id
+                    FROM control_data_macro.provider_address_similarity_input
+                    WHERE group_id='${gen_group_id.group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                    "} on-condition if "true"=="true"
+
+                    intellimatch as "matched provider_city"
+                    on-resource-conn "intics_zio_db_conn"
+                    match-result "control_data_macro.eval_provider_city"
+                    using {"
+
+                    SELECT actual_value ,origin_id,created_on,group_id,root_pipeline_id,extracted_value,confidence_score,file_name,tenant_id,batch_id
+                    FROM control_data_macro.provider_city_similarity_input
+                    WHERE group_id='${gen_group_id.group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                    "} on-condition if "true"=="true"
+
+
+                    intellimatch as "matched provider_npi"
+                    on-resource-conn "intics_zio_db_conn"
+                    match-result "control_data_macro.eval_provider_npi"
+                    using {"
+
+                    SELECT actual_value ,origin_id,created_on,group_id,root_pipeline_id,extracted_value,confidence_score,file_name,tenant_id,batch_id
+                    FROM control_data_macro.provider_npi_similarity_input
+                    WHERE group_id='${gen_group_id.group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                    "} on-condition if "true"=="true"
+
+                    intellimatch as "matched eval_provider_state"
+                    on-resource-conn "intics_zio_db_conn"
+                    match-result "control_data_macro.eval_provider_state"
+                    using {"
+
+                    SELECT actual_value ,origin_id,created_on,group_id,root_pipeline_id,extracted_value,confidence_score,file_name,tenant_id,batch_id
+                    FROM control_data_macro.provider_state_similarity_input
+                    WHERE group_id='${gen_group_id.group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                    "} on-condition if "true"=="true"
+
+                    intellimatch as "matched eval_provider_tax_id"
+                    on-resource-conn "intics_zio_db_conn"
+                    match-result "control_data_macro.eval_provider_tax_id"
+                    using {"
+
+                    SELECT actual_value ,origin_id,created_on,group_id,root_pipeline_id,extracted_value,confidence_score,file_name,tenant_id,batch_id
+                    FROM control_data_macro.provider_taxid_similarity_input
+                    WHERE group_id='${gen_group_id.group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                    "} on-condition if "true"=="true"
+
+                    intellimatch as "matched eval_provider_zip"
+                    on-resource-conn "intics_zio_db_conn"
+                    match-result "control_data_macro.eval_provider_zip"
+                    using {"
+
+                    SELECT actual_value ,origin_id,created_on,group_id,root_pipeline_id,extracted_value,confidence_score,file_name,tenant_id,batch_id
+                    FROM control_data_macro.provider_zip_similarity_input
+                    WHERE group_id='${gen_group_id.group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                    "} on-condition if "true"=="true"
+
+
+
+                            transform as "insert data into provider name,address " on "intics_zio_db_conn" using
+                                        {"
+
+                                            INSERT INTO control_data.provider_name_similarity
+                                            (actual_value, origin_id, created_on, group_id, root_pipeline_id, extracted_value, confidence_score, file_name, similarity, levenshtein_score,intellimatch_score, tenant_id,batch_id)
+                                            SELECT
+                                            a.actual_value as actual_value,
+                                            a.origin_id,
+                                            a.created_on,
+                                            a.group_id,
+                                            a.root_pipeline_id,
+                                            a.extracted_value  as extracted_value,
+                                            a.confidence_score,
+                                            a.file_name,
+                                            (case
+                                                when a.actual_value=''  and a.extracted_value ='' then 1
+                                                when replace(lower(concat(a.actual_value)),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                                                else similarity(replace(lower(concat(a.actual_value)),' ',''),replace(lower(a.extracted_value),' ',''))
+                                            end) as similarity,
+                                            (case
+                                                when a.actual_value=''  and a.extracted_value ='' then 1
+                                                when replace(lower(concat(a.actual_value)),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                                                else similarity(replace(lower(concat(a.actual_value)),' ',''),replace(lower(a.extracted_value),' ',''))
+                                            end) as  levenshtein_score,
+                                            intelli_match as intellimatch_score,
+                                            ${tenant_id},
+                                             a.batch_id
+                                            FROM control_data_macro.eval_provider_name a
+                                             WHERE a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id= '${batch_id}';
+
+
+                                            INSERT INTO control_data.provider_address_similarity
+                                            (actual_value, origin_id, created_on, group_id, root_pipeline_id, extracted_value, confidence_score, file_name, similarity, levenshtein_score,intellimatch_score, tenant_id,batch_id)
+                                            SELECT
+                                            a.actual_value as actual_value,
+                                            a.origin_id,
+                                            a.created_on,
+                                            a.group_id,
+                                            a.root_pipeline_id,
+                                            a.extracted_value  as extracted_value,
+                                            a.confidence_score,
+                                            a.file_name,
+                                            (case
+                                                when a.actual_value=''  and a.extracted_value ='' then 1
+                                                when replace(lower(concat(a.actual_value)),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                                                else similarity(replace(lower(concat(a.actual_value)),' ',''),replace(lower(a.extracted_value),' ',''))
+                                            end) as similarity,
+                                            (case
+                                                when a.actual_value=''  and a.extracted_value ='' then 1
+                                                when replace(lower(concat(a.actual_value)),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                                                else similarity(replace(lower(concat(a.actual_value)),' ',''),replace(lower(a.extracted_value),' ',''))
+                                            end) as  levenshtein_score,
+                                            intelli_match as intellimatch_score,
+                                            ${tenant_id},
+                                             a.batch_id
+                                            FROM control_data_macro.eval_provider_address a
+                                             WHERE a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id= '${batch_id}';
+
+                                        "}  on-condition if "true"=="true"
+
+                                        transform as "insert into  provider npi and city " on "intics_zio_db_conn" using
+                                        {"
+
+                                            INSERT INTO control_data.provider_city_similarity
+                                            (actual_value, origin_id, created_on, group_id, root_pipeline_id, extracted_value, confidence_score, file_name, similarity, levenshtein_score,intellimatch_score, tenant_id,batch_id)
+                                            SELECT
+                                            a.actual_value as actual_value,
+                                            a.origin_id,
+                                            a.created_on,
+                                            a.group_id,
+                                            a.root_pipeline_id,
+                                            a.extracted_value  as extracted_value,
+                                            a.confidence_score,
+                                            a.file_name,
+                                            (case
+                                                when a.actual_value=''  and a.extracted_value ='' then 1
+                                                when replace(lower(concat(a.actual_value)),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                                                else similarity(replace(lower(concat(a.actual_value)),' ',''),replace(lower(a.extracted_value),' ',''))
+                                            end) as similarity,
+                                            (case
+                                                when a.actual_value=''  and a.extracted_value ='' then 1
+                                                when replace(lower(concat(a.actual_value)),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                                                else similarity(replace(lower(concat(a.actual_value)),' ',''),replace(lower(a.extracted_value),' ',''))
+                                            end) as  levenshtein_score,
+                                            intelli_match as intellimatch_score,
+                                            ${tenant_id},
+                                             a.batch_id
+                                            FROM control_data_macro.eval_provider_city a
+                                             WHERE a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id= '${batch_id}';
+
+
+                                            INSERT INTO control_data.provider_npi_similarity
+                                            (actual_value, origin_id, created_on, group_id, root_pipeline_id, extracted_value, confidence_score, file_name, similarity, levenshtein_score,intellimatch_score, tenant_id,batch_id)
+                                            SELECT
+                                            a.actual_value as actual_value ,
+                                            a.origin_id,
+                                            a.created_on,
+                                            a.group_id,
+                                            a.root_pipeline_id,
+                                            a.extracted_value  as extracted_value,
+                                            a.confidence_score,
+                                            a.file_name,
+                                            (case
+                                                when a.actual_value=''  and a.extracted_value ='' then 1
+                                                when replace(lower(concat(a.actual_value)),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                                                else similarity(replace(lower(concat(a.actual_value)),' ',''),replace(lower(a.extracted_value),' ',''))
+                                            end) as similarity,
+                                            (case
+                                                when a.actual_value=''  and a.extracted_value ='' then 1
+                                                when replace(lower(concat(a.actual_value)),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                                                else similarity(replace(lower(concat(a.actual_value)),' ',''),replace(lower(a.extracted_value),' ',''))
+                                            end) as  levenshtein_score,
+                                            intelli_match as intellimatch_score,
+                                            ${tenant_id},
+                                             a.batch_id
+                                            FROM control_data_macro.eval_provider_npi a
+                                             WHERE a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id= '${batch_id}';
+
+
+                                        "}  on-condition if "true"=="true"
+
+                                        transform as "insert into  provider  state and taxid " on "intics_zio_db_conn" using
+                                        {"
+
+
+                                            INSERT INTO control_data.provider_state_similarity
+                                            (actual_value, origin_id, created_on, group_id, root_pipeline_id, extracted_value, confidence_score, file_name, similarity, levenshtein_score,intellimatch_score, tenant_id,batch_id)
+                                            SELECT
+                                            a.actual_value as actual_value ,
+                                            a.origin_id,
+                                            a.created_on,
+                                            a.group_id,
+                                            a.root_pipeline_id,
+                                            a.extracted_value  as extracted_value,
+                                            a.confidence_score,
+                                            a.file_name,
+                                            (case
+                                                when a.actual_value=''  and a.extracted_value ='' then 1
+                                                when replace(lower(concat(a.actual_value)),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                                                else similarity(replace(lower(concat(a.actual_value)),' ',''),replace(lower(a.extracted_value),' ',''))
+                                            end) as similarity,
+                                            (case
+                                                when a.actual_value=''  and a.extracted_value ='' then 1
+                                                when replace(lower(concat(a.actual_value)),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                                                else similarity(replace(lower(concat(a.actual_value)),' ',''),replace(lower(a.extracted_value),' ',''))
+                                            end) as  levenshtein_score,
+                                            intelli_match as intellimatch_score,
+                                            ${tenant_id},
+                                             a.batch_id
+                                            FROM control_data_macro.eval_provider_state a
+                                             WHERE a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id= '${batch_id}';
+
+
+                                            INSERT INTO control_data.provider_taxid_similarity
+                                            (actual_value, origin_id, created_on, group_id, root_pipeline_id, extracted_value, confidence_score, file_name, similarity, levenshtein_score,intellimatch_score, tenant_id,batch_id)
+                                            SELECT
+                                            a.actual_value as actual_value,
+                                            a.origin_id,
+                                            a.created_on,
+                                            a.group_id,
+                                            a.root_pipeline_id,
+                                            a.extracted_value  as extracted_value,
+                                            a.confidence_score,
+                                            a.file_name,
+                                            (case
+                                                when a.actual_value=''  and a.extracted_value ='' then 1
+                                                when replace(lower(concat(a.actual_value)),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                                                else similarity(replace(lower(concat(a.actual_value)),' ',''),replace(lower(a.extracted_value),' ',''))
+                                            end) as similarity,
+                                            (case
+                                                when a.actual_value=''  and a.extracted_value ='' then 1
+                                                when replace(lower(concat(a.actual_value)),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                                                else similarity(replace(lower(concat(a.actual_value)),' ',''),replace(lower(a.extracted_value),' ',''))
+                                            end) as  levenshtein_score,
+                                            intelli_match as intellimatch_score,
+                                            ${tenant_id},
+                                             a.batch_id
+                                            FROM control_data_macro.eval_provider_tax_id a
+                                             WHERE a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id= '${batch_id}';
+
+
+                                        "}  on-condition if "true"=="true"
+
+                                        transform as "insert into  provider zip " on "intics_zio_db_conn" using
+                                        {"
+
+                                            INSERT INTO control_data.provider_zip_similarity
+                                           (actual_value, origin_id, created_on, group_id, root_pipeline_id, extracted_value, confidence_score, file_name, similarity, levenshtein_score,intellimatch_score, tenant_id,batch_id)
+                                           SELECT
+                                           a.actual_value as actual_value,
+                                           a.origin_id,
+                                           a.created_on,
+                                           a.group_id,
+                                           a.root_pipeline_id,
+                                           a.extracted_value  as extracted_value,
+                                           a.confidence_score,
+                                           a.file_name,
+                                           (case
+                                               when a.actual_value=''  and a.extracted_value ='' then 1
+                                               when replace(lower(concat(a.actual_value)),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                                               else similarity(replace(lower(concat(a.actual_value)),' ',''),replace(lower(a.extracted_value),' ',''))
+                                           end) as similarity,
+                                           (case
+                                               when a.actual_value=''  and a.extracted_value ='' then 1
+                                               when replace(lower(concat(a.actual_value)),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                                               else similarity(replace(lower(concat(a.actual_value)),' ',''),replace(lower(a.extracted_value),' ',''))
+                                           end) as  levenshtein_score,
+                                           intelli_match as intellimatch_score,
+                                           ${tenant_id},
+                                            a.batch_id
+                                           FROM control_data_macro.eval_provider_zip a
+                                            WHERE a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id= '${batch_id}';
+
+                                        "}  on-condition if "true"=="true"
+
+
+            transform as "consolidated result table for provider entity" on "intics_zio_db_conn" using
+            {"
+
+                INSERT INTO control_data.control_data_provider
+                (file_name, origin_id, group_id, root_pipeline_id,
+                actual_pro_address, extracted_pro_address, pro_add_similarity, pro_address_confidence_score, provider_address_intelli_match,provider_address_levenshtein_score,
+                actual_pro_city, extracted_pro_city, pro_city_similarity, pro_city_confidence_score,provider_city_intelli_match,provider_city_levenshtein_score,
+                actual_pro_name, extracted_pro_name, pro_name_similarity, pro_name_confidence_score,provider_name_intelli_match,provider_name_levenshtein_score,
+                actual_pro_npi, extracted_pro_npi, pro_npi_similarity, pro_npi_confidence_score,provider_npi_intelli_match,provider_npi_levenshtein_score,
+                actual_pro_state, extracted_pro_state, pro_state_similarity, pro_state_confidence_score,provider_state_intelli_match,provider_state_levenshtein_score,
+                actual_tax_id, extracted_pro_tax, pro_tax_similarity, pro_tax_confidence_score,provider_tax_intelli_match,provider_tax_levenshtein_score,
+                actual_pro_zip, extracted_pro_zip, pro_zip_similarity, pro_zip_confidence_score,provider_zip_intelli_match,provider_zip_levenshtein_score,
+                tenant_id,batch_id)
+                SELECT  l.file_name,m.origin_id,k.group_id,k.root_pipeline_id,
+                a.actual_value as actual_pro_address,a.extracted_value as extracted_pro_address,a.similarity as pro_add_similarity ,a.confidence_score as pro_address_confidence_score,   a.intellimatch_score as provider_address_intelli_match, a.levenshtein_score as provider_address_levenshtein_score,
+                b.actual_value as actual_pro_city,b.extracted_value as extracted_pro_city,b.similarity pro_city_similarity ,b.confidence_score pro_city_confidence_score,     b.intellimatch_score as provider_city_intelli_match,   b.levenshtein_score as provider_city_levenshtein_score,
+                d.actual_value as actual_pro_name,d.extracted_value as extracted_pro_name,d.similarity as pro_name_similarity ,d.confidence_score as pro_name_confidence_score,  d.intellimatch_score as provider_name_intelli_match,  d.levenshtein_score as provider_name_levenshtein_score,
+                e.actual_value as actual_pro_npi,e.extracted_value as extracted_pro_npi,e.similarity as pro_npi_similarity ,e.confidence_score as pro_npi_confidence_score ,  e.intellimatch_score as    provider_npi_intelli_match, e.levenshtein_score as provider_npi_levenshtein_score,
+                f.actual_value as actual_pro_state,f.extracted_value as extracted_pro_state,f.similarity as pro_state_similarity ,f.confidence_score as pro_state_confidence_score ,   f.intellimatch_score as   provider_state_intelli_match,f.levenshtein_score as   provider_state_levenshtein_score,
+                g.actual_value as actual_tax_id,g.extracted_value as extracted_pro_tax,g.similarity as pro_tax_similarity,g.confidence_score as pro_tax_confidence_score, g.intellimatch_score as     provider_tax_intelli_match,  g.levenshtein_score as provider_tax_levenshtein_score,
+                h.actual_value as actual_pro_zip,h.extracted_value as extracted_pro_zip,h.similarity as pro_zip_similarity ,h.confidence_score as pro_zip_confidence_score,  h.intellimatch_score as     provider_zip_intelli_match, h.levenshtein_score as  provider_zip_levenshtein_score,
+                ${tenant_id},
+		        m.batch_id
+                FROM control_data.control_data_payload_queue m
+                left join
+                info.source_of_origin k on m.origin_id=k.origin_id
+                LEFT JOIN info.asset l on l.file_id=k.file_id
+                LEFT JOIN control_data.provider_address_similarity a on a.origin_id=m.origin_id
+                LEFT JOIN control_data.provider_city_similarity b on m.origin_id=b.origin_id
+                LEFT JOIN control_data.provider_name_similarity d on m.origin_id=d.origin_id
+                LEFT JOIN control_data.provider_npi_similarity e on m.origin_id=e.origin_id
+                LEFT JOIN control_data.provider_state_similarity f on m.origin_id=f.origin_id
+                LEFT JOIN control_data.provider_taxid_similarity g on m.origin_id=g.origin_id
+                LEFT JOIN control_data.provider_zip_similarity h on m.origin_id=h.origin_id
+                WHERE  k.group_id='${gen_group_id.group_id}' and m.tenant_id = ${tenant_id} and m.batch_id ='${batch_id}';
+
+            "}  on-condition if "true"=="true"
+
+             transform as "inserting audit for provider match started" on "intics_zio_db_conn" using
+            {"
+
+                INSERT INTO control_data.control_data_pipeline_audit
+                (process_id,origin_id, created_on, group_id,  status, stage, message,root_pipeline_id,batch_id)
+                SELECT '${init_process_id.process_id}',a.origin_id,now(),'${gen_group_id.group_id}','COMPLETED','CONTROL_DATA','Control data match completed for provider match','${gen_id.root_pipeline_id}', batch_id
+                from  control_data.control_data_payload_queue a where group_id='${gen_group_id.group_id}' and batch_id= '${batch_id}';
+
+            "}  on-condition if "true"=="true"
+
+
+    }
+
+    catch {
+
+                transform as "inserting audit and updated queue for provider match completed" on "intics_zio_db_conn" using
+                {"
+
+                    INSERT INTO control_data.control_data_pipeline_audit
+                    (process_id,origin_id, created_on, group_id,  status, stage, message,root_pipeline_id, batch_id)
+                    SELECT '${init_process_id.process_id}',a.origin_id,now(),'${gen_group_id.group_id}','FAILED','CONTROL_DATA','Control data match failed in provider match','${gen_id.root_pipeline_id}', batch_id
+                    from  control_data.control_data_payload_queue a where group_id='${gen_group_id.group_id}' and batch_id= '${batch_id}';
+
+                    UPDATE  control_data.control_data_payload_queue
+                    SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts=now(),status='FAILED'
+                    WHERE status='IN_PROGRESS' and tenant_id = ${tenant_id} and group_id='${gen_group_id.group_id}' and batch_id= '${batch_id}';
+
+                "}  on-condition if "true"=="true"
+
+
+
+
+    }
+
+    finally {}
+
+
+
+}

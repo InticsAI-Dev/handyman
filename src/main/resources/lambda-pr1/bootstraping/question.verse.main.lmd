@@ -1,0 +1,90 @@
+process "question.verse.main"
+{
+    try{
+            callprocess as "calling question verse master data bootstraping ddl"
+             with-target "question.verse.ddl"
+             from-file "${basepath}/bootstraping/question.verse.ddl.lmd"
+             using "intics_zio_db_conn"
+             for-every {"
+                             SELECT 1;
+             "} on-condition if "true"=="true"
+
+            /*
+            check for document type value present in the asset info table if exists then it will skip the bootstraping process(Temporary fix)
+            */
+            assign as "gen_id" source "intics_zio_db_conn" using
+            {"
+                 SELECT cast((nextval('group_id_migration_seq')) as int) as group_id_migration_seq;
+                 SELECT concat('MIGRATION-',cast((nextval('migration_id_seq')) as int) ) as migration_id;
+
+                 SELECT count(ai.document_type) AS doc_count
+                 FROM sor_meta.asset_info ai
+                 WHERE ai.document_type= '${document_type}' AND ai.tenant_id = ${tenant_id};
+
+            "} on-condition if "true"=="true"
+
+            assign as "is_document_type" source "intics_zio_db_conn" using
+            {"
+            SELECT
+               (CASE
+                   WHEN ${gen_id.doc_count} = 1 THEN 'true'
+                   WHEN ${gen_id.doc_count} = 0 THEN 'true'
+                   WHEN ${gen_id.doc_count} > 1 THEN 'false'
+               END)
+                AS activator;
+
+            "} on-condition if "true"=="true"
+
+            transform as "Insert into question verse master data bootstraping queue" on "intics_zio_db_conn" using
+            {"
+                INSERT INTO sormeta_master_data_process.sormeta_master_data_process_payload_queue
+                (producer_process_id, migration_id, group_id, created_on, root_pipeline_id, status, stage, tenant_id)
+                VALUES(${process-id},  '${gen_id.migration_id}', ${gen_id.group_id_migration_seq}, now(), ${root-ref-id}, 'STAGED', 'SORMETA_MIGRATION', ${tenant_id});
+            "} on-condition if "${is_document_type.activator}"=="true"
+
+            callprocess as "calling question verse master data bootstraping processor"
+             with-target "question.verse.processor"
+             from-file "${basepath}/bootstraping/question.verse.processor.lmd"
+             using "intics_zio_db_conn"
+             for-every {"
+                         SELECT producer_process_id,  migration_id, group_id, created_on, consumed_on_ts, root_pipeline_id, status, stage, tenant_id
+                         FROM sormeta_master_data_process.sormeta_master_data_process_payload_queue
+                         where status= 'STAGED' and group_id= ${gen_id.group_id_migration_seq};
+             "} on-condition if "${is_document_type.activator}"=="true"
+
+    }
+
+    catch{
+            callprocess as "calling question verse master data bootstraping processor"
+            with-target "question.verse.cleanup"
+            from-file "${basepath}/bootstraping/question.verse.cleanup.lmd"
+            using "intics_zio_db_conn"
+            for-every {"
+                 select 1;
+            "} on-condition if "true"=="true"
+
+    }
+    finally{
+        transform as "Drop temporary tables for consolidated question and truth entity placeholder " on "intics_zio_db_conn" using
+        {"
+
+            INSERT INTO sor_meta_master_data.consolidated_meta_data_placeholder_audit
+            (asset_name, document_type, container_name, sor_item_name, truth_entity_name, truth_entity_placeholder_value,root_pipeline_id)
+            SELECT asset_name, document_type, container_name, sor_item_name, truth_entity_name, truth_entity_placeholder_value,${root-ref-id}
+            FROM ${temp_schema_name}.consolidated_meta_data_placeholder_${process-id};
+
+            INSERT INTO sor_meta_master_data.consolidated_meta_data_qn_audit
+            (asset_name, document_type, container_name, sor_item_name, truth_entity_name, synonym, question,root_pipeline_id)
+            SELECT asset_name, document_type, container_name, sor_item_name, truth_entity_name, synonym, question, ${root-ref-id}
+            FROM ${temp_schema_name}.consolidated_meta_data_qn_${process-id};
+
+
+            DROP TABLE IF EXISTS ${temp_schema_name}.consolidated_meta_data_qn_${process-id};
+            DROP TABLE IF EXISTS ${temp_schema_name}.consolidated_meta_data_placeholder_${process-id};
+
+            "} on-condition if "${drop.tables.sor.meta.onboard}"=="true"
+
+
+
+    }
+}

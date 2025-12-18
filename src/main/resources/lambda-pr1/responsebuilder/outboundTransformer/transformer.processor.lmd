@@ -1,0 +1,286 @@
+process "transformer.processor"
+
+{
+
+    try {
+
+            transform as "insert into eoc transform audit transform processor started" on "intics_zio_db_conn" using
+            {"
+                    INSERT INTO eoc_transformer.eoc_transformer_pipeline_audit
+                    ( process_id,created_on, group_id, status, stage, message, tenant_id, batch_id)
+                    VALUES( '${init_process_id.process_id}',now(), '${group_id}', 'STARTED', 'EOC_TRANSFORM', 'eoc transform processor started', ${tenant_id}, '${batch_id}');
+
+            "}  on-condition if "true"=="true"
+
+            assign  as "merger_target_directory" source "intics_zio_db_conn" using
+            {"
+                SELECT concat ('${gen_directory.current_directory}', '/evaluation_output/merged_pdf/') as target_directory_path;
+            "} on-condition if "true"=="true"
+
+            createDirectory as "creating time based directory for current pipeline" using
+            {
+                "${merger_target_directory.target_directory_path}"
+            } on-condition if "true"=="true"
+
+            transform as "Insert into pipeline directory info" on "intics_zio_db_conn" using
+            {"
+            INSERT INTO ingestion.pipeline_directory_info
+            (target_directory_path, tenant_id, group_id, root_pipeline_id, created_on, updated_on, created_user_id, last_updated_user_id,
+             transaction_id, formatted_date, current_directory, zip_directory, process_name, status)
+            select '${target_directory_path}',${tenant_id},${gen_group_id.group_id},${root-ref-id},now(),now(),'${created_user_id}','${last_updated_user_id}',
+            '${transaction_id}','${gen_id.formatted_date}','${merger_target_directory.target_directory_path}','${gen_directory.zip_directory}','MERGER_OUTPUT','STAGED';
+
+            "} on-condition if "true"=="true"
+
+            file-merger-pdf as "file merger pdf for custom outbound"
+            result-table "outbound.merger_output_table"
+            copro-url "${copro.file-merger.url}"
+            resource-conn "intics_zio_db_conn"
+            output-directory "${merger_target_directory.target_directory_path}"
+            using {"
+                SELECT sot.origin_id, concat(a2.file_name, '_001.pdf') as output_file_name, sot.group_id, array_agg(a.file_path ORDER BY paper_no ASC) as file_paths, sot.tenant_id, sot.root_pipeline_id, sot.root_pipeline_id as process_id, sot.batch_id
+                FROM outbound.outbound_payload_queue opq
+                inner join info.source_of_truth sot on sot.origin_id = opq.origin_id and sot.batch_id = opq.batch_id
+                inner join ${temp_schema_name}.asset_${init_process_id.process_id} a on a.asset_id =sot.asset_id
+                left join ${temp_schema_name}.source_of_origin_${init_process_id.process_id} soo on soo.origin_id = opq.origin_id
+                left join ${temp_schema_name}.asset_${init_process_id.process_id} a2 on a2.asset_id=soo.asset_id
+                where sot.group_id= ${group_id} and sot.tenant_id = ${tenant_id} and opq.status='STAGED' and opq.stage='OUTBOUND'  and sot.batch_id = '${batch_id}'
+                group by sot.origin_id, a2.file_name, sot.group_id, sot.tenant_id, sot.root_pipeline_id, sot.batch_id;
+            "} on-condition if "true"=="true"
+
+
+            transform as "insert into audit table for file merger pdf for custom outbound" on "intics_zio_db_conn" using
+            {"
+                    insert into audit.process_audit_output
+                    (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint, batch_id)
+                    select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint, '${batch_id}'
+                    from outbound.merger_output_table ai
+                    where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id} and batch_id='${batch_id}'
+                    group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage
+            "}  on-condition if "true"=="true"
+
+
+            transform as "insert into kvp dpi scaling table" on "intics_zio_db_conn" using
+            {"
+                INSERT INTO voting.kvp_dpi_scaling_details
+                (group_id, origin_id, paper_no, root_pipeline_id, tenant_id, pdf_height, pdf_width,
+                image_height, image_width, width_scale, height_scale, dpi, batch_id)
+                SELECT opq.group_id, opq.origin_id, sot.paper_no, opq.root_pipeline_id, opq.tenant_id, mot.height, mot.width,
+                a.height, a.width, CAST(mot.width / a.width AS FLOAT), CAST(mot.height / a.height AS FLOAT), mot.dpi, '${batch_id}'
+                FROM outbound.outbound_payload_queue opq
+                inner join outbound.merger_output_table mot on opq.origin_id = mot.origin_id and opq.batch_id = mot.batch_id
+                left join info.source_of_truth sot on sot.origin_id = opq.origin_id
+                inner join ${temp_schema_name}.asset_${init_process_id.process_id} a on a.asset_id = sot.asset_id
+                where opq.group_id= ${group_id} and opq.tenant_id = ${tenant_id} and opq.status='STAGED' and opq.stage='OUTBOUND'
+                group by opq.group_id, opq.origin_id, sot.paper_no, opq.root_pipeline_id, opq.tenant_id, mot.height, mot.width,
+                a.height, a.width, mot.dpi, opq.batch_id;
+
+            "}  on-condition if "true"=="true"
+
+            transform as "insert into cumulative result bbox info table" on "intics_zio_db_conn" using
+            {"
+                INSERT INTO voting.cummulative_result_bbox_info
+                (cummulative_id, created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, frequency,
+                b_box,
+                confidence_score, extracted_value,
+                filter_score, group_id, maximum_score, origin_id, paper_no, question_id, root_pipeline_id, sor_item_name, synonym_id, tenant_id, batch_id)
+                SELECT cr.cummulative_id, cr.created_on, cr.created_user_id, cr.last_updated_on, cr.last_updated_user_id, cr.status, cr.version, cr.frequency,
+                    CASE
+                        WHEN cr.b_box::jsonb != '{}' THEN
+                        jsonb_set(
+                            jsonb_set(
+                              jsonb_set(
+                                jsonb_set(cr.b_box::jsonb,'{topLeftX}', to_jsonb(ROUND((((cr.b_box::jsonb ->> 'topLeftX')::FLOAT * kdsd.width_scale) - ${bbox.topLeftX.alignment.value} )::numeric, 2)), true),
+                                    '{bottomRightY}', to_jsonb(ROUND(((cr.b_box::jsonb ->> 'bottomRightY')::FLOAT * kdsd.height_scale)::numeric, 2)), true),
+                                '{bottomRightX}', to_jsonb(ROUND(((cr.b_box::jsonb ->> 'bottomRightX')::FLOAT * kdsd.width_scale)::numeric, 2)), true),
+                              '{topLeftY}', to_jsonb(ROUND(((cr.b_box::jsonb ->> 'topLeftY')::FLOAT * kdsd.height_scale)::numeric, 2)), true)
+                        ELSE cr.b_box::jsonb
+                END AS b_box,
+                cr.confidence_score, cr.extracted_value,
+                cr.filter_score, cr.group_id, cr.maximum_score, cr.origin_id, cr.paper_no, cr.question_id, cr.root_pipeline_id, cr.sor_item_name, cr.synonym_id, cr.tenant_id, cr.batch_id
+                FROM ${temp_schema_name}.cummulative_result_${init_process_id.process_id} cr
+                join outbound.outbound_payload_queue opq on cr.origin_id = opq.origin_id and opq.batch_id = cr.batch_id
+                inner join voting.kvp_dpi_scaling_details kdsd on kdsd.origin_id = opq.origin_id and cr.paper_no = kdsd.paper_no
+                where opq.group_id= ${group_id} and opq.tenant_id = ${tenant_id} and opq.status='STAGED' and opq.stage='OUTBOUND'  and opq.batch_id = '${batch_id}';
+            "}  on-condition if "true"=="true"
+
+            transform as "insert into urgency triage dpi scaling table" on "intics_zio_db_conn" using
+            {"
+                INSERT INTO urgency_triage.ut_dpi_scaling_details
+                (group_id, origin_id, paper_no, root_pipeline_id, tenant_id, pdf_height, pdf_width,
+                image_height, image_width, width_scale, height_scale, dpi, batch_id)
+                SELECT opq.group_id, opq.origin_id, sot.paper_no, opq.root_pipeline_id, opq.tenant_id, mot.height, mot.width,
+                a.height, a.width, CAST(mot.width / a.width AS FLOAT), CAST(mot.height / a.height AS FLOAT), mot.dpi,  opq.batch_id
+                FROM outbound.outbound_payload_queue opq
+                inner join outbound.merger_output_table mot on opq.origin_id = mot.origin_id and opq.batch_id = '${batch_id}'
+                left join info.source_of_truth sot on sot.origin_id = opq.origin_id
+                inner join ${temp_schema_name}.asset_${init_process_id.process_id} a on a.asset_id = sot.asset_id
+                where opq.group_id= ${group_id} and opq.tenant_id = ${tenant_id} and opq.status='STAGED' and opq.stage='OUTBOUND'
+                group by opq.group_id, opq.origin_id, sot.paper_no, opq.root_pipeline_id, opq.tenant_id, mot.height, mot.width,
+                a.height, a.width, mot.dpi, opq.batch_id;
+
+            "}  on-condition if "true"=="true"
+
+            transform as "insert into urgency triage bbox info table" on "intics_zio_db_conn" using
+            {"
+                 INSERT INTO urgency_triage.ut_model_result_bbox_info
+                 (created_on, created_user_id, last_updated_on, last_updated_user_id, process_id, group_id, tenant_id, confidence_score,
+                 origin_id, paper_no, template_id, model_id, paper_type,
+                 bboxes,
+                 status, stage, message, document_type, root_pipeline_id, model_name, model_version, batch_id)
+                 SELECT utr.created_on, utr.created_user_id, utr.last_updated_on, utr.last_updated_user_id, utr.process_id, utr.group_id, utr.tenant_id, utr.confidence_score,
+                 utr.origin_id, utr.paper_no, utr.template_id, utr.model_id, utr.paper_type,
+                     CASE
+                         WHEN utr.bboxes::jsonb != '{}' THEN
+                         jsonb_set(
+                             jsonb_set(
+                               jsonb_set(
+                                 jsonb_set(utr.bboxes::jsonb,'{topLeftX}', to_jsonb(ROUND((((utr.bboxes::jsonb ->> 'topLeftX')::FLOAT * kdsd.width_scale) - ${bbox.topLeftX.alignment.value} )::numeric, 2)), true),
+                                     '{bottomRightY}', to_jsonb(ROUND(((utr.bboxes::jsonb ->> 'topLeftY')::FLOAT * kdsd.height_scale)::numeric, 2)), true),
+                                 '{bottomRightX}', to_jsonb(ROUND(((utr.bboxes::jsonb ->> 'bottomRightX')::FLOAT * kdsd.width_scale)::numeric, 2)), true),
+                               '{topLeftY}', to_jsonb(ROUND(((utr.bboxes::jsonb ->> 'bottomRightY')::FLOAT * kdsd.height_scale)::numeric, 2)), true)
+                         ELSE utr.bboxes::jsonb
+                     END AS bboxes,
+                 utr.status, utr.stage, utr.message, utr.document_type, utr.root_pipeline_id, utr.model_name, utr.model_version, opq.batch_id
+                 FROM urgency_triage.ut_model_result utr
+                 join outbound.outbound_payload_queue opq on utr.origin_id = opq.origin_id and opq.batch_id = utr.batch_id
+                 inner join voting.kvp_dpi_scaling_details kdsd on kdsd.origin_id = opq.origin_id and utr.paper_no = kdsd.paper_no
+                 where opq.group_id= ${group_id} and opq.tenant_id = ${tenant_id} and opq.status='STAGED' and opq.stage='OUTBOUND'  and opq.batch_id = '${batch_id}';
+
+            "}  on-condition if "true"=="true"
+
+
+            transform as "insert into qr extraction dpi scaling table" on "intics_zio_db_conn" using
+            {"
+                INSERT INTO qr_extraction.qr_dpi_scaling_details
+                (group_id, origin_id, paper_no, root_pipeline_id, tenant_id, pdf_height, pdf_width,
+                image_height, image_width, width_scale, height_scale, dpi, batch_id)
+                SELECT opq.group_id, opq.origin_id, sot.paper_no, opq.root_pipeline_id, opq.tenant_id, mot.height, mot.width,
+                a.height, a.width, CAST(mot.width / a.width AS FLOAT), CAST(mot.height / a.height AS FLOAT), mot.dpi, mot.batch_id
+                FROM outbound.outbound_payload_queue opq
+                inner join outbound.merger_output_table mot on opq.origin_id = mot.origin_id and opq.batch_id = mot.batch_id
+                left join info.source_of_truth sot on sot.origin_id = opq.origin_id
+                inner join ${temp_schema_name}.asset_${init_process_id.process_id} a on a.asset_id = sot.asset_id
+                where opq.group_id= ${group_id} and opq.tenant_id = ${tenant_id} and opq.status='STAGED' and opq.stage='OUTBOUND'  and opq.batch_id = '${batch_id}'
+                group by opq.group_id, opq.origin_id, sot.paper_no, opq.root_pipeline_id, opq.tenant_id, mot.height, mot.width,
+                a.height, a.width, mot.dpi, mot.batch_id;
+
+            "}  on-condition if "true"=="true"
+
+            transform as "insert into qr extraction bbox info table" on "intics_zio_db_conn" using
+            {"
+                 INSERT INTO qr_extraction.qr_extraction_details_bbox_info
+                 (process_id, origin_id, group_id, paper_no, created_on, qr_format, qr_format_id, decode_type, extracted_value, file_id,
+                 b_box,
+                 angle, confidence_score, status, stage, message, is_candidate_qr, root_pipeline_id, tenant_id, model_name, model_version, batch_id)
+                 SELECT qrd.process_id, qrd.origin_id, qrd.group_id, qrd.paper_no, qrd.created_on, qrd.qr_format, qrd.qr_format_id, qrd.decode_type, qrd.extracted_value, qrd.file_id,
+                     CASE
+                         WHEN qrd.b_box::jsonb != '{}' THEN
+                         jsonb_set(
+                             jsonb_set(
+                               jsonb_set(
+                                 jsonb_set(qrd.b_box::jsonb,'{topLeftX}', to_jsonb(ROUND((((qrd.b_box::jsonb ->> 'topLeftX')::FLOAT * kdsd.width_scale) - ${bbox.topLeftX.alignment.value} )::numeric, 2)), true),
+                                     '{bottomRightY}', to_jsonb(ROUND(((qrd.b_box::jsonb ->> 'topLeftY')::FLOAT * kdsd.height_scale)::numeric, 2)), true),
+                                 '{bottomRightX}', to_jsonb(ROUND(((qrd.b_box::jsonb ->> 'bottomRightX')::FLOAT * kdsd.width_scale)::numeric, 2)), true),
+                               '{topLeftY}', to_jsonb(ROUND(((qrd.b_box::jsonb ->> 'bottomRightY')::FLOAT * kdsd.height_scale)::numeric, 2)), true)
+                         ELSE qrd.b_box::jsonb
+                 END AS b_box,
+                 qrd.angle, qrd.confidence_score, qrd.status, qrd.stage, qrd.message, qrd.is_candidate_qr, qrd.root_pipeline_id, qrd.tenant_id, qrd.model_name, qrd.model_version, opq.batch_id
+                 FROM qr_extraction.qr_extraction_details qrd
+                 join outbound.outbound_payload_queue opq on qrd.origin_id = opq.origin_id and opq.batch_id = qrd.batch_id
+                 inner join voting.kvp_dpi_scaling_details kdsd on kdsd.origin_id = opq.origin_id and qrd.paper_no = kdsd.paper_no
+                 where opq.group_id= ${group_id} and opq.tenant_id = ${tenant_id} and opq.status='STAGED' and opq.stage='OUTBOUND' and opq.batch_id = '${batch_id}';
+
+            "}  on-condition if "true"=="true"
+
+            callprocess as "calling eoc doc detail insert"
+            with-target "eocdoc.detail.insert"
+            from-file "${basepath}/responsebuilder/outboundTransformer/eocdoc.detail.insert.lmd"
+            using "intics_zio_db_conn"
+            for-every {"
+                SELECT soo.origin_id, soo.file_id, soo.created_on
+                FROM ${temp_schema_name}.source_of_origin_${init_process_id.process_id}  soo
+				join eoc_transformer.eoc_transformer_payload_queue etpq on  etpq.origin_id=  soo.origin_id
+                where etpq.group_id='${group_id}' and etpq.status='STAGED' and etpq.tenant_id = ${tenant_id}  and etpq.batch_id = '${batch_id}';
+            "} on-condition if "true"=="true" on-parallel-fielding "${sys_thread_count}"
+
+			 transform as "insert into eoc transform audit transform processor started" on "intics_zio_db_conn" using
+                        {"
+                                INSERT INTO eoc_transformer.eoc_transformer_pipeline_audit
+                                ( process_id,created_on, group_id,status, stage, message, root_pipeline_id, tenant_id, batch_id)
+                                VALUES(  '${init_process_id.process_id}',now(), '${group_id}', 'COMPLETED', 'EOC_TRANSFORM',
+                                'eoc transform processor completed ',  '${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}');
+
+            "}  on-condition if "true"=="true"
+
+        }
+
+    catch {
+         transform as "insert into eoc transform audit transform processor started" on "intics_zio_db_conn" using
+		{"
+				INSERT INTO eoc_transformer.eoc_transformer_pipeline_audit
+				(process_id, created_on, group_id, status, stage, message, root_pipeline_id,tenant_id, batch_id)
+				VALUES( '${init_process_id.process_id}', now(), '${group_id}', 'FAILED', 'EOC_TRANSFORM',
+				'eoc transform processor failed ',  '${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}');
+
+		"}  on-condition if "true"=="true"
+    }
+
+
+    finally {
+
+        transform as "insert into pipeline summary audit eoc transform" on "intics_zio_db_conn" using {"
+	        INSERT INTO ${temp_schema_name}.summary_audit_files_${process-id}
+	        (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken, root_pipeline_id, tenant_id, batch_id)
+	        SELECT ${process-id} , 'EOC_TRANSFORM' ,'EOC_TRANSFORM',coalesce (sum(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END),0) ,
+	        coalesce (sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END),0),min(consumed_on_ts),now() as max_created_on,
+	        EXTRACT(epoch FROM (now()-min(consumed_on_ts))), '${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}'
+	        FROM eoc_transformer.eoc_transformer_payload_queue WHERE group_id='${group_id}' and tenant_id = ${tenant_id}  and batch_id = '${batch_id}';
+
+	        INSERT INTO audit.pipeline_summary_audit
+	        (process_id, created_on, module_name, macro_process, files_processed_count,files_failed_count,start_time,end_time, time_taken, group_id, root_pipeline_id, created_user_id, template_id, tenant_id,average_time,papers_processed_count,papers_failed_count, batch_id )
+	        SELECT msaf.process_id ,now(),msaf.module_name ,msaf.macro_process ,msaf.completed_count,msaf.failed_count,msaf.min_created_on,msaf.max_created_on, EXTRACT(epoch FROM (msaf.max_created_on-msaf.min_created_on)),
+	        '${group_id}','${root-ref-id}','${created_user_id}','${document_id}',${tenant_id},
+	        (CASE WHEN (msaf.completed_count+msaf.failed_count)=0 THEN msaf.time_taken WHEN (msaf.time_taken/(msaf.completed_count+msaf.failed_count))=0 THEN msaf.time_taken ELSE (msaf.time_taken/(msaf.completed_count+msaf.failed_count)) END),0,0, msaf.batch_id
+	        FROM ${temp_schema_name}.summary_audit_files_${process-id} msaf
+	        WHERE msaf.module_name='EOC_TRANSFORM' AND msaf.macro_process='EOC_TRANSFORM' and msaf.tenant_id = ${tenant_id}  and msaf.batch_id = '${batch_id}';
+	    "} on-condition if "true"=="true"
+
+        transform as "Insert into eoc transform error queue as failed ${group_id}" on "intics_zio_db_conn" using
+        {"
+                update ingestion.pipeline_queue_status_audit as a
+                set status = 'COMPLETED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                where  a.group_id=${group_id}
+                and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='EOC_TRANSFORM' ;
+
+                INSERT INTO eoc_transformer.eoc_transformer_payload_error_queue
+                (producer_process_id, consumer_process_id, group_id, origin_id , created_on, status, stage, message, consumed_on_ts, root_pipeline_id, tenant_id, batch_id)
+                SELECT producer_process_id, consumer_process_id, group_id, origin_id, created_on, status, stage,
+                'Error insert into pahub patient instance', consumed_on_ts, root_pipeline_id, ${tenant_id}, batch_id
+                FROM eoc_transformer.eoc_transformer_payload_queue
+                 WHERE group_id='${group_id}' and status ='FAILED' and stage ='EOC_TRANSFORM' and tenant_id = ${tenant_id}  and batch_id = '${batch_id}';
+
+                DELETE FROM eoc_transformer.eoc_transformer_payload_queue
+                WHERE group_id='${group_id}' and status ='FAILED' and stage ='EOC_TRANSFORM' and tenant_id = ${tenant_id}  and batch_id = '${batch_id}';
+        "} on-condition if "true"=="true"
+
+
+        transform as "Insert into eoc transform payload queue archive as completed ${group_id}" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO eoc_transformer.eoc_transformer_payload_queue_archive
+                (producer_process_id, consumer_process_id, origin_id, group_id,
+                created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, batch_id)
+                SELECT producer_process_id, consumer_process_id, origin_id, group_id,
+                created_on, status, stage , consumed_on_ts, root_pipeline_id, ${tenant_id}, batch_id
+                FROM eoc_transformer.eoc_transformer_payload_queue
+                WHERE group_id='${group_id}' and status ='COMPLETED' and stage ='EOC_TRANSFORM' and tenant_id = ${tenant_id}  and batch_id = '${batch_id}';
+
+                DELETE FROM eoc_transformer.eoc_transformer_payload_queue
+                WHERE group_id='${group_id}' and status ='COMPLETED' and stage ='EOC_TRANSFORM' and tenant_id = ${tenant_id}  and batch_id = '${batch_id}';
+
+        "} on-condition if "true"=="true"
+   }
+
+
+
+}

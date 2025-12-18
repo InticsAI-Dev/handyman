@@ -1,0 +1,224 @@
+process "response.ddl"
+{
+    try
+    {
+
+            transform as "create eoc response, ddl audit,payload, utbound zip file details, completion summary details,
+             document summary detail table" on "intics_zio_db_conn" using {"
+
+                         CREATE SCHEMA if not exists alchemy_migration;
+                         CREATE TABLE IF NOT EXISTS alchemy_migration.alchemy_migration_payload_queue (
+                             producer_process_id int8 NULL,
+                             batch_id varchar NOT NULL,
+                             consumer_process_id int8 NULL,
+                             origin_id varchar NOT NULL,
+                             group_id int4 NULL,
+                             created_on timestamp NULL,
+                             consumed_on_ts timestamp NULL,
+                             root_pipeline_id int8 NULL,
+                             status varchar NULL,
+                             stage varchar NULL,
+                             tenant_id int8 NULL,
+                             CONSTRAINT alchemy_migration_payload_queue_pk PRIMARY KEY (producer_process_id, origin_id,tenant_id)
+                         );
+
+                        CREATE TABLE IF NOT EXISTS outbound.eoc_response_details(
+                        origin_id varchar NOT NULL,
+                        batch_id varchar NOT NULL,
+                        group_id int4 NOT NULL,
+                        document_id varchar NOT NULL,
+                        eoc_id varchar NOT NULL,
+                        eoc_response json NOT NULL,
+                        created_on timestamp DEFAULT NOW(),
+                        root_pipeline_id int8 NULL,
+                        tenant_id int8 NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS outbound.outbound_payload_queue_archive (
+                        producer_process_id int8 NOT NULL,
+                        batch_id varchar NOT NULL,
+                        consumer_process_id int8 NULL,
+                        origin_id varchar NOT NULL,
+                        group_id int4 NULL,
+                        created_on timestamp NULL,
+                        consumed_on_ts timestamp NULL,
+                        status varchar NULL,
+                        stage varchar NULL,
+                        root_pipeline_id int8 NULL,
+                        tenant_id int8 NULL,
+                        CONSTRAINT outbound_payload_queue_archive_pk PRIMARY KEY (producer_process_id, origin_id,tenant_id)
+                );
+
+			    CREATE TABLE IF NOT EXISTS outbound.outbound_payload_error_queue (
+                         producer_process_id int8 NOT NULL,
+                         consumer_process_id int8 NULL,
+                         batch_id varchar NOT NULL,
+                         origin_id varchar NOT NULL,
+                         created_on timestamp NOT NULL,
+                         group_id int4 not null,
+                         status varchar NOT NULL,
+                         stage  varchar NOT NULL,
+                         message varchar NULL,
+                         consumed_on_ts timestamp NULL,
+                         root_pipeline_id int8 NULL,
+                         tenant_id int8 NULL,
+                         CONSTRAINT outbound_payload_error_queue_pk PRIMARY KEY ( origin_id,tenant_id)
+			    );
+
+			 CREATE TABLE IF NOT EXISTS outbound.outbound_pipeline_audit (
+                       id bigserial NOT NULL,
+                       process_id bigint  NULL,
+                       batch_id varchar NOT NULL,
+                       origin_id varchar  NULL,
+                       group_id varchar NULL,
+                       created_on varchar  NULL,
+                       status varchar  NULL,
+                       stage varchar  NULL,
+                       message varchar  NULL,
+                       root_pipeline_id int8 NULL,
+                       tenant_id int8 NULL
+			);
+
+            CREATE SCHEMA IF NOT EXISTS outbound;
+            CREATE TABLE IF NOT EXISTS outbound.outbound_zip_file_details(
+                        process_id int8 NOT NULL,
+                        batch_id varchar NOT NULL,
+                        group_id int4 NOT NULL,
+                        origin_id varchar NOT NULL,
+                        document_id varchar NOT NULL,
+                        zip_file_name varchar NULL,
+                        zip_file_path varchar NOT NULL,
+                        zip_file_checksum varchar NULL,
+                        zip_file_size varchar NULL,
+                        created_on timestamp NOT NULL,
+                        root_pipeline_id int8 NULL,
+                        tenant_id int8 NULL
+                        );
+
+            CREATE SCHEMA IF NOT EXISTS eoc_response;
+            CREATE TABLE if not exists eoc_response.completion_summary_details (
+            	origin_id varchar NOT NULL,
+            	batch_id varchar NOT NULL,
+            	tenant_id int8 NOT NULL,
+            	document_id varchar NULL,
+            	originuri varchar NULL,
+            	process_completed_on timestamptz NULL,
+            	process_started_on timestamptz NULL,
+            	resourceuri varchar NULL,
+            	root_pipeline_id int8 NULL,
+            	time_zone varchar NULL,
+            	total_processed_duration int8 NULL,
+            	uploaded_on timestamptz NULL,
+            	zip_file_check_sum varchar NULL,
+            	zip_file_name varchar NULL,
+            	zip_file_path varchar NULL,
+            	zip_file_size int8 NULL,
+            	CONSTRAINT completion_summary_details_pkey PRIMARY KEY (origin_id, tenant_id)
+            );
+
+            CREATE TABLE if not exists eoc_response.zip_file_content_list (
+            	content_file_id bigserial NOT NULL,
+            	created_on timestamp NULL,
+            	document_id varchar NULL,
+            	file_check_sum varchar NULL,
+            	file_extension varchar NULL,
+            	file_id varchar NULL,
+            	file_name varchar NULL,
+            	file_size int8 NULL,
+            	batch_id varchar NULL,
+            	origin_id varchar NULL,
+            	root_pipeline_id int8 NULL,
+            	tenant_id int8 NULL,
+            	CONSTRAINT zip_file_content_list_pkey PRIMARY KEY (content_file_id),
+				CONSTRAINT fkksgvxhby0yq5rwudmnjjdxxbm FOREIGN KEY (origin_id,tenant_id) REFERENCES eoc_response.completion_summary_details(origin_id,tenant_id)
+
+            );
+
+            CREATE SCHEMA IF NOT EXISTS eoc_response;
+            CREATE TABLE if not exists eoc_response.document_summary_detail (
+            	origin_id varchar NOT NULL,
+            	batch_id varchar NOT NULL,
+            	tenant_id int8 NOT NULL,
+            	document_id varchar NULL,
+            	originuri varchar NULL,
+            	process_completed_on timestamp NULL,
+            	process_started_on timestamp NULL,
+            	resourceuri varchar NULL,
+            	root_pipeline_id int8 NULL,
+            	time_zone varchar NULL,
+            	total_pa_hub_patient_request_id_count int4 NULL,
+            	total_processed_duration int8 NULL,
+            	uploaded_on timestamp NULL,
+            	CONSTRAINT document_summary_detail_pkey PRIMARY KEY (origin_id, tenant_id)
+            );
+
+                create table if not exists macro.pdf_file_merger(
+                	id bigserial not null,
+                	batch_id varchar NOT NULL,
+                	processId Int8 not null,
+                	origin_id varchar not null,
+                	group_id int8 null,
+                	ouput_file_name varchar null,
+                	input_file_paths varchar null,
+                	processed_file_path varchar null,
+                	created_on timestamp null,
+                	output_dir varchar null,
+                	status varchar null,
+                	stage varchar null,
+                	message varchar null,
+                	root_pipeline_id int8 NULL,
+                	tenant_id int8 NULL
+                	);
+
+            CREATE TABLE if not exists eoc_response.eoc_summary_detail (
+            	eoc_summary_id bigserial NOT NULL,
+            	bounding_box json NULL,
+            	confidence_score float4 NULL,
+            	end_index_page_no int4 NULL,
+            	origin_id varchar NULL,
+            	pa_hub_patient_request_id varchar NULL,
+            	pa_hub_patient_request_page_count int4 NULL,
+            	pa_hub_patient_request_uri varchar NULL,
+            	root_pipeline_id int8 NULL,
+            	source_of_pa_hub_patient_request_id varchar NULL,
+            	start_index_page_no int4 NULL,
+            	batch_id varchar NOT NULL,
+            	tenant_id int8 NULL,
+            	value_type varchar NULL,
+            	CONSTRAINT eoc_summary_detail_pkey PRIMARY KEY (eoc_summary_id),
+            	CONSTRAINT fk7mj25qvpkelxq8g53dkc85jga FOREIGN KEY (origin_id,tenant_id) REFERENCES eoc_response.document_summary_detail(origin_id,tenant_id)
+            );
+
+            "}  on-condition if "true"=="true"
+
+			transform as "error json ddl creation" on "intics_zio_db_conn" using {"
+
+	            CREATE TABLE IF NOT EXISTS outbound.error_document_detail (
+	                    error_document_id bigserial NOT NULL,
+	                    document_id varchar NULL,
+	                    batch_id varchar NOT NULL,
+	                    origin_id varchar NULL,
+	                    group_id varchar NULL,
+	                    uploaded_on timestamp NULL,
+	                    process_failed_on timestamp NULL,
+	                    total_processed_duration int8 NULL,
+	                    total_no_of_pages int8 NULL,
+	                    failed_on_stage varchar NULL,
+	                    stages json NULL,
+	                    message varchar NULL,
+	                    root_pipeline_id int8 NULL,
+	                    tenant_id int8 NULL,
+	                    CONSTRAINT error_document_detail_pk PRIMARY KEY (error_document_id)
+	                 );
+
+         "} on-condition if "true"=="true"
+
+    }
+    catch {
+
+    }
+
+    finally {
+
+    }
+}

@@ -1,0 +1,277 @@
+process "agentic.paper.filter.processor"
+
+{
+	try{
+
+             transform as "Agentic paper filter temp table insert for container filtering " on "intics_zio_db_conn" using {"
+                       INSERT INTO ${temp_schema_name}.agentic_paper_level_score_${init_process_id.process_id}
+                       ( origin_id,paper_no,root_pipeline_id, batch_id,tenant_id,group_id,is_candidate_paper, paper_level_score )
+                       SELECT cf.origin_id,cf.paper_no,cf.root_pipeline_id,cf.batch_id,cf.tenant_id, cf.group_id,
+                           CASE
+                               WHEN SUM(CASE WHEN LOWER(cf.container_value) = 'true' THEN 1 ELSE 0 END) > 0 THEN 'yes'
+                               ELSE 'no'
+                           END AS is_candidate_paper,
+                           SUM(CASE
+                               WHEN LOWER(cf.container_value) = 'true' THEN 1000
+                               ELSE 0
+                           END) AS paper_level_score
+                       FROM
+                            ${temp_schema_name}.agentic_paper_filter_output_${init_process_id.process_id} cf
+                       WHERE
+                           cf.batch_id = '${batch_id}'
+                           AND cf.group_id = '${group_id}'
+                           AND cf.paper_no BETWEEN ${payload.lower_bound_paper_no} AND ${payload.upper_bound_paper_no}
+                       GROUP BY
+                           cf.origin_id,
+                           cf.paper_no,
+                           cf.root_pipeline_id,
+                           cf.batch_id,
+                           cf.tenant_id,
+                           cf.group_id;
+
+
+                        insert into ${temp_schema_name}.agentic_entity_level_score_${init_process_id.process_id}
+                        (origin_id, paper_no,root_pipeline_id,batch_id,tenant_id,group_id, sor_container_id, container_name, container_value, is_candidate_paper, file_path)
+                        select cfbt.origin_id, cfbt.paper_no,cfbt.root_pipeline_id,
+                        	cfbt.batch_id,
+                        	cfbt.tenant_id,
+                        	cfbt.group_id, sc.sor_container_id, cfbt.container_name, cfbt.container_value, pls.is_candidate_paper, cfbt.file_path
+                        from  ${temp_schema_name}.agentic_paper_filter_output_${init_process_id.process_id} cfbt
+                        inner join ${temp_schema_name}.agentic_paper_level_score_${init_process_id.process_id} pls on cfbt.origin_id = pls.origin_id and cfbt.paper_no = pls.paper_no
+                        INNER JOIN sor_meta.sor_container sc ON sc.sor_container_name = cfbt.container_name AND sc.tenant_id = cfbt.tenant_id
+                        where pls.is_candidate_paper ='yes' and cfbt.container_value::boolean=true
+                        and cfbt.batch_id='${batch_id}' and sc.tenant_id=${tenant_id} and sc.document_type='${document_type}'
+                        and cfbt.group_id = '${group_id}'
+                        AND cfbt.paper_no BETWEEN ${payload.lower_bound_paper_no} AND ${payload.upper_bound_paper_no};
+
+
+                        INSERT INTO ${temp_schema_name}.agentic_entity_level_score_${init_process_id.process_id}
+                        (origin_id, paper_no, root_pipeline_id, batch_id, tenant_id, group_id, sor_container_id, container_name, container_value, is_candidate_paper, file_path)
+                        SELECT
+                            cfbt.origin_id,
+                            cfbt.paper_no,
+                            cfbt.root_pipeline_id,
+                            cfbt.batch_id,
+                            cfbt.tenant_id,
+                            cfbt.group_id,
+                            sc.sor_container_id,
+                            sc.sor_container_name AS container_name,
+                            cfbt.container_value,
+                            pls.is_candidate_paper,
+                            cfbt.file_path
+                        FROM   ${temp_schema_name}.agentic_paper_filter_output_${init_process_id.process_id} cfbt
+                        INNER JOIN ${temp_schema_name}.agentic_paper_level_score_${init_process_id.process_id} pls
+                            ON cfbt.origin_id = pls.origin_id
+                            AND cfbt.paper_no = pls.paper_no
+                        join sor_meta.sor_container sc on sc.tenant_id =cfbt.tenant_id and sc.sor_container_name ='PROVIDER'
+                        WHERE cfbt.container_name = ANY(string_to_array('${provider.alias.container.names}', ','))
+                        and  pls.is_candidate_paper ='yes'
+                        and cfbt.container_value::boolean=true
+                        and cfbt.group_id = '${group_id}'
+                        and sc.sor_container_name ='PROVIDER' and sc.post_processing =true
+                        and cfbt.paper_no BETWEEN ${payload.lower_bound_paper_no} AND ${payload.upper_bound_paper_no}
+                        group by cfbt.origin_id,
+                                 cfbt.paper_no,
+                                 cfbt.root_pipeline_id,
+                                 cfbt.batch_id,
+                                 cfbt.tenant_id,
+                                 cfbt.group_id,
+                                 sc.sor_container_id,
+                                 sc.sor_container_name,
+                                 cfbt.container_value,
+                                 pls.is_candidate_paper,
+                                 cfbt.file_path;
+
+              "} on-condition if "true"=="true"
+
+          transform as "insert into audit table for agentic paper filter" on "intics_zio_db_conn" using
+            {"
+                    insert into audit.process_audit_output
+                    (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint,paper_no, batch_id)
+                    select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint, ai.paper_no, '${batch_id}'
+                    from  ${temp_schema_name}.agentic_paper_filter_output_${init_process_id.process_id} ai
+                    where ai.group_id = ${gen_group_id.group_id} and tenant_id = ${tenant_id} and batch_id='${batch_id}'
+                    group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage, ai.paper_no
+            "}  on-condition if "true"=="true"
+
+
+            transform as "Audit table insert for Agentic paper filter " on "intics_zio_db_conn" using {"
+
+                    UPDATE paper_filter.agentic_paper_filter_payload_queue a
+                    SET    consumer_process_id='${init_process_id.process_id}',
+                           consumed_on_ts=now(),
+                           status='FAILED'
+                    FROM   ${temp_schema_name}.agentic_paper_filter_output_${init_process_id.process_id} b
+                    WHERE  b.group_id =a.group_id
+                            AND    a.origin_id=b.origin_id
+                            AND    a.batch_id=b.batch_id
+                            AND    b.group_id ='${group_id}'
+                            AND    b.status ='FAILED'
+                            AND    a.stage ='AGENTIC_PAPER_FILTER'
+                            AND    b.tenant_id = ${tenant_id}
+                            AND    a.batch_id = '${batch_id}';
+
+                    UPDATE ingestion.pipeline_queue_status_audit a
+                    SET    consumer_process_id='${init_process_id.process_id}',
+                           consumed_on_ts=now(),
+                           status='FAILED'
+                    FROM   ${temp_schema_name}.agentic_paper_filter_output_${init_process_id.process_id} b
+                    WHERE  b.group_id =a.group_id
+                            AND    a.origin_id=b.origin_id
+                            AND    a.batch_id=b.batch_id
+                            AND    b.group_id ='${group_id}'
+                            AND    b.status ='FAILED'
+                            AND    a.stage ='AGENTIC_PAPER_FILTER'
+                            AND    b.tenant_id = ${tenant_id}
+                            AND    a.batch_id = '${batch_id}';
+
+                    UPDATE batching.sub_batching_process_payload_queue a
+                    SET consumer_process_id='${init_process_id.process_id}',
+                        consumed_on_ts=now(),
+                        status='FAILED'
+                    FROM  ${temp_schema_name}.agentic_paper_filter_output_${init_process_id.process_id} b
+                    WHERE  b.group_id =a.group_id
+                             AND    a.origin_id=b.origin_id
+                             AND    a.batch_id=b.batch_id
+                             AND    b.group_id ='${group_id}'
+                             AND    b.status ='FAILED'
+                             AND    a.stage ='AGENTIC_PAPER_FILTER'
+                             AND    b.tenant_id = ${tenant_id}
+                             AND    a.batch_id = '${batch_id}';
+
+                    UPDATE paper_filter.sub_batch_agentic_paper_filter_payload_queue a
+                    SET consumer_process_id='${init_process_id.process_id}',
+                    consumed_on_ts=now(),
+                    status='FAILED'
+                    FROM  ${temp_schema_name}.agentic_paper_filter_output_${init_process_id.process_id} b
+                    WHERE  b.group_id =a.group_id
+                        AND    a.origin_id=b.origin_id
+                        AND    a.batch_id=b.batch_id
+                        AND    b.group_id ='${group_id}'
+                        AND    b.status ='FAILED'
+                        AND    a.stage ='AGENTIC_PAPER_FILTER'
+                        AND    b.tenant_id = ${tenant_id}
+                        AND    a.batch_id = '${batch_id}';
+
+            "} on-condition if "true"=="true"
+
+
+
+
+
+            transform as "Aggressive extraction loop temporary table with entity count details" on "intics_zio_db_conn" using
+             {"
+                    Insert into aggressive_extraction.a_agentic_paper_filter_entity_details
+                    (root_pipeline_id, batch_id, tenant_id, group_id,origin_id,container_name,sor_container_id,container_count,sub_batch_id)
+                    SELECT root_pipeline_id, batch_id, tenant_id, group_id,origin_id,container_name,sor_container_id, count(container_name) as container_count,'${payload.sub_batch_id}' as sub_batch_id
+                    FROM paper_filter.agentic_entity_level_score_audit
+                    where batch_id='${batch_id}' and tenant_id=${tenant_id} and group_id ='${group_id}'
+                    group by root_pipeline_id, batch_id, tenant_id, group_id,origin_id,container_name,sor_container_id ;
+
+                    Insert into aggressive_extraction.b_agentic_paper_filter_container_details
+                    (root_pipeline_id, batch_id, tenant_id, group_id,origin_id,sor_container_name,sub_batch_id)
+                    select a.root_pipeline_id ,a.batch_id ,a.tenant_id ,a.group_id,a.origin_id,b.sor_container_name,
+                    '${payload.sub_batch_id}' as sub_batch_id
+                    from paper_filter.agentic_paper_filter_payload_queue a
+                    join sor_meta.sor_container b on a.tenant_id=b.tenant_id
+                    where a.tenant_id=${tenant_id} and a.batch_id='${batch_id}' and b.document_type='${document_type}'
+                    and b.status='ACTIVE' and b.container_priority ='MANDATORY' and a.group_id ='${group_id}';
+
+                    Insert into aggressive_extraction.c_agentic_paper_filter_count_of_containers
+                    (root_pipeline_id, batch_id, tenant_id, group_id,origin_id,container_count,sub_batch_id)
+                    select a.root_pipeline_id ,a.batch_id ,a.tenant_id ,a.group_id,a.origin_id,count(a.sor_container_name) as container_count,
+                    a.sub_batch_id as sub_batch_id
+                    from aggressive_extraction.b_agentic_paper_filter_container_details a
+                    where a.tenant_id=${tenant_id} and a.batch_id='${batch_id}' and a.sub_batch_id='${payload.sub_batch_id}'
+                            and a.group_id ='${group_id}'
+                    group by a.root_pipeline_id ,a.batch_id ,a.tenant_id ,a.group_id,a.origin_id,a.sub_batch_id;
+
+                     Insert into aggressive_extraction.d_agentic_paper_filter_matched_container_count
+                    (batch_id, group_id, origin_id,root_pipeline_id,sub_batch_id,matched_container_count)
+                    select apfcd.batch_id,apfcd.group_id,apfcd.origin_id ,
+                    apfcd.root_pipeline_id,apfcd.sub_batch_id,
+                    sum(case when apfcd.sor_container_name=apfed.container_name then 1 else 0 end) as matched_container_count
+                    from aggressive_extraction.b_agentic_paper_filter_container_details apfcd
+                    left join aggressive_extraction.a_agentic_paper_filter_entity_details apfed
+                            on apfcd.origin_id =apfed.origin_id
+                            and apfed.container_name =apfcd.sor_container_name
+                            and apfed.sub_batch_id =apfcd.sub_batch_id
+                    where apfcd.tenant_id =${tenant_id} and apfcd.batch_id='${batch_id}' and apfcd.sub_batch_id='${payload.sub_batch_id}'
+                            and apfcd.group_id ='${group_id}'
+                    group by apfcd.batch_id,apfcd.group_id,apfcd.origin_id ,
+                    apfcd.root_pipeline_id,apfcd.sub_batch_id;
+
+                    UPDATE paper_filter.agentic_paper_filter_payload_queue AS queue
+                    SET status = (case
+                                when apfcd.matched_container_count>=apfed.container_count then 'COMPLETED'
+                                    ELSE queue.status
+                                END), consumed_on_ts=now()
+                    from aggressive_extraction.d_agentic_paper_filter_matched_container_count apfcd
+                    join aggressive_extraction.c_agentic_paper_filter_count_of_containers apfed
+                    			on apfcd.origin_id =apfed.origin_id
+                    			and apfed.sub_batch_id =apfcd.sub_batch_id
+                    			and apfed.batch_id =apfcd.batch_id
+                    where queue.batch_id=apfcd.batch_id and  queue.origin_id=apfcd.origin_id and queue.batch_id='${batch_id}'
+                     and apfcd.sub_batch_id='${payload.sub_batch_id}' and queue.status='IN_PROGRESS'
+                                              	and queue.group_id ='${group_id}';
+
+
+                    UPDATE paper_filter.sub_batch_agentic_paper_filter_payload_queue AS queue
+                    SET status = (case
+                                    WHEN apfcd.matched_container_count>=apfed.container_count then 'COMPLETED'
+                                    WHEN queue.sub_batch_id = '${payload.sub_batch_id}' THEN 'COMPLETED'
+                                    ELSE queue.status
+                                END), consumed_on_ts=now()
+                    from aggressive_extraction.d_agentic_paper_filter_matched_container_count apfcd
+                    join aggressive_extraction.c_agentic_paper_filter_count_of_containers apfed
+                    			on apfcd.origin_id =apfed.origin_id
+                    			and apfed.sub_batch_id =apfcd.sub_batch_id
+                    			and apfed.batch_id =apfcd.batch_id
+                    where queue.batch_id=apfcd.batch_id and queue.status in ('IN_PROGRESS','STAGED') and queue.origin_id=apfcd.origin_id and queue.batch_id='${batch_id}'
+                    	and queue.group_id ='${group_id}';
+
+
+             "}  on-condition if "true"=="true"
+	}
+	catch{
+
+				transform as "Update to FAILED in agentic paper filter payload queue" on "intics_zio_db_conn" using
+                 {"
+                      UPDATE paper_filter.agentic_paper_filter_payload_queue
+                      SET status='FAILED', consumed_on_ts = now(), consumer_process_id = '${process-id}'
+                      WHERE group_id='${group_id}' AND status='IN_PROGRESS' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                        update ingestion.pipeline_queue_status_audit as a
+                        set status = 'FAILED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                        where  a.group_id=${group_id}
+                        and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='AGENTIC_PAPER_FILTER' and status='IN_PROGRESS';
+
+
+                      UPDATE batching.sub_batching_process_payload_queue a
+                      SET status='FAILED',  stage='AGENTIC_PAPER_FILTER'
+                      WHERE a.group_id='${group_id}'  and a.tenant_id='${tenant_id}'
+                      and a.batch_id ='${batch_id}';
+
+                     UPDATE paper_filter.sub_batch_agentic_paper_filter_payload_queue
+                        SET status='FAILED', consumed_on_ts = now(), consumer_process_id = '${process-id}'
+                        WHERE batch_id ='${batch_id}' and sub_batch_id ='${payload.sub_batch_id}' and status='IN_PROGRESS' and group_id='${group_id}' and tenant_id = ${tenant_id};
+
+                 "}  on-condition if "true"=="true"
+
+
+	}
+	finally{
+
+	        	transform as "Update to COMPLETED in sub batch agentic paper filter payload queue" on "intics_zio_db_conn" using
+                 {"
+
+                        UPDATE paper_filter.sub_batch_agentic_paper_filter_payload_queue
+                        SET status='COMPLETED', consumed_on_ts =  now(), consumer_process_id = '${process-id}'
+                        WHERE batch_id ='${batch_id}' and sub_batch_id ='${payload.sub_batch_id}' and status='IN_PROGRESS' and group_id='${group_id}' and tenant_id = ${tenant_id};
+
+                 "}  on-condition if "true"=="true"
+
+
+
+	}
+}

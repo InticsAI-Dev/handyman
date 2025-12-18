@@ -1,0 +1,56 @@
+// CASE 1: Multi-Value Items (De-duplication)
+testMultiValueRemapContainerInstance()
+Fetched Inputs:
+2 | Input | originId=ORIGIN-84 | paperNo=4 | sorContainerInstance=LEVEL_OF_SERVICE_0 | sorItemName=level_of_service | isMultiEntityEnabled=t | lineItemType=multi_value | answer=Urgent
+3 | Input | originId=ORIGIN-84 | paperNo=4 | sorContainerInstance=SERVICE_CODE_0 | sorItemName=service_code | isMultiEntityEnabled=t | lineItemType=multi_value | answer=H0014
+4 | Input | originId=ORIGIN-84 | paperNo=5 | sorContainerInstance=DIAGNOSIS_CODE_0 | sorItemName=diagnosis_code | isMultiEntityEnabled=t | lineItemType=multi_value | answer=Normal labor (HHS-HCC)
+5 | Input | originId=ORIGIN-84 | paperNo=4 | sorContainerInstance=DIAGNOSIS_CODE_0 | sorItemName=diagnosis_code | isMultiEntityEnabled=t | lineItemType=multi_value | answer=F1010
+6 | Input | originId=ORIGIN-84 | paperNo=4 | sorContainerInstance=AUTH_ID_0 | sorItemName=auth_id | isMultiEntityEnabled=t | lineItemType=multi_value | answer=UM54883491
+7 | Input | originId=ORIGIN-84 | paperNo=2 | sorContainerInstance=AUTH_ID_0 | sorItemName=auth_id | isMultiEntityEnabled=t | lineItemType=multi_value | answer=UM75413007
+8 | Input | originId=ORIGIN-84 | paperNo=4 | sorContainerInstance=DIAGNOSIS_CODE_0 | sorItemName=diagnosis_code | isMultiEntityEnabled=t | lineItemType=multi_value | answer=F91.1,F91.2
+9 | Input | originId=ORIGIN-84 | paperNo=5 | sorContainerInstance=DIAGNOSIS_CODE_0 | sorItemName=diagnosis_code | isMultiEntityEnabled=t | lineItemType=multi_value | answer=F1010
+Max sor Instance Outputs:
+2 | Output | originId=ORIGIN-84 | paperNo=4 | sorContainerInstance=LEVEL_OF_SERVICE_0 | sorItemName=level_of_service | isMultiEntityEnabled=null | lineItemType=multi_value | answer=Urgent
+3 | Output | originId=ORIGIN-84 | paperNo=4 | sorContainerInstance=SERVICE_CODE_0 | sorItemName=service_code | isMultiEntityEnabled=null | lineItemType=multi_value | answer=H0014
+4 | Output | originId=ORIGIN-84 | paperNo=5 | sorContainerInstance=DIAGNOSIS_CODE_0 | sorItemName=diagnosis_code | isMultiEntityEnabled=null | lineItemType=multi_value | answer=Normal labor (HHS-HCC)
+5 | Output | originId=ORIGIN-84 | paperNo=4 | sorContainerInstance=DIAGNOSIS_CODE_0 | sorItemName=diagnosis_code | isMultiEntityEnabled=null | lineItemType=multi_value | answer=F1010
+6 | Output | originId=ORIGIN-84 | paperNo=4 | sorContainerInstance=AUTH_ID_0 | sorItemName=auth_id | isMultiEntityEnabled=null | lineItemType=multi_value | answer=UM54883491
+7 | Output | originId=ORIGIN-84 | paperNo=2 | sorContainerInstance=AUTH_ID_0 | sorItemName=auth_id | isMultiEntityEnabled=null | lineItemType=multi_value | answer=UM75413007
+8 | Output | originId=ORIGIN-84 | paperNo=4 | sorContainerInstance=DIAGNOSIS_CODE_0 | sorItemName=diagnosis_code | isMultiEntityEnabled=null | lineItemType=multi_value | answer=F91.1
+9 | Output | originId=ORIGIN-84 | paperNo=4 | sorContainerInstance=DIAGNOSIS_CODE_0 | sorItemName=diagnosis_code | isMultiEntityEnabled=null | lineItemType=multi_value | answer=F91.2
+
+
+
+ // Cases 2, 3, 4: Single-Value Items
+ Fetched Inputs:
+ 2 | Input | originId=ORIGIN-84 | paperNo=4 | sorContainerInstance=MEMBER_DETAILS_0 | sorItemName=member_id | isMultiEntityEnabled=t | lineItemType=single_value | answer=YRH121851653099 | message=null
+ 3 | Input | originId=ORIGIN-84 | paperNo=3 | sorContainerInstance=MEMBER_DETAILS_0 | sorItemName=member_address_line1 | isMultiEntityEnabled=t | lineItemType=single_value | answer=601 E Kennedy Blvd | message=null
+ 4 | Input | originId=ORIGIN-84 | paperNo=4 | sorContainerInstance=MEMBER_DETAILS_1 | sorItemName=member_address_line1 | isMultiEntityEnabled=t | lineItemType=single_value | answer=P O Box 105187 Atlanta, GA | message=null
+ 5 | Input | originId=ORIGIN-84 | paperNo=3 | sorContainerInstance=MEMBER_DETAILS_0 | sorItemName=member_city | isMultiEntityEnabled=t | lineItemType=single_value | answer=Tampa | message=null
+ 6 | Input | originId=ORIGIN-84 | paperNo=4 | sorContainerInstance=MEMBER_DETAILS_1 | sorItemName=member_city | isMultiEntityEnabled=t | lineItemType=single_value | answer=30348-5187 | message=null
+ 7 | Input | originId=ORIGIN-84 | paperNo=3 | sorContainerInstance=MEMBER_DETAILS_0 | sorItemName=member_zipcode | isMultiEntityEnabled=t | lineItemType=single_value | answer=336024156 | message=null
+ 8 | Input | originId=ORIGIN-84 | paperNo=3 | sorContainerInstance=MEMBER_DETAILS_0 | sorItemName=member_state | isMultiEntityEnabled=t | lineItemType=single_value | answer=FL | message=null
+ 9 | Input | originId=ORIGIN-84 | paperNo=3 | sorContainerInstance=MEMBER_DETAILS_0 | sorItemName=member_date_of_birth | isMultiEntityEnabled=t | lineItemType=single_value | answer=1/10/1999 | message=null
+ 10 | Input | originId=ORIGIN-84 | paperNo=4 | sorContainerInstance=MEMBER_DETAILS_1 | sorItemName=member_full_name | isMultiEntityEnabled=t | lineItemType=single_value | answer=ILA HILLEN | message=null
+ Max sor Instance Outputs:
+ 2 | Output | originId=ORIGIN-84 | paperNo=3 | sorContainerInstance=MEMBER_DETAILS_0 | sorItemName=member_date_of_birth | isMultiEntityEnabled=null | lineItemType=single_value | answer=1/10/1999 | message=Retained by consolidation (or highest score conflict resolution).
+ 3 | Output | originId=ORIGIN-84 | paperNo=3 | sorContainerInstance=MEMBER_DETAILS_0 | sorItemName=member_address_line1 | isMultiEntityEnabled=null | lineItemType=single_value | answer=601 E Kennedy Blvd | message=Retained by consolidation (or highest score conflict resolution).
+ 4 | Output | originId=ORIGIN-84 | paperNo=3 | sorContainerInstance=MEMBER_DETAILS_0 | sorItemName=member_state | isMultiEntityEnabled=null | lineItemType=single_value | answer=FL | message=Retained by consolidation (or highest score conflict resolution).
+ 5 | Output | originId=ORIGIN-84 | paperNo=3 | sorContainerInstance=MEMBER_DETAILS_0 | sorItemName=member_city | isMultiEntityEnabled=null | lineItemType=single_value | answer=Tampa | message=Retained by consolidation (or highest score conflict resolution).
+ 6 | Output | originId=ORIGIN-84 | paperNo=3 | sorContainerInstance=MEMBER_DETAILS_0 | sorItemName=member_zipcode | isMultiEntityEnabled=null | lineItemType=single_value | answer=336024156 | message=Retained by consolidation (or highest score conflict resolution).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

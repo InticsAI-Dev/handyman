@@ -1,0 +1,49 @@
+process "doc.eyecue.main"
+{
+try {
+        assign as "init_process_id" source "intics_zio_db_conn" using {"
+                SELECT ${process-id} AS process_id;
+        "} on-condition if "true"=="true"
+
+        callprocess as "doc eyecue processor"
+        with-target "doc.eyecue.processor"
+        from-file "${basepath}/docEyeCue/doc.eyecue.processor.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT DISTINCT
+                group_id,
+                batch_id,
+                tenant_id,
+                root_pipeline_id,
+                template_id
+                FROM doc_eyecue.doc_eyecue_payload_queue
+                WHERE status = 'STAGED'
+                AND stage = 'DOC_EYE_CUE'
+                AND tenant_id = ${tenant_id}
+                AND group_id=${group_id};
+        "} on-condition if "true"=="true"
+
+} catch {
+        transform as "main failure audit" on "intics_zio_db_conn" using {"
+                INSERT INTO doc_eyecue.doc_eyecue_pipeline_audit
+                (process_id, origin_id, group_id, created_on, status, stage, message, root_pipeline_id, tenant_id, batch_id, template_id)
+                VALUES (
+                ${init_process_id.process_id},
+                '${origin_id}',
+                ${group_id},
+                now(),
+                'FAILED',
+                'DOC_EYE_CUE_MAIN',
+                'doc_eyecue main caller failed',
+                ${root_pipeline_id},
+                ${tenant_id},
+                '${batch_id}',
+                '${template_id}'
+                );
+        "} on-condition if "true"=="true"
+}
+
+finally {
+
+}
+}

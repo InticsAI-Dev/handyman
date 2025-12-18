@@ -1,0 +1,713 @@
+process "eval.prescriber.match."
+{
+    try {
+
+             transform as "inserting audit for prescriber match started" on "intics_zio_db_conn" using
+            {"
+
+                INSERT INTO control_data.control_data_pipeline_audit
+                (process_id,origin_id, created_on, group_id,  status, stage, message,root_pipeline_id, batch_id)
+                SELECT '${init_process_id.process_id}',a.origin_id,now(),'${gen_group_id.group_id}','STARTED','CONTROL_DATA','Control data match started for prescriber match','${gen_id.root_pipeline_id}', batch_id
+                from  control_data.control_data_payload_queue a where group_id='${gen_group_id.group_id}' and batch_id = '${batch_id}';
+
+            "}  on-condition if "true"=="true"
+
+            transform as "insert into prescriber name and npi " on "intics_zio_db_conn" using
+            {"
+
+            INSERT INTO control_data_macro.prescriber_name_similarity_input
+            (actual_value, origin_id, created_on, group_id, root_pipeline_id, extracted_value,
+             confidence_score, file_name,  tenant_id,batch_id)
+            select
+                    concat(lower(a.prescriber_firstname),lower(a.prescriber_middlename ),lower(a.prescriber_lastname)) as actual_value,
+                    b.origin_id,
+                    b.created_on,
+                    b.group_id,
+                    b.root_pipeline_id,
+                    b.prescriber_name  as extracted_value,
+                    c.confidence_score,
+                    b.file_name,
+                    ${tenant_id},
+                    b.batch_id
+            FROM public.fax_data_2411 a
+            JOIN control_data.evaluation_transposed b
+            ON LOWER(a.agadiadocid)=LOWER(b.file_name) join voting.cummulative_result c on b.origin_id=c.origin_id
+            join control_data.control_data_payload_queue d on b.origin_id=d.origin_id
+            where  c.sor_item_name ='prescriber_name' and  b.group_id='${gen_group_id.group_id}' and b.tenant_id = ${tenant_id} and b.batch_id = '${batch_id}';
+
+            INSERT INTO control_data_macro.prescriber_npi_similarity_input
+            (actual_value, origin_id, created_on, group_id, root_pipeline_id, extracted_value,
+             confidence_score, file_name,  tenant_id,batch_id)
+            select
+                    a.prescriber_npi  as actual_value,
+                    b.origin_id,
+                    b.created_on,
+                    b.group_id,
+                    b.root_pipeline_id,
+                    b.prescriber_npi  as extracted_value,
+                    c.confidence_score,
+                    b.file_name,
+                    ${tenant_id},
+                    b.batch_id
+            FROM public.fax_data_2411 a
+            JOIN control_data.evaluation_transposed b
+            ON LOWER(a.agadiadocid)=LOWER(b.file_name) join voting.cummulative_result c on b.origin_id=c.origin_id
+            join control_data.control_data_payload_queue d on b.origin_id=d.origin_id
+            where  c.sor_item_name ='prescriber_npi' and  b.group_id='${gen_group_id.group_id}' and b.tenant_id = ${tenant_id} and b.batch_id = '${batch_id}';
+
+
+                INSERT INTO control_data_macro.prescriber_fax_similarity_input
+                (actual_value, origin_id, created_on, group_id, root_pipeline_id, extracted_value,
+                 confidence_score, file_name,  tenant_id,batch_id)
+                select
+                    a.prescriber_fax1 as actual_value,
+                    b.origin_id,
+                    b.created_on,
+                    b.group_id,
+                    b.root_pipeline_id,
+                    b.prescriber_fax  as extracted_value,
+                    c.confidence_score,
+                    b.file_name,
+                    ${tenant_id},
+                    b.batch_id
+                FROM public.fax_data_2411 a
+                JOIN control_data.evaluation_transposed b
+                ON LOWER(a.agadiadocid)=LOWER(b.file_name) join voting.cummulative_result c on b.origin_id=c.origin_id
+                 join control_data.control_data_payload_queue d on b.origin_id=d.origin_id
+                where  c.sor_item_name ='prescriber_fax' and  b.group_id='${gen_group_id.group_id}' and b.tenant_id = ${tenant_id} and b.batch_id = '${batch_id}';
+
+
+                INSERT INTO control_data_macro.prescriber_address_similarity_input
+                (actual_value, origin_id, created_on, group_id, root_pipeline_id, extracted_value,
+                 confidence_score, file_name,  tenant_id,batch_id)
+                select
+                    concat(a.prescriber_address1,' ',a.prescriber_address2) as actual_value,
+                    b.origin_id,
+                    b.created_on,
+                    b.group_id,
+                    b.root_pipeline_id,
+                    b.prescriber_address  as extracted_value,
+                    c.confidence_score,
+                    b.file_name,
+                    ${tenant_id},
+                    b.batch_id
+                FROM public.fax_data_2411 a
+                JOIN control_data.evaluation_transposed b
+                ON LOWER(a.agadiadocid)=LOWER(b.file_name) join voting.cummulative_result c on b.origin_id=c.origin_id
+                join control_data.control_data_payload_queue d on b.origin_id=d.origin_id
+                where  c.sor_item_name ='prescriber_address' and  b.group_id='${gen_group_id.group_id}' and b.tenant_id = ${tenant_id} and b.batch_id = '${batch_id}';
+
+
+                INSERT INTO control_data_macro.prescriber_csz_similarity_input
+                (actual_value, origin_id, created_on, group_id, root_pipeline_id, extracted_value,
+                confidence_score, file_name,  tenant_id,batch_id)
+                select
+                    a.prescriber_city_state_zip as actual_value,
+                    b.origin_id,
+                    b.created_on,
+                    b.group_id,
+                    b.root_pipeline_id,
+                    b.prescriber_citystatezip  as extracted_value,
+                    c.confidence_score,
+                    b.file_name,
+                    ${tenant_id},
+                    b.batch_id
+                FROM public.fax_data_2411 a
+                JOIN control_data.evaluation_transposed b
+                ON LOWER(a.agadiadocid)=LOWER(b.file_name) join voting.cummulative_result c on b.origin_id=c.origin_id
+                 join control_data.control_data_payload_queue d on b.origin_id=d.origin_id
+                where  c.sor_item_name ='prescriber_city_state_zip' and  b.group_id='${gen_group_id.group_id}' and b.tenant_id = ${tenant_id} and b.batch_id = '${batch_id}';
+
+
+                INSERT INTO control_data_macro.prescriber_state_similarity_input
+                (actual_value, origin_id, created_on, group_id, root_pipeline_id, extracted_value,
+                 confidence_score, file_name,  tenant_id,batch_id)
+                select
+                    a.prescriber_state as actual_value,
+                    b.origin_id,
+                    b.created_on,
+                    b.group_id,
+                    b.root_pipeline_id,
+                    b.prescriber_state  as extracted_value,
+                    c.confidence_score,
+                    b.file_name,
+                    ${tenant_id},
+                    b.batch_id
+                FROM public.fax_data_2411 a
+                JOIN control_data.evaluation_transposed b
+                ON LOWER(a.agadiadocid)=LOWER(b.file_name) join voting.cummulative_result c on b.origin_id=c.origin_id
+                 join control_data.control_data_payload_queue d on b.origin_id=d.origin_id
+                where  c.sor_item_name ='prescriber_state' and  b.group_id='${gen_group_id.group_id}' and b.tenant_id = ${tenant_id} and b.batch_id = '${batch_id}';
+
+                INSERT INTO control_data_macro.prescriber_zip_similarity_input
+                (actual_value, origin_id, created_on, group_id, root_pipeline_id, extracted_value,
+                 confidence_score, file_name,  tenant_id,batch_id)
+                select
+                    a.prescriber_zipcode,
+                    b.origin_id,
+                    b.created_on,
+                    b.group_id,
+                    b.root_pipeline_id,
+                    b.prescriber_zipcode ,
+                    c.confidence_score,
+                    b.file_name,
+                    ${tenant_id},
+                    b.batch_id
+                FROM public.fax_data_2411 a
+                JOIN control_data.evaluation_transposed b
+                ON LOWER(a.agadiadocid)=LOWER(b.file_name) join voting.cummulative_result c on b.origin_id=c.origin_id
+                join control_data.control_data_payload_queue d on b.origin_id=d.origin_id
+                where  c.sor_item_name ='prescriber_zip' and  b.group_id='${gen_group_id.group_id}' and b.tenant_id = ${tenant_id} and b.batch_id = '${batch_id}';
+
+
+                INSERT INTO control_data_macro.prescriber_phone_similarity_input
+                (actual_value, origin_id, created_on, group_id, root_pipeline_id, extracted_value,
+                 confidence_score, file_name,  tenant_id,batch_id)
+                select
+                    a.prescriber_phone as actual_value,
+                    b.origin_id,
+                    b.created_on,
+                    b.group_id,
+                    b.root_pipeline_id,
+                    b.prescriber_phone  as extracted_value,
+                    c.confidence_score,
+                    b.file_name,
+                    ${tenant_id},
+                    b.batch_id
+                FROM public.fax_data_2411 a
+                JOIN control_data.evaluation_transposed b
+                ON LOWER(a.agadiadocid)=LOWER(b.file_name) join voting.cummulative_result c on b.origin_id=c.origin_id
+                join control_data.control_data_payload_queue d on b.origin_id=d.origin_id
+                where  c.sor_item_name ='prescriber_phone' and  b.group_id='${gen_group_id.group_id}' and b.tenant_id = ${tenant_id} and b.batch_id = '${batch_id}';
+
+                INSERT INTO control_data_macro.prescriber_taxid_similarity_input
+                (actual_value, origin_id, created_on, group_id, root_pipeline_id, extracted_value, confidence_score, file_name,  tenant_id,batch_id)
+                select
+                a.prescriber_taxid as actual_value,
+                b.origin_id,
+                b.created_on,
+                b.group_id,
+                b.root_pipeline_id,
+                b.prescriber_taxid  as extracted_value,
+                c.confidence_score,
+                b.file_name,
+                ${tenant_id},
+                b.batch_id
+                FROM public.fax_data_2411 a
+                JOIN control_data.evaluation_transposed b
+                ON LOWER(a.agadiadocid)=LOWER(b.file_name) join voting.cummulative_result c on b.origin_id=c.origin_id
+                 join control_data.control_data_payload_queue d on b.origin_id=d.origin_id
+                where  c.sor_item_name ='prescriber_tax_id' and  b.group_id='${gen_group_id.group_id}' and b.tenant_id = ${tenant_id} and b.batch_id = '${batch_id}';
+
+
+                INSERT INTO control_data_macro.prescriber_city_similarity_input
+                (actual_value, origin_id, created_on, group_id, root_pipeline_id, extracted_value, confidence_score, file_name,  tenant_id,batch_id)
+                select
+                a.prescriber_city as actual_value,
+                b.origin_id,
+                b.created_on,
+                b.group_id,
+                b.root_pipeline_id,
+                b.prescriber_city  as extracted_value,
+                c.confidence_score,
+                b.file_name,
+                ${tenant_id},
+                b.batch_id
+                FROM public.fax_data_2411 a
+                JOIN control_data.evaluation_transposed b
+                ON LOWER(a.agadiadocid)=LOWER(b.file_name) join voting.cummulative_result c on b.origin_id=c.origin_id
+                join control_data.control_data_payload_queue d on b.origin_id=d.origin_id
+                where  c.sor_item_name ='prescriber_city' and  b.group_id='${gen_group_id.group_id}' and b.tenant_id = ${tenant_id} and b.batch_id = '${batch_id}';
+
+            "}  on-condition if "true"=="true"
+
+ 
+
+            intellimatch as "matched prescriber_name"
+            on-resource-conn "intics_zio_db_conn"
+            match-result "control_data_macro.eval_prescriber_name"
+            using {"
+            select  a.actual_value,a.origin_id,a.group_id,a.root_pipeline_id, a.extracted_value,a.confidence_score,a.file_name,a.tenant_id, a.batch_id
+            FROM control_data_macro.prescriber_name_similarity_input a
+            join control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+            where a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+            "} on-condition if "true"=="true"
+
+
+            intellimatch as "match eval_prescriber_npi"
+            on-resource-conn "intics_zio_db_conn"
+            match-result "control_data_macro.eval_prescriber_npi"
+            using {"
+            select  a.actual_value,a.origin_id,a.group_id,a.root_pipeline_id, a.extracted_value,a.confidence_score,a.file_name,a.tenant_id, a.batch_id
+            FROM control_data_macro.prescriber_npi_similarity_input a
+            join control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+            where a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+            "} on-condition if "true"=="true"
+
+            intellimatch as "match eval prescriber address"
+            on-resource-conn "intics_zio_db_conn"
+            match-result "control_data_macro.eval_prescriber_address"
+            using {"
+            select  a.actual_value,a.origin_id,a.group_id,a.root_pipeline_id, a.extracted_value,a.confidence_score,a.file_name,a.tenant_id,a.batch_id
+            FROM control_data_macro.prescriber_address_similarity_input a
+            join control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+            where a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+            "} on-condition if "true"=="true"
+
+            intellimatch as "match eval_prescriber_city_state_zip"
+            on-resource-conn "intics_zio_db_conn"
+            match-result "control_data_macro.eval_prescriber_city_state_zip"
+            using {"
+            select  a.actual_value,a.origin_id,a.group_id,a.root_pipeline_id, a.extracted_value,a.confidence_score,a.file_name,a.tenant_id, a.batch_id
+            FROM control_data_macro.prescriber_csz_similarity_input a
+            join control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+            where a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+            "} on-condition if "true"=="true"
+
+            intellimatch as "match prescriber_state"
+            on-resource-conn "intics_zio_db_conn"
+            match-result "control_data_macro.eval_prescriber_state"
+            using {"
+            select  a.actual_value,a.origin_id,a.group_id,a.root_pipeline_id, a.extracted_value,a.confidence_score,a.file_name,a.tenant_id, a.batch_id
+            FROM control_data_macro.prescriber_state_similarity_input a
+            join control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+            where a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+            "} on-condition if "true"=="true"
+
+            intellimatch as "match eval_prescriber_zip"
+            on-resource-conn "intics_zio_db_conn"
+            match-result "control_data_macro.eval_prescriber_zip"
+            using {"
+            select  a.actual_value,a.origin_id,a.group_id,a.root_pipeline_id, a.extracted_value,a.confidence_score,a.file_name,a.tenant_id, a.batch_id
+            FROM control_data_macro.prescriber_zip_similarity_input a
+            join control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+            where a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+            "} on-condition if "true"=="true"
+
+            intellimatch as "match eval_prescriber_phone"
+            on-resource-conn "intics_zio_db_conn"
+            match-result "control_data_macro.eval_prescriber_phone"
+            using {"
+            select  a.actual_value,a.origin_id,a.group_id,a.root_pipeline_id, a.extracted_value,a.confidence_score,a.file_name,a.tenant_id, a.batch_id
+            FROM control_data_macro.prescriber_phone_similarity_input a
+            join control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+            where a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+            "} on-condition if "true"=="true"
+
+            intellimatch as "match eval_prescriber_fax"
+            on-resource-conn "intics_zio_db_conn"
+            match-result "control_data_macro.eval_prescriber_fax"
+            using {"
+            select  a.actual_value,a.origin_id,a.group_id,a.root_pipeline_id, a.extracted_value,a.confidence_score,a.file_name,a.tenant_id ,a.batch_id
+            FROM control_data_macro.prescriber_fax_similarity_input a
+            join control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+            where a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+            "} on-condition if "true"=="true"
+
+            intellimatch as "match eval_prescriber_tax_id"
+            on-resource-conn "intics_zio_db_conn"
+            match-result "control_data_macro.eval_prescriber_tax_id"
+            using {"
+            select  a.actual_value,a.origin_id,a.group_id,a.root_pipeline_id, a.extracted_value,a.confidence_score,a.file_name,a.tenant_id , a.batch_id
+            FROM control_data_macro.prescriber_taxid_similarity_input a
+            join control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+            where a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+            "} on-condition if "true"=="true"
+
+            intellimatch as "match eval_prescriber_city"
+            on-resource-conn "intics_zio_db_conn"
+            match-result "control_data_macro.eval_prescriber_city"
+            using {"
+
+            select  a.actual_value,a.origin_id,a.group_id,a.root_pipeline_id, a.extracted_value,a.confidence_score,a.file_name,a.tenant_id, a.batch_id
+            FROM control_data_macro.prescriber_city_similarity_input a
+            join control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+            where a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+            "} on-condition if "true"=="true"
+
+
+
+            transform as "insert into prescriber name and npi " on "intics_zio_db_conn" using
+            {"
+
+                INSERT INTO control_data.prescriber_name_similarity
+                (actual_value, origin_id, created_on, group_id, root_pipeline_id, extracted_value,
+                confidence_score, file_name, similarity, levenshtein_score,intellimatch_score, tenant_id,batch_id)
+                select
+                    a.actual_value as actual_value,
+                    a.origin_id,
+                    a.created_on,
+                    a.group_id,
+                    a.root_pipeline_id,
+                    a.extracted_value  as extracted_value,
+                    a.confidence_score,
+                    a.file_name,
+                    (case
+                        when a.actual_value='' and a.extracted_value='' then 1
+                        when replace(lower(concat(a.actual_value)),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                        else similarity(replace(lower(concat(a.actual_value)),' ',''),replace(lower(a.extracted_value),' ',''))
+                    end) as similarity,
+                    (case
+                        when a.actual_value='' and a.extracted_value='' then 1
+                        when replace(lower(concat(a.actual_value)),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                        else levenshtein(replace(lower(concat(a.actual_value)),' ',''),replace(lower(a.extracted_value),' ',''))
+                    end) as levenshtein_score,
+                    a.intelli_match,
+                    ${tenant_id},
+                   a.batch_id
+                FROM control_data_macro.eval_prescriber_name a
+                JOIN control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+                WHERE a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                INSERT INTO control_data.prescriber_npi_similarity
+                (actual_value, origin_id, created_on, group_id, root_pipeline_id, extracted_value,
+                confidence_score, file_name, similarity, levenshtein_score,intellimatch_score, tenant_id,batch_id)
+                select
+                    a.actual_value as actual_value,
+                    a.origin_id,
+                    a.created_on,
+                    a.group_id,
+                    a.root_pipeline_id,
+                    a.extracted_value  as extracted_value,
+                    a.confidence_score,
+                    a.file_name,
+                    (case
+                        when a.actual_value='' and a.extracted_value='' then 1
+                        when replace(lower(concat(a.actual_value)),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                        else similarity(replace(lower(concat(a.actual_value)),' ',''),replace(lower(a.extracted_value),' ',''))
+                    end) as similarity,
+                    (case
+                        when a.actual_value='' and a.extracted_value='' then 1
+                        when replace(lower(concat(a.actual_value)),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                        else levenshtein(replace(lower(concat(a.actual_value)),' ',''),replace(lower(a.extracted_value),' ',''))
+                    end) as levenshtein_score,
+                    a.intelli_match,
+                    ${tenant_id},
+                    a.batch_id
+                FROM control_data_macro.eval_prescriber_npi a
+                JOIN control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+                WHERE a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                INSERT INTO control_data.prescriber_fax_similarity
+                (actual_value, origin_id, created_on, group_id, root_pipeline_id, extracted_value,
+                confidence_score, file_name, similarity, levenshtein_score,intellimatch_score, tenant_id,batch_id)
+                select
+                        a.actual_value as actual_value,
+                        a.origin_id,
+                        a.created_on,
+                        a.group_id,
+                        a.root_pipeline_id,
+                        a.extracted_value  as extracted_value,
+                        a.confidence_score,
+                        a.file_name,
+                        (case
+                            when a.actual_value='' and a.extracted_value='' then 1
+                            when replace(lower(concat(a.actual_value)),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                            else similarity(replace(lower(concat(a.actual_value)),' ',''),replace(lower(a.extracted_value),' ',''))
+                            end) as similarity,
+                        (case
+                            when a.actual_value='' and a.extracted_value='' then 1
+                            when replace(lower(concat(a.actual_value)),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                            else levenshtein(replace(lower(concat(a.actual_value)),' ',''),replace(lower(a.extracted_value),' ',''))
+                            end) as levenshtein_score,
+                        a.intelli_match,
+                        ${tenant_id},
+                        a.batch_id
+                FROM control_data_macro.eval_prescriber_fax a
+                JOIN control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+                WHERE a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                INSERT INTO control_data.prescriber_address_similarity
+                (actual_value, origin_id, created_on, group_id, root_pipeline_id, extracted_value,
+                confidence_score, file_name, similarity, levenshtein_score,intellimatch_score, tenant_id,batch_id)
+                select
+                        a.actual_value as actual_value,
+                        a.origin_id,
+                        a.created_on,
+                        a.group_id,
+                        a.root_pipeline_id,
+                        a.extracted_value  as extracted_value,
+                        a.confidence_score,
+                        a.file_name,
+                        (case
+                            when a.actual_value='' and a.extracted_value='' then 1
+                            when replace(lower(concat(a.actual_value)),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                            else similarity(replace(lower(concat(a.actual_value)),' ',''),replace(lower(a.extracted_value),' ',''))
+                            end) as similarity,
+                        (case
+                            when a.actual_value='' and a.extracted_value='' then 1
+                            when replace(lower(concat(a.actual_value)),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                            else levenshtein(replace(lower(concat(a.actual_value)),' ',''),replace(lower(a.extracted_value),' ',''))
+                            end) as levenshtein_score,
+                        a.intelli_match,
+                        ${tenant_id},
+                        a.batch_id
+                FROM control_data_macro.eval_prescriber_address a
+                JOIN control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+                WHERE a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+
+                INSERT INTO control_data.prescriber_csz_similarity
+                (actual_value, origin_id, created_on, group_id, root_pipeline_id, extracted_value,
+                confidence_score, file_name, similarity, levenshtein_score,intellimatch_score, tenant_id,batch_id)
+                select
+                        a.actual_value as actual_value,
+                        a.origin_id,
+                        a.created_on,
+                        a.group_id,
+                        a.root_pipeline_id,
+                        a.extracted_value  as extracted_value,
+                        a.confidence_score,
+                        a.file_name,
+                        (case
+                            when a.actual_value='' and a.extracted_value='' then 1
+                            when replace(lower(concat(a.actual_value)),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                            else similarity(replace(lower(concat(a.actual_value)),' ',''),replace(lower(a.extracted_value),' ',''))
+                            end) as similarity,
+                        (case
+                            when a.actual_value='' and a.extracted_value='' then 1
+                            when replace(lower(concat(a.actual_value)),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                            else levenshtein(replace(lower(concat(a.actual_value)),' ',''),replace(lower(a.extracted_value),' ',''))
+                            end) as levenshtein_score,
+                        a.intelli_match,
+                        ${tenant_id},
+                        a.batch_id
+                FROM control_data_macro.eval_prescriber_city_state_zip a
+                JOIN control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+                WHERE a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                INSERT INTO control_data.prescriber_state_similarity
+                (actual_value, origin_id, created_on, group_id, root_pipeline_id, extracted_value,
+                confidence_score, file_name, similarity, levenshtein_score,intellimatch_score, tenant_id,batch_id)
+                select
+                        a.actual_value as actual_value,
+                        a.origin_id,
+                        a.created_on,
+                        a.group_id,
+                        a.root_pipeline_id,
+                        a.extracted_value  as extracted_value,
+                        a.confidence_score,
+                        a.file_name,
+                        (case
+                            when a.actual_value='' and a.extracted_value='' then 1
+                            when replace(lower(concat(a.actual_value)),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                            else similarity(replace(lower(concat(a.actual_value)),' ',''),replace(lower(a.extracted_value),' ',''))
+                            end) as similarity,
+                        (case
+                            when a.actual_value='' and a.extracted_value='' then 1
+                            when replace(lower(concat(a.actual_value)),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                            else levenshtein(replace(lower(concat(a.actual_value)),' ',''),replace(lower(a.extracted_value),' ',''))
+                            end) as levenshtein_score,
+                        a.intelli_match,
+                        ${tenant_id},
+                       a.batch_id
+                FROM control_data_macro.eval_prescriber_state a
+                JOIN control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+                WHERE a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+
+
+                INSERT INTO control_data.prescriber_zip_similarity
+               (actual_value, origin_id, created_on, group_id, root_pipeline_id, extracted_value,
+               confidence_score, file_name, similarity, levenshtein_score,intellimatch_score, tenant_id,batch_id)
+               select
+                       a.actual_value as actual_value,
+                       a.origin_id,
+                       a.created_on,
+                       a.group_id,
+                       a.root_pipeline_id,
+                       a.extracted_value  as extracted_value,
+                       a.confidence_score,
+                       a.file_name,
+                       (case
+                           when a.actual_value='' and a.extracted_value='' then 1
+                           when replace(lower(concat(a.actual_value)),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                           else similarity(replace(lower(concat(a.actual_value)),' ',''),replace(lower(a.extracted_value),' ',''))
+                           end) as similarity,
+                       (case
+                           when a.actual_value='' and a.extracted_value='' then 1
+                           when replace(lower(concat(a.actual_value)),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                           else levenshtein(replace(lower(concat(a.actual_value)),' ',''),replace(lower(a.extracted_value),' ',''))
+                           end) as levenshtein_score,
+                       a.intelli_match,
+                       ${tenant_id},
+                       a.batch_id
+               FROM control_data_macro.eval_prescriber_zip a
+               JOIN control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+               WHERE a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                INSERT INTO control_data.prescriber_phone_similarity
+                (actual_value, origin_id, created_on, group_id, root_pipeline_id, extracted_value,
+                confidence_score, file_name, similarity, levenshtein_score,intellimatch_score, tenant_id,batch_id)
+                select
+                        a.actual_value as actual_value,
+                        a.origin_id,
+                        a.created_on,
+                        a.group_id,
+                        a.root_pipeline_id,
+                        a.extracted_value  as extracted_value,
+                        a.confidence_score,
+                        a.file_name,
+                        (case
+                            when a.actual_value='' and a.extracted_value='' then 1
+                            when replace(lower(concat(a.actual_value)),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                            else similarity(replace(lower(concat(a.actual_value)),' ',''),replace(lower(a.extracted_value),' ',''))
+                            end) as similarity,
+                        (case
+                            when a.actual_value='' and a.extracted_value='' then 1
+                            when replace(lower(concat(a.actual_value)),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                            else levenshtein(replace(lower(concat(a.actual_value)),' ',''),replace(lower(a.extracted_value),' ',''))
+                            end) as levenshtein_score,
+                        a.intelli_match,
+                        ${tenant_id},
+                        a.batch_id
+                FROM control_data_macro.eval_prescriber_phone a
+                JOIN control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+                WHERE a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                INSERT INTO control_data.prescriber_taxid_similarity
+               (actual_value, origin_id, created_on, group_id, root_pipeline_id, extracted_value,
+               confidence_score, file_name, similarity, levenshtein_score,intellimatch_score, tenant_id,batch_id)
+               select
+                       a.actual_value as actual_value,
+                       a.origin_id,
+                       a.created_on,
+                       a.group_id,
+                       a.root_pipeline_id,
+                       a.extracted_value  as extracted_value,
+                       a.confidence_score,
+                       a.file_name,
+                       (case
+                           when a.actual_value='' and a.extracted_value='' then 1
+                           when replace(lower(concat(a.actual_value)),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                           else similarity(replace(lower(concat(a.actual_value)),' ',''),replace(lower(a.extracted_value),' ',''))
+                           end) as similarity,
+                       (case
+                           when a.actual_value='' and a.extracted_value='' then 1
+                           when replace(lower(concat(a.actual_value)),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                           else levenshtein(replace(lower(concat(a.actual_value)),' ',''),replace(lower(a.extracted_value),' ',''))
+                           end) as levenshtein_score,
+                       a.intelli_match,
+                       ${tenant_id},
+                       a.batch_id
+               FROM control_data_macro.eval_prescriber_tax_id a
+               JOIN control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+               WHERE a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                INSERT INTO control_data.prescriber_city_similarity
+               (actual_value, origin_id, created_on, group_id, root_pipeline_id, extracted_value,
+               confidence_score, file_name, similarity, levenshtein_score,intellimatch_score, tenant_id,batch_id)
+               select
+                       a.actual_value as actual_value,
+                       a.origin_id,
+                       a.created_on,
+                       a.group_id,
+                       a.root_pipeline_id,
+                       a.extracted_value  as extracted_value,
+                       a.confidence_score,
+                       a.file_name,
+                       (case
+                           when a.actual_value='' and a.extracted_value='' then 1
+                           when replace(lower(concat(a.actual_value)),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                           else similarity(replace(lower(concat(a.actual_value)),' ',''),replace(lower(a.extracted_value),' ',''))
+                           end) as similarity,
+                       (case
+                           when a.actual_value='' and a.extracted_value='' then 1
+                           when replace(lower(concat(a.actual_value)),' ','') like concat('%',replace(lower(a.extracted_value),' ',''),'%') then 1
+                           else levenshtein(replace(lower(concat(a.actual_value)),' ',''),replace(lower(a.extracted_value),' ',''))
+                           end) as levenshtein_score,
+                       a.intelli_match,
+                       ${tenant_id},
+                       a.batch_id
+               FROM control_data_macro.eval_prescriber_city a
+               JOIN control_data.control_data_payload_queue b on a.origin_id=b.origin_id
+               WHERE a.group_id='${gen_group_id.group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+            "}  on-condition if "true"=="true"
+
+
+
+
+
+            
+            transform as "consolidated  control data result for prescriber entity" on "intics_zio_db_conn" using
+            {"
+                    INSERT INTO control_data.control_data_prescriber
+                    (file_name, origin_id, group_id, root_pipeline_id,
+                    actual_pres_name,extracted_pres_name, name_similarity, name_confidence_score,prescriber_name_intelli_match,prescriber_name_levenshtein_score,
+                    actual_pres_city,extracted_pres_city, city_similarity, city_confidence_score,prescriber_city_intelli_match,prescriber_city_levenshtein_score,
+                    actual_pres_csz,extracted_pres_csz, pres_csz_similarity, pres_csz_confidence_score,prescriber_csz_intelli_match,prescriber_csz_levenshtein_score,
+                    actual_pres_fax, extracted_pres_fax, pres_fax_similarity,pres_fax_confidence_score,prescriber_fax_intelli_match,prescriber_fax_levenshtein_score,
+                    acutual_addres, extracted_pres_address, add_similarity, add_confidence_score,prescriber_address_intelli_match,prescriber_address_levenshtein_score,
+                    actual_pres_npi, extracted_pres_npi,npi_similarity, npi_confidence_score,prescriber_npi_intelli_match,prescriber_npi_levenshtein_score,
+                    actual_pres_phone, extracted_pres_phone,phone_similarity, phone_confidence_score,prescriber_phone_intelli_match,prescriber_phone_levenshtein_score,
+                    actual_pres_state, extracted_pres_state,state_similarity, state_confidence_score,prescriber_state_intelli_match,prescriber_state_levenshtein_score,
+                    actual_pres_taxid, extracted_pres_taxid,tax_similarity, tax_confidence_score,prescriber_taxid_intelli_match,prescriber_taxid_levenshtein_score,
+                    actual_pres_zip, extracted_pres_zip,zip_similarity, zip_confidence_score,prescriber_zip_intelli_match,prescriber_zip_levenshtein_score,
+                    tenant_id,batch_id)
+                    SELECT  l.file_name,m.origin_id,k.group_id,k.root_pipeline_id,
+                    e.actual_value as actual_pres_name,e.extracted_value as extracted_pres_name,e.similarity as name_similarity ,e.confidence_score as name_confidence_score,e.intellimatch_score as prescriber_name_intelli_match, e.levenshtein_score as prescriber_name_levenshtein_score,
+                    b.actual_value as actual_pres_city,b.extracted_value as extracted_pres_city,b.similarity as city_similarity ,b.confidence_score as city_confidence_score ,b.intellimatch_score as prescriber_city_intelli_match, b.levenshtein_score as prescriber_city_levenshtein_score,
+                    c.actual_value as actual_pres_csz,c.extracted_value as extracted_pres_csz,c.similarity as pres_csz_similarity ,c.confidence_score as pres_csz_confidence_score,c.intellimatch_score as prescriber_csz_intelli_match, c.levenshtein_score as prescriber_csz_levenshtein_score,
+                    d.actual_value as actual_pres_fax,d.extracted_value as extracted_pres_fax,d.similarity as pres_fax_similarity,d.confidence_score pres_fax_confidence_score,d.intellimatch_score as prescriber_fax_intelli_match, d.levenshtein_score as prescriber_fax_levenshtein_score,
+                    a.actual_value as acutual_addres,a.extracted_value as extracted_pres_address,a.similarity as add_similarity,a.confidence_score as add_confidence_score ,a.intellimatch_score as prescriber_address_intelli_match, a.levenshtein_score as prescriber_address_levenshtein_score,
+                    f.actual_value as actual_pres_npi,f.extracted_value as extracted_pres_npi,f.similarity as npi_similarity ,f.confidence_score as npi_confidence_score ,f.intellimatch_score as prescriber_npi_intelli_match, f.levenshtein_score as prescriber_npi_levenshtein_score,
+                    g.actual_value as actual_pres_phone ,g.extracted_value as extracted_pres_phone,g.similarity as phone_similarity ,g.confidence_score as phone_confidence_score ,g.intellimatch_score as prescriber_phone_intelli_match, g.levenshtein_score as prescriber_phone_levenshtein_score,
+                    h.actual_value as actual_pres_state,h.extracted_value as extracted_pres_state,h.similarity as state_similarity ,h.confidence_score as state_confidence_score,h.intellimatch_score as prescriber_state_intelli_match, h.levenshtein_score as prescriber_state_levenshtein_score,
+                    i.actual_value as actual_pres_taxid,i.extracted_value as extracted_pres_taxid,i.similarity as tax_similarity ,i.confidence_score as tax_confidence_score ,i.intellimatch_score as prescriber_taxid_intelli_match, i.levenshtein_score as prescriber_taxid_levenshtein_score,
+                    j.actual_value as actual_pres_zip,j.extracted_value as extracted_pres_zip,j.similarity as zip_similarity,j.confidence_score as zip_confidence_score,j.intellimatch_score as prescriber_zip_intelli_match, j.levenshtein_score as prescriber_zip_levenshtein_score,
+                    ${tenant_id},
+                    m.batch_id
+                    FROM control_data.control_data_payload_queue m left join
+                    info.source_of_origin k on m.origin_id=k.origin_id
+                    LEFT JOIN info.asset l on l.file_id=k.file_id
+                    LEFT JOIN control_data.prescriber_address_similarity a on a.origin_id=m.origin_id
+                    LEFT JOIN control_data.prescriber_city_similarity b on m.origin_id=b.origin_id
+                    LEFT JOIN control_data.prescriber_csz_similarity c on m.origin_id=c.origin_id
+                    LEFT JOIN control_data.prescriber_fax_similarity d on m.origin_id=d.origin_id
+                    LEFT JOIN control_data.prescriber_name_similarity e on m.origin_id=e.origin_id
+                    LEFT JOIN control_data.prescriber_npi_similarity f on m.origin_id=f.origin_id
+                    LEFT JOIN control_data.prescriber_phone_similarity g on m.origin_id=g.origin_id
+                    LEFT JOIN control_data.prescriber_state_similarity h on m.origin_id=h.origin_id
+                    LEFT JOIN control_data.prescriber_taxid_similarity i on m.origin_id=i.origin_id
+                    LEFT JOIN control_data.prescriber_zip_similarity j on m.origin_id=j.origin_id
+                    WHERE  k.group_id='${gen_group_id.group_id}' and m.tenant_id = ${tenant_id} and m.batch_id = '${batch_id}';
+            
+            "}  on-condition if "true"=="true"
+
+            transform as "inserting audit for prescriber match completed" on "intics_zio_db_conn" using
+            {"
+
+                INSERT INTO control_data.control_data_pipeline_audit
+                (process_id,origin_id, created_on, group_id,  status, stage, message,root_pipeline_id, batch_id)
+                SELECT '${init_process_id.process_id}',a.origin_id,now(),'${gen_group_id.group_id}','COMPLETED','CONTROL_DATA','Control data match completed for prescriber match','${gen_id.root_pipeline_id}', batch_id
+                from  control_data.control_data_payload_queue a where group_id='${gen_group_id.group_id}' and batch_id = '${batch_id}';
+
+            "}  on-condition if "true"=="true"
+
+
+    }
+
+    catch {
+            transform as "inserting audit and updating queue for prescriber match failed" on "intics_zio_db_conn" using
+            {"
+
+                INSERT INTO control_data.control_data_pipeline_audit
+                (process_id,origin_id, created_on, group_id,  status, stage, message,root_pipeline_id, batch_id)
+                SELECT '${init_process_id.process_id}',a.origin_id,now(),'${gen_group_id.group_id}','FAILED','CONTROL_DATA','Control data match failed in prescriber match','${gen_id.root_pipeline_id}', batch_id
+                from  control_data.control_data_payload_queue a where group_id='${gen_group_id.group_id}' and batch_id = '${batch_id}';
+
+                UPDATE  control_data.control_data_payload_queue
+                SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts=now(),status='FAILED'
+                WHERE status='IN_PROGRESS' and tenant_id = ${tenant_id} and group_id='${gen_group_id.group_id}' and batch_id = '${batch_id}';
+
+            "}  on-condition if "true"=="true"
+
+    }
+
+    finally {}
+
+
+
+}

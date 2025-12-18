@@ -6,8 +6,9 @@ import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.LlmJsonParser;
-import in.handyman.raven.lib.model.kvp.llm.jsonparser.LlmJsonQueryInputTable;
-import in.handyman.raven.lib.model.kvp.llm.jsonparser.LlmJsonQueryOutputTable;
+import in.handyman.raven.lib.services.llm.jsonparser.LlmJsonQueryInputTable;
+import in.handyman.raven.lib.services.llm.jsonparser.LlmJsonQueryOutputTable;
+import in.handyman.raven.lib.services.sor.transaction.SorMetaMapperConsumer;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;
@@ -100,8 +101,8 @@ public class LlmJsonParserAction implements IActionExecution {
             Thread.sleep(1000);
 
             Integer writeBatchSize = Integer.valueOf(action.getContext().get(DB_INSERT_WRITE_BATCH_SIZE));
-            LlmJsonParserConsumerProcess llmJsonParserConsumerProcess = new LlmJsonParserConsumerProcess(log, aMarker, action, llmJsonParser);
-
+//            LlmJsonParserConsumerProcess llmJsonParserConsumerProcess = new LlmJsonParserConsumerProcess(log, aMarker, action, llmJsonParser);
+            SorMetaMapperConsumer llmJsonParserConsumerProcess = new SorMetaMapperConsumer(log, aMarker, action);
             coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, llmJsonParserConsumerProcess);
             log.info(aMarker, "LLM JSON parser Action has been completed {}  ", llmJsonParser.getName());
 

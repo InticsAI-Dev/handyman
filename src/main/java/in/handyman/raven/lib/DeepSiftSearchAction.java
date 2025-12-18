@@ -1,6 +1,5 @@
 package in.handyman.raven.lib;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import in.handyman.raven.core.utils.ProcessFileFormatE;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
@@ -8,9 +7,9 @@ import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.DeepSiftSearch;
-import in.handyman.raven.lib.model.deepSiftSearch.DeepSiftSearchConsumerProcess;
-import in.handyman.raven.lib.model.deepSiftSearch.DeepSiftSearchInputTable;
-import in.handyman.raven.lib.model.deepSiftSearch.DeepSiftSearchOutputTable;
+import in.handyman.raven.lib.services.deepSiftSearch.DeepSiftSearchConsumerProcess;
+import in.handyman.raven.lib.services.deepSiftSearch.DeepSiftSearchInputTable;
+import in.handyman.raven.lib.services.deepSiftSearch.DeepSiftSearchOutputTable;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;

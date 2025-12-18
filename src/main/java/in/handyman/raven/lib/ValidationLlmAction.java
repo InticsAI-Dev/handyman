@@ -21,9 +21,9 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 
 
-import in.handyman.raven.lib.model.validationLlm.ValidationLlmConsumerProcess;
-import in.handyman.raven.lib.model.validationLlm.ValidationLlmInputTable;
-import in.handyman.raven.lib.model.validationLlm.ValidationLlmOutputTable;
+import in.handyman.raven.lib.services.validationLlm.ValidationLlmConsumerProcess;
+import in.handyman.raven.lib.services.validationLlm.ValidationLlmInputTable;
+import in.handyman.raven.lib.services.validationLlm.ValidationLlmOutputTable;
 import okhttp3.MediaType;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;

@@ -1,0 +1,34 @@
+process "deep.sift.main"
+{
+    try
+    {
+        assign as "sift" source "intics_zio_db_conn" using
+        {"
+            SELECT
+                CASE WHEN '${agentic.paper.filter.activator}' = 'true' AND '${deep.sift.extraction.activator}' = 'true' THEN 'true' ELSE 'false' END AS deep_sift_extraction_activator,
+                CASE WHEN '${agentic.paper.filter.activator}' = 'true' AND '${deep.sift.extraction.activator}' = 'false' THEN 'true' ELSE 'false' END AS data_extraction_activator
+        "} on-condition if "true"=="true"
+
+        callprocess as "calling deep sift extraction processor"
+        with-target "deep.sift.processor"
+        from-file "${basepath}/deepSiftExtraction/deep.sift.processor.lmd"
+        using "intics_zio_db_conn"
+        for-every
+        {"
+            SELECT 1;
+        "} on-condition if "${deep.sift.extraction.activator}"=="true"
+
+    }
+    catch
+    {
+        transform as "update to FAILED in deep shift payload queue" on "intics_zio_db_conn" using
+        {"
+            UPDATE deep_sift.deep_sift_payload_queue
+            SET status='FAILED', consumed_on_ts = now(), consumer_process_id = '${process-id}'
+            WHERE batch_id ='${batch_id}' and status='STAGED' and group_id='${group_id}' and tenant_id = ${tenant_id};
+        "} on-condition if "true"=="true"
+    }
+    finally{
+
+    }
+}

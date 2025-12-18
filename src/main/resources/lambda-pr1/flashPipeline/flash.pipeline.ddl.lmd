@@ -1,0 +1,164 @@
+process "flash.pipeline.main"
+{
+try
+{
+
+
+     transform as "completed the ddl for flash pipeline" on "intics_zio_db_conn" using
+        {"
+
+            INSERT INTO ingestion.pipeline_queue_status_audit
+            (batch_id, consumed_on_ts, consumer_process_id, created_on, group_id, origin_type, producer_process_id, root_pipeline_id, stage, status,message, tenant_id)
+            VALUES('${gen_id.batch_id}', now(), ${process-id}, now(), ${gen_id.group_id}, 'FLASH_PIPELINE', ${process-id}, ${process-id}, 'FLASH_DDL', 'STARTED', 'started the ddl creation for flash pipeline', ${tenant_id});
+
+        "} on-condition if "true"=="true"
+
+     transform as "failed in paper filtering root filter audit" on "intics_zio_db_conn" using
+        {"
+
+                    create schema if not exists flash;
+                    CREATE SEQUENCE IF NOT EXISTS flash.group_id_seq
+                    INCREMENT BY 1
+                    MINVALUE 1
+                    START WITH 1
+                    NO CYCLE
+                    OWNED BY NONE;
+
+                    CREATE SEQUENCE IF NOT EXISTS flash.batch_id_seq
+                    INCREMENT BY 1
+                    MINVALUE 1
+                    START WITH 1
+                    NO CYCLE
+                    OWNED BY NONE;
+
+
+                    CREATE TABLE IF NOT EXISTS flash.paper_itemizer_audit (
+                    id bigserial NOT NULL,
+                    process_id int8 NULL,
+                    group_id int4 NULL,
+                    batch_id varchar NOT NULL,
+                    tenant_id int8 NULL,
+                    template_id varchar NULL,
+                    origin_id varchar NULL,
+                    paper_no int4 NULL,
+                    processed_file_path varchar NULL,
+                    status varchar NULL,
+                    stage varchar NULL,
+                    message varchar NULL,
+                    created_on timestamp NULL,
+                    last_updated_on timestamp null,
+                    root_pipeline_id int8 NULL,
+                    model_name varchar NULL,
+                    model_version varchar NULL,
+                    request text NULL,
+                    response text NULL,
+                    endpoint varchar NULL
+                    );
+
+
+                    CREATE TABLE if not exists flash.sanitizer_summary_truth_audit (
+                    row_count int4 NULL,
+                    batch_id varchar NOT NULL,
+                    correct_row_count int4 NULL,
+                    error_row_count int4 NULL,
+                    comments varchar NULL,
+                    created_at timestamp NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL
+                    );
+
+
+                    CREATE TABLE IF NOT EXISTS flash.file_details_truth (
+                    file_id varchar NOT NULL,
+                    process_id int8  NULL,
+                    root_pipeline_id int8  NULL,
+                    batch_id varchar NOT NULL,
+                    tenant_id int8 NULL,
+                    file_checksum varchar  NULL,
+                    file_extension varchar  NULL,
+                    file_name varchar  NULL,
+                    decoded_file_name  varchar  NULL,
+                    file_path varchar  NULL,
+                    file_size varchar  NULL,
+                    height float4 null,
+                    width float4 null,
+                    dpi int4 NULL,
+                    encode text null
+                    );
+
+
+                CREATE TABLE IF NOT EXISTS flash.pipeline_queue_status_audit(
+                id bigserial NOT NULL,
+                producer_process_id int8 NOT NULL,
+                consumer_process_id int8 NULL,
+                group_id int4 NOT NULL,
+                batch_id varchar not null,
+                created_on timestamp NOT NULL,
+                status varchar NOT NULL,
+                stage  varchar NOT NULL,
+                message varchar null,
+                consumed_on_ts timestamp NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                origin_type varchar NULL
+                );
+
+                        create table if not exists flash.radon_kvp_output_audit(
+                        id bigserial not null,
+                        created_on timestamp NULL,
+                        created_user_id varchar NULL,
+                        last_updated_on timestamp NULL,
+                        last_updated_user_id varchar NULL,
+                        input_file_path varchar null,
+                        total_response_json text null,
+                        paper_no int8 null,
+                        origin_id varchar null,
+                        process_id int8 null,
+                        action_id int8 null,
+                        process varchar null,
+                        group_id int8 null,
+                        tenant_id int8 null,
+                        root_pipeline_id int8 null,
+                        batch_id varchar null,
+                        model_registry varchar null,
+                        status varchar NULL,
+                        stage  varchar NULL,
+                        message varchar NULL,
+                        category varchar null,
+                        request text null,
+                        response text null,
+                        endpoint varchar null,
+                        sor_container_id int8 null
+                        );
+
+        "} on-condition if "true"=="true"
+
+     transform as "completed the ddl for flash pipeline" on "intics_zio_db_conn" using
+        {"
+
+            INSERT INTO ingestion.pipeline_queue_status_audit
+            (batch_id, consumed_on_ts, consumer_process_id, created_on, group_id, origin_type, producer_process_id, root_pipeline_id, stage, status,message, tenant_id)
+            VALUES('${gen_id.batch_id}', now(), ${process-id}, now(), ${gen_id.group_id}, 'FLASH_PIPELINE', ${process-id}, ${process-id}, 'FLASH_DDL', 'COMPLETED', 'completed the ddl for flash pipeline', ${tenant_id});
+
+        "} on-condition if "true"=="true"
+
+}
+catch
+{
+        transform as "completed the ddl for flash pipeline" on "intics_zio_db_conn" using
+        {"
+
+            INSERT INTO ingestion.pipeline_queue_status_audit
+            (batch_id, consumed_on_ts, consumer_process_id, created_on, group_id, origin_type, producer_process_id, root_pipeline_id, stage, status,message, tenant_id)
+            VALUES('${gen_id.batch_id}', now(), ${process-id}, now(), ${gen_id.group_id}, 'FLASH_PIPELINE', ${process-id}, ${process-id}, 'FLASH_DDL', 'FAILED', 'Failed in the ddl creation for flash pipeline', ${tenant_id});
+
+        "} on-condition if "true"=="true"
+
+}
+
+finally {
+
+
+
+}
+}

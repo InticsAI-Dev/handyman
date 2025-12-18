@@ -22,6 +22,12 @@ public class WhitelistFilterAdapter implements FieldSelectionAdapter {
                             return field;
                         }
                 })
+                .map(field -> {
+                    if (field.isLabelMatching()) {
+                        return isLabelValueMatching(field.getWhitelistedLabels(), field, "SECTIONS");
+                    }
+                    return field;
+                })
                 .collect(Collectors.toList());
     }
     public ExtractedField isLabelValueMatching(List<WhitelistLabelConfig> whitelistFields,

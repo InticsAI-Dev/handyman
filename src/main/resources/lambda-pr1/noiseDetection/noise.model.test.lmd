@@ -1,0 +1,45 @@
+process "noise.model.test"
+{
+	try {
+
+      coproStart as "Calling noise Model copro start action" for "NOISE_MODEL"
+                         copro-server-url "${copro.noise.model.admin.start.url}"
+                         export-command "${copro.noisemodel.export}"
+                         process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+                         using
+                         {"
+                             ${noiseModelStartCommand}
+
+                         "}on-condition if "true" == "true"
+
+
+                    noiseModel as "noise-detection-model for group_id ${group_id}"
+                  	on-resource-conn "intics_zio_db_conn"
+                  	copro-url "${copro.noise-detection.url}"
+                  	process-id "${process-id}"
+                  	output-table "integrated_noise_model.noise_model_output_table"
+                  	using {"
+                         select  'Noise_model',input_file_path,output_dir,origin_id,paper_no,
+                            process_id,group_id,tenant_id
+                            from integrated_noise_model.noise_model_input_table
+                            WHERE status='IN_PROGRESS' AND  group_id='${group_id}';
+                      "} on-condition if "true"=="true"
+
+             coproStop as "Calling noise model copro stop action" for "NOISE_MODEL"
+                                           copro-server-url "${copro.noise.model.admin.stop.url}"
+                                           process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+                                           using
+                                           {"
+                                               gunicorn
+
+                                           "}on-condition if "${noise.model.stop.action}"=="true"
+
+
+}
+catch{
+
+}
+finally{
+
+}
+}

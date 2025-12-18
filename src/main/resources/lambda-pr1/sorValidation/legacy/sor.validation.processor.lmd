@@ -1,0 +1,630 @@
+process "sor.validation.processor"
+{
+    try{
+           transform as "Insert into chrono-clash file wise input table using the common time interval for sor-validation" on "intics_zio_db_conn" using {"
+               INSERT INTO ${temp_schema_name}.sor_validation_chrono_clash_input_${init_process_id.process_id}
+               (root_pipeline_id, created_on, updated_on, batch_id, group_id, origin_id, tenant_id, time_frame, stage, status, transaction_id, downloaded_time, remaining_time)
+               SELECT svpq.root_pipeline_id, now(), now(), svpq.batch_id, svpq.group_id, svpq.origin_id, svpq.tenant_id,
+               ${chronoclash.threshold.time} AS time_frame,
+               'SOR_VALIDATION' AS stage,
+               CASE
+                   WHEN now() - soo.file_downloaded_time >= (${chronoclash.threshold.time} * interval '1 minute')
+                        AND '${chronoclash.activator}' = 'true' AND POSITION('SOR_VALIDATION' IN '${chronoclash.stage.controller}') > 0
+                   THEN 'ABORTED'
+                   ELSE 'IN_PROGRESS'
+               END AS status,
+               soo.transaction_id,
+               soo.file_downloaded_time as downloaded_time,
+               ((${chronoclash.threshold.time} * interval '1 minute') - (now() - soo.file_downloaded_time)) as remaining_time
+               FROM sor_validation.sor_validation_payload_queue svpq
+               JOIN ${temp_schema_name}.downloaded_asset_source_details_${init_process_id.process_id} soo on soo.root_pipeline_id = svpq.root_pipeline_id and soo.origin_id = svpq.origin_id
+               WHERE svpq.batch_id='${batch_id}' and svpq.tenant_id =${tenant_id} and svpq.stage ='SOR_VALIDATION' and svpq.status = 'STAGED';
+           "} on-condition if "${chronoclash.specific.time.interval.enabler}" == "false"
+
+           transform as "Insert into chrono-clash file wise input table using the specific time interval for sor-validation" on "intics_zio_db_conn" using {"
+               INSERT INTO ${temp_schema_name}.sor_validation_chrono_clash_input_${init_process_id.process_id}
+               (root_pipeline_id, created_on, updated_on, batch_id, group_id, origin_id, tenant_id, time_frame, stage, status, transaction_id, downloaded_time, remaining_time)
+               SELECT svpq.root_pipeline_id, now(), now(), svpq.batch_id, svpq.group_id, svpq.origin_id, svpq.tenant_id,
+               CASE
+                   WHEN (CURRENT_TIME BETWEEN scti.start_time_frame::time AND scti.end_time_frame::time)
+                   THEN scti.time_frame
+                   ELSE ${chronoclash.threshold.time}
+               END AS time_frame,
+               'SOR_VALIDATION' AS stage,
+               CASE
+                   WHEN now() - soo.file_downloaded_time >= ((time_frame) * interval '1 minute') AND '${chronoclash.activator}' = 'true' AND POSITION('SOR_VALIDATION' IN '${chronoclash.stage.controller}') > 0
+                   THEN 'ABORTED'
+                   ELSE 'IN_PROGRESS'
+               END AS status,
+               soo.transaction_id,
+               soo.file_downloaded_time as downloaded_time,
+               ((time_frame * interval '1 minute') - (now() - soo.file_downloaded_time)) as remaining_time
+               FROM sor_validation.sor_validation_payload_queue svpq
+               JOIN ${temp_schema_name}.downloaded_asset_source_details_${init_process_id.process_id} soo on soo.root_pipeline_id = svpq.root_pipeline_id and soo.origin_id = svpq.origin_id
+               JOIN config.spw_chrono_clash_time_interval scti on scti.tenant_id = svpq.tenant_id and scti.instance = '${root-pipeline-name}' and CURRENT_TIME BETWEEN scti.start_time_frame::time AND scti.end_time_frame::time
+               WHERE svpq.batch_id='${batch_id}' and svpq.tenant_id =${tenant_id} and svpq.stage ='SOR_VALIDATION' and svpq.status = 'STAGED';
+           "} on-condition if "${chronoclash.specific.time.interval.enabler}" == "true"
+
+           transform as "update to in-progress sor validation payload queue" on "intics_zio_db_conn" using
+           {"
+                UPDATE sor_validation.sor_validation_payload_queue as svpq
+                SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts='${time_stamp_sor_validation.consumed_on_ts}', status=a.status
+                FROM ${temp_schema_name}.sor_validation_chrono_clash_input_${init_process_id.process_id} a
+                WHERE a.origin_id = svpq.origin_id and svpq.group_id ='${group_id}' AND svpq.status ='STAGED' AND svpq.stage ='SOR_VALIDATION' and svpq.tenant_id = ${tenant_id} and svpq.batch_id = '${batch_id}';
+
+                UPDATE batching.sub_batching_process_payload_queue as svpq
+                SET status=a.status,  stage='SOR_VALIDATION'
+                FROM ${temp_schema_name}.sor_validation_chrono_clash_input_${init_process_id.process_id} a
+                WHERE a.origin_id = svpq.origin_id and svpq.group_id='${group_id}' and svpq.batch_id ='${batch_id}' and svpq.tenant_id = ${tenant_id};
+
+                update ingestion.pipeline_queue_status_audit as svpq
+                set status = a.status , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                FROM ${temp_schema_name}.sor_validation_chrono_clash_input_${init_process_id.process_id} a
+                WHERE a.origin_id = svpq.origin_id and svpq.group_id=${group_id} and svpq.batch_id='${batch_id}' and svpq.tenant_id =${tenant_id} and svpq.stage ='SOR_VALIDATION' ;
+
+                UPDATE info.transaction
+                SET transaction_status='IN_PROGRESS'
+                WHERE transaction_id='${transaction_id}' and tenant_id=${tenant_id};
+
+                INSERT INTO sor_validation.sor_validation_pipeline_audit
+                (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+                SELECT svpq.group_id, now(), svpq.tenant_id, svpq.tenant_id, svpq.tenant_id, 'STARTED', 'SOR_VALIDATION', 'Sor Validation process started for group_id ${group_id}', svpq.root_pipeline_id, svpq.batch_id
+                FROM sor_validation.sor_validation_payload_queue svpq
+                JOIN ${temp_schema_name}.sor_validation_chrono_clash_input_${init_process_id.process_id} a ON a.origin_id = svpq.origin_id AND a.tenant_id = svpq.tenant_id
+                WHERE svpq.status = a.status and svpq.group_id='${group_id}' and svpq.tenant_id = ${tenant_id} and svpq.batch_id = '${batch_id}';
+           "} on-condition if "true"=="true"
+
+           transform as "Input table for the ocr text comparison" on "intics_zio_db_conn" using
+           {"
+                INSERT INTO ${temp_schema_name}.ocr_text_comparison_input_${init_process_id.process_id}
+                (created_on, created_user_id, last_updated_on,last_updated_user_id,  tenant_id, origin_id, group_id, paper_no, sor_question, answer,
+                vqa_score, score, weight, sor_item_attribution_id, sor_item_name, document_id, b_box, root_pipeline_id, question_id, synonym_id,
+                model_registry, category, batch_id, is_ocr_field_comparable, extracted_text, allowed_adapter, encryption_policy,is_encrypted)
+                SELECT now(),${tenant_id}, now(),${tenant_id},${tenant_id}, vt.origin_id, vt.group_id, vt.paper_no, vt.sor_question, vt.answer,
+                vt.vqa_score, vt.score, vt.weight, vt.sor_item_attribution_id, vt.sor_item_name, vt.document_id, vt.b_box, vt.root_pipeline_id, vt.question_id, vt.synonym_id,
+                vt.model_registry, vt.category, vt.batch_id, si.is_ocr_field_comparable, dsoa.extracted_text, si.allowed_adapter, ep.encryption_policy,si.is_encrypted
+                FROM sor_validation.sor_validation_payload_queue sqv
+                JOIN ${temp_schema_name}.vqa_transaction_${init_process_id.process_id} vt  ON vt.origin_id = sqv.origin_id and vt.batch_id = sqv.batch_id
+                LEFT JOIN ${temp_schema_name}.deep_sift_output_${init_process_id.process_id} dsoa ON dsoa.origin_id = vt.origin_id AND dsoa.paper_no = vt.paper_no and vt.batch_id = dsoa.batch_id
+                JOIN sor_meta.sor_container sc ON vt.tenant_id = sc.tenant_id
+                JOIN sor_meta.sor_item si ON si.sor_container_id = sc.sor_container_id AND si.tenant_id = sc.tenant_id AND si.sor_item_name = vt.sor_item_name
+                JOIN sor_meta.encryption_policies ep ON si.encryption_policy_id=ep.encryption_policy_id
+                WHERE vt.group_id = '${group_id}' AND vt.tenant_id = ${tenant_id} AND sqv.batch_id = '${batch_id}' AND sqv.status='IN_PROGRESS' AND
+                 sc.document_type = '${document_type}' AND sc.status='ACTIVE' and si.status='ACTIVE';
+           "} on-condition if "${ocr.text.comparison.validator}"=="true"
+
+
+
+           ocrTextComparator as "Ocr Text Comparator api calling macro"
+           on-resource-conn "intics_zio_db_conn"
+           output-table "${temp_schema_name}.ocr_text_comparison_result_${init_process_id.process_id}"
+           batch-id "${batch_id}"
+           using {"
+            SELECT
+                   ROW_NUMBER() OVER (ORDER BY root_pipeline_id) AS id,
+                   tenant_id,
+                   origin_id,
+                   group_id,
+                   paper_no,
+                   sor_question,
+                   answer,
+                   vqa_score,
+                   score,
+                   weight,
+                   sor_item_attribution_id,
+                   sor_item_name,
+                   document_id,
+                   b_box,
+                   root_pipeline_id,
+                   question_id,
+                   synonym_id,
+                   model_registry,
+                   category,
+                   batch_id,
+                   is_ocr_field_comparable,
+                   extracted_text,
+                   allowed_adapter,
+                   encryption_policy,
+                   is_encrypted
+            FROM ${temp_schema_name}.ocr_text_comparison_input_${init_process_id.process_id}
+            where batch_id='${batch_id}' and is_ocr_field_comparable is true;
+            "}on-condition if "${ocr.text.comparison.validator}"=="true"
+
+           transform as "Output table insert for the ocr text comparison having ocr comparable false" on "intics_zio_db_conn" using
+           {"
+
+               insert into ${temp_schema_name}.ocr_text_comparison_result_${init_process_id.process_id}
+               (created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, origin_id, group_id, paper_no, sor_question, answer,
+               vqa_score, score, weight, sor_item_attribution_id, sor_item_name, document_id, b_box, root_pipeline_id, question_id, synonym_id,
+               model_registry, category, batch_id, is_ocr_field_comparable, extracted_text)
+               SELECT created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, origin_id, group_id, paper_no, sor_question, answer,
+               vqa_score, score, weight, sor_item_attribution_id, sor_item_name, document_id, b_box, root_pipeline_id, question_id, synonym_id,
+               model_registry, category, batch_id, is_ocr_field_comparable, extracted_text
+               FROM ${temp_schema_name}.ocr_text_comparison_input_${init_process_id.process_id}
+               where batch_id ='${batch_id}' and is_ocr_field_comparable is false ;
+
+           "} on-condition if "${ocr.text.comparison.validator}"=="true"
+
+
+            assign as "voting" source "intics_zio_db_conn" using
+            {"
+                SELECT (CASE WHEN '${voting.activator}' = 'false' AND '${voting.multi.value.line.item.activator}' = 'true' then 'true' else 'false' end) as multi_value_sor_item;
+            "}on-condition if "true"=="true"
+
+            assign as "pipeline_train_mode" source "intics_zio_db_conn" using
+              {"
+                      select  (case when '${printed.start.action}'='true' AND '${pipeline.train.mode}'='true' then 'true' else 'false' end) as vqa_printed;
+                      select  (case when '${handwritten.start.action}'='true' AND '${pipeline.train.mode}'='true' then 'true' else 'false' end) as vqa_handwritten;
+                      select  (case when '${validation.start.action}'='true' AND '${pipeline.train.mode}'='true' then 'true' else 'false' end) as valuation;
+              "}on-condition if "true"=="true"
+
+            assign as "voting" source "intics_zio_db_conn" using
+            {"
+                SELECT (CASE WHEN '${voting.activator}' = 'true' AND '${voting.v1.activator}' = 'true' then 'true' else 'false' end) as voting_v1;
+                SELECT (CASE WHEN '${voting.activator}' = 'true' AND '${voting.v2.activator}' = 'true' then 'true' else 'false' end) as voting_v2;
+                SELECT (CASE WHEN '${voting.activator}' = 'true' AND '${voting.v3.activator}' = 'true' then 'true' else 'false' end) as voting_v3;
+            "}on-condition if "true"=="true"
+
+            callprocess as "calling sor_validation for the ocr comparison  processor"
+            with-target "sor.ocr.comparison.scalar.processor"
+            from-file "${basepath}/sorValidation/legacy/sor.ocr.comparison.scalar.processor.lmd"
+            using "intics_zio_db_conn"
+            for-every {"
+                   SELECT DISTINCT group_id
+                   FROM sor_validation.sor_validation_payload_queue
+                   WHERE status='IN_PROGRESS' and tenant_id = ${tenant_id} and group_id = '${gen_group_id.group_id}' and batch_id = '${batch_id}';
+            "} on-condition if "${ocr.text.comparison.validator}"=="true"
+
+            callprocess as "calling sor_validation for scalar processor"
+            with-target "sor.scalar.validation.processor"
+            from-file "${basepath}/sorValidation/legacy/sor.scalar.validation.processor.lmd"
+            using "intics_zio_db_conn"
+            for-every {"
+                  SELECT DISTINCT group_id
+                  FROM sor_validation.sor_validation_payload_queue
+                  WHERE status='IN_PROGRESS' and tenant_id = ${tenant_id} and group_id = '${gen_group_id.group_id}' and batch_id = '${batch_id}';
+            "} on-condition if "${ocr.text.comparison.validator}"=="false"
+
+
+            transform as "insert audit for aggregator started" on "intics_zio_db_conn" using
+            {"
+                INSERT INTO sor_validation.sor_validation_pipeline_audit
+                (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+                VALUES('${group_id}', now(), '${created_user_id}', '${created_user_id}', ${tenant_id}, 'STARTED', 'AGGREGATOR', 'aggregation started for the files with group_id ${group_id}', '${gen_id.root_pipeline_id}', '${batch_id}');
+            "} on-condition if "true"=="true"
+
+
+            assign as "pipeline_postprocessing_with_aggregator" source "intics_zio_db_conn" using
+            {"
+              select  (case when '${voting.activator}'='false' AND '${pipeline.postprocessing.bsh.class.activator}'='false' and '${voting.multi.value.line.item.activator}'='false' then 'true' else 'false' end) as aggregator_true;
+              select  (case when '${voting.activator}'='false' AND '${pipeline.postprocessing.bsh.class.activator}'='true' then 'true' else 'false' end) as pipeline_postprocessing_true;
+            "} on-condition if "true"=="true"
+
+             transform as "insert into weighted value" on "intics_zio_db_conn" using {"
+                INSERT INTO voting.weighted_value
+                (validation_id, origin_id, sor_item_name, paper_no, extracted_value,
+                group_id, created_on, freq, weight_rank, weight_score, confidence_score, difference, root_pipeline_id, tenant_id, model_registry, batch_id)
+                select min(a.validation_id), a.origin_id,a.sor_item_name,a.paper_no,a.predicted_value,a.group_id,now(),count(a.predicted_value),
+                row_number() over(partition by a.origin_id ,a.paper_no, a.sor_item_name ORDER BY SUM(b.weights) DESC) as weight_rank,
+                b.weights,a.vqa_score,0 , '${gen_id.root_pipeline_id}', ${tenant_id}, a.model_registry, st.batch_id
+                from ${temp_schema_name}.scalar_validation_${init_process_id.process_id} a
+                join sor_meta.sor_question b on a.question=b.question
+                join sor_validation.sor_validation_payload_queue st on st.origin_id=a.origin_id
+                where st.group_id='${group_id}' and st.tenant_id = ${tenant_id} and st.batch_id = '${batch_id}'
+                group by a.origin_id,a.sor_item_name,a.paper_no,a.predicted_value,a.group_id,b.weights,a.vqa_score, a.model_registry, st.batch_id;
+            "} on-condition if "${voting.activator}"=="false"
+
+            transform as "insert into aggregator table without post-processing" on "intics_zio_db_conn" using {"
+                INSERT INTO ${temp_schema_name}.aggregation_evaluator_${init_process_id.process_id}
+                (created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, aggregated_score, masked_score, origin_id,
+                paper_no, predicted_value, rank, sor_item_attribution_id, sor_item_name, document_id,b_box,group_id, root_pipeline_id,
+                vqa_score,question_id,synonym_id, model_registry, batch_id, frequency)
+                    SELECT now(),'${created_user_id}',now(),'${created_user_id}',${tenant_id}, a.confidence_score,a.weight_score,a.origin_id,
+                a.paper_no,a.extracted_value as answer,a.weight_rank, 0 as sor_item_id, a.sor_item_name,'${document_id}',b.b_box,'${group_id}','${gen_id.root_pipeline_id}',
+                b.vqa_score,b.question_id,b.synonym_id,a.model_registry, a.batch_id,1 as frequency
+                FROM voting.weighted_value a
+                JOIN ${temp_schema_name}.scalar_validation_${init_process_id.process_id} b ON  a.validation_id = b.validation_id
+                join sor_validation.sor_validation_payload_queue st on st.origin_id=a.origin_id and st.batch_id = a.batch_id
+                WHERE a.group_id  = '${group_id}' and a.weight_rank =1  and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+            "} on-condition if "${pipeline_postprocessing_with_aggregator.aggregator_true}"=="true"
+
+
+            transform as "handling multi value sor item " on "intics_zio_db_conn" using {"
+                insert into ${temp_schema_name}.multi_value_sor_item_${init_process_id.process_id}
+                  ( tenant_id, aggregated_score, masked_score, origin_id,
+                 paper_no, predicted_value, rank, sor_item_attribution_id, sor_item_name, document_id,b_box,group_id, root_pipeline_id,vqa_score,question_id,synonym_id, model_registry, batch_id, frequency)
+                SELECT DISTINCT ON (
+                       a.origin_id, a.paper_no, a.extracted_value, a.sor_item_name, b.question_id, b.synonym_id, a.batch_id
+                   )
+                       ${tenant_id} AS tenant_id,
+                       a.confidence_score,
+                       a.weight_score,
+                       a.origin_id,
+                       a.paper_no,
+                       a.extracted_value,
+                       a.weight_rank,
+                       0 AS sor_item_attribution_id,
+                       a.sor_item_name,
+                       '${document_id}' AS document_id,
+                       b.b_box,
+                       ${group_id} AS group_id,
+                       ${init_process_id.process_id} AS root_pipeline_id,
+                       b.vqa_score,
+                       b.question_id,
+                       b.synonym_id,
+                       a.model_registry,
+                       a.batch_id,
+                       1 AS frequency
+                   FROM voting.weighted_value a
+                   JOIN ${temp_schema_name}.scalar_validation_${init_process_id.process_id} b
+                     ON a.validation_id = b.validation_id
+                   AND a.tenant_id = b.tenant_id
+                   JOIN sor_validation.sor_validation_payload_queue st
+                     ON st.origin_id = a.origin_id
+                   AND st.batch_id = a.batch_id
+                   JOIN sor_meta.sor_item si
+                     ON si.sor_item_name = a.sor_item_name
+                   AND si.line_item_type = 'multi_value'
+                   AND st.tenant_id = si.tenant_id
+                   WHERE a.root_pipeline_id =${init_process_id.process_id} and a.tenant_id = ${tenant_id}
+                        and a.batch_id = '${batch_id}';
+
+            "} on-condition if "${voting.multi_value_sor_item}"=="true"
+
+            multivalueConcatenation as "insert into aggregate cleaned result with string Concatenation for multiple values"
+            on-resource-conn "intics_zio_db_conn"
+            output-table "macro.aggregate_cleaned_result"
+            group-id "${group_id}"
+            batch-id "${batch_id}"
+            using {"
+                    SELECT DISTINCT a.tenant_id, a.aggregated_score, a.masked_score, a.origin_id, a.paper_no, a.predicted_value,
+                     a.rank, a.sor_item_attribution_id, a.sor_item_name, a.document_id, a.b_box, a.group_id, a.root_pipeline_id,
+                     a.vqa_score, a.question_id, a.synonym_id, a.model_registry, a.batch_id, a.frequency, smca.is_encrypted, smca.encryption_policy
+                    FROM ${temp_schema_name}.multi_value_sor_item_${init_process_id.process_id} a
+                    JOIN ${temp_schema_name}.sor_meta_consolidated_${init_process_id.process_id} smca ON smca.tenant_id = a.tenant_id
+                              AND smca.root_pipeline_id = a.root_pipeline_id
+                              AND smca.synonym_id = a.synonym_id
+                              AND smca.sor_item_name = a.sor_item_name
+                    WHERE a.group_id = '${group_id}' AND a.tenant_id = ${tenant_id} AND a.batch_id = '${batch_id}' AND a.root_pipeline_id = '${gen_id.root_pipeline_id}';
+            "} on-condition if "${voting.multi_value_sor_item}"=="true"
+
+            postProcessingExecutor as "insert into aggregator table with post-processing"
+            on-resource-conn "intics_zio_db_conn"
+            output-table "${temp_schema_name}.aggregation_evaluator_${init_process_id.process_id}"
+            group-id "${group_id}"
+            batch-id "${batch_id}"
+            using
+            {"
+                   SELECT
+                     a.tenant_id as tenant_id,
+                     a.confidence_score as aggregated_score,
+                     a.weight_score as masked_score,
+                     a.origin_id,
+                     a.paper_no,
+                     a.extracted_value,
+                     b.vqa_score,
+                     a.weight_rank as rank,
+                     smca.sor_item_attribution_id as sor_item_attribution_id,
+                     a.sor_item_name,
+                     '${document_id}' as documentId,
+                     1 as acc_transaction_id,
+                     b.b_box,
+                     a.root_pipeline_id as root_pipeline_id,
+                     a.freq as frequency,
+                     b.question_id,
+                     b.synonym_id,
+                     a.model_registry,
+                     smca.is_encrypted,
+                     smca.encryption_policy
+                   FROM
+                     voting.weighted_value a
+                     JOIN ${temp_schema_name}.scalar_validation_${init_process_id.process_id} b ON a.validation_id = b.validation_id
+                     JOIN ${temp_schema_name}.sor_meta_consolidated_${init_process_id.process_id} smca ON
+                                     smca.tenant_id = b.tenant_id
+                                     AND smca.group_id = b.group_id
+                                     AND smca.synonym_id = b.synonym_id
+                                     AND smca.sor_item_name = b.sor_item_name
+                     JOIN sor_validation.sor_validation_payload_queue st ON st.origin_id = a.origin_id
+                                     AND st.batch_id = a.batch_id
+                                     AND st.tenant_id = b.tenant_id
+                   WHERE
+                     a.group_id = '${group_id}'
+                         AND a.weight_rank = 1
+                         AND a.tenant_id = ${tenant_id}
+                         AND a.batch_id = '${batch_id}'
+                         AND a.root_pipeline_id = '${gen_id.root_pipeline_id}';
+                "} on-condition if "${pipeline_postprocessing_with_aggregator.pipeline_postprocessing_true}"=="true"
+
+
+
+            postProcessingExecutor as "insert into aggregator table with post-processing for single values"
+            on-resource-conn "intics_zio_db_conn"
+            output-table "${temp_schema_name}.aggregation_evaluator_${init_process_id.process_id}"
+            group-id "${group_id}"
+            batch-id "${batch_id}"
+            using
+            {"
+                SELECT DISTINCT
+                  a.tenant_id as tenant_id,
+                  a.confidence_score as aggregated_score,
+                  a.weight_score as masked_score,
+                  a.origin_id,
+                  a.paper_no,
+                  a.extracted_value,
+                  b.vqa_score,
+                  a.weight_rank as rank,
+                  smca.sor_item_attribution_id as sor_item_attribution_id,
+                  a.sor_item_name,
+                  '${document_id}' as documentId,
+                  1 as acc_transaction_id,
+                  b.b_box,
+                  a.root_pipeline_id as root_pipeline_id,
+                  a.freq as frequency,
+                  b.question_id,
+                  b.synonym_id,
+                  a.model_registry,
+                  smca.is_encrypted,
+                  smca.encryption_policy,
+                  'single_value' as line_item_type
+                FROM
+                  voting.weighted_value a
+                  JOIN ${temp_schema_name}.scalar_validation_${init_process_id.process_id} b ON a.validation_id = b.validation_id
+                  JOIN ${temp_schema_name}.sor_meta_consolidated_${init_process_id.process_id} smca ON smca.tenant_id = b.tenant_id
+                                  AND smca.group_id = b.group_id
+                                  AND smca.synonym_id = b.synonym_id
+                                  AND smca.sor_item_name = b.sor_item_name
+                  JOIN sor_validation.sor_validation_payload_queue st ON st.origin_id = a.origin_id
+                                  AND st.batch_id = a.batch_id
+                                  AND st.tenant_id = b.tenant_id
+                WHERE
+                  a.group_id = '${group_id}'
+                      AND a.weight_rank = 1
+                      AND a.tenant_id = ${tenant_id}
+                      AND a.batch_id = '${batch_id}'
+                      AND a.root_pipeline_id = '${gen_id.root_pipeline_id}'
+                      AND smca.line_item_type <> 'multi_value';
+
+            "} on-condition if "${voting.multi_value_sor_item}"=="true"
+
+             postProcessingExecutor as "insert into aggregator table with post-processing for multiple values"
+            on-resource-conn "intics_zio_db_conn"
+            output-table "${temp_schema_name}.aggregation_evaluator_${init_process_id.process_id}"
+            group-id "${group_id}"
+            batch-id "${batch_id}"
+            using
+            {"
+
+                      SELECT DISTINCT
+                      b.tenant_id,
+                      b.aggregated_score,
+                      b.masked_score,
+                      b.origin_id,
+                      b.paper_no,
+                      b.predicted_value as extracted_value ,
+                      b.vqa_score,
+                      b.rank,
+                      smca.sor_item_attribution_id as sor_item_attribution_id,
+                      b.sor_item_name,
+                      'TMP-AGD-001' as documentId,
+                      1 as acc_transaction_id,
+                      b.b_box,
+                      b.root_pipeline_id as root_pipeline_id,
+                      b.frequency,
+                      b.question_id,
+                      b.synonym_id,
+                      b.model_registry,
+                      smca.is_encrypted,
+                      smca.encryption_policy,
+                      'multi_value' as line_item_type
+                   from macro.aggregate_cleaned_result b
+                      JOIN ${temp_schema_name}.sor_meta_consolidated_${init_process_id.process_id} smca ON smca.tenant_id = b.tenant_id
+                                      AND smca.root_pipeline_id = b.root_pipeline_id
+                                      AND smca.synonym_id = b.synonym_id
+                                      AND smca.sor_item_name = b.sor_item_name
+                      JOIN sor_validation.sor_validation_payload_queue st ON st.origin_id = b.origin_id
+                                      AND st.batch_id = b.batch_id
+                                      AND st.tenant_id = b.tenant_id
+                    WHERE
+                          b.group_id = '${group_id}'
+                          AND b.tenant_id = ${tenant_id}
+                          AND b.batch_id = '${batch_id}'
+                          AND b.root_pipeline_id = '${gen_id.root_pipeline_id}'
+                          AND smca.line_item_type = 'multi_value';
+
+
+                        "} on-condition if "${voting.multi_value_sor_item}"=="true"
+
+
+              callprocess as "calling voting version 1"
+              with-target "voting.processor.v1"
+              from-file "${basepath}/voting/voting.processor.v1.lmd"
+              using "intics_zio_db_conn"
+              for-every {"
+                       SELECT '${group_id}' as group_id;
+              "} on-condition if "${voting.voting_v1}"=="true"
+
+              callprocess as "calling voting version 2"
+              with-target "voting.processor.v2"
+              from-file "${basepath}/voting/voting.processor.v2.lmd"
+              using "intics_zio_db_conn"
+              for-every {"
+                       SELECT '${group_id}' as group_id;
+              "} on-condition if "${voting.voting_v2}"=="true"
+
+              callprocess as "calling voting version 3"
+              with-target "voting.processor.v3"
+              from-file "${basepath}/voting/voting.processor.v3.lmd"
+              using "intics_zio_db_conn"
+              for-every {"
+                       SELECT '${group_id}' as group_id;
+              "} on-condition if "${voting.voting_v3}"=="true"
+
+
+            transform as "update to completed sor validation payload queue" on "intics_zio_db_conn" using
+            {"
+
+                INSERT INTO sor_validation.sor_validation_pipeline_audit
+                (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+                VALUES('${group_id}', now(), '${created_user_id}', '${created_user_id}', ${tenant_id}, 'COMPLETED', 'AGGREGATOR',
+                'aggregator validation completed for the files with group_id ${group_id}', '${gen_id.root_pipeline_id}', '${batch_id}');
+
+                  UPDATE sor_validation.sor_validation_payload_queue
+                  SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts='${time_stamp_sor_validation.consumed_on_ts}', status='COMPLETED'
+                  WHERE group_id ='${group_id}' AND status ='IN_PROGRESS'
+                  AND stage ='SOR_VALIDATION' AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                    update ingestion.pipeline_queue_status_audit as a
+                    set status = 'IN_PROGRESS' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                    where  a.group_id=${group_id}
+                    and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='SOR_VALIDATION' ;
+
+					UPDATE batching.sub_batching_process_payload_queue a
+					 SET status='COMPLETED',  stage='SOR_VALIDATION'
+					 WHERE a.group_id='${group_id}'  and a.batch_id ='${batch_id}'
+					 and a.tenant_id = ${tenant_id} and a.root_pipeline_id='${gen_id.root_pipeline_id}';
+
+            "} on-condition if "true"=="true"
+
+
+    }
+    catch{
+            transform as "Insert to failed sor validation audit queue" on "intics_zio_db_conn" using
+            {"
+
+                    UPDATE sor_validation.sor_validation_payload_queue
+                    SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts='${time_stamp_sor_validation.consumed_on_ts}', status='FAILED'
+                    WHERE group_id ='${group_id}' AND status ='IN_PROGRESS'
+                    AND stage ='SOR_VALIDATION' AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                    update ingestion.pipeline_queue_status_audit as a
+                    set status = 'FAILED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                    where  a.group_id=${group_id}
+                    and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='SOR_VALIDATION' and status='IN_PROGRESS' ;
+
+                    INSERT INTO sor_validation.sor_validation_pipeline_audit
+                    (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+                    VALUES('${group_id}', now(), '${created_user_id}', '${created_user_id}', ${tenant_id}, 'FAILED', 'SCALAR', 'scalar validation failes for the files with group_id ${group_id}','${gen_id.root_pipeline_id}', '${batch_id}');
+                    INSERT INTO sor_validation.sor_validation_pipeline_audit
+                    (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+                    VALUES('${group_id}', now(), '${created_user_id}', '${created_user_id}', ${tenant_id}, 'COMPLETED', 'SOR_VALIDATION', 'Sor transaction failed in sor processor with group_id ${group_id}', '${gen_id.root_pipeline_id}', '${batch_id}');
+
+					UPDATE batching.sub_batching_process_payload_queue a
+					 SET status='FAILED',  stage='SOR_VALIDATION'
+					 WHERE a.group_id='${group_id}'  and a.batch_id ='${batch_id}'
+					 and a.tenant_id = ${tenant_id} and a.root_pipeline_id='${gen_id.root_pipeline_id}';
+
+            "} on-condition if "true"=="true"
+    }
+    finally{
+            transform as "Insert to audit table for ocr text comparison" on "intics_zio_db_conn" using
+            {"
+                    INSERT INTO macro.ocr_text_comparison_input_audit
+                    (created_on, created_user_id, last_updated_on,last_updated_user_id, tenant_id,origin_id,group_id,paper_no,sor_question,answer,vqa_score,score,weight,sor_item_attribution_id,
+                      sor_item_name,document_id,b_box,root_pipeline_id,question_id,synonym_id,model_registry,
+                      category,batch_id,is_ocr_field_comparable,extracted_text,allowed_adapter,encryption_policy,is_encrypted)
+                    SELECT now(),${tenant_id}, now(),${tenant_id},tenant_id,origin_id,group_id,paper_no,sor_question,answer,vqa_score,score,weight,sor_item_attribution_id,
+                         sor_item_name,document_id,b_box,root_pipeline_id,question_id,synonym_id,model_registry,
+                         category,batch_id,is_ocr_field_comparable,extracted_text,allowed_adapter,encryption_policy,is_encrypted
+                    FROM ${temp_schema_name}.ocr_text_comparison_input_${init_process_id.process_id}
+                    where batch_id='${batch_id}';
+              "} on-condition if "${ocr.text.comparison.validator}"=="true"
+
+            transform as "Insert to failed sor validation audit queue" on "intics_zio_db_conn" using
+            {"
+                    UPDATE sor_validation.sor_validation_payload_queue
+                    SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts='${time_stamp_sor_validation.consumed_on_ts}', status='FAILED'
+                    WHERE group_id ='${group_id}' AND status ='IN_PROGRESS'
+                    AND stage ='SOR_VALIDATION' AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                    update ingestion.pipeline_queue_status_audit as a
+                    set status = 'FAILED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                    where  a.group_id=${group_id}
+                    and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='SOR_VALIDATION' and status='IN_PROGRESS';
+
+            "} on-condition if "true"=="true"
+
+            transform as "insert into pipeline summary audit sor validation pipeline" on "intics_zio_db_conn" using
+            {"
+
+                 INSERT INTO audit.pipeline_summary_audit
+                 (process_id, created_on, module_name, macro_process, files_processed_count,papers_processed_count,files_failed_count,papers_failed_count,start_time,end_time, time_taken, group_id, root_pipeline_id, created_user_id, template_id, tenant_id,average_time, batch_id )
+                 SELECT
+                    msaf.process_id ,
+                    now(),
+                    msaf.module_name ,
+                    msaf.macro_process ,
+                    msaf.completed_count,
+                    msap.completed_count,
+                    msaf.failed_count,
+                    msap.failed_count,
+                    msap.min_created_on,
+                    msap.max_created_on,
+                    EXTRACT(epoch FROM (msap.max_created_on-msap.min_created_on)),
+                   '${group_id}',
+                   '${gen_id.root_pipeline_id}',
+                   '${created_user_id}',
+                   '${document_id}',
+                   ${tenant_id},
+                   (CASE WHEN (msaf.completed_count+msaf.failed_count)=0 THEN msaf.time_taken WHEN (msaf.time_taken/(msaf.completed_count+msaf.failed_count))=0 THEN msaf.time_taken ELSE (msaf.time_taken/(msaf.completed_count+msaf.failed_count)) END),
+                   msaf.batch_id
+                 FROM ${temp_schema_name}.summary_audit_files_${process-id} msaf,
+                 ${temp_schema_name}.summary_audit_papers_${process-id} msap
+                 WHERE msaf.module_name=msap.module_name AND msaf.macro_process=msap.macro_process AND msaf.batch_id=msap.batch_id AND
+                 msaf.module_name='SOR_VALIDATION'
+                 AND msaf.macro_process='VALIDATION_MACRO' and msaf.tenant_id = ${tenant_id} and msaf.batch_id = '${batch_id}';
+
+         "} on-condition if "${ocr.text.comparison.validator}"=="true"
+
+            transform as "insert into sor grouping after completed" on "intics_zio_db_conn" using {"
+                INSERT INTO sor_grouping.sor_grouping_payload_queue
+                (producer_process_id, origin_id, group_id, created_on, status, stage, root_pipeline_id, tenant_id, batch_id)
+                SELECT producer_process_id, origin_id, group_id, cast(created_on as TIMESTAMP), 'STAGED', 'SOR_GROUPING', root_pipeline_id, ${tenant_id}, batch_id
+                FROM sor_validation.sor_validation_payload_queue
+                where status='COMPLETED' and stage='SOR_VALIDATION'
+                AND group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                INSERT INTO ingestion.pipeline_queue_status_audit
+                (producer_process_id, consumer_process_id, origin_id,batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, origin_type)
+                select producer_process_id, consumer_process_id, origin_id, batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, '${origin_type}'
+                from sor_grouping.sor_grouping_payload_queue
+                where group_id='${gen_group_id.group_id}' and batch_id='${batch_id}' and tenant_id =${tenant_id};
+
+
+            "} on-condition if "true"=="true"
+
+            transform as "Move to archive after completed" on "intics_zio_db_conn" using {"
+                update ingestion.pipeline_queue_status_audit as a
+                set status = 'COMPLETED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                where  a.group_id=${group_id}
+                and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='SOR_VALIDATION' ;
+
+                INSERT INTO sor_validation.sor_validation_payload_queue_archive
+                (producer_process_id, consumer_process_id, origin_id,group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, batch_id)
+                SELECT producer_process_id, consumer_process_id, origin_id, group_id, created_on, status, stage,consumed_on_ts, root_pipeline_id, ${tenant_id}, batch_id
+                FROM sor_validation.sor_validation_payload_queue
+                where status='COMPLETED' and stage='SOR_VALIDATION'
+                AND group_id='${group_id}' and tenant_id = ${tenant_id}
+                and batch_id = '${batch_id}';
+
+                Delete from sor_validation.sor_validation_payload_queue
+             where status='COMPLETED' and stage='SOR_VALIDATION' AND group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+
+            "} on-condition if "true"=="true"
+
+
+         transform as "update chronoclash audit form temporary tables" on "intics_zio_db_conn" using
+         {"
+                UPDATE chrono_clash.chrono_clash_audit as cca
+                SET updated_on=now(), stage='SOR_VALIDATION', status=ppq.status, remaining_time=((a.time_frame * interval '1 minute') - (now() - a.downloaded_time))
+                FROM ${temp_schema_name}.sor_validation_chrono_clash_input_${init_process_id.process_id} a
+                JOIN sor_validation.sor_validation_payload_queue ppq ON ppq.origin_id = a.origin_id AND ppq.tenant_id = a.tenant_id
+                WHERE cca.origin_id = a.origin_id and a.group_id=${group_id} and a.tenant_id = ${tenant_id} and a.batch_id ='${batch_id}';
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.sor_validation_chrono_clash_input_${init_process_id.process_id};
+         "}  on-condition if "${chronoclash.activator}"=="true"
+
+
+
+    }
+}

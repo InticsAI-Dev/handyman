@@ -1,0 +1,66 @@
+process "error.queue.main.caller"
+{
+try{
+            callprocess as "calling error queue ddl"
+             with-target "error.queue.main.ddl"
+             from-file "${basepath}/error.queue/error.queue.main.ddl.lmd"
+             using "intics_zio_db_conn"
+             for-every {"
+                             SELECT 1;
+             "} on-condition if "true"=="true"
+
+             callprocess as "calling error queue main processor"
+              with-target "error.queue.processor"
+              from-file "${basepath}/error.queue/error.queue.processor.lmd"
+              using "intics_zio_db_conn"
+              for-every {"
+                              SELECT 1;
+              "} on-condition if "true"=="true"
+}
+catch{
+
+        transform as "Update to failed error queue payload queue" on "intics_zio_db_conn"
+        using {"
+
+            UPDATE error_queue.error_queue_payload_queue
+            SET status='FAILED', consumed_on_ts = '${paragraph_timesStamp.consumed_on_ts}', consumer_process_id = '${process-id}'
+            WHERE group_id='${group_id}' AND status='IN_PROGRESS' AND stage='ERROR_QUEUE' AND tenant_id = ${tenant_id} ;
+
+              UPDATE batching.sub_batching_process_payload_queue a
+             SET status='FAILED',  stage='ERROR_QUEUE'
+             WHERE a.group_id='${group_id}' and a.batch_id ='${batch_id}' and a.tenant_id = ${tenant_id};
+
+            INSERT INTO error_queue.error_queue_pipeline_audit
+            (process_id, origin_id, group_id, created_on, status, stage, message,root_pipeline_id,tenant_id)
+            select producer_process_id,origin_id,group_id, now(),
+            'FAILED', 'ERROR_QUEUE','Error queue main caller completed for group_id ${group_id}','${gen_id.root_pipeline_id}', ${tenant_id}
+            FROM error_queue.error_queue_payload_queue
+            WHERE group_id='${group_id}' AND status='IN_PROGRESS' AND stage='ERROR_QUEUE' AND tenant_id = ${tenant_id};
+
+        "}on-condition if "true"=="true"
+}
+finally{
+        transform as "moving to payload archive after completion in error queue pipeline" on "intics_zio_db_conn"
+        using {"
+            INSERT into error_queue.error_queue_payload_queue_archive(producer_process_id, consumer_process_id, origin_id,group_id, created_on,status, stage, consumed_on_ts, root_pipeline_id, tenant_id)
+            SELECT producer_process_id, consumer_process_id, origin_id, group_id,created_on, status, stage,consumed_on_ts, root_pipeline_id, ${tenant_id}
+            FROM error_queue.error_queue_payload_queue
+            where status='COMPLETED' and stage='ERROR_QUEUE' and tenant_id = ${tenant_id};
+
+            Delete from error_queue.error_queue_payload_queue
+            where status='COMPLETED' and stage='ERROR_QUEUE' and tenant_id = ${tenant_id};
+        "}on-condition if "true"=="true"
+
+
+         transform as "moving to payload error after completion in error queue pipeline" on "intics_zio_db_conn"
+         using {"
+            INSERT into error_queue.error_queue_payload_error_queue(producer_process_id, consumer_process_id, origin_id,group_id, created_on,status, stage, consumed_on_ts, root_pipeline_id, tenant_id)
+            SELECT producer_process_id, consumer_process_id, origin_id, group_id,created_on, status, stage,consumed_on_ts, root_pipeline_id, ${tenant_id}
+            FROM error_queue.error_queue_payload_queue
+            where status='FAILED' and stage='ERROR_QUEUE' and tenant_id = ${tenant_id};
+
+            Delete from error_queue.error_queue_payload_queue
+            where status='FAILED' and stage='ERROR_QUEUE' and tenant_id = ${tenant_id};
+        "}on-condition if "true"=="true"
+}
+}

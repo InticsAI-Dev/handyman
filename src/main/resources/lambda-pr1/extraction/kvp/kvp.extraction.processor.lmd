@@ -1,0 +1,190 @@
+process "kvp.extraction.processor"
+{
+try{
+
+
+        transform as "update to in-progress kvp_extraction payload queue" on "intics_zio_db_conn" using
+        {"
+                UPDATE kvp_extraction.kvp_extraction_payload_queue
+                SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts='${time_stamp_kvp_extraction.consumed_on_ts}', status='IN_PROGRESS'
+                WHERE group_id ='${group_id}' AND status ='STAGED' AND stage ='KVP_EXTRACTION' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                UPDATE batching.sub_batching_process_payload_queue a
+                SET status='STAGED',  stage='KVP_EXTRACTION'
+                WHERE a.group_id='${group_id}' and a.batch_id ='${batch_id}'
+                and a.tenant_id = ${tenant_id};
+
+                update ingestion.pipeline_queue_status_audit as a
+                set status = 'STAGED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                where a.group_id=${group_id}
+                and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='KVP_EXTRACTION' ;
+
+                INSERT INTO kvp_extraction.kvp_extraction_pipeline_audit
+                (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+                VALUES('${group_id}', now(), '${created_user_id}', '${created_user_id}', ${tenant_id}, 'STARTED', 'KVP_EXTRACTION', 'KVP extraction process started for group_id ${group_id}','${gen_id.root_pipeline_id}', '${batch_id}');
+        "} on-condition if "true"=="true"
+
+
+        transform as "Input table for radon kvp" on "intics_zio_db_conn" using {"
+                INSERT INTO ${temp_schema_name}.kvp_extraction_input_${init_process_id.process_id}
+                (input_file_path, system_prompt, user_prompt, process, paper_no, origin_id, process_id, group_id,
+                 tenant_id, root_pipeline_id, batch_id, model_registry, category, created_on, document_type)
+                SELECT a.file_path , pv.system_prompt as system_prompt , pv.base_prompt as user_prompt,  'KVP_EXTRACTION' as process,
+                sot.paper_no ,stpq.origin_id , '${init_process_id.process_id}' as process_id, stpq.group_id , stpq.tenant_id , stpq.root_pipeline_id ,
+                stpq.batch_id, 'KRYPTON' as model_registry,  '${qn_category}', now(), sot.document_type
+                FROM kvp_extraction.kvp_extraction_payload_queue stpq
+                join ${temp_schema_name}.source_of_truth_${init_process_id.process_id} sot on sot.origin_id=stpq.origin_id and sot.tenant_id=stpq.tenant_id
+                join info.asset a on a.asset_id=sot.asset_id and a.tenant_id= sot.tenant_id
+                LEFT join paper.paper_level_score_audit pl on pl.origin_id = sot.origin_id
+                                                                      and pl.tenant_id = sot.tenant_id
+                                                                      and pl.batch_id = sot.batch_id
+                                                                      and pl.paper_no = sot.paper_no
+                                                                      and '${paper.filter.join.kvp.extraction}'='true'
+                                                                      and pl.is_candidate_paper = 'yes'
+                join sor_meta.radon_prompt_table pv on sot.tenant_id = pv.tenant_id and pv.document_type = sot.document_type
+                where stpq.group_id = '${group_id}' and stpq.root_pipeline_id= '${init_process_id.process_id}' and stpq.tenant_id = '${tenant_id}'
+                and sot.document_type='${document_type}' and sot.status='ACTIVE' and pv.status='ACTIVE' and pv.version='${prompt_version.value}'
+                and pv.process = 'KVP_EXTRACTION' and pv.use_case = 'KVP_EXTRACTION' and stpq.batch_id ='${batch_id}' ;
+        "} on-condition if "true"=="true"
+
+
+        radonKvp as "radon Kvp api calling for kvp_extraction"
+        on-resource-conn "intics_zio_db_conn"
+        copro-url "${kvp.extraction.krypton.triton.url}"
+        output-table "${temp_schema_name}.kvp_extraction_output_${init_process_id.process_id}"
+        using
+        {"
+                SELECT input_file_path, user_prompt, system_prompt, process, paper_no, origin_id, process_id, group_id, tenant_id, root_pipeline_id,
+                batch_id, model_registry, category, now() as created_on, 'KRYPTON START' as api_name
+                FROM ${temp_schema_name}.kvp_extraction_input_${init_process_id.process_id}
+                WHERE model_registry = 'KRYPTON'  and group_id ='${group_id}' and tenant_id='${tenant_id}' and batch_id ='${batch_id}' and process='KVP_EXTRACTION';
+        "}on-condition if "true"=="true"
+
+        llmJsonParser as "radon kvp json parser macro"
+        on-resource-conn "intics_zio_db_conn"
+        input-table "${temp_schema_name}.kvp_extraction_output_${init_process_id.process_id}"
+        output-table "${temp_schema_name}.kvp_extraction_llm_json_parser_${init_process_id.process_id}"
+        using
+        {"
+                SELECT total_response_json as response, paper_no,  origin_id, group_id, tenant_id, root_pipeline_id,
+                batch_id, 'Primary', model_registry, 0 as image_dpi, 0.0 as image_width, 0.0 as image_height, created_on, 'KVP_EXTRACTION' as process
+                from ${temp_schema_name}.kvp_extraction_output_${init_process_id.process_id} teeoa
+                WHERE tenant_id = ${tenant_id} AND model_registry = 'KRYPTON' and group_id ='${group_id}' and batch_id ='${batch_id}';
+
+        "}on-condition if "true"=="true"
+
+
+        transform as "update ingestion pipeline queue status audit" on "intics_zio_db_conn" using {"
+
+                UPDATE kvp_extraction.kvp_extraction_payload_queue a
+                SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts='${time_stamp_kvp_extraction.consumed_on_ts}', status=b.status
+                from ${temp_schema_name}.kvp_extraction_output_${init_process_id.process_id} b
+                WHERE a.origin_id=b.origin_id AND a.tenant_id =b.tenant_id AND a.batch_id =b.batch_id AND a.group_id=b.group_id and a.group_id ='${group_id}' AND a.status ='IN_PROGRESS' AND a.stage ='KVP_EXTRACTION' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+               update ingestion.pipeline_queue_status_audit as a
+               set status = 'COMPLETED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+               where  a.group_id=${group_id}
+               and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='KVP_EXTRACTION' ;
+        "} on-condition if "true"=="true"
+
+
+            transform as "insert into pipeline summary audit sor transaction Radon pipeline" on "intics_zio_db_conn" using
+            {"
+                 INSERT INTO ${temp_schema_name}.summary_audit_papers_${process-id}
+                 (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken, root_pipeline_id, tenant_id, batch_id)
+                   SELECT ${process-id} ,
+                           'KVP_EXTRACTION' ,
+                           'KVP_EXTRACTION',
+                            coalesce (count(DISTINCT CASE WHEN B.status='COMPLETED' THEN concat(b.origin_id,'_',b.paper_no) WHEN B.status='ABSENT' THEN concat(b.origin_id,'_',b.paper_no) END),0) ,
+                            coalesce (count(DISTINCT CASE WHEN B.status='FAILED' THEN concat(b.origin_id,'_',b.paper_no) END),0),
+                            min(B.created_on),
+                            max(b.last_updated_on),
+                            EXTRACT(epoch FROM (max(B.last_updated_on)-min(B.created_on))),
+                            '${gen_id.root_pipeline_id}',
+                             ${tenant_id} as tenant_id,
+                             '${batch_id}' as batch_id
+                  FROM ${temp_schema_name}.kvp_extraction_output_${init_process_id.process_id} b
+                  WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                 INSERT INTO ${temp_schema_name}.summary_audit_files_${process-id}
+                 (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken, root_pipeline_id, tenant_id, batch_id)
+                    SELECT ${process-id} ,
+                            'KVP_EXTRACTION' ,
+                            'KVP_EXTRACTION',
+                            coalesce (sum(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END),0) ,
+                            coalesce (sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END),0),
+                            min(created_on),
+                            max(consumed_on_ts),
+                            EXTRACT(epoch FROM (max(consumed_on_ts)-min(created_on))),
+                            '${gen_id.root_pipeline_id}',
+                            ${tenant_id},
+                            batch_id
+                      FROM kvp_extraction.kvp_extraction_payload_queue
+                      WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}'
+                      group by batch_id;
+
+
+                 INSERT INTO audit.pipeline_summary_audit
+                 (process_id, created_on, module_name, macro_process, files_processed_count,papers_processed_count,files_failed_count,papers_failed_count,start_time,end_time, time_taken, group_id, root_pipeline_id, created_user_id, template_id, tenant_id,average_time, batch_id )
+                 SELECT
+                    msaf.process_id ,
+                    now(),
+                    msaf.module_name ,
+                    msaf.macro_process ,
+                    msaf.completed_count,
+                    msap.completed_count,
+                    msaf.failed_count,
+                    msap.failed_count,
+                    msap.min_created_on,
+                    msap.max_created_on,
+                    EXTRACT(epoch FROM (msap.max_created_on-msap.min_created_on)),
+                   '${group_id}',
+                   '${gen_id.root_pipeline_id}',
+                   '${created_user_id}',
+                   '${document_id}',
+                   ${tenant_id},
+                   (CASE WHEN (msaf.completed_count+msaf.failed_count)=0 THEN msaf.time_taken WHEN (msaf.time_taken/(msaf.completed_count+msaf.failed_count))=0 THEN msaf.time_taken ELSE (msaf.time_taken/(msaf.completed_count+msaf.failed_count)) END),
+                   msaf.batch_id
+                 FROM ${temp_schema_name}.summary_audit_files_${process-id} msaf,
+                 ${temp_schema_name}.summary_audit_papers_${process-id} msap
+                 WHERE msaf.module_name=msap.module_name AND msaf.macro_process=msap.macro_process AND msaf.batch_id=msap.batch_id AND
+                 msaf.module_name='KVP_EXTRACTION'
+                 AND msaf.macro_process='KVP_EXTRACTION' and msaf.tenant_id = ${tenant_id} and msaf.batch_id = '${batch_id}';
+
+         "} on-condition if "true"=="true"
+
+
+
+}
+catch{
+
+
+        transform as "Move to archive after completed" on "intics_zio_db_conn" using {"
+
+               update ingestion.pipeline_queue_status_audit as a
+               set status = 'FAILED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+               where  a.group_id=${group_id}
+               and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='KVP_EXTRACTION' ;
+
+
+                UPDATE kvp_extraction.kvp_extraction_payload_queue a
+                SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts='${time_stamp_kvp_extraction.consumed_on_ts}', status=b.status
+                from ${temp_schema_name}.kvp_extraction_output_${init_process_id.process_id} b
+                WHERE a.origin_id=b.origin_id AND a.tenant_id =b.tenant_id AND a.batch_id =b.batch_id AND a.group_id=b.group_id and a.group_id ='${group_id}'
+                AND a.status ='STAGED' AND a.stage ='KVP_EXTRACTION' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+        "} on-condition if "true"=="true"
+
+
+
+}
+finally{
+        transform as "completed in kvp_extraction main caller" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO kvp_extraction.kvp_extraction_pipeline_audit
+                (process_id, group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+                VALUES('${init_process_id.process_id}', '${gen_group_id.group_id}', now(), 'COMPLETED', 'KVP_EXTRACTION_PROCESSOR', 'completed in kvp_extraction processor','${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}');
+        "}on-condition if "true"=="true"
+
+}
+}

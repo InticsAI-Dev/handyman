@@ -17,7 +17,7 @@ import in.handyman.raven.lib.alchemy.common.BoundingBox;
 import in.handyman.raven.lib.alchemy.common.Feature;
 import in.handyman.raven.core.encryption.SecurityEngine;
 import in.handyman.raven.lib.model.AlchemyResponse;
-import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
+import in.handyman.raven.lib.services.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.util.CommonQueryUtil;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

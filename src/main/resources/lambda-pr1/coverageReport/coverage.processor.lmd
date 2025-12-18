@@ -1,0 +1,419 @@
+process "coverage.processor"
+{
+    try {
+
+
+             coproStart as "Calling cos similarity copro start action" for "MASTER-DATA&COVERAGE_REPORT"
+            copro-server-url "${copro.similarity.admin.start.url}"
+            export-command "${copro.similarity.export}"
+            process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+            using
+            {"
+                  ${similarityStartCommand}
+            "}on-condition if "${similarity.start.action}"=="true"
+
+            callprocess as "calling transposed table"
+            with-target "eval.transposed.table"
+            from-file "${basepath}/coverageReport/eval.transposed.table.lmd"
+            using "intics_zio_db_conn"
+            for-every {"
+                SELECT 1;
+            "} on-condition if "true"=="true"
+
+            callprocess as "calling member eval match"
+            with-target "eval.member.match"
+            from-file "${basepath}/coverageReport/eval.member.match.lmd"
+            using "intics_zio_db_conn"
+            for-every {"
+            SELECT 1;
+            "} on-condition if "${member.eval.match}"=="true" on-parallel-fielding "${coverage-report-thread-count}"
+
+            callprocess as "calling prescriber eval match"
+            with-target "eval.prescriber.match"
+            from-file "${basepath}/coverageReport/eval.prescriber.match.lmd"
+            using "intics_zio_db_conn"
+            for-every {"
+            SELECT 1;
+            "} on-condition if "${prescriber.eval.match}"=="true" on-parallel-fielding "${coverage-report-thread-count}"
+
+            callprocess as "calling provider eval match"
+            with-target "eval.provider.match"
+            from-file "${basepath}/coverageReport/eval.provider.match.lmd"
+            using "intics_zio_db_conn"
+            for-every {"
+            SELECT 1;
+            "} on-condition if "${provider.eval.match}"=="true" on-parallel-fielding "${coverage-report-thread-count}"
+
+            callprocess as "calling drug eval match"
+            with-target "eval.drug.match"
+            from-file "${basepath}/coverageReport/eval.drug.match.lmd"
+            using "intics_zio_db_conn"
+            for-every {"
+            SELECT 1;
+            "} on-condition if "${drug.eval.match}"=="true" on-parallel-fielding "${coverage-report-thread-count}"
+
+
+           coproStop as "Calling cos similarity copro stop action" for "MASTERDATA&COVERAGE_REPORT"
+            copro-server-url "${copro.similarity.admin.stop.url}"
+            process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+            using
+            {"
+                      gunicorn
+            "}on-condition if "${similarity.stop.action}"=="true"
+
+            transform as "insert into audit table for IntelliMatch Comparison" on "intics_zio_db_conn" using
+            {"
+                    insert into audit.process_audit_output
+                         (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint)
+                         select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint
+                         from control_data_macro.eval_member_name ai
+                         where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}
+                         group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+                    insert into audit.process_audit_output
+                          (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint)
+                          select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint
+                          from control_data_macro.eval_member_id ai
+                          where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}
+                          group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+                    insert into audit.process_audit_output
+                       (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint)
+                       select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint
+                       from control_data_macro.eval_member_dob ai
+                       where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}
+                       group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+                    insert into audit.process_audit_output
+                       (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint)
+                       select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint
+                       from control_data_macro.eval_patient_address ai
+                       where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}
+                       group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+                    insert into audit.process_audit_output
+                       (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint)
+                       select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint
+                       from control_data_macro.eval_member_groupnumber ai
+                       where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}
+                       group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+                    insert into audit.process_audit_output
+                       (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint)
+                       select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint
+                       from control_data_macro.eval_patient_city ai
+                       where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}
+                       group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+                    insert into audit.process_audit_output
+                       (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint)
+                       select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint
+                       from control_data_macro.eval_patient_city_state_zip ai
+                       where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}
+                       group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+                    insert into audit.process_audit_output
+                       (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint)
+                       select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint
+                       from control_data_macro.eval_patient_state ai
+                       where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}
+                       group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+                    insert into audit.process_audit_output
+                       (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint)
+                        select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint
+                        from control_data_macro.eval_patient_zip ai
+                        where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}
+                        group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+                    insert into audit.process_audit_output
+                         (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint)
+                         select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint
+                         from control_data_macro.eval_patient_phone ai
+                         where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}
+                         group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+                    insert into audit.process_audit_output
+                        (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint)
+                        select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint
+                        from control_data_macro.eval_prescriber_name ai
+                        where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}
+                        group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+                    insert into audit.process_audit_output
+                         (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint)
+                         select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint
+                         from control_data_macro.eval_prescriber_npi ai
+                         where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}
+                        group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+                    insert into audit.process_audit_output
+                       (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint)
+                       select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint
+                       from control_data_macro.eval_prescriber_address ai
+                       where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}
+                       group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+                    insert into audit.process_audit_output
+                       (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint)
+                       select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint
+                       from control_data_macro.eval_prescriber_city_state_zip ai
+                       where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}
+                       group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+                    insert into audit.process_audit_output
+                       (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint)
+                       select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint
+                       from control_data_macro.eval_prescriber_state ai
+                       where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}
+                       group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+                    insert into audit.process_audit_output
+                       (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint)
+                       select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint
+                       from control_data_macro.eval_prescriber_zip ai
+                       where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}
+                       group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+                    insert into audit.process_audit_output
+                      (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint)
+                      select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint
+                      from control_data_macro.eval_prescriber_phone  ai
+                      where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}
+                      group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+                    insert into audit.process_audit_output
+                       (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint)
+                       select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint
+                       from control_data_macro.eval_prescriber_fax ai
+                       where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}
+                       group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+                    insert into audit.process_audit_output
+                      (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint)
+                      select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint
+                      from control_data_macro.eval_prescriber_tax_id ai
+                      where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}
+                      group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+                    insert into audit.process_audit_output
+                      (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint)
+                      select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint
+                      from control_data_macro.eval_prescriber_city ai
+                      where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}
+                      group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+                    insert into audit.process_audit_output
+                       (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint)
+                       select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint
+                       from control_data_macro.eval_provider_name ai
+                       where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}
+                       group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+                    insert into audit.process_audit_output
+                        (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint)
+                        select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint
+                        from control_data_macro.eval_provider_city ai
+                        where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}
+                        group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+
+                    insert into audit.process_audit_output
+                       (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint)
+                       select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint
+                       from control_data_macro.eval_provider_npi ai
+                       where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}
+                       group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+                    insert into audit.process_audit_output
+                       (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint)
+                       select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint
+                       from control_data_macro.eval_provider_state ai
+                       where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}
+                       group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+                    insert into audit.process_audit_output
+                       (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint)
+                       select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint
+                       from control_data_macro.eval_provider_tax_id ai
+                       where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}
+                       group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+                    insert into audit.process_audit_output
+                       (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint)
+                       select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint
+                       from control_data_macro.eval_provider_zip ai
+                       where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}
+                       group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+                    insert into audit.process_audit_output
+                       (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint)
+                       select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint
+                       from control_data_macro.eval_drug_name ai
+                       where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}
+                       group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+                    insert into audit.process_audit_output
+                       (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint)
+                       select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint
+                       from control_data_macro.eval_date_of_service_from ai
+                       where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}
+                       group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+                    insert into audit.process_audit_output
+                       (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint)
+                       select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint
+                       from control_data_macro.eval_direction_sig ai
+                       where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}
+                       group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+
+                    insert into audit.process_audit_output
+                       (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint)
+                       select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint
+                       from control_data_macro.eval_drug_dose ai
+                       where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}
+                       group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+                    insert into audit.process_audit_output
+                       (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint)
+                       select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint
+                       from control_data_macro.eval_drug_quantity ai
+                       where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}
+                       group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+
+                    insert into audit.process_audit_output
+                       (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint)
+                       select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint
+                       from control_data_macro.eval_hcpcs ai
+                       where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}
+                       group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+                    insert into audit.process_audit_output
+                       (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint)
+                       select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint
+                       from control_data_macro.eval_drug_strength ai
+                       where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}
+                       group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+                    insert into audit.process_audit_output
+                       (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint)
+                       select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint
+                       from control_data_macro.eval_drug_j_code ai
+                       where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}
+                       group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+                    insert into audit.process_audit_output
+                       (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint)
+                       select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint
+                       from control_data_macro.eval_icd10 ai
+                       where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}
+                       group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+            "}  on-condition if "true"=="true"
+
+
+            transform as "insert into sor grouping audit completed" on "intics_zio_db_conn" using
+            {"
+
+            INSERT INTO control_data.control_data_pipeline_audit
+            (process_id,origin_id, created_on, group_id,  status, stage, message, root_pipeline_id, tenant_id,batch_id)
+            SELECT '${init_process_id.process_id}',a.origin_id,now(),'${gen_group_id.group_id}','COMPLETED','control data','control data is COMPLETED','${gen_id.root_pipeline_id}', ${tenant_id},a.batch_id
+            from  control_data.control_data_payload_queue a
+            where a.batch_id ='${batch_id}';
+
+            UPDATE  control_data.control_data_payload_queue
+            SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts=now(),status='COMPLETED'
+            WHERE status='IN_PROGRESS' and tenant_id = ${tenant_id} and batch_id = '${batch_id}' AND group_id='${gen_group_id.group_id}';
+
+            "}  on-condition if "true"=="true"
+
+
+    }
+
+    catch {
+
+            transform as "insert into control data audit as failed" on "intics_zio_db_conn" using
+            {"
+
+            UPDATE  control_data.control_data_payload_queue
+            SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts=now(),status='FAILED'
+            WHERE status='IN_PROGRESS' and tenant_id = ${tenant_id} and batch_id = '${batch_id}' AND group_id='${gen_group_id.group_id}';
+
+            INSERT INTO control_data.control_data_pipeline_audit
+            (process_id,origin_id, created_on, group_id,  status, stage, message, root_pipeline_id, tenant_id,batch_id)
+            SELECT '${init_process_id.process_id}',a.origin_id,now(),'${gen_group_id.group_id}','FAILED',
+            'control data','control data failed','${gen_id.root_pipeline_id}', ${tenant_id}, a.batch_id
+            from  control_data.control_data_payload_queue a where a.group_id='${gen_group_id.group_id}' and a.batch_id = '${batch_id}';
+
+            "} on-condition if "true"=="true"
+
+    }
+
+    finally {
+
+            transform as "insert into control data audit as failed" on "intics_zio_db_conn" using
+            {"
+                    UPDATE  control_data.control_data_payload_queue
+                    SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts=now(),status='FAILED'
+                    WHERE status='IN_PROGRESS' and tenant_id = ${tenant_id} and batch_id = '${batch_id}' AND group_id='${gen_group_id.group_id}';
+            "} on-condition if "true"=="true"
+
+
+                transform as "insert into pipeline summary audit eoc transform" on "intics_zio_db_conn" using
+                {"
+
+                    INSERT INTO ${temp_schema_name}.summary_audit_files_${process-id}
+                    (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken, root_pipeline_id, tenant_id,batch_id)
+                    SELECT ${process-id} , 'CONTROL_DATA' ,'CONTROL_DATA',coalesce (sum(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END),0) ,
+                    coalesce (sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END),0),min(created_on),max(consumed_on_ts),
+                    EXTRACT(epoch FROM (max(created_on)-min(created_on))), '${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                    FROM control_data.control_data_payload_queue
+                    WHERE group_id='${gen_group_id.group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}'
+                    group by batch_id;
+
+                    INSERT INTO audit.pipeline_summary_audit
+                    (process_id, created_on, module_name, macro_process, files_processed_count,files_failed_count,start_time,end_time, time_taken, group_id, root_pipeline_id, created_user_id, template_id, tenant_id,average_time,papers_processed_count,papers_failed_count,batch_id)
+                    SELECT msaf.process_id ,now(),msaf.module_name ,msaf.macro_process ,msaf.completed_count,msaf.failed_count,msaf.min_created_on,msaf.max_created_on, EXTRACT(epoch FROM (msaf.max_created_on-msaf.min_created_on)),
+                    '${gen_group_id.group_id}','${root-ref-id}','${created_user_id}','${document_id}',${tenant_id},msaf.time_taken,0,0, msaf.batch_id
+                    FROM ${temp_schema_name}.summary_audit_files_${process-id} msaf
+                    WHERE msaf.module_name='CONTROL_DATA'
+                    AND msaf.macro_process='CONTROL_DATA'
+                    and tenant_id = ${tenant_id}
+                    and msaf.batch_id = '${batch_id}';
+                    "} on-condition if "true"=="true"
+
+                transform as "Insert into control data error queue as failed ${gen_group_id.group_id}" on "intics_zio_db_conn" using
+                {"
+
+                    INSERT INTO control_data.control_data_payload_error_queue
+                    (producer_process_id, consumer_process_id, group_id, origin_id , created_on, status, stage, message, consumed_on_ts,root_pipeline_id, tenant_id,batch_id)
+                    SELECT producer_process_id, consumer_process_id, group_id, origin_id, created_on, status, stage, 'MASTER_DATA IS FAILED', consumed_on_ts,root_pipeline_id, ${tenant_id},batch_id
+                    FROM control_data.control_data_payload_queue
+                    WHERE group_id='${gen_group_id.group_id}' and status ='FAILED' and stage ='CONTROL_DATA' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                    DELETE FROM control_data.control_data_payload_queue
+                    WHERE group_id='${gen_group_id.group_id}' and status ='FAILED' and stage ='CONTROL_DATA' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                "} on-condition if "true"=="true"
+
+
+                transform as "Insert into control data payload queue archive as completed ${gen_group_id.group_id}" on "intics_zio_db_conn" using
+                {"
+
+                    INSERT INTO control_data.control_data_payload_queue_archive
+                    (producer_process_id, consumer_process_id, origin_id, group_id, created_on, status, stage, consumed_on_ts,root_pipeline_id, tenant_id,batch_id)
+                    SELECT producer_process_id, consumer_process_id, origin_id, group_id, created_on, status, stage , consumed_on_ts,root_pipeline_id, ${tenant_id}, batch_id
+                    FROM control_data.control_data_payload_queue
+                    WHERE group_id='${gen_group_id.group_id}' and status ='COMPLETED' and stage ='CONTROL_DATA' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                    DELETE FROM control_data.control_data_payload_queue
+                    WHERE group_id='${gen_group_id.group_id}' and status ='COMPLETED' and stage ='CONTROL_DATA' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                "} on-condition if "true"=="true"
+    }
+
+
+
+}

@@ -1,0 +1,98 @@
+process "root.gatekeeper.ddl"
+
+{
+try{
+		transform as "create response user details table" on "intics_zio_db_conn" using {"
+		    CREATE SCHEMA if not exists inbound_config;
+            CREATE TABLE if not exists inbound_config.authentication_details (
+                authentication_details_id bigserial NOT NULL,
+                tenant_id int8 NULL,
+                api_secret varchar NULL,
+                app_id varchar NULL,
+                auth_token varchar NULL,
+                authentication_status int4 NULL,
+                created_on timestamp NULL,
+                request_completed_on timestamp NULL,
+                request_started_on timestamp NULL,
+                CONSTRAINT authentication_details_pkey PRIMARY KEY (authentication_details_id)
+            );
+            CREATE TABLE if not exists inbound_config.ingestion_file_details (
+                tenant_id int8 NULL,
+                document_id varchar NOT NULL,
+                download_completed_on timestamp NULL,
+                file_checksum varchar NULL,
+                file_name varchar NULL,
+                originuri varchar NULL,
+                request_completed_on timestamp NULL,
+                request_started_on timestamp NULL,
+                upload_req_ack varchar NULL,
+                CONSTRAINT ingestion_file_details_pkey PRIMARY KEY (document_id)
+            );
+
+            CREATE TABLE if not exists inbound_config.user_details (
+                app_id varchar NOT NULL,
+                tenant_id int8 NULL,
+                api_secret varchar NOT NULL,
+                registered_on timestamp NULL DEFAULT now(),
+                user_id varchar NULL,
+                CONSTRAINT pk_user_details PRIMARY KEY (app_id)
+            );
+
+            CREATE TABLE if not exists inbound_config.ingestion_downloaded_file_details (
+            	document_id varchar NOT NULL,
+            	tenant_id int8 NULL,
+            	file_name varchar NULL,
+            	file_path varchar NULL,
+            	download_completed_on timestamp NULL,
+            	status varchar NULL,
+            	bucket_group int4 NULL,
+            	CONSTRAINT pk_ingestion_downloaded_file_details PRIMARY KEY (document_id)
+            );
+
+            CREATE TABLE if not exists inbound_config.cron_execution_table (
+            	cron_id bigserial NOT NULL,
+            	tenant_id int8 NULL,
+            	cron_expression varchar NULL,
+            	ingestion_dir_path varchar NULL,
+            	pipeline_started_on timestamp NULL,
+            	CONSTRAINT cron_execution_table_pkey PRIMARY KEY (cron_id)
+            );
+
+			create table if not exists response.process_status_meta_details(
+						delivered_on timestamp not null,
+						file_id varchar not null,
+						tenant_id int8 NULL,
+						origin_uri varchar not null ,
+						process_completed_on timestamp null,
+						process_started_on timestamp null,
+						resource_uri varchar null,
+						uploaded_on timestamp null,
+						batch_id varchar not null,
+						origin_id varchar null,
+						total_preprocessed_duration int4
+			);
+
+			CREATE TABLE if not exists response.pipeline_error_queue(
+			    batch_id varchar not null,
+                origin_id varchar NOT NULL,
+                tenant_id int8 NULL,
+                process_id varchar NULL,
+                group_id int4 NULL,
+                created_on timestamp NULL,
+                file_name varchar NULL,
+                message varchar NULL,
+                CONSTRAINT pipeline_error_queue_pkey PRIMARY KEY (origin_id)
+            );
+
+
+		"} on-condition if "true"=="true"
+
+}
+catch{
+
+}
+finally{
+}
+
+}
+}

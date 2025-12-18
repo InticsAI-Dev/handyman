@@ -1,0 +1,129 @@
+process "test1.migration"
+{
+	try {
+
+    assign as "alchemy" source "intics_zio_db_conn"
+	        using{"
+	                SELECT '${email}' as user;
+	        "} on-condition if "true"=="true"
+
+
+                   alchemyAuthToken as "alchemy auth token"
+                   on-resource-conn "intics_zio_db_conn"
+                   using {
+                   } on-condition if "true"=="true"
+
+
+        alchemyResponse as "alchemy response insert kvp results in prediction"
+        tenantId "${alchemyAuth.tenantId}"
+        auth-token "${alchemyAuth.token}"
+        on-resource-conn "intics_zio_db_conn"
+        using  {"
+                select cr.b_box ,cr.origin_id ,cr.paper_no ,cr.tenant_id ,cr.root_pipeline_id , cr.confidence_score,cr.extracted_value,
+                cr.sor_item_name,cr.synonym_id,cr.question_id ,'KIE' as feature,null as state ,null as table_data
+                FROM voting.cummulative_result cr where cr.tenant_id = ${alchemyAuth.tenantId};
+        "}  on-condition if "true"=="true"
+
+        alchemyResponse as "alchemy response insert table results in prediction"
+        tenantId "${alchemyAuth.tenantId}"
+        auth-token "${alchemyAuth.token}"
+        on-resource-conn "intics_zio_db_conn"
+        using  {"
+            SELECT ter.origin_id as origin_id, ter.paper_no, ter.tenant_id, ter.root_pipeline_id,
+            'TABLE_EXTRACT' as feature, table_response as table_data, processed_file_path as csv_file_path, truth_entity_id
+            FROM table_extraction.table_extraction_result ter where ter.tenant_id = ${alchemyAuth.tenantId};
+        "}  on-condition if "true"=="true"
+
+         alchemyResponse as "alchemy response insert currency detection in prediction"
+                tenantId "${alchemyAuth.tenantId}"
+                auth-token "${alchemyAuth.token}"
+                on-resource-conn "intics_zio_db_conn"
+                using  {"
+                    SELECT ter.origin_id as origin_id,
+                           ter.paper_no,
+                           ter.tenant_id,
+                           ter.root_pipeline_id,
+                           'CURRENCY_DETECTION' as feature,
+                           ter.detected_value ,
+                           ter.detected_ascii_value ,
+                           ter.confidence_score
+                    FROM currency_detection.currency_detection_result ter where ter.tenant_id = ${alchemyAuth.tenantId};
+                "}  on-condition if "true"=="true"
+
+                 alchemyResponse as "alchemy response insert bulletin result in prediction"
+                tenantId "${alchemyAuth.tenantId}"
+                auth-token "${alchemyAuth.token}"
+                on-resource-conn "intics_zio_db_conn"
+                using  {"
+                    SELECT ter.origin_id as origin_id,
+                               ter.paper_no,
+                               ter.tenant_id,
+                               ter.root_pipeline_id,
+                               'BULLETIN_EXTRACTION' as feature,
+                               ter.bulletin_section,
+                               ter.bulletin_points,
+                               ter.synonym_id
+                        FROM bulletin_extraction.bulletin_extraction_result ter where ter.tenant_id = ${alchemyAuth.tenantId};
+                "}  on-condition if "true}"=="true"
+
+                 alchemyResponse as "alchemy response insert paragraph result in prediction"
+                tenantId "${alchemyAuth.tenantId}"
+                auth-token "${alchemyAuth.token}"
+                on-resource-conn "intics_zio_db_conn"
+                using  {"
+                    SELECT ter.origin_id as origin_id,
+                               ter.paper_no,
+                               ter.tenant_id,
+                               ter.root_pipeline_id,
+                               'PARAGRAPH_EXTRACTION' as feature,
+                               ter.paragraph_section,
+                               ter.paragraph_points,
+                               ter.synonym_id
+                        FROM paragraph_extraction.paragraph_extraction_result ter where ter.tenant_id = ${alchemyAuth.tenantId};
+                "}  on-condition if "true"=="true"
+
+               alchemyResponse as "alchemy response insert face detection result in prediction"
+                tenantId "${alchemyAuth.tenantId}"
+                auth-token "${alchemyAuth.token}"
+                on-resource-conn "intics_zio_db_conn"
+                using  {"
+                        SELECT ter.origin_id as origin_id,
+                                ter.paper_no,
+                                ter.tenant_id,
+                                ter.root_pipeline_id,
+                                'FACE_DETECTION' as feature,
+                                ter.predicted_value ,
+                                ter.precision as confidence_score,
+                                ter.encode,
+                                ter.left_pos,
+                                ter.upper_pos,
+                                ter.right_pos,
+                                ter.lower_pos
+                        FROM face_detection.face_detection_result ter where ter.tenant_id = ${alchemyAuth.tenantId};
+
+                "}  on-condition if "true"=="true"
+
+                alchemyResponse as "alchemy response insert figure detection result in prediction"
+                tenantId "${alchemyAuth.tenantId}"
+                auth-token "${alchemyAuth.token}"
+                on-resource-conn "intics_zio_db_conn"
+                using  {"
+                        SELECT ter.origin_id as origin_id,
+                                ter.paper_no,
+                                ter.tenant_id,
+                                ter.root_pipeline_id,
+                                'FIGURE_DETECTION' as feature,
+                                ter.encode
+                        FROM figure_detection.figure_detection_result ter where ter.tenant_id = ${alchemyAuth.tenantId};
+
+                "}  on-condition if "true"=="true"
+
+
+	}
+	catch{
+
+	}
+	finally{
+
+	}
+}

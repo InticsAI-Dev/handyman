@@ -1,0 +1,401 @@
+process "response.artifact.creator"
+{
+    try {
+			transform as "update to in-progress response artifact payload queue" on "intics_zio_db_conn" using
+			{"
+					INSERT INTO outbound.outbound_pipeline_audit
+                    (process_id, origin_id,group_id, created_on, status, stage, message, root_pipeline_id,tenant_id, batch_id)
+                    VALUES('${init_process_id.process_id}','${origin_id}', '${group_id}',now(), 'STARTED', 'OUTBOUND ZIP CREATION',
+                    'outbound zip creation process started in response artifact creator lmd for origin_id ${origin_id}', '${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}');
+			"} on-condition if "true"=="true"
+
+        assign  as "origin_file" source "intics_zio_db_conn" using
+        {"
+            SELECT file_path, file_name from ${temp_schema_name}.asset_${init_process_id.process_id} where file_id = '${file_id}' and tenant_id = ${tenant_id};
+        "} on-condition if "true"=="true"
+
+        assign  as "origin_uri" source "intics_zio_db_conn" using
+        {"
+            SELECT originuri as source_uri, download_completed_on as uploaded_on from inbound_config.ingestion_file_details where document_id = '${origin_file.file_name}';
+        "} on-condition if "true"=="true"
+
+        assign  as "zip_file_name_details" source "intics_zio_db_conn" using
+        {"
+            SELECT concat('${origin_file.file_name}','_',to_char(now(), 'DDMMYYYY')) as zip_file_name;
+        "} on-condition if "true"=="true"
+
+        assign  as "target_directory_path_details" source "intics_zio_db_conn" using
+        {"
+                SELECT concat ('${gen_directory.zip_directory}','/evaluation_output/','${origin_file.file_name}','/') as target_directory_path;
+        "} on-condition if "true"=="true"
+
+        assign  as "zip_file_dir_details" source "intics_zio_db_conn" using
+        {"
+                SELECT concat ('${gen_directory.current_directory}','/evaluation_output/','${origin_file.file_name}','/', '${zip_file_name_details.zip_file_name}','/') as zip_file_dir;
+        "} on-condition if "true"=="true"
+
+        createDirectory as "make_target_dir" using
+        {"
+            ${target_directory_path_details.target_directory_path}
+        "} on-condition if "true"=="true"
+
+        createDirectory as "make_src_dir" using
+        {"
+            ${zip_file_dir_details.zip_file_dir}
+        "} on-condition if "true"=="true"
+
+        assign  as "preprocessed_file_details" source "intics_zio_db_conn" using
+        {"
+            SELECT preprocessed_file_id from ${temp_schema_name}.source_of_truth_${init_process_id.process_id} where origin_id = '${origin_id}' and tenant_id = ${tenant_id} and batch_id='${batch_id}';
+        "} on-condition if "true"=="true"
+
+        assign  as "file-merger-response" source "intics_zio_db_conn" using
+        {"
+            SELECT CASE WHEN mot.status = 'COMPLETED' THEN 'true'
+            ELSE 'false'
+            END as success
+            FROM outbound.merger_output_table mot
+            WHERE origin_id = '${origin_id}' AND tenant_id = ${tenant_id} and batch_id='${batch_id}';
+
+            SELECT CASE WHEN mot.status = 'FAILED' THEN 'true'
+            ELSE 'false'
+            END as error
+            FROM outbound.merger_output_table mot
+            WHERE origin_id = '${origin_id}' AND tenant_id = ${tenant_id} and batch_id='${batch_id}';
+        "} on-condition if "true"=="true"
+
+        assign as "processed_file_path_details" source "intics_zio_db_conn" using
+        {"
+            SELECT processed_file_path as processed_file_path
+            FROM outbound.merger_output_table
+            WHERE origin_id = '${origin_id}' AND tenant_id = ${tenant_id} and batch_id='${batch_id}';
+        "} on-condition if "${file-merger-response.success}"=="true"
+
+        transferFileDirectory as "copy original file"  from "${origin_file.file_path}" to "${zip_file_dir_details.zip_file_dir}" operation "copy" using
+        {} on-condition if "true"=="true"
+
+        transferFileDirectory as "copy processed file"  from "${processed_file_path_details.processed_file_path}" to "${zip_file_dir_details.zip_file_dir}" operation "copy" using
+        {} on-condition if "${file-merger-response.success}"=="true"
+
+        transform as "insert into preprocess error queue for failed merging files" on "intics_zio_db_conn"
+        using{"
+            INSERT INTO preprocess.preprocess_payload_error_queue
+            (producer_process_id, consumer_process_id,group_id, origin_id, created_on, status, stage, message, consumed_on_ts,root_pipeline_id, tenant_id, batch_id)
+            SELECT  '${gen_id.root_pipeline_id}', '${gen_id.root_pipeline_id}','${group_id}','${origin_id}', now(),'FAILED','PREPROCESS',
+            'Unable to process the document',now(),'${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+            where '${origin_id}' not in (select origin_id from preprocess.preprocess_payload_error_queue)  and batch_id='${batch_id}';
+        "} on-condition if "${file-merger-response.error}"=="true"
+
+        assign as "replace_origin" source "intics_zio_db_conn" using
+        {"
+            select lower(replace('response.identifier_${origin_id}','-','_')) as id ;
+        "} on-condition if "true"=="true"
+
+        transform as "creating sequence for document identifier" on "intics_zio_db_conn"
+        using{"
+                CREATE SEQUENCE IF NOT EXISTS ${replace_origin.id}
+                AS INT8
+                START WITH 1
+                INCREMENT BY 1;
+        "} on-condition if "true"=="true"
+
+        callprocess as "Init response file creator"
+        with-target "response.file.creator"
+        from-file "${basepath}/responsebuilder/response.file.creator.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT eoc_id, document_id, origin_id, eoc_response::json, '${zip_file_dir_details.zip_file_dir}' as zip_path from outbound.eoc_response_details where origin_id = '${origin_id}' ;
+        "} on-condition if "true"=="true"
+
+        transform as "drop sequence for document identifier" on "intics_zio_db_conn"
+        using{"
+                DROP SEQUENCE IF EXISTS ${replace_origin.id};
+        "} on-condition if "true"=="true"
+
+		transform as "insert query for error document details payload queue" on "intics_zio_db_conn" using {"
+
+			INSERT INTO ${temp_schema_name}.temp_error_document_detail_${init_process_id.process_id}
+			( origin_id, group_id, process_failed_on, status,stage, message, tenant_id, batch_id)
+			    SELECT a.origin_id ,a.group_id, a.consumed_on_ts,status,a.stage,a.message, ${tenant_id}, a.batch_id
+			    FROM preprocess.preprocess_payload_error_queue a
+			    WHERE a.group_id='${group_id}' AND a.origin_id ='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+			    GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts,a.message, a.status, a.batch_id
+			    UNION
+			        SELECT a.origin_id ,a.group_id,a.consumed_on_ts,a.status,a.stage,'preprocess pipeline completed', ${tenant_id}, a.batch_id
+			        FROM preprocess.preprocess_payload_queue_archive a
+			        WHERE a.group_id='${group_id}' AND a.origin_id ='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+			        GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts, a.status, a.batch_id;
+
+		        INSERT INTO ${temp_schema_name}.temp_error_document_detail_${init_process_id.process_id}
+                ( origin_id, group_id, process_failed_on, status,stage, message, tenant_id, batch_id)
+			    SELECT a.origin_id ,a.group_id, cast(consumed_on_ts as TIMESTAMP),status,a.stage,a.message, ${tenant_id},a.batch_id
+			    FROM paper.potential_feature_payload_error_queue a
+			    WHERE a.group_id='${group_id}' AND a.origin_id ='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+			    GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts,a.message,a.stage,a.status,a.batch_id
+			    UNION
+			        SELECT a.origin_id ,a.group_id,  cast(consumed_on_ts as TIMESTAMP),a.status,a.stage,'potential feature pipeline completed', ${tenant_id}, a.batch_id
+			        FROM paper.potential_feature_payload_queue_archive a
+			        WHERE a.group_id='${group_id}' AND a.origin_id ='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+			        GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts,a.status, a.batch_id;
+
+			    INSERT INTO ${temp_schema_name}.temp_error_document_detail_${init_process_id.process_id}
+                ( origin_id, group_id, process_failed_on, status,stage, message,tenant_id, batch_id)
+			    SELECT a.origin_id ,a.group_id,consumed_on_ts,status,a.stage,a.message, ${tenant_id},  a.batch_id
+			    FROM paper_classification.paper_classification_payload_error_queue a
+			    WHERE a.group_id='${group_id}' AND a.origin_id ='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+			    GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts,a.message,a.stage,a.status , a.batch_id
+			    UNION
+			        SELECT a.origin_id ,a.group_id,consumed_on_ts,a.status,a.stage,'paper classification pipeline completed', ${tenant_id},  a.batch_id
+			        FROM paper_classification.paper_classification_payload_queue_archive a
+			         WHERE a.group_id='${group_id}' AND a.origin_id ='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+			        GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts,a.status, a.batch_id;
+
+			    INSERT INTO ${temp_schema_name}.temp_error_document_detail_${init_process_id.process_id}
+                ( origin_id, group_id, process_failed_on, status,stage, message, tenant_id, batch_id)
+			    SELECT a.origin_id ,a.group_id, cast(consumed_on_ts as TIMESTAMP),status,a.stage,a.message, ${tenant_id},  a.batch_id
+			    FROM urgency_triage.ut_model_payload_error_queue a
+			    WHERE a.group_id='${group_id}' AND a.origin_id ='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+			    GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts,a.message,a.stage,a.status, a.batch_id
+			    UNION
+			        SELECT a.origin_id ,a.group_id,cast(consumed_on_ts as TIMESTAMP),a.status,a.stage,'checkbox urgency pipeline completed', ${tenant_id},  a.batch_id
+			        FROM urgency_triage.ut_model_payload_queue_archive a
+			        WHERE a.group_id='${group_id}' AND a.origin_id ='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+			        GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts,a.status, a.batch_id;
+
+			    INSERT INTO ${temp_schema_name}.temp_error_document_detail_${init_process_id.process_id}
+                ( origin_id, group_id, process_failed_on, status,stage, message,tenant_id, batch_id)
+			    SELECT a.origin_id ,a.group_id, cast(consumed_on_ts as TIMESTAMP),status,a.stage,a.message, ${tenant_id},  a.batch_id
+			    FROM qr_extraction.qr_extraction_payload_error_queue a
+			    where a.group_id='${group_id}' and a.origin_id ='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+			    GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts,a.message,a.stage,a.status, a.batch_id
+			    UNION
+			        SELECT a.origin_id ,a.group_id,cast(consumed_on_ts as TIMESTAMP),a.status,a.stage,'qr extraction pipeline completed', ${tenant_id}, a.batch_id
+			        FROM qr_extraction.qr_extraction_payload_queue_archive a
+			        WHERE a.group_id='${group_id}' AND a.origin_id ='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+			        GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts,a.status, a.batch_id;
+
+			     INSERT INTO ${temp_schema_name}.temp_error_document_detail_${init_process_id.process_id}
+                ( origin_id, group_id, process_failed_on, status,stage, message, tenant_id, batch_id)
+			    SELECT a.origin_id ,a.group_id,cast(consumed_on_ts as TIMESTAMP),status,a.stage,a.message, ${tenant_id}, a.batch_id
+			    FROM sor_transaction.sor_transaction_payload_error_queue a
+			    WHERE a.group_id='${group_id}' and a.origin_id ='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+			    GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts,a.message,a.stage,a.status,  a.batch_id
+			    UNION
+			        SELECT a.origin_id ,a.group_id,cast(consumed_on_ts as TIMESTAMP),a.status,a.stage,'sor transaction pipeline completed', ${tenant_id}, a.batch_id
+			        FROM sor_transaction.sor_transaction_payload_queue_archive a
+			        WHERE a.group_id='${group_id}' AND a.origin_id ='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+			        GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts,a.status,  a.batch_id;
+
+			     INSERT INTO ${temp_schema_name}.temp_error_document_detail_${init_process_id.process_id}
+                ( origin_id, group_id, process_failed_on, status,stage, message, tenant_id, batch_id)
+			    SELECT a.origin_id ,a.group_id,consumed_on_ts,status,a.stage,a.message, ${tenant_id}, a.batch_id
+			    FROM sor_grouping.sor_grouping_payload_error_queue a
+			    WHERE a.group_id='${group_id}' AND a.origin_id ='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+			    GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts,a.message,a.stage,a.status, a.batch_id
+			    UNION
+			        SELECT a.origin_id ,a.group_id,consumed_on_ts,a.status,a.stage,'sor grouping pipeline completed', ${tenant_id}, a.batch_id
+			        FROM sor_grouping.sor_grouping_payload_queue_archive a
+			        WHERE a.group_id='${group_id}' AND a.origin_id ='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+			        GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts,a.status, a.batch_id;
+
+			     INSERT INTO ${temp_schema_name}.temp_error_document_detail_${init_process_id.process_id}
+                ( origin_id, group_id, process_failed_on, status,stage, message,tenant_id, batch_id)
+			    SELECT a.origin_id ,a.group_id,cast(consumed_on_ts as TIMESTAMP),status,a.stage,a.message, ${tenant_id}, '${batch_id}'
+			    FROM outbound.outbound_payload_error_queue a
+			    WHERE a.group_id='${group_id}' and a.origin_id ='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+			    GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts,a.message,a.stage,a.status, a.batch_id
+			    UNION
+			        SELECT a.origin_id ,a.group_id, cast(consumed_on_ts as TIMESTAMP),a.status,a.stage,'outbound pipeline completed', ${tenant_id}, a.batch_id
+			        FROM outbound.outbound_payload_queue_archive a
+			        WHERE a.group_id='${group_id}' AND a.origin_id ='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+			        GROUP BY a.origin_id,a.group_id,a.stage,a.consumed_on_ts,a.status, a.batch_id;
+
+                 "} on-condition if "true"=="true"
+
+
+                 transform as "process failed status table inside macro" on "intics_zio_db_conn" using {"
+                        INSERT INTO ${temp_schema_name}.process_failed_status_${init_process_id.process_id}
+                        (origin_id, failed_on_stage, process_failes_on, message, root_pipeline_id, tenant_id, batch_id)
+                        SELECT origin_id ,stage ,process_failed_on,message,'${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                        FROM ${temp_schema_name}.temp_error_document_detail_${init_process_id.process_id}
+                        WHERE origin_id='${origin_id}' AND status='FAILED' and tenant_id = ${tenant_id} and batch_id = '${batch_id}'
+                        ORDER BY process_failed_on desc LIMIT 1;
+
+                  "} on-condition if "true"=="true"
+
+                   transform as "error json final output table insert" on "intics_zio_db_conn" using {"
+                        INSERT INTO outbound.error_document_detail
+                        (document_id, origin_id, group_id, total_no_of_pages,failed_on_stage, stages,message,uploaded_on,process_failed_on, total_processed_duration, root_pipeline_id, tenant_id, batch_id)
+                        SELECT  c.file_name,a.origin_id, a.group_id,count(origin.origin_id),pfs.failed_on_stage,
+                        (jsonb_object_agg(a.stage,a.status order by a.status desc))::jsonb,pfs.message,
+                        origin.created_on  ,pfs.process_failes_on ,EXTRACT(EPOCH FROM (pfs.process_failes_on - pfs.process_failes_on)),'${gen_id.root_pipeline_id}', ${tenant_id},  a.batch_id
+                        FROM ${temp_schema_name}.temp_error_document_detail_${init_process_id.process_id} a
+                        join ${temp_schema_name}.source_of_origin_${init_process_id.process_id} origin on a.origin_id=origin.origin_id
+                        join ${temp_schema_name}.asset_${init_process_id.process_id} c on a.origin_id=origin.origin_id and origin.file_id=c.file_id and a.origin_id='${origin_id}'
+                        join ${temp_schema_name}.process_failed_status_${init_process_id.process_id} pfs on pfs.origin_id=origin.origin_id
+                        group by c.file_name, a.origin_id, a.group_id ,pfs.failed_on_stage,pfs.process_failes_on,origin.created_on,pfs.message, a.batch_id;
+
+                   "} on-condition if "true"=="true"
+
+
+                   callprocess as "Init error response file creator"
+                   with-target "error.json.creator"
+                   from-file "${basepath}/responsebuilder/error.json.creator.lmd"
+                   using "intics_zio_db_conn"
+                   for-every {"
+                           select  json_build_object('documentId',u.document_id, 'originId',u.origin_id,
+                           'uploadedOn',u.uploaded_on, 'processFailedOn',u.process_failed_on, 'totalProcessedDuration',u.total_processed_duration, 'totalNoOfPages',u.total_no_of_pages,
+                           'failedOnStage',u.failed_on_stage, 'stages',u.stages, 'message',u.message) as error_response, '${zip_file_dir_details.zip_file_dir}' as zip_path,
+                           '${origin_file.file_name}' as file_name, u.document_id as document_id, u.batch_id
+                           FROM outbound.error_document_detail u where u.origin_id ='${origin_id}' and u.tenant_id = ${tenant_id}  and u.batch_id = '${batch_id}';
+                   "} on-condition if "true"=="true"
+
+
+         create-zip "zip files"  file-name "${zip_file_name_details.zip_file_name}" from  "${zip_file_dir_details.zip_file_dir}"
+         destination "${target_directory_path_details.target_directory_path}" using
+         {} on-condition if "true"=="true"
+
+         assign as "zip_file_path_details" source "intics_zio_db_conn" using{"
+             SELECT concat ('${target_directory_path_details.target_directory_path}', '${zip_file_name_details.zip_file_name}','.zip') as zip_file_path;
+         "} on-condition if "true"=="true"
+
+         checksum as "zip_file_checksum" using
+         {"
+             ${zip_file_path_details.zip_file_path}
+         "}
+
+         fileSize as "zip_file_size" using
+         {"
+             ${zip_file_path_details.zip_file_path}
+         "}
+
+         assign as "file_size_kb" source "intics_zio_db_conn" using
+         {"
+             select  CAST(coalesce('${zip_file_size}' , '0') AS integer)/1024 as int_value;
+         "} on-condition if "true"=="true"
+
+         transform as "insert into outbound zip file details table " on "intics_zio_db_conn" using
+         {"
+             INSERT INTO outbound.outbound_zip_file_details
+             (process_id, group_id, origin_id, document_id, zip_file_path, created_on, zip_file_checksum, zip_file_name, zip_file_size,root_pipeline_id, tenant_id, batch_id)
+             SELECT '${process-id}', '${group_id}', '${origin_id}', '${origin_file.file_name}', '${zip_file_path_details.zip_file_path}', NOW(), '${zip_file_checksum}',
+             '${zip_file_name_details.zip_file_name}', '${zip_file_size}','${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}';
+         "} on-condition if "true"=="true"
+
+         assign  as "resource_uri" source "intics_zio_db_conn" using
+         {"
+             SELECT concat( '${resourceUri}','api/v1/', '${origin_file.file_name}', '/docextractdownload') as final_uri;
+         "} on-condition if "true"=="true"
+
+         assign as "process_completed" source "intics_zio_db_conn" using
+         {"
+             SELECT created_on as completed_on FROM outbound.outbound_zip_file_details where origin_id = '${origin_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+         "} on-condition if "true"=="true"
+
+         assign as "total_processed_duration" source "intics_zio_db_conn" using
+         {"
+            SELECT floor(extract(epoch from (cast('${process_completed.completed_on}' as timestamp)-cast('${created_on}' as timestamp)))) as value;
+         "} on-condition if "true"=="true"
+
+         transform as "insert into completion summary details table" on "intics_zio_db_conn" using
+          {"
+              INSERT INTO eoc_response.completion_summary_details
+              (origin_id, process_completed_on, document_id, originuri, process_started_on, resourceuri,
+               total_processed_duration, uploaded_on, zip_file_check_sum, zip_file_name, zip_file_path,
+                zip_file_size, time_zone, root_pipeline_id, tenant_id, batch_id)
+              SELECT origin_id, created_on, document_id, '${origin_uri.source_uri}', '${created_on}',
+              '${resource_uri.final_uri}', cast(${total_processed_duration.value} as bigint),
+              '${created_on}', zip_file_checksum, zip_file_name, zip_file_path, '${file_size_kb.int_value}',
+              current_setting('timezone'),'${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+              FROM outbound.outbound_zip_file_details where origin_id = '${origin_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+          "} on-condition if "true"=="true"
+
+          assign as "notify_zip" source "intics_zio_db_conn" using
+          {"
+               SELECT concat( '${document.uri}','${origin_file.file_name}', '?tenantId=', ${tenant_id}) as file_uri;
+          "} on-condition if "true"=="true"
+
+          outbound-delivery-notify as "outbound zip to delivery"
+          document-id "${origin_file.file_name}"
+          intics-zip-uri "${notify_zip.file_uri}"
+          checksum "${zip_file_checksum}"
+          resource-conn "intics_zio_db_conn"
+          using  { "
+                      select '${origin_file.file_name}' as document_id, '${origin_file.file_name}' as file_name, concat( '${document.uri}','${origin_file.file_name}', '?tenantId=', ${tenant_id}) as file_uri,'${zip_file_checksum}' as zip_file_check_sum,
+                      '${doc.delivery.notify.url}' as endpoint,'${outbound.appId}' as app_id,'${outbound.appKeyId}' as app_secret_key, '${outbound.context.condition}' as outbound_condition ;
+
+          " } on-condition if "${outbound.delivery.notify}"=="true"
+
+         zipContentList as "zip file content list" on-resource-conn "intics_zio_db_conn"
+         document-id "${origin_file.file_name}"
+         origin-id "${origin_id}"
+         zip-file-path "${zip_file_path_details.zip_file_path}"
+         using  {
+         } on-condition if "true"=="true"
+
+        assign as "total_eoc_count" source "intics_zio_db_conn" using
+        {"
+            SELECT count(pahub_id) as count FROM sor_grouping.pahub_patient_instance where origin_id = '${origin_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+        "} on-condition if "true"=="true"
+
+         transform as "insert into document summary detail table" on "intics_zio_db_conn" using
+         {"
+            INSERT INTO eoc_response.document_summary_detail
+            (origin_id, process_completed_on, document_id, originuri, process_started_on,
+            total_pa_hub_patient_request_id_count, total_processed_duration, uploaded_on,
+            resourceuri, time_zone, root_pipeline_id, tenant_id, batch_id)
+            SELECT '${origin_id}', '${process_completed.completed_on}' ,'${origin_file.file_name}', '${origin_uri.source_uri}', '${created_on}',
+            '${total_eoc_count.count}', cast(${total_processed_duration.value} as bigint), '${created_on}', '${resource_uri.final_uri}',
+            current_setting('timezone'), '${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}';
+         "}  on-condition if "true"=="true"
+
+         transform as "insert into eoc summary detail table" on "intics_zio_db_conn" using
+         {"
+            INSERT INTO eoc_response.eoc_summary_detail
+            (origin_id, pa_hub_patient_request_page_count, end_index_page_no,
+            start_index_page_no, pa_hub_patient_request_id, source_of_pa_hub_patient_request_id,
+             pa_hub_patient_request_uri, confidence_score, root_pipeline_id, value_type, tenant_id, batch_id)
+            SELECT a.origin_id, count(distinct a.paper_no), max(a.paper_no),
+            min(a.paper_no), a.eoc_identifier,a.values,
+            concat('${resourceUri}', 'api/v1/',a.document_id, '/docdetaillineitem/' ,a.eoc_identifier),
+            max(b.confidence_score),'${gen_id.root_pipeline_id}', b.value_type, ${tenant_id}, a.batch_id
+            FROM eoc_response.eoc_extraction a, eoc_response.eoc_trans b
+            where a.origin_id = '${origin_id}' and a.eoc_identifier=b.eoc_identifier and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+            group by a.origin_id, a.eoc_identifier, a.values, a.document_id, b.value_type, a.batch_id;
+         "}  on-condition if "true"=="true"
+
+		transform as "update to completed response audit" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO outbound.outbound_pipeline_audit
+                (process_id, origin_id,group_id, created_on, status, stage, message, root_pipeline_id, tenant_id, batch_id)
+                VALUES('${init_process_id.process_id}','${origin_id}', '${group_id}',now(), 'COMPLETED',
+                'OUTBOUND ZIP CREATION', 'outbound zip creation process completed in response artifact creator lmd for origin_id ${origin_id}',
+                '${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}');
+
+        "} on-condition if "true"=="true"
+
+    }
+    catch {
+
+           transform as "${group_id}-${origin_id} set to failed insert into error queue" on "intics_zio_db_conn" using
+           {"
+                 UPDATE outbound.outbound_payload_queue
+                 SET consumer_process_id='${process-id}', status='FAILED'
+                 WHERE  origin_id ='${origin_id}' and status ='IN_PROGRESS' and stage ='OUTBOUND' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+           "} on-condition if "true"=="true"
+
+            transform as "update to failed response artifact audit" on "intics_zio_db_conn" using
+            {"
+                    INSERT INTO outbound.outbound_pipeline_audit
+                    (process_id, origin_id,group_id, created_on, status, stage, message, root_pipeline_id, tenant_id,batch_id)
+                    VALUES('${init_process_id.process_id}','${origin_id}', '${group_id}',now(), 'FAILED', 'OUTBOUND ZIP CREATION',
+                    'outbound zip creation process failed in response artifact creator lmd for origin_id ${origin_id}',
+                    '${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}');
+
+            "} on-condition if "true"=="true"
+    }
+    finally {
+
+    }
+}

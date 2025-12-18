@@ -1,0 +1,158 @@
+process "triton.unload.main.caller"
+{
+     try{
+
+            tritonModelLoadUnload as "triton unload for paper itemizer"
+            resource-conn "intics_zio_db_conn"
+            model-url "${triton.paper.iterator.unload.url}"
+            config-variable "PAPER_ITERATOR_CONFIG_JSON"
+            load-type "unload"
+            using  {
+            }  on-condition if "${triton.paper.iterator.unload.activator}"=="true"
+
+
+            tritonModelLoadUnload as "triton unload for auto rotator"
+            resource-conn "intics_zio_db_conn"
+            model-url "${triton.auto.rotator.unload.url}"
+            config-variable "PAPER_ITERATOR_CONFIG_JSON"
+            load-type "unload"
+            using  {
+            }  on-condition if "${triton.auto.rotator.unload.activator}"=="true"
+
+
+            tritonModelLoadUnload as "triton unload for text extractor"
+            resource-conn "intics_zio_db_conn"
+            model-url "${triton.text.extractor.unload.url}"
+            config-variable "TEXT_EXTRACTOR_CONFIG_JSON"
+            load-type "unload"
+            using  {
+            }  on-condition if "${triton.text.extractor.unload.activator}"=="true"
+
+
+            tritonModelLoadUnload as "triton unload for zsc"
+            resource-conn "intics_zio_db_conn"
+            model-url "${triton.zsc.unload.url}"
+            config-variable "ZSC_CONFIG_JSON"
+            load-type "unload"
+            using  {
+            }  on-condition if "${triton.zsc.unload.activator}"=="true"
+
+
+            tritonModelLoadUnload as "triton unload for pm"
+            resource-conn "intics_zio_db_conn"
+            model-url "${triton.pm.unload.url}"
+            config-variable "PM_CONFIG_JSON"
+            load-type "unload"
+            using  {
+            }  on-condition if "${triton.pm.unload.activator}"=="true"
+
+
+            tritonModelLoadUnload as "triton unload for paper classification"
+            resource-conn "intics_zio_db_conn"
+            model-url "${triton.paper.classification.unload.url}"
+            config-variable "PAPER_CLASSIFICATION_CONFIG_JSON"
+            load-type "unload"
+            using  {
+            }  on-condition if "${triton.paper.classification.unload.activator}"=="true"
+
+
+            tritonModelLoadUnload as "triton unload for qr extraction"
+            resource-conn "intics_zio_db_conn"
+            model-url "${triton.qr.extraction.unload.url}"
+            config-variable "QR_EXTRACTION_CONFIG_JSON"
+            load-type "unload"
+            using  {
+            }  on-condition if "${triton.qr.extraction.unload.activator}"=="true"
+
+
+            tritonModelLoadUnload as "triton unload for ut"
+            resource-conn "intics_zio_db_conn"
+            model-url "${triton.ut.unload.url}"
+            config-variable "QR_EXTRACTION_CONFIG_JSON"
+            load-type "unload"
+            using  {
+            }  on-condition if "${triton.ut.unload.activator}"=="true"
+
+
+            tritonModelLoadUnload as "triton unload for argon vqa"
+            resource-conn "intics_zio_db_conn"
+            model-url "${triton.argon.vqa.unload.url}"
+            config-variable "ARGON_CONFIG_JSON"
+            load-type "unload"
+            using  {
+            }  on-condition if "${triton.argon.vqa.unload.activator}"=="true"
+
+
+            tritonModelLoadUnload as "triton unload for xenon vqa"
+            resource-conn "intics_zio_db_conn"
+            model-url "${triton.xenon.vqa.unload.url}"
+            config-variable "XENON_CONFIG_JSON"
+            load-type "unload"
+            using  {
+            }  on-condition if "${triton.xenon.unload.activator}"=="true"
+
+
+            tritonModelLoadUnload as "triton unload for ner"
+            resource-conn "intics_zio_db_conn"
+            model-url "${triton.ner.unload.url}"
+            config-variable "NER_CONFIG_JSON"
+            load-type "unload"
+            using  {
+            }  on-condition if "${triton.ner.unload.activator}"=="true"
+
+
+            tritonModelLoadUnload as "triton unload for cos"
+            resource-conn "intics_zio_db_conn"
+            model-url "${triton.cos.unload.url}"
+            config-variable "COS_CONFIG_JSON"
+            load-type "unload"
+            using  {
+            }  on-condition if "${triton.cos.unload.activator}"=="true"
+
+
+            tritonModelLoadUnload as "triton unload for merger"
+            resource-conn "intics_zio_db_conn"
+            model-url "${triton.merger.unload.url}"
+            config-variable "MERGER_CONFIG_JSON"
+            load-type "unload"
+            using  {
+            }  on-condition if "${triton.merger.unload.activator}"=="true"
+
+
+            tritonModelLoadUnload as "triton unload for noise"
+            resource-conn "intics_zio_db_conn"
+            model-url "${triton.noise.unload.url}"
+            config-variable "NOISE_CONFIG_JSON"
+            load-type "unload"
+            using  {
+            }  on-condition if "${triton.noise.unload.activator}"=="true"
+
+
+            tritonModelLoadUnload as "triton unload for qr_reader"
+            resource-conn "intics_zio_db_conn"
+            model-url "${triton.qr.reader.unload.url}"
+            config-variable "QR_READER_CONFIG_JSON"
+            load-type "unload"
+            using  {
+            }  on-condition if "${triton.qr.reader.unload.activator}"=="true"
+
+
+            tritonModelLoadUnload as "triton unload for template detection"
+            resource-conn "intics_zio_db_conn"
+            model-url "${triton.template.detection.unload.url}"
+            config-variable "TEMPLATE_DETECTION_CONFIG_JSON"
+            load-type "unload"
+            using  {
+            }  on-condition if "${triton.template.detection.unload.activator}"=="true"
+
+
+
+     }
+
+            catch{
+            }
+            finally{
+            }
+
+
+}

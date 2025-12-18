@@ -1,0 +1,61 @@
+process "ut.model.main"
+{
+try {
+        assign as "init_process_id" source "intics_zio_db_conn" using
+        {"
+              SELECT ${process-id} as process_id;
+        "} on-condition if "true"=="true"
+
+        assign as "pipeline_train_mode" source "intics_zio_db_conn" using
+        {"
+                select  (case when '${ut.model.start.action}'='true' AND '${pipeline.train.mode}'='true' then 'true' else 'false' end) as ut_model;
+        "}on-condition if "true"=="true"
+
+
+        coproStart as "Calling Urgency triage Model copro start action" for "UT_MODEL"
+        copro-server-url "${copro.ut.model.admin.start.url}"
+        export-command "${copro.utmodel.export}"
+        process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+        using
+        {"
+                ${utModelStartCommand}
+
+        "}on-condition if "${pipeline_train_mode.ut_model}" == "true"
+
+        callprocess as "calling ut model urgency triage processor"
+        with-target "ut.model.processor"
+        from-file "${basepath}/utModel/ut.model.processor.lmd"
+        using "intics_zio_db_conn"
+        for-every
+        {"
+                SELECT DISTINCT group_id
+                FROM urgency_triage.ut_model_payload_queue
+                WHERE status='STAGED' AND stage='URGENCY_TRIAGE_MODEL' and tenant_id = ${tenant_id} and batch_id ='${batch_id}' and group_id = '${gen_group_id.group_id}';
+
+        "} on-condition if "true"=="true"
+
+        coproStop as "Calling ut model copro stop action" for "UT_MODEL"
+        copro-server-url "${copro.ut.model.admin.stop.url}"
+        process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+        using
+        {"
+                gunicorn
+
+        "}on-condition if "${ut.model.stop.action}"=="true"
+
+}
+catch{
+        transform as "failed in urgency triage main caller " on "intics_zio_db_conn" using
+        {"
+                INSERT INTO urgency_triage.ut_model_pipeline_audit
+                (process_id,group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+                values( ${init_process_id.process_id},'${gen_group_id.group_id}', now(),
+                'FAILED', 'UT_MAIN',' urgency triage main caller FAILED for process_id ${init_process_id.process_id}','${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}');
+
+        "} on-condition if "true"=="true"
+}
+finally{
+
+}
+
+}

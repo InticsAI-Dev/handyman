@@ -1,0 +1,20 @@
+process "kafka.outbound.publish"
+{
+try{
+
+            kafkaPublish as "Kafka publish api"
+            on-resource-conn "intics_zio_db_conn"
+            output-table "kafka_response_info"
+            using {"
+                select product_json as json_data,
+                ifd.document_id, pozfi.origin_id, pozfi.batch_id, pozfi.tenant_id, ifd.transaction_id
+                from product_outbound.product_outbound_zip_file_input pozfi
+                join inbound_config.ingestion_downloaded_file_details ifd on pozfi.file_name = ifd.document_id
+                where pozfi.group_id=${group_id} and pozfi.tenant_id = ${tenant_id} and pozfi.batch_id = '${batch_id}' and ifd.transaction_id = '${transaction_id}';
+            "} on-condition if "${kafka.publish.activator}"=="true"
+
+}catch{
+}
+finally{
+}
+}

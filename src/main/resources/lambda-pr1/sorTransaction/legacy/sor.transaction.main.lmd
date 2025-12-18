@@ -1,0 +1,43 @@
+process "sor.transaction.main"
+{
+	try{
+
+		assign as "time_stamp_sor_transaction" source "intics_zio_db_conn" using
+        {"
+                SELECT now() as consumed_on_ts;
+        "} on-condition if "true"=="true"
+
+        callprocess as "calling sor_transaction processor "
+        with-target "sor.transaction.processor"
+        from-file "${basepath}/sorTransaction/legacy/sor.transaction.processor.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                        SELECT DISTINCT group_id, 'PRIMARY' as qn_category
+                        FROM sor_transaction.sor_transaction_payload_queue
+                        WHERE status='STAGED' and tenant_id = ${tenant_id} and group_id = '${gen_group_id.group_id}' and batch_id = '${batch_id}';
+        "} on-condition if "true"=="true"
+	}
+	catch{
+			transform as "update to failed in sor transaction audit" on "intics_zio_db_conn" using
+           {"
+                INSERT INTO sor_transaction.sor_transaction_pipeline_audit
+                (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+                VALUES('${gen_group_id.group_id}', now(), '${created_user_id}', '${created_user_id}', ${tenant_id}, 'FAILED', 'MAIN_SOR_TRANSACTION', 'Sor transaction failed in main caller with group_id ${gen_group_id.group_id}', '${gen_id.root_pipeline_id}', '${batch_id}');
+           "} on-condition if "true"=="true"
+
+	}
+	finally{
+
+        transform as "move data from temporary tables into main audit tables in sor transaction " on "intics_zio_db_conn" using {"
+        INSERT INTO sor_transaction.adapter_result_audit
+        (origin_id, paper_no, group_id, process_id, sor_id, sor_item_id, sor_item_name, question, answer, vqa_score, weight, created_user_id, tenant_id, created_on, word_score, char_score, validator_score_allowed, validator_score_negative, confidence_score, validation_name, b_box, status, stage, message, root_pipeline_id,question_id,synonym_id, model_registry, batch_id)
+        SELECT  origin_id, paper_no, group_id, process_id, sor_id, sor_item_id, sor_item_name, question, answer, vqa_score, weight, created_user_id, tenant_id, created_on, word_score, char_score, validator_score_allowed, validator_score_negative, confidence_score, validation_name, b_box, status, stage, message, root_pipeline_id,question_id,synonym_id, model_registry,batch_id
+        FROM ${temp_schema_name}.adapter_result_${init_process_id.process_id}
+        where batch_id='${batch_id}';
+
+        "} on-condition if "true"=="true"
+
+
+	}
+
+}

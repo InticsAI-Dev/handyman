@@ -1,0 +1,112 @@
+process "voting.phase.two.v2"
+{
+    try
+    {
+        transform as "insert to completed 4 voting audit" on "intics_zio_db_conn" using
+        {"
+                --merge paper unnest and join the aggregation evaluator and join paper filter to get filter score and cummulative_score will be multiply of frequency and vqa_score;
+                INSERT INTO ${temp_schema_name}.name_score_${init_process_id.process_id}
+                (origin_id, paper_no, sor_item_name, weight_score, predicted_value, b_box, confidence_score,
+                root_pipeline_id,frequency,cummulative_score,filter_score,question_id,synonym_id, tenant_id, model_registry, batch_id)
+                select  a.origin_id ,a.paper_no ,a.sor_item_name,a.masked_score,a.predicted_value ,
+                a.b_box,a.vqa_score ,  '${init_process_id.process_id}',a.frequency,
+                a.frequency*a.vqa_score,pls.paper_level_score,a.question_id,a.synonym_id, ${tenant_id}, a.model_registry, a.batch_id
+                FROM ${temp_schema_name}.aggregation_evaluator_${init_process_id.process_id}  a
+                JOIN ${temp_schema_name}.paper_unnest_${init_process_id.process_id} b on a.origin_id =b.origin_id AND a.paper_no = b.paper_number
+                join ${temp_schema_name}.agentic_paper_level_score_${init_process_id.process_id} pls on pls.origin_id=a.origin_id and pls.batch_id=a.batch_id and pls.paper_no =a.paper_no
+                WHERE a.origin_id='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+
+                -- cummulative score contains max of cummulative score;
+                INSERT INTO ${temp_schema_name}.cummulative_score_${init_process_id.process_id}
+                (origin_id, sor_item_name, max_cummulative_score, tenant_id, batch_id)
+                select origin_id,sor_item_name,max(cummulative_score), ${tenant_id}, batch_id
+                from ${temp_schema_name}.name_score_${init_process_id.process_id}
+                WHERE origin_id='${origin_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}'
+                group by origin_id,sor_item_name,batch_id;
+
+
+                -- this get the count of the entries presen in the cummulative score;
+                INSERT INTO ${temp_schema_name}.score_count_${init_process_id.process_id}
+                (origin_id, sor_item_name, max_cummulative_score, score_count, tenant_id, batch_id)
+                select origin_id, sor_item_name, max_cummulative_score,count(*), ${tenant_id}, batch_id
+                from ${temp_schema_name}.cummulative_score_${init_process_id.process_id} cs
+                where origin_id ='${origin_id}'  and tenant_id = ${tenant_id} and batch_id = '${batch_id}'
+                group by origin_id, sor_item_name, max_cummulative_score , batch_id;
+
+
+
+                -- from cummulative result where count is 1 will be inserted into cummulative final;
+                INSERT INTO ${temp_schema_name}.cummulative_final_${init_process_id.process_id}
+                (min_score_id, origin_id, sor_item_name, cummulative_score, tenant_id, batch_id)
+                select min(score_id) as min_score_id,a.origin_id,a.sor_item_name,a.cummulative_score, ${tenant_id}, '${batch_id}'
+                from ${temp_schema_name}.name_score_${init_process_id.process_id} a
+                join ${temp_schema_name}.score_count_${init_process_id.process_id} b
+                on a.sor_item_name=b.sor_item_name and a.origin_id=b.origin_id and a.cummulative_score=b.max_cummulative_score
+                WHERE a.origin_id='${origin_id}'  and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+                and b.score_count=1
+                group by a.origin_id,a.sor_item_name,a.cummulative_score;
+
+
+                -- when count is greater than 2 then this query will executed for cummulative filter final table get max entity score;
+                INSERT INTO ${temp_schema_name}.cummulative_max_filter_score_${init_process_id.process_id}
+                (score_id, origin_id, paper_no, sor_item_name, cummulative_score, max_filter_score, tenant_id, batch_id)
+                select score_id,a.origin_id,a.paper_no ,a.sor_item_name,a.cummulative_score,max(a.filter_score), ${tenant_id}, '${batch_id}'
+                from ${temp_schema_name}.name_score_${init_process_id.process_id} a
+                join ${temp_schema_name}.score_count_${init_process_id.process_id} b
+                on a.sor_item_name=b.sor_item_name and a.origin_id=b.origin_id and a.cummulative_score=b.max_cummulative_score
+                join ${temp_schema_name}.agentic_paper_level_score_${init_process_id.process_id} plsa on plsa.origin_id=a.origin_id and plsa.paper_no=a.paper_no and plsa.batch_id=a.batch_id
+                WHERE a.origin_id='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+                and b.score_count > 1
+                group by a.origin_id,a.sor_item_name,a.cummulative_score,score_id, a.batch_id;
+
+                --insert into cummulative final table from cummulative max filter score ;
+                INSERT INTO ${temp_schema_name}.cummulative_final_${init_process_id.process_id}
+                (min_score_id, origin_id, sor_item_name, cummulative_score, tenant_id, batch_id)
+                select a.score_id ,a.origin_id,a.sor_item_name,a.cummulative_score, ${tenant_id}, a.batch_id
+                from ${temp_schema_name}.name_score_${init_process_id.process_id} a
+                join ${temp_schema_name}.cummulative_max_filter_score_${init_process_id.process_id} b
+                on a.sor_item_name=b.sor_item_name  and a.origin_id=b.origin_id and a.cummulative_score=b.cummulative_score  and a.filter_score=b.max_filter_score and a.paper_no=b.paper_no
+                WHERE a.origin_id='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                INSERT INTO ${temp_schema_name}.voting_phase_2_${init_process_id.process_id}_result
+                (min_score_id, origin_id, paper_no, sor_item_name, weight_score,
+                predicted_value, b_box, confidence_score, frequency, cummulative_score,question_id,synonym_id, tenant_id, model_registry, root_pipeline_id, batch_id)
+                select min_score_id,a.origin_id,a.paper_no,a.sor_item_name,a.weight_score,
+                a.predicted_value,a.b_box,a.confidence_score,a.frequency, a.cummulative_score,a.question_id,a.synonym_id, ${tenant_id}, a.model_registry, a.root_pipeline_id, a.batch_id
+                from ${temp_schema_name}.name_score_${init_process_id.process_id} a
+                join ${temp_schema_name}.cummulative_final_${init_process_id.process_id} b
+                on a.sor_item_name=b.sor_item_name and a.origin_id=b.origin_id
+                and a.cummulative_score=b.cummulative_score and a.score_id=b.min_score_id
+                WHERE a.origin_id='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+        "} on-condition if "true"=="true"
+
+
+        transform as "inserting into cumulative result if the p2p name concatenation pipeline is switched off" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO ${temp_schema_name}.cummulative_result_${init_process_id.process_id}
+                (origin_id, paper_no, sor_item_name, maximum_score, confidence_score,
+                extracted_value, b_box, root_pipeline_id,group_id,question_id,synonym_id, tenant_id,
+                created_on,created_user_id,last_updated_on,last_updated_user_id,status,version, model_registry, batch_id)
+                select a.origin_id,a.paper_no,a.sor_item_name,a.confidence_score,a.confidence_score,a.predicted_value,
+                a.b_box, '${init_process_id.process_id}','${group_id}',a.question_id,a.synonym_id, ${tenant_id},
+                now(),${created_user_id},now(),${created_user_id},'ACTIVE',1, a.model_registry, a.batch_id
+                from ${temp_schema_name}.voting_phase_2_${init_process_id.process_id}_result a
+                where a.origin_id='${origin_id}' and a.tenant_id = ${tenant_id} and batch_id='${batch_id}' and a.sor_item_name != 'multiple_member_indicator';
+        "} on-condition if "true"=="true"
+
+    }
+    catch
+    {
+        transform as "insert to completed voting phase two audit" on "intics_zio_db_conn" using
+        {"
+            INSERT INTO sor_transaction.sor_transaction_pipeline_audit
+            (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+            VALUES('${group_id}', now(), '${created_user_id}', '${created_user_id}', ${tenant_id}, 'FAILED', 'VOTING', 'voting failed for voting with group_id ${group_id}', '${gen_id.root_pipeline_id}', '${batch_id}');
+        "} on-condition if "true"=="true"
+    }
+    finally
+    {
+    }
+}

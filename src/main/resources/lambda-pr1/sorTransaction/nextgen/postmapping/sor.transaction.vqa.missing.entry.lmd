@@ -1,0 +1,213 @@
+process "sor.transaction.vqa.missing.entry"
+{
+try{
+
+       transform as "Insert into vqa missing entries, not present in agentic paper filter" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO ${temp_schema_name}.vqa_missing_paper_filter_keys_${init_process_id.process_id} (
+                  question_id, synonym_id, sor_item_name,
+                  group_id, origin_id, paper_no, batch_id,
+                  root_pipeline_id,  tenant_id
+                )
+                SELECT
+                  vt.question_id,
+                  vt.synonym_id,
+                  vt.sor_item_name,
+                  vt.group_id,
+                  vt.origin_id,
+                  vt.paper_no,
+                  vt.batch_id,
+                  vt.root_pipeline_id,
+                  vt.tenant_id
+                FROM
+                  ${temp_schema_name}.vqa_transaction_${init_process_id.process_id} vt
+                  INNER JOIN sor_meta.sor_item ai ON ai.sor_item_name = vt.sor_item_name AND ai.tenant_id = vt.tenant_id
+                  INNER JOIN sor_meta.sor_container sc ON ai.sor_container_id = sc.sor_container_id AND ai.tenant_id = sc.tenant_id
+                WHERE
+                  vt.tenant_id = ${tenant_id}
+                  AND vt.batch_id = '${batch_id}'
+                  AND vt.group_id = '${group_id}'
+                  AND sc.document_type = '${document_type}'
+                  AND sc.container_priority <> 'OPTIONAL';
+
+
+                INSERT INTO ${temp_schema_name}.vqa_transaction_${init_process_id.process_id} (
+                  created_on, created_user_id, last_updated_on,
+                  last_updated_user_id, answer, extracted_image_unit,
+                  group_id, model_id, model_info, origin_id,
+                  paper_no, question_id, root_pipeline_id,
+                  sor_item_name, sor_question, synonym_id,
+                  tenant_id, weight, model_registry,
+                  status, stage, sor_item_attribution_id,
+                  document_id, vqa_score, b_box, category,
+                  batch_id
+                )
+                SELECT
+                  NOW() AS current_time,
+                  smc.tenant_id,
+                  NOW() AS processed_time,
+                  smc.tenant_id AS tenant_id_2,
+                  '' AS answer,
+                  '' AS extracted_image_unit,
+                  smc.group_id,
+                  smc.model_id,
+                  'RADON' AS model_info,
+                  pls.origin_id,
+                  pls.paper_no,
+                  smc.question_id,
+                  smc.root_pipeline_id,
+                  smc.sor_item_name,
+                  smc.question,
+                  smc.synonym_id,
+                  smc.tenant_id AS tenant_id_3,
+                  150 AS weight,
+                  smc.model_name AS model_registry,
+                  'COMPLETED' AS status,
+                  'SOR_TRANSACTION' AS stage,
+                  smc.sor_item_attribution_id,
+                  '' AS document_id,
+                  ${radon.kvp.bbox.vqa.score.default} AS vqa_score,
+                  '{}' :: jsonb AS b_box,
+                  '${qn_category}' AS category,
+                  st.batch_id
+                FROM
+                  ${temp_schema_name}.sor_meta_consolidated_${init_process_id.process_id} smc
+                  INNER JOIN sor_transaction.sor_transaction_payload_queue st ON st.group_id = smc.group_id
+                          AND st.root_pipeline_id = smc.root_pipeline_id
+                  INNER JOIN ${temp_schema_name}.radon_kvp_output_${init_process_id.process_id} pls ON pls.group_id = smc.group_id
+                          AND pls.origin_id = st.origin_id
+                          AND pls.sor_container_id = smc.sor_container_id
+                          AND pls.tenant_id = smc.tenant_id
+                  LEFT JOIN ${temp_schema_name}.vqa_missing_paper_filter_keys_${init_process_id.process_id} vt ON vt.question_id = smc.question_id
+                          AND vt.synonym_id = smc.synonym_id
+                          AND vt.sor_item_name = smc.sor_item_name
+                          AND vt.group_id = smc.group_id
+                          AND vt.origin_id = pls.origin_id
+                          AND vt.paper_no = pls.paper_no
+                          AND vt.batch_id = st.batch_id
+                          AND vt.root_pipeline_id = smc.root_pipeline_id
+                WHERE
+                  smc.tenant_id = ${tenant_id}
+                  AND pls.batch_id = '${batch_id}'
+                  AND smc.group_id = '${group_id}'
+                  AND st.batch_id = '${batch_id}'
+                  AND smc.document_type = '${document_type}'
+                  AND vt.question_id IS NULL;
+
+        "}  on-condition if "true"=="true"
+
+
+       transform as "Insert into vqa missing entries, but present in agentic paper filter" on "intics_zio_db_conn" using
+        {"
+              INSERT INTO ${temp_schema_name}.vqa_missing_meta_keys_${init_process_id.process_id} (
+                question_id, synonym_id, sor_item_name,
+                group_id, origin_id, paper_no, batch_id,
+                root_pipeline_id, tenant_id
+              )
+              SELECT
+                vt.question_id,
+                vt.synonym_id,
+                vt.sor_item_name,
+                vt.group_id,
+                vt.origin_id,
+                vt.paper_no,
+                vt.batch_id,
+                vt.root_pipeline_id,
+                vt.tenant_id
+              FROM
+                ${temp_schema_name}.vqa_transaction_${init_process_id.process_id} vt
+                INNER JOIN ${temp_schema_name}.radon_kvp_output_${init_process_id.process_id} pls ON pls.group_id = vt.group_id
+                and pls.batch_id = vt.batch_id
+                AND pls.root_pipeline_id = vt.root_pipeline_id
+                AND pls.origin_id = vt.origin_id
+                and pls.paper_no = vt.paper_no
+                AND pls.tenant_id = vt.tenant_id
+                INNER JOIN sor_meta.sor_item ai ON ai.sor_item_name = vt.sor_item_name and ai.sor_container_id = pls.sor_container_id
+                                                and ai.tenant_id = vt.tenant_id
+                JOIN sor_meta.sor_container sc
+                ON sc.sor_container_id = pls.sor_container_id
+              WHERE
+                vt.tenant_id = ${tenant_id}
+                AND ai.tenant_id = vt.tenant_id
+                AND pls.batch_id = '${batch_id}'
+                AND vt.batch_id = '${batch_id}'
+                AND vt.group_id = '${group_id}'
+                AND sc.container_priority <> 'OPTIONAL';
+
+
+              INSERT INTO ${temp_schema_name}.vqa_transaction_${init_process_id.process_id} (
+                created_on, created_user_id, last_updated_on,
+                last_updated_user_id, answer, extracted_image_unit,
+                group_id, model_id, model_info, origin_id,
+                paper_no, question_id, root_pipeline_id,
+                sor_item_name, sor_question, synonym_id,
+                tenant_id, weight, model_registry,
+                status, stage, sor_item_attribution_id,
+                document_id, vqa_score, b_box, category,
+                batch_id
+              )
+              SELECT
+                NOW() AS current_time,
+                smc.tenant_id,
+                NOW() AS processed_time,
+                smc.tenant_id AS tenant_id,
+                '' AS answer,
+                '' AS extracted_image_unit,
+                smc.group_id,
+                smc.model_id,
+                'RADON' AS model_info,
+                st.origin_id,
+                1 as paper_no,
+                smc.question_id,
+                smc.root_pipeline_id,
+                smc.sor_item_name,
+                smc.question,
+                smc.synonym_id,
+                smc.tenant_id AS tenant_id,
+                150 AS weight,
+                smc.model_name AS model_registry,
+                'COMPLETED' AS status,
+                'SOR_TRANSACTION' AS stage,
+                smc.sor_item_attribution_id,
+                '' AS document_id,
+                50 AS vqa_score,
+                '{}' :: jsonb AS b_box,
+                'PRIMARY' AS category,
+                st.batch_id
+              FROM
+                ${temp_schema_name}.sor_meta_consolidated_${init_process_id.process_id} smc
+                INNER JOIN sor_transaction.sor_transaction_payload_queue st ON st.group_id = smc.group_id
+                AND st.root_pipeline_id = smc.root_pipeline_id
+                LEFT JOIN ${temp_schema_name}.vqa_missing_meta_keys_${init_process_id.process_id} vt ON vt.question_id = smc.question_id
+                AND vt.synonym_id = smc.synonym_id
+                AND vt.sor_item_name = smc.sor_item_name
+                AND vt.group_id = smc.group_id
+                AND vt.origin_id = st.origin_id
+                AND vt.batch_id = st.batch_id
+                AND vt.root_pipeline_id = smc.root_pipeline_id
+                JOIN sor_meta.sor_container sc
+                ON sc.sor_container_id = smc.sor_container_id
+              WHERE
+                smc.tenant_id = ${tenant_id}
+                AND st.batch_id = '${batch_id}'
+                AND smc.group_id = '${group_id}'
+                AND smc.document_type = '${document_type}'
+                AND vt.question_id IS NULL
+                AND sc.container_priority <> 'OPTIONAL';
+
+
+
+        "}  on-condition if "true"=="true"
+
+
+}
+catch{
+
+
+}
+finally{
+
+
+}
+
+}

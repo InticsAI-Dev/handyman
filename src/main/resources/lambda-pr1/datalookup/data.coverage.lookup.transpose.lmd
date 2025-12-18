@@ -1,0 +1,20 @@
+process "data.coverage.lookup.transpose"
+{
+try{
+
+        transform as "table creation for control data payload queue" on "intics_zio_db_conn" using
+        {"
+
+        INSERT INTO control_data.member_first_name_input
+        (root_pipeline_id, created_on, group_id, batch_id, file_name, origin_id, paper_no, actual_value, extracted_value, tenant_id)
+        select root_pipeline_id, now(), ${gen_group_id.group_id}, ${batch_id}, , '', 0, '', '', 0);
+
+
+        "} on-condition if "true"=="true"
+
+}
+catch{
+}
+finally{
+}
+}

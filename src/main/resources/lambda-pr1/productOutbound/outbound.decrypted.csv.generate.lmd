@@ -1,0 +1,88 @@
+process "outbound.decrypted.csv.generate"
+{
+try{
+
+            assign as "outbound_csv" source "intics_zio_db_conn" using
+            {"
+            select  concat('exported_csv_','${init_process_id.process_id}','.csv') as path;
+            "}on-condition if "true"=="true"
+
+            transform as "Export predicted values into csv with and without encryption" on "intics_zio_db_conn" using
+            {"
+                    CREATE TABLE IF NOT EXISTS product_outbound.product_outbound_csv_input(
+                            id BIGSERIAL NOT NULL,
+                            created_on TIMESTAMP NULL,
+                            last_updated_on TIMESTAMP NULL,
+                            inbound_transaction_id VARCHAR NULL,
+                            transaction_id VARCHAR NULL,
+                            root_pipeline_id INT8 NULL,
+                            group_id INT8 NULL,
+                            document_id VARCHAR NULL,
+                            tenant_id INT8 NULL,
+                            sor_container_name VARCHAR NULL,
+                            file_name VARCHAR NULL,
+                            csv_headers TEXT NULL,
+                            file_path VARCHAR NULL,
+                            origin_id VARCHAR NULL,
+                            extracted_meta_detail TEXT NULL,
+                            status VARCHAR NULL,
+                            stage VARCHAR NULL,
+                            encryption_active BOOL NULL
+                    );
+
+                    INSERT INTO product_outbound.product_outbound_csv_input
+                    (root_pipeline_id,inbound_transaction_id,transaction_id,created_on,group_id,document_id,tenant_id,sor_container_name,file_name,origin_id,extracted_meta_detail, status, stage, encryption_active, csv_headers, file_path)
+                    select cr.root_pipeline_id,idfd.inbound_transaction_id,idfd.transaction_id ,NOW(),soo.group_id,idfd.document_id ,cr.tenant_id ,'' as sor_container_name ,a.file_name ,cr.origin_id ,
+                    jsonb_agg(jsonb_build_object('key',si.sor_item_name,'value',cr.predicted_value ,'policy',ep.encryption_policy,'isEncrypted',si.is_encrypted))::varchar as extracted_meta_detail,
+                    'IN_PROGRESS','CSV_OUTBOUND','${pipeline.end.to.end.encryption}'::BOOL, '${csv.headers.list}', concat('${target_directory_path}','/decrypted-csv/','${outbound_csv.path}') as file_path
+                    from valuation.prediction cr
+                    join info.source_of_origin soo on soo.tenant_id =cr.tenant_id and soo.origin_id =cr.origin_id
+                    join info.asset a on a.asset_id =soo.asset_id and a.tenant_id =soo.tenant_id
+                    join sor_meta.sor_tsynonym st on st.synonym_id =cr.synonym_id and st.tenant_id =cr.tenant_id
+                    join sor_meta.sor_item si on si.sor_item_id =st.sor_item_id and si.tenant_id =st.tenant_id
+                    join sor_meta.encryption_policies ep on ep.encryption_policy_id =si.encryption_policy_id
+                    join inbound_config.ingestion_downloaded_file_details idfd on idfd.transaction_id =soo.transaction_id and idfd.tenant_id =soo.tenant_id and a.file_name=idfd.file_name
+                    join inbound_config.ingestion_file_details ifd on ifd.inbound_transaction_id =idfd.inbound_transaction_id
+                    where cr.root_pipeline_id ='${init_process_id.process_id}'
+                    and cr.tenant_id =${tenant_id}
+                    group by cr.root_pipeline_id ,soo.group_id ,idfd.document_id,cr.tenant_id,a.file_name ,cr.origin_id, idfd.inbound_transaction_id,idfd.transaction_id ;
+            "} on-condition if "true"=="true"
+
+
+            decryptInticsEnc as "Decrypt the encrypted data from predicted table"
+            source "intics_zio_db_conn"
+            decrypt-url "${protegrity.dec.api.url}"
+            output-csv-path "${outbound_csv.path}"
+            using
+            {"
+                select cr.root_pipeline_id ,cr.group_id,cr.document_id ,cr.tenant_id ,'' as sor_container_name ,cr.file_name ,cr.origin_id , cr.extracted_meta_detail
+                from product_outbound.product_outbound_csv_input cr
+                where cr.root_pipeline_id ='${init_process_id.process_id}'
+                and cr.tenant_id =${tenant_id};
+
+            "} on-condition if "true"=="true"
+
+		    transform as "Export predicted values into csv with and without encryption" on "intics_zio_db_conn" using
+            {"
+
+                   UPDATE product_outbound.product_outbound_csv_input
+                   SET status='COMPLETED' , last_updated_on = NOW()
+                   WHERE root_pipeline_id='${init_process_id.process_id}' and tenant_id=${tenant_id};
+
+            "} on-condition if "true"=="true"
+
+}
+catch{
+            transform as "Export predicted values into csv with and without encryption" on "intics_zio_db_conn" using
+            {"
+
+                   UPDATE product_outbound.product_outbound_csv_input
+                   SET status='FAILED' , last_updated_on = NOW()
+                   WHERE root_pipeline_id='${init_process_id.process_id}' and tenant_id=${tenant_id};
+
+            "} on-condition if "true"=="true"
+}
+finally{
+
+}
+}

@@ -1,0 +1,286 @@
+process "product.outbound.processor"
+{
+
+try{
+
+
+		transform as "update to in-progress response main outbound payload queue" on "intics_zio_db_conn" using
+       {"
+
+            UPDATE product_outbound.product_outbound_payload_queue
+            SET status='IN_PROGRESS', consumed_on_ts = now(), consumer_process_id = '${process-id}'
+            WHERE group_id='${group_id}' AND status='STAGED' AND stage='PRODUCT_OUTBOUND' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+            UPDATE batching.sub_batching_process_payload_queue
+            SET status='IN_PROGRESS',  stage='PRODUCT_OUTBOUND'
+            WHERE group_id='${group_id}'
+            and batch_id ='${batch_id}' and tenant_id = ${tenant_id};
+
+
+            update ingestion.pipeline_queue_status_audit as a
+            set status = 'IN_PROGRESS' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+            where  a.group_id=${group_id}
+            and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='PRODUCT_OUTBOUND' ;
+
+            UPDATE info.transaction
+            SET transaction_status='IN_PROGRESS'
+            WHERE transaction_id='${transaction_id}' and tenant_id=${tenant_id};
+
+            INSERT INTO product_outbound.product_outbound_pipeline_audit
+            (process_id, origin_id, group_id, created_on, status, stage, message,root_pipeline_id,tenant_id, batch_id)
+            select producer_process_id,origin_id,group_id, now(),
+            'STARTED', 'PRODUCT_OUTBOUND','product outbound process STARTED for group_id ${group_id}','${gen_id.root_pipeline_id}','${tenant_id}', batch_id
+            FROM product_outbound.product_outbound_payload_queue
+            WHERE group_id='${group_id}' AND status='IN_PROGRESS' AND stage='PRODUCT_OUTBOUND' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+
+       "} on-condition if "true"=="true"
+
+        alchemyAuthToken as "alchemy auth token"
+       on-resource-conn "intics_zio_db_conn"
+       using {
+       } on-condition if "true"=="true"
+
+
+        outboundKvpResponse as "alchemy kvp response macro"
+        result-table "alchemy_response.alchemy_kvp_response"
+        processId "${process-id}"
+        resource-conn "intics_zio_db_conn"
+        using {"
+
+                SELECT ampq.producer_process_id as process_id, ap.group_id, ap.tenant_id, ap.root_pipeline_id, ap.origin_id as alchemy_origin_id, ap.origin_id as pipeline_origin_id, ampq.batch_id
+                FROM product_outbound.product_outbound_payload_queue ampq
+                join ${temp_schema_name}.source_of_truth_${init_process_id.process_id} ap on ampq.origin_id = ap.origin_id and ampq.tenant_id = ap.tenant_id
+                where ampq.status = 'IN_PROGRESS' and ampq.group_id = '${group_id}' and ampq.tenant_id = ${tenant_id} and ampq.batch_id = '${batch_id}'
+                group by ampq.producer_process_id, ap.group_id, ap.tenant_id, ap.root_pipeline_id, ap.origin_id, ampq.batch_id;
+         "} on-condition if "true"=="true"
+
+           outboundTableResponse as "alchemy table response macro"
+             result-table "alchemy_response.alchemy_table_response"
+             processId "${process-id}"
+             resource-conn "intics_zio_db_conn"
+             using {"
+
+               SELECT ampq.producer_process_id as process_id, ap.group_id, ap.tenant_id, ap.root_pipeline_id,
+               ap.origin_id  as alchemy_origin_id, ap.origin_id  as pipeline_origin_id ,ap.paper_no, ampq.batch_id
+               FROM product_outbound.product_outbound_payload_queue ampq
+               join ${temp_schema_name}.source_of_truth_${init_process_id.process_id} ap on ampq.origin_id = ap.origin_id and ampq.tenant_id = ap.tenant_id
+               where ampq.status = 'IN_PROGRESS' and ampq.group_id = ${group_id} and ampq.tenant_id = ${tenant_id}  and ampq.batch_id = '${batch_id}';
+              "} on-condition if "${table.extraction.activator}"=="true"
+
+        transform as "alchemy_response.origin_pdf_info insert for group id ${group_id}" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO alchemy_response.origin_pdf_info
+                (process_id, group_id, origin_id, origin_file_path, file_name, created_on, last_updated_on, tenant_id, root_pipeline_id, batch_id)
+                select popq.producer_process_id ,popq.group_id,popq.origin_id  ,asset.file_path , asset.file_name ,now(),now(),popq.tenant_id ,popq.root_pipeline_id, popq.batch_id
+                from product_outbound.product_outbound_payload_queue popq
+                inner join ${temp_schema_name}.source_of_origin_${init_process_id.process_id} soo on soo.origin_id=popq.origin_id and soo.tenant_id=popq.tenant_id
+                inner join ${temp_schema_name}.asset_${init_process_id.process_id} asset on asset.file_id = soo.file_id
+                where popq.group_id=${group_id} and popq.tenant_id = ${tenant_id} and popq.batch_id = '${batch_id}';
+        "} on-condition if "true"=="true"
+
+        transform as "product_outbound.product_outbound_zip_file_input insert  for group id ${group_id}" on "intics_zio_db_conn" using
+        {"
+
+            INSERT INTO product_outbound.product_outbound_zip_file_input
+            (origin_id, root_pipeline_id, group_id, process_id, cleaned_pdf_path, origin_pdf_path, product_json, kvp_response, tenant_id,file_name,alchemy_origin_id, batch_id)
+            select popq.origin_id, popq.root_pipeline_id, popq.group_id, popq.producer_process_id ,cpi.processed_file_path,
+            opi.origin_file_path, apr.product_response, akr.kvp_response, popq.tenant_id::int8, opi.file_name,akr.alchemy_origin_id, popq.batch_id
+            from product_outbound.product_outbound_payload_queue popq
+            left join alchemy_response.cleaned_pdf_info cpi on popq.origin_id =cpi.origin_id and popq.tenant_id =cpi.tenant_id
+            inner join alchemy_response.origin_pdf_info opi on popq.origin_id = opi.origin_id and popq.tenant_id =opi.tenant_id
+            inner join alchemy_response.alchemy_kvp_response akr on akr.pipeline_origin_id  = popq.origin_id
+            inner join alchemy_response.alchemy_product_response apr on apr.origin_id  = popq.origin_id
+            where popq.group_id=${group_id} and popq.tenant_id = ${tenant_id} and popq.batch_id = '${batch_id}';
+
+        "} on-condition if "true"=="true"
+
+        outbound-Zipfile as  "outbound zip file creation macro"
+        result-table "product_outbound.product_outbound_zip_file_details"
+        outputdirectory "${gen_directory.current_directory}"
+        processId "${process-id}"
+        resource-conn "intics_zio_db_conn"
+        using {"
+                        SELECT origin_id, root_pipeline_id, group_id, process_id, cleaned_pdf_path, origin_pdf_path, product_json, kvp_response, table_response, tenant_id,file_name, alchemy_origin_id, batch_id
+                        FROM product_outbound.product_outbound_zip_file_input where group_id=${group_id} and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+        "} on-condition if "${outbound.zipfile.generation.activator}"=="true"
+
+        outbound-delivery-notify as "outbound zip to delivery Product"
+        document-id "${origin_file.file_name}"
+        intics-zip-uri "${notify_zip.file_uri}"
+        checksum "${zip_file_checksum}"
+        resource-conn "intics_zio_db_conn"
+        using  { "
+            select file_name as file_name, '' as file_uri,'' as zip_file_check_sum,
+            '${outbound.doc.delivery.notify.url}' as endpoint,'${outbound.appId}' as app_id,'${outbound.appKeyId}' as app_secret_key,product_json as outbound_json,'${outbound.context.condition}' as outbound_condition, batch_id
+            from product_outbound.product_outbound_zip_file_input  where group_id=${group_id} and tenant_id = ${tenant_id} and batch_id = '${batch_id}' ;
+
+        " } on-condition if "${outbound.delivery.notify}"=="true"
+
+        outbound-delivery-notify as "outbound zip to delivery elv"
+        document-id "${origin_file.file_name}"
+        intics-zip-uri "${notify_zip.file_uri}"
+        checksum "${zip_file_checksum}"
+        resource-conn "intics_zio_db_conn"
+        using  { "
+            select ifd.file_name as file_name, '' as file_uri, '' as zip_file_check_sum,
+            '${outbound.doc.delivery.notify.url.elv}' as endpoint, pozfi.product_json as outbound_json, 'ELV' as outbound_condition, pozfi.batch_id, ifd.document_id as document_id,
+            '' as encryption_type, ifd.file_checksum as file_checksum , '' as encryption_key , ifd.transaction_id
+            from product_outbound.product_outbound_zip_file_input pozfi join inbound_config.ingestion_file_details ifd on pozfi.file_name = ifd.file_name
+            where pozfi.group_id=${group_id} and pozfi.tenant_id = ${tenant_id} and pozfi.batch_id = '${batch_id}' and  ifd.transaction_id = '${transaction_id}';
+        " } on-condition if "${outbound.delivery.notify.elv}"=="true"
+
+
+
+                kafkaProductionResponse as "Kafka production response api"
+                on-resource-conn "intics_zio_db_conn"
+                output-table "product_outbound.kafka_production_response"
+                shadow-url ""
+                batch-id "${batch_id}"
+                using {"
+                    SELECT pozfi.custom_response AS json_data,
+                           ifd.document_id,
+                           pozfi.origin_id,
+                           pozfi.batch_id,
+                           pozfi.tenant_id,
+                           ifd.transaction_id,
+                           ifd.inbound_transaction_id,
+                           ifd.request_txn_id,
+                           ifd.file_name,
+                           ab.root_pipeline_id
+                    FROM   product_outbound.product_outbound_payload_queue ab
+                    JOIN   product_outbound.product_response_details pozfi
+                                        ON     ab.origin_id=pozfi.origin_id
+                                        AND    ab.tenant_id =pozfi.tenant_id
+                                        AND    ab.group_id=pozfi.group_id
+                                        AND    ab.batch_id =pozfi.batch_id
+                    JOIN   ${temp_schema_name}.asset_${init_process_id.process_id} a
+                                        ON     a.tenant_id =pozfi.tenant_id
+                                        AND    a.batch_id =pozfi.batch_id
+                    JOIN   inbound_config.ingestion_downloaded_file_details ifd
+                                        ON     pozfi.file_name = a.file_name
+                                        AND    ifd.file_name = a.file_name
+                                        AND    ab.tenant_id =ifd.tenant_id
+                    WHERE  ab.group_id=${group_id}
+                                        AND    ab.tenant_id = ${tenant_id}
+                                        AND    ab.batch_id = '${batch_id}'
+                                        AND    ifd.transaction_id = '${transaction_id}' ;
+                "} on-condition if "${kafka.production.activator}"=="true"
+
+
+
+                kafkaOutboundComparison as "Kafka outbound comparison api"
+                on-resource-conn "intics_zio_db_conn"
+                output-table "control_data_org.kafka_comparison_actual_input"
+                batch-id "${batch_id}"
+                using {"
+                   SELECT created_on, created_user_id, last_updated_on, last_updated_user_id, status,
+                                           version, production_response, document_id, extension, origin_id, tenant_id, transaction_id,
+                                           requesttxnid, filename, batch_id, message
+                                           FROM product_outbound.kafka_production_response
+                                            WHERE tenant_id = ${tenant_id}
+                                            AND batch_id = '${batch_id}'
+                                            AND  transaction_id = '${transaction_id}' and status='SUCCESS';
+                "} on-condition if "${kafka.production.activator}"=="true"
+
+
+
+        kafkaPublish as "Kafka publish api"
+        on-resource-conn "intics_zio_db_conn"
+        output-table "product_outbound.kafka_response_info"
+        using {"
+            SELECT product_json AS json_data,
+                   ifd.document_id,
+                   pozfi.origin_id,
+                   pozfi.batch_id,
+                   pozfi.tenant_id,
+                   ifd.transaction_id
+            FROM   product_outbound.product_outbound_payload_queue ab
+            JOIN   product_outbound.product_outbound_zip_file_input pozfi
+                                ON     ab.origin_id=pozfi.origin_id
+                                AND    ab.tenant_id =pozfi.tenant_id
+                                AND    ab.group_id=pozfi.group_id
+                                AND    ab.batch_id =pozfi.batch_id
+            JOIN   ${temp_schema_name}.asset_${init_process_id.process_id} a
+                                ON     a.tenant_id =pozfi.tenant_id
+                                AND    a.batch_id =pozfi.batch_id
+            JOIN   inbound_config.ingestion_downloaded_file_details ifd
+                                ON     pozfi.file_name = a.file_name
+                                AND    ifd.file_name = a.file_name
+                                AND    ab.tenant_id =ifd.tenant_id
+            WHERE  ab.group_id=${group_id}
+                                AND    ab.tenant_id = ${tenant_id}
+                                AND    ab.batch_id = '${batch_id}'
+                                AND    ifd.transaction_id = '${transaction_id}' ;
+        "} on-condition if "${kafka.publish.activator}"=="true"
+
+
+         transform as "update to completed ${group_id}" on "intics_zio_db_conn" using
+         {"
+                UPDATE product_outbound.product_outbound_payload_queue
+                SET consumer_process_id='${process-id}', status='COMPLETED'
+                WHERE status ='IN_PROGRESS' and stage ='PRODUCT_OUTBOUND' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+
+                UPDATE batching.sub_batching_process_payload_queue a
+                SET status='COMPLETED',  stage='PRODUCT_OUTBOUND'
+                WHERE a.group_id='${group_id}'  and a.tenant_id='${tenant_id}'
+                and a.batch_id ='${batch_id}';
+
+                update ingestion.pipeline_queue_status_audit as a
+                set status = 'COMPLETED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                where  a.group_id=${group_id}
+                and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='PRODUCT_OUTBOUND' ;
+
+                 INSERT INTO product_outbound.product_outbound_pipeline_audit
+                (process_id, origin_id, group_id, created_on, status, stage, message,root_pipeline_id,tenant_id, batch_id)
+                select producer_process_id,origin_id,group_id, now(),
+                'COMPLETED', 'PRODUCT_OUTBOUND','product outbound process completed for group_id ${group_id}','${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM product_outbound.product_outbound_payload_queue
+                WHERE group_id='${group_id}' AND status='IN_PROGRESS' AND stage='PRODUCT_OUTBOUND' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+         "} on-condition if "true"=="true"
+
+          transform as "update to completed for ingestion file details table" on "intics_zio_db_conn" using
+          {"
+                  UPDATE inbound_config.ingestion_downloaded_file_details idf
+                  SET status = 'COMPLETED'
+                  FROM product_outbound.product_outbound_payload_queue popq
+                  JOIN ${temp_schema_name}.source_of_origin_${init_process_id.process_id} soo ON soo.origin_id=popq.origin_id AND soo.tenant_id=popq.tenant_id
+                  JOIN ${temp_schema_name}.asset_${init_process_id.process_id} a on a.asset_id=soo.asset_id
+                  WHERE idf.status in ('IN_PROGRESS','TIME_LAPSED')
+                    AND idf.tenant_id = ${tenant_id}
+                    AND idf.transaction_id = '${transaction_id}'
+                    AND a.file_name = idf.file_name
+                    AND popq.status = 'COMPLETED';
+          "} on-condition if "${coveragereport.processor.activator}"=="false"
+
+
+
+}
+catch{
+
+         transform as "update to failed in response main outbound payload queue" on "intics_zio_db_conn" using
+           {"
+                UPDATE  product_outbound.product_outbound_payload_queue
+                SET consumer_process_id='${process-id}', consumed_on_ts=now() , status='FAILED'
+                WHERE group_id='${group_id}' AND status ='IN_PROGRESS' AND stage ='PRODUCT_OUTBOUND' and batch_id = '${batch_id}';
+
+
+                UPDATE batching.sub_batching_process_payload_queue a
+                SET status='FAILED',  stage='PRODUCT_OUTBOUND'
+                WHERE a.group_id='${group_id}'  and a.tenant_id='${tenant_id}'
+                and a.batch_id ='${batch_id}';
+
+                INSERT INTO product_outbound.product_outbound_pipeline_audit
+                 (process_id, origin_id,group_id, created_on, status, stage, message, root_pipeline_id,tenant_id, batch_id)
+                 VALUES('${init_process_id.process_id}','${origin_id}', '${group_id}',now(), 'FAILED', 'PRODUCT_OUTBOUND', 'outbound process failed in response main lmd for origin_id ${origin_id}', '${gen_id.root_pipeline_id}',${tenant_id}, '${batch_id}');
+
+           "} on-condition if "true"=="true"
+
+
+}
+finally{
+
+
+}
+}

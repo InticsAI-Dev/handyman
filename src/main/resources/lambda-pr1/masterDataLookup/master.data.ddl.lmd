@@ -1,0 +1,162 @@
+process "master.data.ddl"
+{
+    try {
+
+            transform as "create ddl for master data" on "intics_zio_db_conn" using
+            {"
+                      CREATE SCHEMA IF NOT EXISTS md_lookup_systemKey;
+
+                      CREATE TABLE IF NOT EXISTS md_lookup_systemKey.master_data_payload_queue (
+                      producer_process_id int8 NOT NULL,
+                      consumer_process_id int8 NULL,
+                      origin_id varchar NOT NULL,
+                      group_id int4 NULL,
+                      created_on timestamp NULL,
+                      consumed_on_ts timestamp NULL,
+                      status varchar NULL,
+                      stage varchar NULL,
+                      root_pipeline_id int8 NULL,
+                      batch_id varchar NOT NULL,
+					  tenant_id int8 NULL,
+                      CONSTRAINT master_data_payload_queue_pk PRIMARY KEY (producer_process_id, origin_id)
+                      );
+
+                    CREATE TABLE IF NOT EXISTS md_lookup_systemKey.master_data_payload_queue_archive (
+                    root_pipeline_id int8 NULL,
+                    producer_process_id int8 NOT NULL,
+                    consumer_process_id int8 NULL,
+                    origin_id varchar NOT NULL,
+                    group_id int4 NULL,
+                    created_on timestamp NULL,
+                    consumed_on_ts varchar NULL,
+                    status varchar NULL,
+                    stage varchar NULL,
+                    batch_id varchar NOT NULL,
+					tenant_id int8 NULL,
+                    CONSTRAINT master_data_queue_archive_pk PRIMARY KEY (producer_process_id, origin_id)
+                    );
+
+
+                    CREATE TABLE IF NOT EXISTS md_lookup_systemKey.master_data_payload_error_queue (
+                    producer_process_id int8 NOT NULL,
+                    consumer_process_id int8 NULL,
+                    origin_id varchar NOT NULL,
+                    created_on timestamp  NULL,
+                    group_id int4  null,
+                    status varchar  NULL,
+                    stage  varchar  NULL,
+                    message varchar NULL,
+                    consumed_on_ts timestamp NULL,
+                    root_pipeline_id int8 NULL,
+                    batch_id varchar NOT NULL,
+					tenant_id int8 NULL,
+                    CONSTRAINT master_data_payload_error_queue_pk PRIMARY KEY ( origin_id)
+                    );
+
+                    CREATE TABLE IF NOT EXISTS md_lookup_systemKey.master_data_pipeline_audit (
+                    id bigserial NOT NULL,
+                    process_id bigint NOT NULL,
+                    origin_id varchar  NULL,
+                    group_id varchar NULL,
+                    created_on varchar  NULL,
+                    status varchar  NULL,
+                    stage varchar  NULL,
+                    message varchar  NULL,
+                    root_pipeline_id int8 NULL,
+                    batch_id varchar NULL,
+                    tenant_id int8 NULL
+                    );
+
+                    CREATE TABLE IF NOT EXISTS  ${temp_schema_name}.summary_audit_files_${process-id} (
+                    module_name text NULL,
+                    macro_process text NULL,
+                    completed_count int8 NULL,
+                    failed_count int8 NULL,
+                    min_created_on timestamp NULL,
+                    max_created_on timestamp NULL,
+                    time_taken int8 NULL,
+                    process_id int8 NOT NULL,
+                    root_pipeline_id int8 NULL,
+                    batch_id varchar NULL,
+                    tenant_id int8 NULL
+                    );
+
+            "}  on-condition if "true"=="true"
+
+            systemkeyTable as "creating system_key tables for individual sor_items"
+            resoruce-conn "intics_zio_db_conn"
+            using {"
+                 select mdc.sor_item_name,
+                 string_agg(sk.system_key::text, ', ' order by sk.system_key DESC) as all_system_keys
+                 from config.master_data_config mdc
+                 join md_lookup_systemkey.system_key sk on sk.system_key_id = mdc.system_key_id
+                 group by mdc.sor_item_name;
+            "} on-condition if "true"=="true"
+
+
+
+
+            transform as "CREATE TABLE for  drug name comparison" on "intics_zio_db_conn" using
+            {"
+
+                        CREATE TABLE IF NOT EXISTS ${temp_schema_name}.drug_name_response_${init_process_id.process_id} (
+                        origin_id varchar null,
+                        batch_id varchar NOT NULL,
+					    tenant_id int8 NULL,
+                        eoc_identifier varchar null,
+                        document_id varchar null,
+                        paper_no int4 null,
+                        created_on timestamp null,
+                        drug_name varchar NULL,
+                        drug_jcode varchar NULL,
+                        actual_value varchar null,
+                        status varchar null,
+                        stage varchar null,
+                        message varchar null
+                        );
+
+                        CREATE TABLE IF NOT EXISTS ${temp_schema_name}.drug_name_comparison_${init_process_id.process_id} (
+                        origin_id varchar NULL,
+                        batch_id varchar NOT NULL,
+					    tenant_id int8 NULL,
+                        eoc_identifier varchar NULL,
+                        paper_no int4 NULL,
+                        created_on timestamp,
+                        extracted_value varchar NULL,
+                        actual_value varchar NULL,
+                        intelli_match float4 NULL,
+                        status varchar null,
+                        stage varchar null,
+                        message varchar null
+                        );
+
+                        CREATE TABLE IF NOT EXISTS  ${temp_schema_name}.drug_name_rank_${init_process_id.process_id} (
+                        origin_id varchar NULL,
+                        eoc_identifier varchar NULL,
+                        extracted_value varchar NULL,
+                        actual_value varchar NULL,
+                        intelli_match float4 NULL,
+                        score_rank int8 NULL,
+                        tenant_id int8 NULL,
+                        batch_id varchar NOT NULL
+                        );
+
+                        CREATE TABLE IF NOT EXISTS ${temp_schema_name}.final_drugname_match_${init_process_id.process_id} (
+                        origin_id varchar NULL,
+                        batch_id varchar NOT NULL,
+					    tenant_id int8 NULL,
+                        eoc_identifier varchar NULL,
+                        extracted_value varchar NULL,
+                        actual_value varchar NULL,
+                        intelli_match float4 NULL,
+                        score_rank int8 NULL
+                        );
+
+            "}  on-condition if "true"=="false"
+
+    }
+    catch {
+    }
+
+    finally {}
+}

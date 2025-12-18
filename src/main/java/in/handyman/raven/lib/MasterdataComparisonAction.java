@@ -3,18 +3,16 @@
 
 package in.handyman.raven.lib;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.MasterdataComparison;
-import in.handyman.raven.lib.model.common.*;
+import in.handyman.raven.lib.services.common.MasterDataInputTable;
+import in.handyman.raven.lib.services.common.MasterDataOutputTable;
+import in.handyman.raven.lib.services.common.MasterdataComparisonProcess;
 import in.handyman.raven.util.ExceptionUtil;
 import in.handyman.raven.util.InstanceUtil;
 import okhttp3.OkHttpClient;

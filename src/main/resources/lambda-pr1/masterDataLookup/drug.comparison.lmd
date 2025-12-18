@@ -1,0 +1,59 @@
+process "drug.comparison"
+
+{
+
+    try {
+                transform as "insert into drug name audit as  started" on "intics_zio_db_conn" using
+                {"
+                    INSERT INTO md_lookup_systemKey.master_data_pipeline_audit
+                    (process_id,origin_id, created_on, group_id,  status, stage, message, root_pipeline_id, tenant_id, batch_id)
+                    SELECT '${init_process_id.process_id}',a.origin_id,now(),'${gen_group_id.group_id}',
+                    'STARTED','MASTER_DATA_DRUG','master_data started for drug','${gen_id.root_pipeline_id}', ${tenant_id}, a.batch_id)
+                    from md_lookup_systemKey.master_data_payload_queue a
+                    where a.batch_id='${batch_id}';
+
+                    UPDATE  md_lookup_systemKey.master_data_payload_queue
+                    SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts=now(),status='IN_PROGRESS'
+                    WHERE status='STAGED' and tenant_id = ${tenant_id}, and batch_id = '${batch_id}');
+
+                "}  on-condition if "true"=="true"
+
+
+
+                drugMatch as "master data for drug"
+                on-resource-conn "intics_zio_db_conn"
+                drug-compare "${temp_schema_name}.drug_name_response_${init_process_id.process_id}"
+                using {"
+
+                    SELECT b.origin_id ,b.eoc_identifier,b.document_id ,b.paper_no,b.values as drug_name,'' as jcode,'${gen_id.root_pipeline_id}' as root_pipeline_id, a.batch_id
+                    FROM md_lookup_systemKey.master_data_payload_queue a
+                    JOIN eoc_response.eoc_trans b
+                    on a.origin_id =b.origin_id
+                    and b.sor_item_name='drug_name'
+                     and a.batch_id = '${batch_id}';
+
+                "} on-condition if "true"=="true"
+
+
+
+                transform as "insert into drug name audit as completed" on "intics_zio_db_conn" using
+                {"
+
+                    INSERT INTO md_lookup_systemKey.master_data_pipeline_audit
+                    (process_id,origin_id, created_on, group_id,  status, stage, message, root_pipeline_id, tenant_id, batch_id)
+                    SELECT '${init_process_id.process_id}',a.origin_id,now(),'${gen_group_id.group_id}','COMPLETED',
+                    'MASTER_DATA_DRUG','master_data completed for drug','${gen_id.root_pipeline_id}', ${tenant_id}, a.batch_id)
+                    from  md_lookup_systemKey.master_data_payload_queue a
+                    where a.batch_id='${batch_id}';
+
+                "}  on-condition if "true"=="true"
+
+
+
+    }  catch {
+
+    }
+    finally {
+
+    }
+}

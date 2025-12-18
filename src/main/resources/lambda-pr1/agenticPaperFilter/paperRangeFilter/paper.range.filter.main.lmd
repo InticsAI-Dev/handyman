@@ -1,0 +1,343 @@
+process "paper.range.filter.main.lmd"
+{
+	try{
+
+    transform as "Insert into chrono-clash file wise input table using the common time interval for paper-wise agentic paper filter" on "intics_zio_db_conn" using {"
+        INSERT INTO ${temp_schema_name}.agentic_range_paper_filter_chrono_clash_input_${init_process_id.process_id}
+        (root_pipeline_id, created_on, updated_on, batch_id, group_id, origin_id, tenant_id, time_frame, stage, status, transaction_id, downloaded_time, remaining_time)
+        SELECT apfpq.root_pipeline_id, now(), now(), apfpq.batch_id, apfpq.group_id, apfpq.origin_id, apfpq.tenant_id,
+        ${chronoclash.threshold.time} AS time_frame,
+        'AGENTIC_PAPER_FILTER' AS stage,
+        CASE
+            WHEN now() - soo.file_downloaded_time >= (${chronoclash.threshold.time} * interval '1 minute')
+                 AND '${chronoclash.activator}' = 'true' AND POSITION('AGENTIC_PAPER_RANGE_FILTER' IN '${chronoclash.stage.controller}') > 0
+            THEN 'ABORTED'
+            ELSE 'IN_PROGRESS'
+        END AS status,
+        soo.transaction_id,
+        soo.file_downloaded_time as downloaded_time,
+        ((${chronoclash.threshold.time} * interval '1 minute') - (now() - soo.file_downloaded_time)) as remaining_time
+        FROM paper_filter.agentic_paper_filter_payload_queue apfpq
+        JOIN ${temp_schema_name}.downloaded_asset_source_details_${init_process_id.process_id} soo on soo.root_pipeline_id = apfpq.root_pipeline_id and soo.origin_id = apfpq.origin_id
+        WHERE apfpq.batch_id='${batch_id}' and apfpq.tenant_id =${tenant_id} and apfpq.stage ='AGENTIC_PAPER_FILTER' and apfpq.status = 'STAGED';
+    "} on-condition if "${chronoclash.specific.time.interval.enabler}" == "false"
+
+    transform as "Insert into chrono-clash file wise input table using the specific time interval for paper-wise agentic paper filter" on "intics_zio_db_conn" using {"
+        INSERT INTO ${temp_schema_name}.agentic_range_paper_filter_chrono_clash_input_${init_process_id.process_id}
+        (root_pipeline_id, created_on, updated_on, batch_id, group_id, origin_id, tenant_id, time_frame, stage, status, transaction_id, downloaded_time, remaining_time)
+        SELECT apfpq.root_pipeline_id, now(), now(), apfpq.batch_id, apfpq.group_id, apfpq.origin_id, apfpq.tenant_id,
+        CASE
+            WHEN (CURRENT_TIME BETWEEN scti.start_time_frame::time AND scti.end_time_frame::time)
+            THEN scti.time_frame
+            ELSE ${chronoclash.threshold.time}
+        END AS time_frame,
+        'AGENTIC_PAPER_FILTER' AS stage,
+        CASE
+            WHEN now() - soo.file_downloaded_time >= ((time_frame) * interval '1 minute') AND '${chronoclash.activator}' = 'true' AND POSITION('AGENTIC_PAPER_RANGE_FILTER' IN '${chronoclash.stage.controller}') > 0
+            THEN 'ABORTED'
+            ELSE 'IN_PROGRESS'
+        END AS status,
+        soo.transaction_id,
+        soo.file_downloaded_time as downloaded_time,
+        ((time_frame * interval '1 minute') - (now() - soo.file_downloaded_time)) as remaining_time
+        FROM paper_filter.agentic_paper_filter_payload_queue apfpq
+        JOIN ${temp_schema_name}.downloaded_asset_source_details_${init_process_id.process_id} soo on soo.root_pipeline_id = apfpq.root_pipeline_id and soo.origin_id = apfpq.origin_id
+        JOIN config.spw_chrono_clash_time_interval scti on scti.tenant_id = apfpq.tenant_id and scti.instance = '${root-pipeline-name}' and CURRENT_TIME BETWEEN scti.start_time_frame::time AND scti.end_time_frame::time
+        WHERE apfpq.batch_id='${batch_id}' and apfpq.tenant_id =${tenant_id} and apfpq.stage ='AGENTIC_PAPER_FILTER' and apfpq.status = 'STAGED';
+    "} on-condition if "${chronoclash.specific.time.interval.enabler}" == "true"
+
+	transform as "Update to IN PROGRESS in agentic paper filter payload queue" on "intics_zio_db_conn" using
+         {"
+              UPDATE paper_filter.agentic_paper_filter_payload_queue as apfpq
+              SET status= a.status, consumed_on_ts = now(), consumer_process_id = '${process-id}'
+              FROM ${temp_schema_name}.agentic_range_paper_filter_chrono_clash_input_${init_process_id.process_id} a
+              WHERE a.origin_id = apfpq.origin_id and apfpq.batch_id ='${batch_id}' and apfpq.status='STAGED' and apfpq.group_id='${group_id}' and apfpq.tenant_id = ${tenant_id};
+
+
+                update ingestion.pipeline_queue_status_audit as pqsa
+                set status = a.status, consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                FROM ${temp_schema_name}.agentic_range_paper_filter_chrono_clash_input_${init_process_id.process_id} a
+                where a.origin_id = pqsa.origin_id and sbppq.group_id=${group_id} and sbppq.batch_id='${batch_id}' and sbppq.tenant_id =${tenant_id} and sbppq.stage ='AGENTIC_PAPER_FILTER' and sbppq.status='STAGED';
+
+
+                UPDATE batching.sub_batching_process_payload_queue as sbppq
+                SET status=a.status, stage='AGENTIC_PAPER_FILTER'
+                FROM ${temp_schema_name}.agentic_range_paper_filter_chrono_clash_input_${init_process_id.process_id} a
+                WHERE a.origin_id = sbppq.origin_id and a.group_id='${group_id}' and a.tenant_id='${tenant_id}' and a.batch_id ='${batch_id}';
+
+                INSERT INTO paper_filter.agentic_paper_filter_pipeline_audit
+                (process_id, origin_id,group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+                SELECT a.producer_process_id,a.origin_id, a.group_id,now(), 'STARTED', 'AGENTIC_PAPER_FILTER', 'agentic paper filter started for group_id ${group_id}',a.root_pipeline_id, ${tenant_id}, a.batch_id
+                FROM paper_filter.agentic_paper_filter_payload_queue apfpq
+                JOIN ${temp_schema_name}.agentic_range_paper_filter_chrono_clash_input_${init_process_id.process_id} a ON a.origin_id = apfpq.origin_id AND a.tenant_id = apfpq.tenant_id
+                WHERE apfpq.status=a.status and apfpq.group_id='${group_id}' and apfpq.tenant_id = ${tenant_id} and apfpq.batch_id = '${batch_id}';
+
+         "}  on-condition if "true"=="true"
+
+     transform as "Update to IN PROGRESS in paperWiseAgenticFilter sub batch agentic paper filter payload queue" on "intics_zio_db_conn" using
+          {"
+               UPDATE paper_filter.paper_wise_filter_sub_batch_queue as pwsbq
+               SET status= a.status, consumed_on_ts = now(), consumer_process_id = '${process-id}'
+               FROM ${temp_schema_name}.agentic_range_paper_filter_chrono_clash_input_${init_process_id.process_id} a
+               WHERE a.origin_id = pwsbq.origin_id and pwsbq.batch_id ='${batch_id}' and pwsbq.status='STAGED' and pwsbq.group_id='${group_id}' and pwsbq.tenant_id = ${tenant_id};
+
+          "}  on-condition if "true"=="true"
+
+          transform as "Update to IN PROGRESS in paperWiseAgenticFilter agentic paper filter payload queue" on "intics_zio_db_conn" using
+                    {"
+                         UPDATE paper_filter.paper_wise_filter_sub_batch_payload_queue as pwsbq
+                         SET status= a.status, consumed_on_ts = now(), consumer_process_id = '${process-id}'
+                         FROM ${temp_schema_name}.agentic_range_paper_filter_chrono_clash_input_${init_process_id.process_id} a
+                         WHERE a.origin_id = pwsbq.origin_id and pwsbq.batch_id ='${batch_id}' and pwsbq.status='STAGED' and pwsbq.group_id='${group_id}' and pwsbq.tenant_id = ${tenant_id};
+                    "}  on-condition if "true"=="true"
+
+        transform as "Insert into paperWiseAgenticFilter agentic paper filter input table" on "intics_zio_db_conn" using
+                {"
+                    INSERT INTO ${temp_schema_name}.paper_wise_filter_input_data_${init_process_id.process_id} (
+                                process_id, tenant_id, template_id, group_id, origin_id, paper_no,
+                                file_path, root_pipeline_id, template_name, batch_id, created_on,
+                                user_prompt, system_prompt,unique_id,unique_name,prompt_type,model_name
+                                )
+                                SELECT
+                                a.root_pipeline_id as process_id , a.tenant_id, a.channel_id as template_id, a.group_id, a.origin_id, a.paper_no,
+                                aa.file_path as file_path, b.root_pipeline_id, a.template_name,
+                                b.batch_id, now() as created_on, r.base_prompt as user_prompt, r.system_prompt as system_prompt
+                                ,r.sor_container_id as unique_id,d.document_type  as unique_name,r.prompt_type as prompt_type,m.model_name
+                                FROM paper_filter.paper_wise_filter_sub_batch_queue b
+                                join ${temp_schema_name}.source_of_truth_${init_process_id.process_id} a on b.origin_id =a.origin_id and b.tenant_id =a.tenant_id
+                                join ${temp_schema_name}.asset_${init_process_id.process_id} aa on aa.asset_id =a.asset_id
+                                join paper_filter.paper_wise_filter_config c on a.tenant_id=c.tenant_id
+                                join sor_meta.model_registry m on m.tenant_id =a.tenant_id and m.model_id =c.model_id and b.model_name =m.model_name
+                                join sor_meta.radon_prompt_table r on r.tenant_id =a.tenant_id
+                                join sor_meta.document d on d.document_type  = r.document_type and d.tenant_id =r.tenant_id
+                                where a.paper_no between c.min_page and c.max_page
+                                AND b.status = 'IN_PROGRESS'
+                                AND c.root_processor = '${root-pipeline-name}'
+                                AND a.group_id = ${group_id}
+                                AND a.tenant_id = ${tenant_id}
+                                AND b.batch_id = '${batch_id}'
+                                AND r.process = 'AGENTIC_PAPER_FILTER'
+                                AND r.use_case = 'PAPER_FILTER'
+                                AND r.status ='ACTIVE'
+                                AND r.version = '${prompt_version.value}'
+                                AND r.document_type = '${document_type}'
+                                AND m.model_name='KRYPTON'
+                                AND r.prompt_type='DOCUMENT';
+
+
+                                INSERT INTO ${temp_schema_name}.paper_wise_filter_input_data_${init_process_id.process_id} (
+                                process_id, tenant_id, template_id, group_id, origin_id, paper_no,
+                                file_path, root_pipeline_id, template_name, batch_id, created_on,
+                                user_prompt, system_prompt,unique_id,unique_name,prompt_type,model_name
+                                )
+                                SELECT
+                                a.root_pipeline_id as process_id , a.tenant_id, a.channel_id as template_id, a.group_id, a.origin_id, a.paper_no,
+                                aa.file_path as file_path, b.root_pipeline_id, a.template_name,
+                                b.batch_id, now() as created_on, r.base_prompt as user_prompt, r.system_prompt as system_prompt,s.sor_container_id as unique_id,s.sor_container_name as unique_name,r.prompt_type as prompt_type,
+                                m.model_name AS model_name
+                                 FROM paper_filter.paper_wise_filter_sub_batch_queue b
+                                 join ${temp_schema_name}.source_of_truth_${init_process_id.process_id} a on b.origin_id =a.origin_id and b.tenant_id =a.tenant_id
+                                 join info.asset aa on aa.asset_id =a.asset_id
+                                 join paper_filter.paper_wise_filter_config c on a.tenant_id=c.tenant_id
+                                 join sor_meta.model_registry m on m.tenant_id =a.tenant_id and m.model_id =c.model_id and b.model_name =m.model_name
+                                 join sor_meta.radon_prompt_table r on r.tenant_id =a.tenant_id
+                                 join sor_meta.sor_container s on s.sor_container_id=r.sor_container_id and s.tenant_id =r.tenant_id
+                                 WHERE a.paper_no between c.min_page and c.max_page
+                                AND b.status = 'IN_PROGRESS'
+                                AND a.group_id = ${group_id}
+                                AND c.root_processor = '${root-pipeline-name}'
+                                AND a.tenant_id = ${tenant_id}
+                                AND b.batch_id = '${batch_id}'
+                                AND r.process = 'AGENTIC_PAPER_FILTER'
+                                AND r.use_case = 'PAPER_FILTER'
+                                AND r.status ='ACTIVE'
+                                AND r.version = '${prompt_version.value}'
+                                AND r.document_type = '${document_type}'
+                                AND m.model_name='OPTIMUS'
+                                AND r.prompt_type='FIELD';
+
+
+                                INSERT INTO ${temp_schema_name}.paper_wise_filter_input_data_${init_process_id.process_id} (
+                                process_id, tenant_id, template_id, group_id, origin_id, paper_no,
+                                file_path, root_pipeline_id, template_name, batch_id, created_on,
+                                user_prompt, system_prompt,model_name,prompt_type
+                                )
+                                SELECT
+                                a.root_pipeline_id as process_id , a.tenant_id, a.channel_id as template_id, a.group_id, a.origin_id, a.paper_no,
+                                aa.file_path as file_path, b.root_pipeline_id, a.template_name,
+                                b.batch_id, now() as created_on, '' as user_prompt, '' as system_prompt,
+                                m.model_name AS model_name,r.prompt_type as prompt_type
+                                FROM paper_filter.paper_wise_filter_sub_batch_queue b
+                                join ${temp_schema_name}.source_of_truth_${init_process_id.process_id} a on b.origin_id =a.origin_id and b.tenant_id =a.tenant_id
+                                join info.asset aa on aa.asset_id =a.asset_id
+                                join paper_filter.paper_wise_filter_config c on a.tenant_id=c.tenant_id
+                                join sor_meta.model_registry m on m.tenant_id =a.tenant_id and m.model_id =c.model_id and b.model_name =m.model_name
+                                join sor_meta.radon_prompt_table r on r.tenant_id =a.tenant_id
+                                WHERE a.paper_no between c.min_page and c.max_page
+                                AND b.status = 'IN_PROGRESS'
+                                AND a.document_type = '${document_type}'
+                                AND a.group_id = ${group_id}
+                                AND c.root_processor = '${root-pipeline-name}'
+                                AND a.tenant_id = ${tenant_id}
+                                AND b.batch_id = '${batch_id}'
+                                AND m.model_name='DEFAULT'
+                                AND r.prompt_type='DEFAULT';
+                "} on-condition if "true"=="true"
+
+
+
+       multitude as "multitude execution - call to Copro based on model" on "PARALLEL" using
+       {
+       transform as "Insert into paperWiseAgenticFilter agentic paper filter output table" on "intics_zio_db_conn" using
+       {"
+          INSERT INTO ${temp_schema_name}.paper_wise_filter_output_${init_process_id.process_id}
+          (process_id, tenant_id, template_id, group_id, batch_id, origin_id, paper_no, file_path, file_name,
+           status, stage, message, template_name, is_blank_page, created_on, last_updated_on, root_pipeline_id,
+            model_name, model_version, request, response, endpoint, container_name, container_value)
+              SELECT
+              a.consumer_process_id,
+              a.tenant_id,
+              a2.template_id,
+              a.group_id,
+              a.batch_id,
+              a.origin_id,
+              a2.paper_no,
+              a2.file_path,
+              '' as file_name,
+              'COMPLETED' as status,
+              'AGENTIC_PAPER_FILTER' AS stage,
+              'Default' as message,
+              a2.template_name,
+              'no' AS is_blank_page,
+              NOW() AS created_on,
+              NOW() AS last_updated_on,
+              a.root_pipeline_id,
+              'DEFAULT' AS model_name,
+              1 AS model_version,
+              '' as request,
+              '' as response,
+              '' as endpoint,
+              s.sor_container_name,
+              CASE
+                  WHEN s.status = 'ACTIVE' THEN true
+                  ELSE false
+              END AS container_value
+          FROM
+              paper_filter.paper_wise_filter_sub_batch_payload_queue a
+          JOIN
+              ${temp_schema_name}.paper_wise_filter_input_data_${init_process_id.process_id} a2
+              ON a.origin_id = a2.origin_id
+              AND a.root_pipeline_id = a2.root_pipeline_id
+              AND a.group_id = a2.group_id
+              AND a.paper_no = a2.paper_no
+              AND a.model_name = a2.model_name
+          JOIN
+              sor_meta.sor_container s
+              ON s.status IN ('ACTIVE')
+              AND s.tenant_id = a2.tenant_id
+          WHERE
+              a.root_pipeline_id = ${init_process_id.process_id}
+              AND a.tenant_id = ${tenant_id}
+              AND a.batch_id = '${batch_id}'
+              AND s.document_type = '${document_type}' AND s.container_priority ='MANDATORY'
+              AND s.status IN ('ACTIVE') AND a2.model_name = 'DEFAULT'
+          GROUP BY
+              a.consumer_process_id,
+              a.tenant_id,
+              a2.template_id,
+              a.group_id,
+              a.batch_id,
+              a.origin_id,
+              a2.paper_no,
+              a2.file_path,
+              a.status,
+              s.status,
+              a2.template_name,
+              a.root_pipeline_id,
+              s.sor_container_name;
+       "} on-condition if "true"=="true"
+
+        agenticPaperFilter as "container based paperWiseAgenticFilter agentic paper filter using krypton for group_id ${group_id} for batch id ${batch_id}"
+              resource-conn "intics_zio_db_conn"
+              result-table "${temp_schema_name}.paper_wise_filter_output_${init_process_id.process_id}"
+              copro-url "${copro.agentic.paper.filter.url}"
+              process-id "${init_process_id.process_id}"
+              using {"
+                         SELECT a.process_id, a.tenant_id, a.template_id, a.group_id, a.origin_id, a.paper_no, a.file_path, a.root_pipeline_id, a.template_name, a.batch_id, a.created_on, a.user_prompt, a.system_prompt,a.model_name,a.unique_id,a.unique_name,a.prompt_type
+                         FROM ${temp_schema_name}.paper_wise_filter_input_data_${init_process_id.process_id} a
+                         WHERE a.tenant_id = ${tenant_id} AND a.batch_id = '${batch_id}' AND a.group_id = ${gen_group_id.group_id} AND a.model_name='KRYPTON';
+                    "} on-condition if "true"=="true" on-parallel-fielding "${agentic.paper.filter.krypton.API.count}"
+
+         agenticPaperFilter as "container based paperWiseAgenticFilter agentic paper filter using optimus for group_id ${group_id} for batch id ${batch_id}"
+               resource-conn "intics_zio_db_conn"
+               result-table "${temp_schema_name}.paper_wise_filter_output_${init_process_id.process_id}"
+               copro-url "${copro.optimus.agentic.paper.filter.url}"
+               process-id "${init_process_id.process_id}"
+               using {"
+                      SELECT a.process_id, a.tenant_id, a.template_id, a.group_id, a.origin_id, a.paper_no, a.file_path, a.root_pipeline_id, a.template_name, a.batch_id, a.created_on, a.user_prompt, a.system_prompt,a.model_name,a.unique_id,a.unique_name,a.prompt_type
+                      FROM ${temp_schema_name}.paper_wise_filter_input_data_${init_process_id.process_id} a
+                      WHERE a.tenant_id = ${tenant_id} AND a.batch_id = '${batch_id}' AND a.group_id = ${gen_group_id.group_id} AND a.model_name='OPTIMUS';
+               "} on-condition if "true"=="true" on-parallel-fielding "${agentic.paper.filter.optimus.API.count}"
+       } on-condition if "true"=="true"
+
+        callprocess as "calling paperWiseAgenticFilter Agentic paper filter process"
+        with-target "paper.range.filter.processor"
+        from-file "${basepath}/agenticPaperFilter/paperRangeFilter/paper.range.filter.processor.lmd"
+        using "intics_zio_db_conn"
+        for-every
+            {"
+            SELECT 1;
+            "} on-condition if "true"=="true"
+        }
+    	catch{
+    	        transform as "Failed in agentic paper filter main caller" on "intics_zio_db_conn" using
+                            {"
+                                INSERT INTO paper_filter.agentic_paper_filter_pipeline_audit
+                                (process_id, group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id )
+                                VALUES('${init_process_id.process_id}', '${gen_group_id.group_id}', now(), 'FAILED', 'AGENTIC_PAPER_FILTER', 'failed in agentic paper filter main caller','${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}');
+
+
+                            "}on-condition if "true"=="true"
+
+                            transform as "Update to FAILED in agentic paper filter payload queue" on "intics_zio_db_conn" using
+                             {"
+                                    UPDATE paper_filter.agentic_paper_filter_payload_queue a
+                                    SET status='FAILED',  stage='AGENTIC_PAPER_FILTER'
+                                    WHERE a.group_id='${group_id}'  and a.tenant_id='${tenant_id}'
+                                    and a.batch_id ='${batch_id}' and a.status='IN_PROGRESS';
+
+                                    update ingestion.pipeline_queue_status_audit as a
+                                    set status = 'FAILED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                                    where  a.group_id=${group_id}
+                                    and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='AGENTIC_PAPER_FILTER' and status='IN_PROGRESS';
+
+                             "}  on-condition if "true"=="true"
+
+             transform as "Failed in paperWiseAgenticFilter sub batch agentic paper filter main caller" on "intics_zio_db_conn" using
+              {"
+                UPDATE paper_filter.paper_wise_filter_sub_batch_queue
+                SET status='FAILED', consumed_on_ts =  now(), consumer_process_id = '${process-id}'
+                WHERE batch_id ='${batch_id}' and status='IN_PROGRESS' and group_id='${group_id}' and tenant_id = ${tenant_id};
+              "}on-condition if "true"=="true"
+
+	}
+	finally{
+
+	transform as "completed in agentic paper filter main caller" on "intics_zio_db_conn" using
+            {"
+               INSERT INTO paper_filter.agentic_paper_filter_pipeline_audit
+                   (process_id, group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+                   VALUES('${init_process_id.process_id}', '${gen_group_id.group_id}', now(), 'COMPLETED', 'AGENTIC_PAPER_FILTER', 'completed in agentic paper filter main caller','${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}');
+            "}on-condition if "true"=="true"
+
+          transform as "update chronoclash audit form temporary tables" on "intics_zio_db_conn" using
+          {"
+                 UPDATE chrono_clash.chrono_clash_audit as cca
+                 SET updated_on=now(), stage='AGENTIC_PAPER_FILTER', status=ppq.status, remaining_time=((a.time_frame * interval '1 minute') - (now() - a.downloaded_time))
+                 FROM ${temp_schema_name}.agentic_range_paper_filter_chrono_clash_input_${init_process_id.process_id} a
+                 JOIN paper_filter.agentic_paper_filter_payload_queue ppq ON ppq.origin_id = a.origin_id AND ppq.tenant_id = a.tenant_id
+
+                 DROP TABLE IF EXISTS ${temp_schema_name}.agentic_range_paper_filter_chrono_clash_input_${init_process_id.process_id};
+          "}  on-condition if "${chronoclash.activator}"=="true"
+	}
+}

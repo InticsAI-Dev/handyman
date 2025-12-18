@@ -1,0 +1,905 @@
+process "potential.filtering.ddl"
+
+{
+
+        try
+        {
+
+           transform as "Create audit table for the paper potential feature, paper, synonyms" on "intics_zio_db_conn" using
+           {"
+
+              CREATE TABLE if not exists paper.potential_feature_audit
+              (
+                    potential_feature_id bigserial NOT NULL,
+                    created_on varchar NOT NULL,
+                    created_user_id varchar NOT NULL,
+                    last_updated_on varchar NULL,
+                    last_updated_user_id varchar NULL,
+                    batch_id varchar NOT NULL,
+                    tenant_id int8 NULL,
+                    origin_id varchar NOT NULL,
+                    paper_no int4 NOT NULL,
+                    sor_item_attribution_id int4 NOT NULL,
+                    synonym varchar NOT NULL,
+                    truth_entity varchar NOT NULL,
+                     root_pipeline_id int8 NULL,
+                    CONSTRAINT potential_feature_audit_pkey PRIMARY KEY (potential_feature_id,tenant_id)
+              );
+
+
+               CREATE TABLE if not exists paper.potential_paper_audit
+               (
+                    potential_paper_id bigserial NOT NULL,
+                    created_on varchar NOT NULL,
+                    created_user_id varchar NOT NULL,
+                    last_updated_on varchar NULL,
+                    last_updated_user_id varchar NULL,
+                    tenant_id int8 NULL,
+                    final_score float8 NULL,
+                    origin_id varchar NOT NULL,
+                    paper_no int4 NOT NULL,
+                    sor_item_attribution_id int4 NOT NULL,
+                    sor_item_name varchar NULL,
+                    synonym varchar NOT NULL,
+                    truth_entity varchar NOT NULL,
+                    truth_entity_id int8 NOT NULL,
+                    root_pipeline_id int8 NULL,
+                    sub_batch_id varchar null,
+                    batch_id varchar NOT NULL,
+                    CONSTRAINT potential_paper_audit_pkey PRIMARY KEY (potential_paper_id,tenant_id)
+               );
+
+                CREATE TABLE  if not exists paper.potential_synonyms_audit
+                 (
+                    potential_sot_id bigserial NOT NULL,
+                    created_on varchar NOT NULL,
+                    created_user_id varchar NOT NULL,
+                    last_updated_on varchar NULL,
+                    last_updated_user_id varchar NULL,
+                    batch_id varchar NOT NULL,
+                    tenant_id int8 NULL,
+                    model_score float8 NULL,
+                    potential_paper_id int8 NOT NULL,
+                    sot_label_id int8 NOT NULL,
+                    model_id int8 NULL,
+                     root_pipeline_id int8 NULL,
+                    CONSTRAINT potential_question_audit_pkey PRIMARY KEY (potential_sot_id,tenant_id)
+                 );
+
+               CREATE TABLE if not exists paper.potential_triage_audit
+                (
+                    potential_triage_id bigserial NOT NULL,
+                    created_on varchar NOT NULL,
+                    created_user_id varchar NOT NULL,
+                    last_updated_on varchar NULL,
+                    last_updated_user_id varchar NULL,
+                    batch_id varchar NOT NULL,
+                    tenant_id int8 NULL,
+                    model_score float8 NULL,
+                    potential_paper_id int8 NOT NULL,
+                    model_id int8 NULL,
+                     root_pipeline_id int8 NULL,
+                    CONSTRAINT potential_triage_audit_pkey PRIMARY KEY (potential_triage_id,tenant_id)
+                );
+
+       "} on-condition if "true"=="true"
+
+
+        transform as "Create temp table for the paper potential feature, paper, synonyms" on "intics_zio_db_conn" using
+        {"
+
+            CREATE TABLE if not exists ${temp_schema_name}.potential_feature_${init_process_id.process_id}
+            (
+                    potential_feature_id bigserial NOT NULL,
+                    created_on varchar NOT NULL,
+                    created_user_id varchar NOT NULL,
+                    last_updated_on varchar NULL,
+                    last_updated_user_id varchar NULL,
+                    batch_id varchar NOT NULL,
+                    tenant_id int8 NULL,
+                    origin_id varchar NOT NULL,
+                    paper_no int4 NOT NULL,
+                    sor_item_attribution_id int4 NOT NULL,
+                    synonym varchar NOT NULL,
+                    truth_entity varchar NOT NULL,
+                     root_pipeline_id int8 NULL,
+                    CONSTRAINT potential_feature_${init_process_id.process_id}_pkey PRIMARY KEY (potential_feature_id,tenant_id)
+            );
+
+            CREATE TABLE if not exists ${temp_schema_name}.potential_paper_${init_process_id.process_id}
+            (
+                    potential_paper_id bigserial NOT NULL,
+                    created_on varchar NOT NULL,
+                    created_user_id varchar NOT NULL,
+                    last_updated_on varchar NULL,
+                    last_updated_user_id varchar NULL,
+                    tenant_id int8 NULL,
+                    final_score float8 NULL,
+                    origin_id varchar NOT NULL,
+                    paper_no int4 NOT NULL,
+                    sor_item_attribution_id int4 NOT NULL,
+                    synonym varchar NOT NULL,
+                    truth_entity varchar NOT NULL,
+                    truth_entity_id bigserial NOT NULL,
+                    root_pipeline_id int8 NULL,
+                    sub_batch_id varchar null,
+                    batch_id varchar NOT NULL,
+                    CONSTRAINT potential_paper_${init_process_id.process_id}_pkey PRIMARY KEY (potential_paper_id,tenant_id)
+            );
+
+
+
+            CREATE TABLE  if not exists ${temp_schema_name}.potential_synonyms_${init_process_id.process_id}
+            (
+                    potential_sot_id bigserial NOT NULL,
+                    created_on varchar NOT NULL,
+                    created_user_id varchar NOT NULL,
+                    last_updated_on varchar NULL,
+                    last_updated_user_id varchar NULL,
+                    batch_id varchar NOT NULL,
+                    tenant_id int8 NULL,
+                    model_score float8 NULL,
+                    potential_paper_id int8 NOT NULL,
+                    sot_label_id int8 NOT NULL,
+                    model_id int8 NULL,
+                     root_pipeline_id int8 NULL,
+                    CONSTRAINT potential_question_${init_process_id.process_id}_pkey PRIMARY KEY (potential_sot_id,tenant_id)
+            );
+
+            CREATE TABLE if not exists ${temp_schema_name}.potential_triage_${init_process_id.process_id}
+            (
+                    potential_triage_id bigserial NOT NULL,
+                    created_on varchar NOT NULL,
+                    created_user_id varchar NOT NULL,
+                    last_updated_on varchar NULL,
+                    last_updated_user_id varchar NULL,
+                    batch_id varchar NOT NULL,
+                    tenant_id int8 NULL,
+                    model_score float8 NULL,
+                    potential_paper_id int8 NOT NULL,
+                    model_id int8 NULL,
+                     root_pipeline_id int8 NULL,
+                    CONSTRAINT potential_triage_${init_process_id.process_id}_pkey PRIMARY KEY (potential_triage_id,tenant_id)
+            );
+
+        "} on-condition if "true"=="true"
+
+       transform as "create table for paper potential feature payload queue, queue archive and error queue" on "intics_zio_db_conn" using
+        {"
+
+                CREATE TABLE if not exists paper.potential_feature_payload_queue_archive
+                (
+                        producer_process_id int8 NULL,
+                        consumer_process_id int8 NULL,
+                        batch_id varchar NOT NULL,
+                        origin_id varchar NULL,
+                        group_id int4 NULL,
+                        created_on varchar NULL,
+                        consumed_on_ts varchar NULL,
+                        status varchar NULL,
+                        stage varchar NULL,
+                        root_pipeline_id int8 NULL,
+                        tenant_id int8 NULL,
+                        CONSTRAINT potential_feature_payload_queue_archive_pk PRIMARY KEY (producer_process_id, origin_id,tenant_id)
+                );
+                CREATE TABLE IF NOT EXISTS qr_extraction.qr_extraction_payload_queue (
+                        producer_process_id int8 NOT NULL,
+                        consumer_process_id int8 NULL,
+                        batch_id varchar NOT NULL,
+                        origin_id varchar NOT NULL,
+                        group_id int4 not null,
+                        created_on timestamp NOT NULL,
+                        status varchar NOT NULL,
+                        stage varchar NOT NULL,
+                        consumed_on_ts timestamp NULL,
+                        root_pipeline_id int8 NULL,
+                        tenant_id int8 NULL,
+                        CONSTRAINT qr_extraction_payload_queue_pk PRIMARY KEY ( origin_id,tenant_id)
+                );
+
+                CREATE TABLE if not exists paper.potential_feature_payload_error_queue
+                (
+                        producer_process_id int8 NOT NULL,
+                        consumer_process_id int8 NULL,
+                        batch_id varchar NOT NULL,
+                        origin_id varchar NOT NULL,
+                        group_id int4 NULL,
+                        created_on varchar NOT NULL,
+                        status varchar NOT NULL,
+                        stage  varchar NOT NULL,
+                        message varchar NULL,
+                        consumed_on_ts varchar NULL,
+                        root_pipeline_id int8 NULL,
+                        tenant_id int8 NULL,
+                        CONSTRAINT potential_feature_payload_error_queue_pk PRIMARY KEY (producer_process_id, origin_id,tenant_id)
+                );
+
+
+        "} on-condition if "true"=="true"
+
+
+
+        transform as "create temp table query for paper filter results" on "intics_zio_db_conn" using
+        {"
+
+                CREATE TABLE if not exists ${temp_schema_name}.model_score_result_${init_process_id.process_id}
+                (
+                group_id varchar NULL,
+                batch_id varchar NOT NULL,
+                origin_id varchar NULL,
+                paper_no int4 NULL,
+                truth_entity varchar NULL,
+                synonym varchar NULL,
+                model_score int4 NULL,
+                model_name text NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL
+                );
+
+                CREATE TABLE if not exists ${temp_schema_name}.synonym_level_score_${init_process_id.process_id}
+                (
+                potential_paper_id int8 NULL,
+                batch_id varchar NOT NULL,
+                origin_id varchar NULL,
+                paper_no int4 NULL,
+                sor_container_id int8 NULL,
+                sor_container_name varchar NULL,
+                sor_truth_entity_id int8 NULL,
+                truth_entity varchar NULL,
+                sor_synonym_id int8 NULL,
+                synonym varchar NULL,
+                model_name text NULL,
+                model_score float8 NULL,
+                model_id int8 NULL,
+                model_actual_weight float8 NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL
+                );
+
+
+                CREATE TABLE if not exists ${temp_schema_name}.agg_doc_score_${init_process_id.process_id}
+                (
+                origin_id varchar NULL,
+                batch_id varchar NOT NULL,
+                paper_no int4 NULL,
+                entity_score float8 NULL,
+                max_distance int4 NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL
+                );
+
+                CREATE TABLE if not exists ${temp_schema_name}.max_doc_score_${init_process_id.process_id}
+                (
+                origin_id varchar NULL,
+                batch_id varchar NOT NULL,
+                max_doc_score float8 NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL
+                );
+
+                CREATE TABLE if not exists  ${temp_schema_name}.paper_level_score_${init_process_id.process_id}
+                (
+                origin_id varchar NULL,
+                batch_id varchar NOT NULL,
+                paper_no int4 NULL,
+                entity_score float8 NULL,
+                max_doc_score float8 NULL,
+                max_distance float8 NULL,
+                is_candidate_paper varchar NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL
+                );
+
+
+                CREATE TABLE  if not exists ${temp_schema_name}.phrase_match_filtering_result_${init_process_id.process_id} (
+                id serial4 NOT NULL,
+                group_id varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                paper_no int4 NOT NULL,
+                truth_entity varchar NULL,
+                synonym varchar NULL,
+                is_key_present varchar NULL,
+                status varchar NULL,
+                stage varchar NULL,
+                message varchar NULL,
+                created_on timestamp NULL,
+                last_updated_on timestamp null,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                model_name varchar NULL,
+                model_version varchar NULL,
+                batch_id varchar NOT NULL,
+                 request text NULL,
+                 response text NULL,
+                 endpoint varchar NULL,
+                CONSTRAINT phrase_match_filtering_result_${init_process_id.process_id}_p_key PRIMARY KEY (id, origin_id, paper_no)
+                );
+
+
+
+                CREATE TABLE  if not exists ${temp_schema_name}.zero_shot_classifier_filtering_result_${init_process_id.process_id} (
+                id serial4 NOT NULL,
+                batch_id varchar NOT NULL,
+                group_id varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                paper_no int4 NOT NULL,
+                truth_entity varchar NULL,
+                synonym varchar NULL,
+                confidence_score varchar NULL,
+                status varchar NULL,
+                stage varchar NULL,
+                message varchar NULL,
+                created_on timestamp NULL,
+                last_updated_on timestamp null,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                model_name varchar NULL,
+                model_version varchar NULL,
+                request text NULL,
+                response text NULL,
+                endpoint varchar NULL,
+                CONSTRAINT zero_shot_classifier_filtering_result_${init_process_id.process_id}_p_key PRIMARY KEY (id, origin_id, paper_no)
+                );
+
+                CREATE TABLE if not exists ${temp_schema_name}.agg_phrase_match_score_${init_process_id.process_id} (
+                id serial4 NOT NULL,
+                batch_id varchar NOT NULL,
+                origin_id varchar NULL,
+                paper_no int4 NULL,
+                sor_container_id int4 NULL,
+                sor_container_name varchar NULL,
+                truth_entity varchar NULL,
+                agg_score int8 NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                CONSTRAINT agg_phrase_match_score_${init_process_id.process_id}_p_key PRIMARY KEY (id, origin_id, paper_no,sor_container_id)
+                );
+
+                CREATE TABLE if not exists ${temp_schema_name}.agg_zero_shot_classifier_score_${init_process_id.process_id} (
+                id serial4 NOT NULL,
+                batch_id varchar NOT NULL,
+                origin_id varchar NULL,
+                paper_no int4 NULL,
+                sor_container_id int4 NULL,
+                sor_container_name varchar NULL,
+                truth_entity varchar NULL,
+                agg_score int8 NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                CONSTRAINT agg_zero_shot_classifier_score_${init_process_id.process_id}_p_key PRIMARY KEY (id, origin_id, paper_no,sor_container_id)
+                );
+
+
+                CREATE TABLE if not exists ${temp_schema_name}.model_level_score_${init_process_id.process_id} (
+                id serial4 NOT NULL,
+                batch_id varchar NOT NULL,
+                origin_id varchar NULL,
+                paper_no int4 NULL,
+                sor_container_id int4 NULL,
+                sor_container_name varchar NULL,
+                zsc_score int8 NULL,
+                pm_score int8 NULL,
+                truth_entity varchar NULL,
+                model_agg_score int8 NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                CONSTRAINT model_level_score_${init_process_id.process_id}_p_key PRIMARY KEY (id, origin_id, paper_no,sor_container_id)
+                );
+
+                CREATE TABLE if not exists ${temp_schema_name}.max_entity_score_${init_process_id.process_id} (
+                origin_id varchar NULL,
+                batch_id varchar NOT NULL,
+                sor_container_id int4 NULL,
+                sor_container_name varchar NULL,
+                max_score int8 NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL
+                );
+
+
+                CREATE TABLE if not exists ${temp_schema_name}.entity_level_score_${init_process_id.process_id} (
+                origin_id varchar NULL,
+                batch_id varchar NOT NULL,
+                sor_container_id int4 NULL,
+                sor_container_name varchar NULL,
+                truth_entity varchar NULL,
+                model_agg_score int8 NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL
+                );
+
+                CREATE TABLE if not exists ${temp_schema_name}.max_phrase_match_score_${init_process_id.process_id} (
+                origin_id varchar NULL,
+                batch_id varchar NOT NULL,
+                sor_container_id int4 NULL,
+                sor_container_name varchar NULL,
+                max_score int8 NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL
+                );
+
+                CREATE TABLE if not exists ${temp_schema_name}.max_zero_shot_classifier_score_${init_process_id.process_id} (
+                origin_id varchar NULL,
+                batch_id varchar NOT NULL,
+                sor_container_id int4 NULL,
+                sor_container_name varchar NULL,
+                max_score int8 NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL
+                );
+
+
+                CREATE TABLE if not exists ${temp_schema_name}.phrase_match_${init_process_id.process_id} (
+                origin_id varchar NULL,
+                batch_id varchar NOT NULL,
+                paper_no int4 NULL,
+                sor_container_id int4 NULL,
+                sor_container_name varchar NULL,
+                truth_entity varchar NULL,
+                agg_score int8 NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL
+                );
+
+
+                CREATE TABLE if not exists ${temp_schema_name}.zero_shot_classifier_${init_process_id.process_id} (
+                origin_id varchar NULL,
+                batch_id varchar NOT NULL,
+                paper_no int4 NULL,
+                sor_container_id int4 NULL,
+                sor_container_name varchar NULL,
+                truth_entity varchar NULL,
+                agg_score int8 NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL
+                );
+
+                CREATE TABLE if not exists ${temp_schema_name}.batching_potential_feature_queue_${init_process_id.process_id} (
+                producer_process_id int8 NULL,
+                consumer_process_id int8 NULL,
+                group_id int4 NULL,
+                batch_id varchar NOT NULL,
+                sub_batch_id varchar null,
+                origin_id varchar NULL,
+                created_on varchar NULL,
+                status varchar NULL,
+                stage varchar NULL,
+                consumed_on_ts varchar NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL
+                );
+
+
+                CREATE TABLE if not exists ${temp_schema_name}.paper_filter_zsc_pm_input_aggregate_${init_process_id.process_id}
+                (
+                        id bigserial NOT NULL,
+                        tenant_id int8 NULL,
+                        origin_id varchar NOT NULL,
+                        paper_no int4 NOT NULL,
+                        sor_item_attribution_id int4 NOT NULL,
+                        truth_placeholder jsonb NOT NULL,
+                        root_pipeline_id int8 NULL,
+                        sub_batch_id varchar null,
+                        batch_id varchar NOT NULL
+                );
+
+                CREATE TABLE if not exists ${temp_schema_name}.paper_filter_zsc_pm_input_${init_process_id.process_id}
+                (
+                        id bigserial NOT NULL,
+                        created_on varchar NOT NULL,
+                        created_user_id varchar NOT NULL,
+                        last_updated_on varchar NULL,
+                        last_updated_user_id varchar NULL,
+                        tenant_id int8 NULL,
+                        origin_id varchar NOT NULL,
+                        paper_no int4 NOT NULL,
+                        sor_item_attribution_id int4 NOT NULL,
+                        truth_placeholders jsonb NOT NULL,
+                        truth_entity varchar NOT NULL,
+                        truth_entity_id int8 NOT NULL,
+                        root_pipeline_id int8 NULL,
+                        sub_batch_id varchar null,
+                        batch_id varchar NOT NULL
+                );
+
+        "} on-condition if "true"=="true"
+
+
+
+        transform as "create audit table query for paper filter results" on "intics_zio_db_conn" using
+        {"
+
+                CREATE TABLE if not exists paper.phrase_match_filtering_result_audit (
+                id serial4 NOT NULL,
+                batch_id varchar NOT NULL,
+                group_id varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                paper_no int4 NOT NULL,
+                truth_entity varchar NULL,
+                synonym varchar NULL,
+                is_key_present varchar NULL,
+                status varchar NULL,
+                stage varchar NULL,
+                message varchar NULL,
+                created_on timestamp NULL,
+                last_updated_on timestamp null,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                model_name varchar NULL,
+                model_version varchar NULL,
+                request text NULL,
+                response text NULL,
+                endpoint varchar NULL,
+                CONSTRAINT phrase_match_filtering_result_audit_p_key PRIMARY KEY (id, origin_id, paper_no)
+                );
+
+
+
+                CREATE TABLE if not exists paper.zero_shot_classifier_filtering_result_audit (
+                id serial4 NOT NULL,
+                batch_id varchar NOT NULL,
+                group_id varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                paper_no int4 NOT NULL,
+                truth_entity varchar NULL,
+                synonym varchar NULL,
+                confidence_score varchar NULL,
+                status varchar NULL,
+                stage varchar NULL,
+                message varchar NULL,
+                created_on timestamp NULL,
+                last_updated_on timestamp NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                model_name varchar NULL,
+                model_version varchar NULL,
+                request text NULL,
+                response text NULL,
+                endpoint varchar NULL,
+                CONSTRAINT zero_shot_classifier_filtering_result_audit_p_key PRIMARY KEY (id, origin_id, paper_no)
+                );
+
+
+                CREATE TABLE if not exists paper.model_score_result_audit
+                (
+                group_id varchar NULL,
+                batch_id varchar NOT NULL,
+                origin_id varchar NULL,
+                paper_no int4 NULL,
+                truth_entity varchar NULL,
+                synonym varchar NULL,
+                model_score int4 NULL,
+                model_name text NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL
+                );
+
+                CREATE TABLE if not exists paper.synonym_level_score_audit
+                (
+                potential_paper_id int8 NULL,
+                batch_id varchar NOT NULL,
+                origin_id varchar NULL,
+                paper_no int4 NULL,
+                sor_container_id int8 NULL,
+                sor_container_name varchar NULL,
+                sor_item_name varchar NULL,
+                sor_truth_entity_id int8 NULL,
+                truth_entity varchar NULL,
+                sor_synonym_id int8 NULL,
+                synonym varchar NULL,
+                model_name text NULL,
+                model_score int4 NULL,
+                model_id int8 NULL,
+                model_actual_weight float8 NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL
+                );
+
+
+                CREATE TABLE if not exists paper.agg_doc_score_audit
+                (
+                origin_id varchar NULL,
+                batch_id varchar NOT NULL,
+                paper_no int4 NULL,
+                entity_score float8 NULL,
+                max_distance int4 NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL
+                );
+
+                CREATE TABLE if not exists paper.max_doc_score_audit
+                (
+                origin_id varchar NULL,
+                batch_id varchar NOT NULL,
+                max_doc_score float8 NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL
+                );
+
+                CREATE TABLE if not exists paper.paper_level_score_audit
+                (
+                id bigserial NOT NULL,
+                origin_id varchar NULL,
+                batch_id varchar NOT NULL,
+                paper_no int4 NULL,
+                entity_score float8 NULL,
+                max_doc_score float8 NULL,
+                max_distance float8 NULL,
+                is_candidate_paper varchar NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                created_on timestamp null
+                );
+
+
+
+                CREATE TABLE if not exists paper.agg_phrase_match_score_audit (
+                id serial4 NOT NULL,
+                batch_id varchar NOT NULL,
+                origin_id varchar NULL,
+                paper_no int4 NULL,
+                sor_container_id int4 NULL,
+                sor_container_name varchar NULL,
+                truth_entity varchar NULL,
+                agg_score int8 NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                CONSTRAINT agg_phrase_match_score_audit_p_key PRIMARY KEY (id, origin_id, paper_no,sor_container_id)
+                );
+
+                CREATE TABLE if not exists paper.agg_zero_shot_classifier_score_audit (
+                id serial4 NOT NULL,
+                batch_id varchar NOT NULL,
+                origin_id varchar NULL,
+                paper_no int4 NULL,
+                sor_container_id int4 NULL,
+                sor_container_name varchar NULL,
+                truth_entity varchar NULL,
+                agg_score int8 NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                CONSTRAINT agg_zero_shot_classifier_score_audit_p_key PRIMARY KEY (id, origin_id, paper_no,sor_container_id)
+                );
+
+
+                CREATE TABLE if not exists paper.model_level_score_audit (
+                id serial4 NOT NULL,
+                batch_id varchar NOT NULL,
+                origin_id varchar NULL,
+                paper_no int4 NULL,
+                sor_container_id int4 NULL,
+                sor_container_name varchar NULL,
+                zsc_score int8 NULL,
+                pm_score int8 NULL,
+                truth_entity varchar NULL,
+                model_agg_score int8 NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                CONSTRAINT model_level_score_audit_p_key PRIMARY KEY (id, origin_id, paper_no,sor_container_id)
+                );
+
+                CREATE TABLE if not exists paper.max_entity_score_audit (
+                origin_id varchar NULL,
+                batch_id varchar NOT NULL,
+                sor_container_id int4 NULL,
+                sor_container_name varchar NULL,
+                max_score int8 NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL
+                );
+
+
+                CREATE TABLE if not exists paper.entity_level_score_audit (
+                origin_id varchar NULL,
+                batch_id varchar NOT NULL,
+                sor_container_id int4 NULL,
+                sor_container_name varchar NULL,
+                truth_entity varchar NULL,
+                model_agg_score int8 NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL
+                );
+
+                CREATE TABLE if not exists paper.max_phrase_match_score_audit (
+                origin_id varchar NULL,
+                batch_id varchar NOT NULL,
+                sor_container_id int4 NULL,
+                sor_container_name varchar NULL,
+                max_score int8 NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL
+                );
+
+                CREATE TABLE if not exists paper.max_zero_shot_classifier_score_audit (
+                origin_id varchar NULL,
+                batch_id varchar NOT NULL,
+                sor_container_id int4 NULL,
+                sor_container_name varchar NULL,
+                max_score int8 NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL
+                );
+
+
+                CREATE TABLE if not exists paper.phrase_match_audit (
+                origin_id varchar NULL,
+                batch_id varchar NOT NULL,
+                paper_no int4 NULL,
+                sor_container_id int4 NULL,
+                sor_container_name varchar NULL,
+                truth_entity varchar NULL,
+                agg_score int8 NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL
+                );
+
+
+                CREATE TABLE if not exists paper.zero_shot_classifier_audit (
+                origin_id varchar NULL,
+                batch_id varchar NOT NULL,
+                paper_no int4 NULL,
+                sor_container_id int4 NULL,
+                sor_container_name varchar NULL,
+                truth_entity varchar NULL,
+                agg_score int8 NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL
+                );
+
+                CREATE TABLE if not exists  paper.paper_filtering_pipeline_audit (
+                id bigserial NOT NULL,
+                batch_id varchar NULL,
+                process_id bigint  NULL,
+                origin_id varchar  NULL,
+                group_id int4 NULL,
+                created_on varchar  NULL,
+                status varchar  NULL,
+                stage varchar  NULL,
+                message varchar  NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL
+                );
+
+
+                CREATE TABLE if not exists paper_classification.paper_classification_payload_queue (
+                producer_process_id int8 NULL,
+                batch_id varchar NOT NULL,
+                consumer_process_id int8 NULL,
+                group_id int4 NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NULL,
+                status varchar NULL,
+                stage varchar NULL,
+                consumed_on_ts timestamp NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                CONSTRAINT paper_classification_payload_queue_pk PRIMARY KEY (origin_id, group_id,tenant_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS urgency_triage.ut_model_payload_queue (
+                producer_process_id int8 NOT NULL,
+                batch_id varchar NOT NULL,
+                consumer_process_id int8 NULL,
+                group_id int4 NOT NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NULL,
+                last_updated_on timestamp NULL,
+                status varchar NULL,
+                stage varchar NULL,
+                consumed_on_ts timestamp NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                CONSTRAINT ut_model_payload_queue_pk PRIMARY KEY (origin_id, group_id,tenant_id)
+                );
+
+
+                CREATE TABLE if not exists paper.paper_filter_zsc_pm_input_aggregate_audit
+                (
+                        id bigserial NOT NULL,
+                        tenant_id int8 NULL,
+                        origin_id varchar NOT NULL,
+                        paper_no int4 NOT NULL,
+                        sor_item_attribution_id int4 NOT NULL,
+                        truth_placeholder jsonb NOT NULL,
+                        root_pipeline_id int8 NULL,
+                        sub_batch_id varchar null,
+                        batch_id varchar NOT NULL,
+                        CONSTRAINT paper_filter_zsc_pm_input_aggregate_pkey PRIMARY KEY (id,tenant_id)
+                );
+
+                CREATE TABLE if not exists paper.paper_filter_zsc_pm_input_audit
+                (
+                        id bigserial NOT NULL,
+                        created_on varchar NOT NULL,
+                        created_user_id varchar NOT NULL,
+                        last_updated_on varchar NULL,
+                        last_updated_user_id varchar NULL,
+                        tenant_id int8 NULL,
+                        origin_id varchar NOT NULL,
+                        paper_no int4 NOT NULL,
+                        sor_item_attribution_id int4 NOT NULL,
+                        truth_placeholders jsonb NOT NULL,
+                        truth_entity varchar NOT NULL,
+                        truth_entity_id int8 NOT NULL,
+                        root_pipeline_id int8 NULL,
+                        sub_batch_id varchar null,
+                        batch_id varchar NOT NULL,
+                        CONSTRAINT paper_filter_zsc_pm_input_pkey PRIMARY KEY (id,tenant_id)
+                );
+
+
+               CREATE TABLE IF NOT EXISTS currency_detection.currency_detection_payload_queue (
+                 producer_process_id int8 NOT NULL,
+                 batch_id varchar NOT NULL,
+                 consumer_process_id int8 NULL,
+                 group_id int4 NOT NULL,
+                 origin_id varchar NOT NULL,
+                 created_on timestamp NULL,
+                 last_updated_on timestamp NULL,
+                 status varchar NULL,
+                 stage varchar NULL,
+                 consumed_on_ts timestamp NULL,
+                 root_pipeline_id int8 NULL,
+                 tenant_id int8 NULL,
+                 CONSTRAINT currency_detection_payload_queue_pk PRIMARY KEY (origin_id, group_id,tenant_id)
+                );
+
+        "} on-condition if "true"=="true"
+
+        transform as "Final cummulative paper for the pipeline" on "intics_zio_db_conn" using {"
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.paper_filter_score_${init_process_id.process_id}  (
+                        id bigserial NOT NULL,
+                        origin_id varchar NULL,
+                        sor_container_id int4 NULL,
+                        sor_container_name varchar NULL,
+                        truth_entity varchar NULL,
+                        model_agg_score int8 NULL,
+                        paper_no int4 NULL,
+                        batch_id varchar NOT NULL,
+                        tenant_id int8 NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS paper.paper_filter_score_audit  (
+                        id bigserial NOT NULL,
+                        origin_id varchar NULL,
+                        sor_container_id int4 NULL,
+                        sor_container_name varchar NULL,
+                        truth_entity varchar NULL,
+                        model_agg_score int8 NULL,
+                        paper_no int4 NULL,
+                        tenant_id int8 NULL,
+                        batch_id varchar NOT NULL,
+                        root_pipeline_id int8 NULL
+                );
+        "} on-condition if "true"=="true"
+
+        transform as "completed paper filtering ddl" on "intics_zio_db_conn" using
+        {"
+
+                INSERT INTO paper.paper_filtering_pipeline_audit
+                (process_id, created_on, status, stage, message,root_pipeline_id, tenant_id)
+                VALUES('${init_process_id.process_id}', now(), 'COMPLETED', 'PAPER_FILTER_DDL', 'DDL creation completed for paper filter','${gen_id.root_pipeline_id}', ${tenant_id});
+
+        "} on-condition if "true"=="true"
+
+        }
+
+catch
+ {
+        transform as "failed in paper filtering ddl audit" on "intics_zio_db_conn" using
+        {"
+
+                INSERT INTO paper.paper_filtering_pipeline_audit
+                (process_id, created_on, status, stage, message,root_pipeline_id, tenant_id)
+                VALUES('${init_process_id.process_id}', now(), 'FAILED', 'PAPER_FILTER_DDL', 'DDL creation failes for paper filter','${gen_id.root_pipeline_id}', ${tenant_id});
+
+        "} on-condition if "true"=="true"
+
+ }
+
+finally
+{
+
+}
+
+}

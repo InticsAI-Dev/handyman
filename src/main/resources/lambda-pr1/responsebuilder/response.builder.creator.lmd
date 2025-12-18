@@ -1,0 +1,75 @@
+process "response.builder.creator"
+{
+    try {
+
+		transform as "update to in-progress response builder outbound payload queue" on "intics_zio_db_conn" using
+	       {"
+	       INSERT INTO outbound.outbound_pipeline_audit
+	       (process_id, origin_id,group_id, created_on, status, stage, message, root_pipeline_id, tenant_id, batch_id)
+	       VALUES('${init_process_id.process_id}','${origin_id}', '${group_id}',now(), 'STARTED', 'OUTBOUND',
+	       'outbound process started in response builder creator lmd for origin_id ${origin_id}','${gen_id.root_pipeline_id}', ${tenant_id},'${batch_id}');
+
+	       "} on-condition if "true"=="true"
+
+
+        assign as "origin_file" source "intics_zio_db_conn" using
+        {"
+            SELECT file_name
+            FROM ${temp_schema_name}.asset_${init_process_id.process_id}
+            join ${temp_schema_name}.source_of_origin_${init_process_id.process_id} on asset.file_id = source_of_origin.file_id
+            where source_of_origin.origin_id = '${origin_id}' and source_of_origin.tenant_id = ${tenant_id} and source_of_origin.batch_id='${batch_id}'
+        "} on-condition if "true"=="true"
+
+
+        transform as "update file name" on "intics_zio_db_conn" using
+        {"
+            UPDATE eoc_response.eoc_document_detail
+            SET file_name=concat('${origin_file.file_name}', '_001.pdf')
+            WHERE eoc_identifier='${eoc_id}' AND origin_id='${origin_id}' and batch_id='${batch_id}';
+        "}  on-condition if "true"=="true"
+
+
+        eocJsonGenerator as "eoc response for batch_id-'${batch_id}' and  origin-'${origin_id}'"
+        on-resource-conn "intics_zio_db_conn"
+        document-id "${origin_file.file_name}"
+        eoc-id "${eoc_id}"
+        origin-id "${origin_id}"
+        group-id "${group_id}"
+        auth-token "${auth_token.token}"
+        using  {
+         } on-condition if "${auth_token.isSuccessful}"=="true"
+
+		transform as "update to in-progress  response builder outbound payload queue" on "intics_zio_db_conn" using
+       {"
+             INSERT INTO outbound.outbound_pipeline_audit
+             (process_id, origin_id,group_id, created_on, status, stage, message, root_pipeline_id, tenant_id, batch_id)
+             VALUES('${init_process_id.process_id}','${origin_id}', '${group_id}',now(), 'COMPLETED', 'OUTBOUND',
+             'outbound process completed in response builder creator lmd for origin_id ${origin_id}', '${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}');
+
+       "} on-condition if "true"=="true"
+
+    }
+
+    catch {
+        transform as "${group_id}-${origin_id} set to failed insert into error queue" on "intics_zio_db_conn" using
+       {"
+             UPDATE outbound.outbound_payload_queue
+             SET consumer_process_id='${process-id}', status='FAILED'
+             WHERE  origin_id ='${origin_id}' and status ='IN_PROGRESS' and stage ='OUTBOUND' and tenant_id = ${tenant_id} and batch_id='${batch_id}';
+
+       "} on-condition if "true"=="true"
+
+        transform as "update to in-progress response builder outbound payload queue" on "intics_zio_db_conn" using
+           {"
+             INSERT INTO outbound.outbound_pipeline_audit
+             (process_id, origin_id,group_id, created_on, status, stage, message, root_pipeline_id, tenant_id, batch_id)
+             VALUES('${init_process_id.process_id}','${origin_id}', '${group_id}',now(), 'FAILED', 'OUTBOUND',
+             'outbound process failed in response builder creator lmd for origin_id ${origin_id}', '${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}');
+
+           "} on-condition if "true"=="true"
+
+    }
+    finally {
+
+    }
+}

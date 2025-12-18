@@ -1,0 +1,63 @@
+process "bulletin.extraction.caller"
+{
+	try {
+             assign as "init_process_id" source "intics_zio_db_conn" using {"
+             SELECT ${process-id} as process_id;
+             "} on-condition if "true"=="true"
+
+		     assign as "pipeline_train_mode" source "intics_zio_db_conn" using
+            {"
+                    select  (case when '${bulletin.extraction.start.action}'='true' AND '${pipeline.train.mode}'='true' then 'true' else 'false' end) as bulletin_extraction;
+            "}on-condition if "true"=="true"
+
+
+            callprocess as "calling bulletin_extraction ddl"
+            with-target "bulletin.extraction.ddl"
+            from-file "${basepath}/bulletinExtraction/bulletin.extraction.ddl.lmd"
+            using "intics_zio_db_conn"
+            for-every {"
+                SELECT 1;
+            "} on-condition if "true"=="true"
+
+            coproStart as "Calling bulletin extraction Model copro start action" for "BULLETIN_EXTRACTION"
+            copro-server-url "${copro.bulletin.extraction.admin.start.url}"
+            export-command "${copro.bulletin.extraction.export}"
+            process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+            using
+            {"
+                ${bulletinExtractionModelStartCommand}
+
+            "}on-condition if "${pipeline_train_mode.bulletin_extraction}" == "true"
+
+            callprocess as "calling bulletin_extraction processor"
+            with-target "bulletin.extraction.processor"
+            from-file "${basepath}/bulletinExtraction/bulletin.extraction.processor.lmd"
+            using "intics_zio_db_conn"
+            for-every {"
+                SELECT 1;
+            "} on-condition if "true"=="true"
+
+            coproStop as "Calling bulletin extraction copro stop action" for "BULLETIN_EXTRACTION"
+            copro-server-url "${copro.bulletin.extraction.admin.stop.url}"
+            process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+            using
+            {"
+                gunicorn
+
+            "}on-condition if "${bulletin.extraction.stop.action}"=="true"
+
+	}
+	catch{
+			transform as "failed in bulletin_extraction main caller " on "intics_zio_db_conn" using {"
+					INSERT INTO bulletin_extraction.bulletin_extraction_pipeline_audit
+					(process_id,group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+					values( ${init_process_id.process_id},'${gen_group_id.group_id}', now(),
+					'FAILED', 'BULLETIN_EXTRACTION',' bulletin_extraction main caller FAILED for process_id ${init_process_id.process_id}','${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}');
+
+			"} on-condition if "true"=="true"
+	}
+	finally{
+
+	}
+
+}

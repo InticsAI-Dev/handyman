@@ -1,0 +1,218 @@
+process "data.coverage.lookup.main"
+{
+try{
+           assign as "accuracy_metrics_controller" source "intics_zio_db_conn" using
+            {"
+                   select  (case when '${data.coverage.lookup.field.activator}'='true' AND '${data.coverage.lookup.dcnid.activator}'='false' then 'true' else 'false' end) as control_data_without_dcnid;
+                   select  (case when '${data.coverage.lookup.field.activator}'='true' AND '${data.coverage.lookup.dcnid.activator}'='true' then 'true' else 'false' end) as control_data_with_dcnid;
+            "}on-condition if "true"=="true"
+
+           transform as "create final result table for NT,HT,LT counts" on "intics_zio_db_conn" using {"
+
+                        CREATE SCHEMA IF NOT EXISTS ${CONTROL_DATA};
+                        CREATE SCHEMA IF NOT EXISTS ${COVERAGE_REPORT};
+                        CREATE TABLE IF NOT EXISTS ${COVERAGE_REPORT}.final_result(
+                        id bigserial NOT null,
+                        root_pipeline_id int8 null,
+                        created_on timestamp NULL,
+                        tenant_id int8 NULL,
+                        sor_item_name varchar null,
+                        no_touch int8 NULL,
+                        one_touch int8 NULL,
+                        low_touch int8 NULL,
+                        high_touch int8 NULL,
+                        total_origins int4 NULL,
+                        no_touch_percentage int8 NULL,
+                        one_touch_percentage int8 NULL,
+                        low_touch_percentage int8 NULL,
+                        high_touch_percentage int8 NULL
+                        );
+           CREATE TABLE IF NOT EXISTS ${COVERAGE_REPORT}.final_result_percentage(
+                         id bigserial NOT null,
+                         root_pipeline_id int8 null,
+                         created_on timestamp NULL,
+                         tenant_id int8 NULL,
+                         no_touch_percentage float8 NULL,
+                         one_touch_percentage float8 NULL,
+                         low_touch_percentage float8 NULL,
+                         high_touch_percentage float8 NULL
+                         );
+
+
+           CREATE TABLE IF NOT EXISTS ${COVERAGE_REPORT}.classification_match_summary_report_percentage(
+                         id bigserial NOT null,
+                         root_pipeline_id int8 null,
+                         created_on timestamp NULL,
+                         tenant_id int8 NULL,
+                         pass_percentage float8 NULL,
+                         fail_percentage float8 NULL
+                         );
+
+
+                    CREATE TABLE IF NOT EXISTS ${COVERAGE_REPORT}.match_summary_report (
+                        root_pipeline_id int4 NULL,
+                        created_on timestamp NULL,
+                        tenant_id int8 NULL,
+                        sor_item_name varchar NULL,
+                        no_touch int4 NULL,
+                        one_touch int4 NULL,
+                        low_touch int4 NULL,
+                        high_touch int4 NULL,
+                        total_origins int4 NULL,
+                        pass_percentage float8 NULL,
+                        fail_percentage float8 NULL
+
+                    );
+
+
+                     create table if not exists ${COVERAGE_REPORT}.final_result_field_summary (
+                        id bigserial NOT NULL PRIMARY KEY,
+                        root_pipeline_id INT8 NULL,
+                        created_on TIMESTAMP NULL,
+                        group_id INT8 NULL,
+                        file_name VARCHAR NULL,
+                        origin_id VARCHAR NULL,
+                        batch_id VARCHAR NULL,
+                        paper_no VARCHAR NULL,
+                        actual_value TEXT NULL,
+                        extracted_value TEXT NULL,
+                        match_status VARCHAR NULL,
+                        mismatch_count INT8 NULL,
+                        tenant_id INT8 NULL,
+                        classification VARCHAR NULL,
+                        sor_container_id INT8 NULL,
+                        sor_item_name VARCHAR NULL,
+                        sor_item_id INT8 NULL
+                    );
+
+    CREATE TABLE IF NOT EXISTS ${CONTROL_DATA}.consolidated_coverage_input(
+                        root_pipeline_id int8 null,
+                        created_on timestamp NULL,
+                        group_id int4 NULL,
+                        batch_id varchar null,
+                        file_name varchar NULL,
+                        origin_id varchar NULL,
+                        paper_no int8 null,
+                        actual_value varchar NULL,
+                        extracted_value text NULL,
+                        tenant_id int8 NULL,
+                        document_type varchar null,
+                        sor_container_id int8 null,
+                        sor_item_id int8 null
+                                    );
+
+
+                        CREATE TABLE IF NOT EXISTS ${COVERAGE_REPORT}.classification_match_summary_report (
+                            id bigserial NOT null,
+                            root_pipeline_id int8 null,
+                            created_on timestamp NULL,
+                            tenant_id int8 NULL,
+                            sor_item_name varchar null,
+                            true_positive int8 NULL,
+                            false_positive int8 NULL,
+                            false_negative int8 NULL,
+                            true_negative int8 NULL,
+                            total_origins int8 NULL,
+                            pass_percentage float8 NULL,
+                            fail_percentage float8 NULL,
+                            field_type varchar null,
+                            sor_container_name varchar null,
+                            sor_container_id int8 NULL,
+                            sor_item_id int8 NULL
+                        );
+
+             CREATE TABLE IF NOT EXISTS ${COVERAGE_REPORT}.container_level_summary_report (
+                            id bigserial NOT null,
+                            root_pipeline_id int8 null,
+                            created_on timestamp NULL,
+                            tenant_id int8 null,
+                            sor_container_name varchar null,
+                            sor_container_id int8 null,
+                            overall_container_percentage float8 NULL
+                        );
+
+                "} on-condition if "true"=="true"
+
+
+            callprocess as "calling data.coverage.lookup.processor caller"
+            with-target "data.coverage.lookup.processor"
+            from-file "${basepath}/datalookup/data.coverage.lookup.processor.lmd"
+            using "intics_zio_db_conn"
+            for-every {"
+                        SELECT a.sor_item_name, ft.field_type, sc.sor_container_id, a.sor_item_id, sc.sor_container_name
+   --                    ,allowed_adapter, allowed_characters, char_limit,
+   --                    char_threshold, comparable_characters, sor_container_id, restricted_adapter, restricted_adapter_flag,
+   --                    validator_threshold, word_limit, word_threshold, created_on, created_user_id,
+   --                    last_updated_on, last_updated_user_id, status, tenant_id,
+   --                    allowed_adaptor_display_text, restricted_adapter_display_text
+                       FROM sor_meta.sor_container sc
+                       JOIN sor_meta.sor_item a on sc.sor_container_id=a.sor_container_id and  sc.tenant_id=a.tenant_id
+                        JOIN sor_meta.sor_item_activators cdi on cdi.sor_item_id =a.sor_item_id and cdi.report_plugin = TRUE
+                       JOIN sor_meta.field_type ft on ft.field_type_id = a.field_type_id
+                       WHERE sc.document_type='${document_type}' and sc.tenant_id = '${tenant_id}' and sc.status='ACTIVE' and a.status='ACTIVE';
+
+                     "} on-condition if "${data.coverage.lookup.field.activator}"=="true" on-parallel-fielding "${data.coverage.lookup.processor.parallel.fielding}"
+
+
+            callprocess as "calling data.coverage.lookup.consolidated caller"
+            with-target "data.coverage.lookup.consolidated"
+            from-file "${basepath}/datalookup/data.coverage.lookup.consolidated.lmd"
+            using "intics_zio_db_conn"
+            for-every {"
+                        select a.decoded_file_name as doc_id, soo.root_pipeline_id,soo.origin_id, a.file_name
+                        from info.source_of_origin soo
+                        join info.asset a on soo.asset_id =a.asset_id
+                        where soo.root_pipeline_id ='${init_process_id.process_id}';
+
+            "} on-condition if "${data.coverage.lookup.field.activator}"=="true"
+
+
+               callprocess as "calling data.coverage.lookup.average.lmd caller"
+                                       with-target "data.coverage.lookup.average"
+                                       from-file "${basepath}/datalookup/data.coverage.lookup.average.lmd"
+                                       using "intics_zio_db_conn"
+                                       for-every {"
+                                                SELECT 1;
+               "} on-condition if "${data.coverage.lookup.field.activator}"=="true" on-parallel-fielding "${data.coverage.lookup.processor.parallel.fielding}"
+
+                    callprocess as "calling data.coverage.lookup.all.in.one caller"
+                    with-target "data.coverage.lookup.all.in.one"
+                    from-file "${basepath}/datalookup/data.coverage.lookup.all.in.one.lmd"
+                    using "intics_zio_db_conn"
+                    for-every {"
+                            SELECT a.sor_item_name
+        --                    ,allowed_adapter, allowed_characters, char_limit,
+        --                    char_threshold, comparable_characters, sor_container_id, restricted_adapter, restricted_adapter_flag,
+        --                    validator_threshold, word_limit, word_threshold, created_on, created_user_id,
+        --                    last_updated_on, last_updated_user_id, status, tenant_id,
+        --                    allowed_adaptor_display_text, restricted_adapter_display_text
+                           FROM sor_meta.sor_container sc
+                           JOIN sor_meta.sor_item a on sc.sor_container_id=a.sor_container_id and sc.tenant_id=a.tenant_id
+                           WHERE sc.document_type='${document_type}' and sc.tenant_id = '${tenant_id}' and sc.status='ACTIVE' and a.status='ACTIVE';
+
+                "} on-condition if "${data.coverage.lookup.combined.field.activator}"=="true" on-parallel-fielding "${data.coverage.lookup.processor.parallel.fielding}"
+
+
+              transform as "update to completed for ingestion file details table" on "intics_zio_db_conn" using
+              {"
+                      UPDATE inbound_config.ingestion_downloaded_file_details idf
+                      SET status = 'COMPLETED'
+                      FROM product_outbound.product_outbound_payload_queue_archive popq
+                      JOIN info.source_of_origin soo ON soo.origin_id=popq.origin_id AND soo.tenant_id=popq.tenant_id
+                      JOIN info.asset a on a.asset_id=soo.asset_id
+                      WHERE idf.status in ('IN_PROGRESS','TIME_LAPSED')
+                        AND idf.tenant_id = ${tenant_id}
+                        AND idf.transaction_id = '${transaction_id}'
+                        AND a.file_name = idf.file_name
+                        AND popq.status = 'COMPLETED';
+              "} on-condition if "${coveragereport.processor.activator}"=="true"
+
+
+}
+catch{
+}
+finally{
+
+
+}
+}

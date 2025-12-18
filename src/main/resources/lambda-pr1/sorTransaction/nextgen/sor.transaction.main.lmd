@@ -1,0 +1,55 @@
+process "sor.transaction.main"
+{
+	try{
+
+		assign as "time_stamp_sor_transaction" source "intics_zio_db_conn" using
+        {"
+                SELECT now() as consumed_on_ts;
+        "} on-condition if "true"=="true"
+
+        callprocess as "calling sor_transaction processor "
+        with-target "sor.transaction.processor"
+        from-file "${basepath}/sorTransaction/nextgen/sor.transaction.processor.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                        SELECT DISTINCT group_id, 'PRIMARY' as qn_category
+                        FROM sor_transaction.sor_transaction_payload_queue
+                        WHERE status='STAGED' and tenant_id = ${tenant_id} and group_id = '${gen_group_id.group_id}' and batch_id = '${batch_id}';
+        "} on-condition if "true"=="true"
+
+        transform as "Insert into vqa transaction audits" on "intics_zio_db_conn" using
+       {"
+
+            INSERT INTO sor_transaction.vqa_transaction
+            (created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, answer, b_box, document_id, extracted_image_unit, group_id, image_dpi, image_height, image_width, model_id, model_info, origin_id, paper_no, question_id, root_pipeline_id, score, sor_item_attribution_id, sor_item_name, sor_question, synonym_id, tenant_id, vqa_score, weight, model_registry, category, model_registry_id, stage, batch_id, sor_container_instance, section_alias)
+            select vqa.created_on, vqa.created_user_id, vqa.last_updated_on, vqa.last_updated_user_id, vqa.status, vqa.version, vqa.answer, vqa.b_box, vqa.document_id, vqa.extracted_image_unit, vqa.group_id, vqa.image_dpi, vqa.image_height, vqa.image_width, vqa.model_id, vqa.model_info, vqa.origin_id, vqa.paper_no, vqa.question_id, vqa.root_pipeline_id, vqa.score, vqa.sor_item_attribution_id, vqa.sor_item_name, vqa.sor_question, vqa.synonym_id, vqa.tenant_id, vqa.vqa_score, vqa.weight, vqa.model_registry, vqa.category, vqa.model_registry_id, vqa.stage, vqa.batch_id, vqa.sor_container_instance,vqa.section_alias
+            from ${temp_schema_name}.vqa_transaction_${init_process_id.process_id} vqa
+            where batch_id='${batch_id}' and group_id='${gen_group_id.group_id}' and tenant_id=${tenant_id};
+
+       "} on-condition if "true"=="true"
+
+	}
+	catch{
+			transform as "update to failed in sor transaction audit" on "intics_zio_db_conn" using
+           {"
+                INSERT INTO sor_transaction.sor_transaction_pipeline_audit
+                (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+                VALUES('${gen_group_id.group_id}', now(), '${created_user_id}', '${created_user_id}', ${tenant_id}, 'FAILED', 'MAIN_SOR_TRANSACTION', 'Sor transaction failed in main caller with group_id ${gen_group_id.group_id}', '${gen_id.root_pipeline_id}', '${batch_id}');
+           "} on-condition if "true"=="true"
+
+	}
+	finally{
+
+        transform as "move data from temporary tables into main audit tables in sor transaction " on "intics_zio_db_conn" using {"
+        INSERT INTO sor_transaction.adapter_result_audit
+        (origin_id, paper_no, group_id, process_id, sor_id, sor_item_id, sor_item_name, question, answer, vqa_score, weight, created_user_id, tenant_id, created_on, word_score, char_score, validator_score_allowed, validator_score_negative, confidence_score, validation_name, b_box, status, stage, message, root_pipeline_id,question_id,synonym_id, model_registry, batch_id)
+        SELECT  origin_id, paper_no, group_id, process_id, sor_id, sor_item_id, sor_item_name, question, answer, vqa_score, weight, created_user_id, tenant_id, created_on, word_score, char_score, validator_score_allowed, validator_score_negative, confidence_score, validation_name, b_box, status, stage, message, root_pipeline_id,question_id,synonym_id, model_registry,batch_id
+        FROM ${temp_schema_name}.adapter_result_${init_process_id.process_id}
+        where batch_id='${batch_id}';
+
+        "} on-condition if "true"=="true"
+
+
+	}
+
+}

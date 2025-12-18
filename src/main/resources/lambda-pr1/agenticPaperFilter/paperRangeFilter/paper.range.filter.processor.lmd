@@ -1,0 +1,178 @@
+process "paper.range.filter.processor.lmd"
+{
+	try{
+
+
+                    transform as "Agentic paper filter temp table insert for container filtering " on "intics_zio_db_conn" using {"
+                                          INSERT INTO ${temp_schema_name}.agentic_paper_level_score_${init_process_id.process_id}
+                                          ( origin_id,paper_no,root_pipeline_id, batch_id,tenant_id,group_id,is_candidate_paper, paper_level_score )
+                                          SELECT cf.origin_id,cf.paper_no,cf.root_pipeline_id,cf.batch_id,cf.tenant_id, cf.group_id,
+                                              CASE
+                                                  WHEN SUM(CASE WHEN LOWER(cf.container_value) = 'true' THEN 1 ELSE 0 END) > 0 THEN 'yes'
+                                                  ELSE 'no'
+                                              END AS is_candidate_paper,
+                                              SUM(CASE
+                                                  WHEN LOWER(cf.container_value) = 'true' THEN 1000
+                                                  ELSE 0
+                                              END) AS paper_level_score
+                                          FROM
+                                               ${temp_schema_name}.paper_wise_filter_output_${init_process_id.process_id} cf
+                                          WHERE
+                                              cf.batch_id = '${batch_id}'
+                                              AND cf.group_id = '${group_id}'
+                                          GROUP BY
+                                              cf.origin_id,
+                                              cf.paper_no,
+                                              cf.root_pipeline_id,
+                                              cf.batch_id,
+                                              cf.tenant_id,
+                                              cf.group_id;
+
+
+                                           insert into ${temp_schema_name}.agentic_entity_level_score_${init_process_id.process_id}
+                                           (origin_id, paper_no,root_pipeline_id,batch_id,tenant_id,group_id, sor_container_id, container_name, container_value, is_candidate_paper)
+                                           select cfbt.origin_id, cfbt.paper_no,cfbt.root_pipeline_id,
+                                           	cfbt.batch_id,
+                                           	cfbt.tenant_id,
+                                           	cfbt.group_id, sc.sor_container_id, cfbt.container_name, cfbt.container_value, pls.is_candidate_paper
+                                           from  ${temp_schema_name}.paper_wise_filter_output_${init_process_id.process_id} cfbt
+                                           inner join ${temp_schema_name}.agentic_paper_level_score_${init_process_id.process_id} pls on cfbt.origin_id = pls.origin_id and cfbt.paper_no = pls.paper_no
+                                           INNER JOIN sor_meta.sor_container sc ON sc.sor_container_name = cfbt.container_name AND sc.tenant_id = cfbt.tenant_id
+                                           where pls.is_candidate_paper ='yes' and cfbt.container_value::boolean=true
+                                           and cfbt.batch_id='${batch_id}' and sc.tenant_id=${tenant_id} and sc.document_type='${document_type}'
+                                           and cfbt.group_id = '${group_id}';
+
+
+                                           INSERT INTO ${temp_schema_name}.agentic_entity_level_score_${init_process_id.process_id}
+                                           (origin_id, paper_no, root_pipeline_id, batch_id, tenant_id, group_id, sor_container_id, container_name, container_value, is_candidate_paper)
+                                           SELECT
+                                               cfbt.origin_id,
+                                               cfbt.paper_no,
+                                               cfbt.root_pipeline_id,
+                                               cfbt.batch_id,
+                                               cfbt.tenant_id,
+                                               cfbt.group_id,
+                                               sc.sor_container_id,
+                                               sc.sor_container_name AS container_name,
+                                               cfbt.container_value,
+                                               pls.is_candidate_paper
+                                           FROM   ${temp_schema_name}.paper_wise_filter_output_${init_process_id.process_id} cfbt
+                                           INNER JOIN ${temp_schema_name}.agentic_paper_level_score_${init_process_id.process_id} pls
+                                               ON cfbt.origin_id = pls.origin_id
+                                               AND cfbt.paper_no = pls.paper_no
+                                           join sor_meta.sor_container sc on sc.tenant_id =cfbt.tenant_id and sc.sor_container_name ='PROVIDER'
+                                           WHERE cfbt.container_name = ANY(string_to_array('${provider.alias.container.names}', ','))
+                                           and  pls.is_candidate_paper ='yes'
+                                           and cfbt.container_value::boolean=true
+                                           and cfbt.group_id = '${group_id}'
+                                           and sc.sor_container_name ='PROVIDER' and sc.post_processing =true
+                                           group by cfbt.origin_id,
+                                                    cfbt.paper_no,
+                                                    cfbt.root_pipeline_id,
+                                                    cfbt.batch_id,
+                                                    cfbt.tenant_id,
+                                                    cfbt.group_id,
+                                                    sc.sor_container_id,
+                                                    sc.sor_container_name,
+                                                    cfbt.container_value,
+                                                    pls.is_candidate_paper;
+
+                                 "} on-condition if "true"=="true"
+
+                   transform as "insert into audit table for paperwise agentic paper filter" on "intics_zio_db_conn" using
+                               {"
+                                       insert into audit.process_audit_output
+                                       (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint,paper_no, batch_id)
+                                       select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint, ai.paper_no, '${batch_id}'
+                                       from  ${temp_schema_name}.paper_wise_filter_output_${init_process_id.process_id} ai
+                                       where ai.group_id = ${gen_group_id.group_id} and tenant_id = ${tenant_id} and batch_id='${batch_id}'
+                                       group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage, ai.paper_no
+                               "}  on-condition if "true"=="true"
+
+
+
+                   transform as "Audit table insert for paperWiseAgenticFilter Agentic paper filter " on "intics_zio_db_conn" using
+                   {"
+
+                    INSERT INTO paper_filter.paper_wise_filter_input_data_audit (process_id, tenant_id, template_id,
+                    group_id, origin_id, paper_no, file_path, root_pipeline_id, template_name, batch_id, created_on, user_prompt,
+                    system_prompt,model_name,unique_id,unique_name,prompt_type) SELECT process_id, tenant_id, template_id, group_id, origin_id, paper_no, file_path,
+                    root_pipeline_id, template_name, batch_id, created_on, user_prompt, system_prompt,model_name,unique_id,unique_name,prompt_type
+                    FROM ${temp_schema_name}.paper_wise_filter_input_data_${init_process_id.process_id}
+                    where batch_id='${batch_id}';
+
+
+                    INSERT INTO paper_filter.paper_wise_filter_output_audit
+                    (process_id, tenant_id, template_id, group_id, batch_id, origin_id, paper_no, file_path, file_name,
+                    extracted_text, status, stage, message, template_name, is_blank_page, created_on, last_updated_on,
+                    root_pipeline_id, model_name, model_version, container_name, container_value,container_id,prompt_type)
+                    SELECT process_id, tenant_id, template_id, group_id, batch_id, origin_id, paper_no, file_path, file_name,
+                    extracted_text, status, stage, message, template_name, is_blank_page, created_on, last_updated_on,
+                    root_pipeline_id, model_name, model_version, container_name, container_value,container_id,prompt_type
+                    FROM ${temp_schema_name}.paper_wise_filter_output_${init_process_id.process_id}
+                    where batch_id='${batch_id}';
+
+
+                    INSERT INTO paper_filter.agentic_paper_level_score_audit
+                                        (origin_id, paper_no, root_pipeline_id, batch_id, tenant_id, group_id, is_candidate_paper, paper_level_score)
+                                        select origin_id, paper_no, root_pipeline_id, batch_id, tenant_id, group_id, is_candidate_paper, paper_level_score
+                                        from ${temp_schema_name}.agentic_paper_level_score_${init_process_id.process_id}
+                                        where batch_id='${batch_id}';
+
+                                        INSERT INTO paper_filter.agentic_entity_level_score_audit
+                                        (origin_id, paper_no, root_pipeline_id, batch_id, tenant_id, group_id, sor_container_id, container_name, container_value,is_candidate_paper)
+                                        select origin_id, paper_no, root_pipeline_id, batch_id, tenant_id, group_id, sor_container_id, container_name, container_value,is_candidate_paper
+                                        from ${temp_schema_name}.agentic_entity_level_score_${init_process_id.process_id}
+                                        where batch_id='${batch_id}';
+
+                    "} on condition if "true"=="true"
+                     transform as "Insert into paper_filter_max_score_papers_audit" on "intics_zio_db_conn" using
+                                        {"
+                                             insert into paper_filter.paper_filter_max_score_papers_audit
+                                                                (origin_id, paper_no,root_pipeline_id, batch_id, group_id, tenant_id)
+                                                                SELECT origin_id, paper_no,root_pipeline_id, batch_id, group_id, tenant_id
+                                                                FROM paper_filter.agentic_paper_level_score_audit a
+                                                                WHERE (a.origin_id, a.root_pipeline_id, a.batch_id, a.tenant_id, a.group_id, a.paper_level_score) IN
+                                                                (SELECT origin_id, root_pipeline_id, batch_id, tenant_id, group_id, MAX(paper_level_score)
+                                                                FROM paper_filter.agentic_paper_level_score_audit
+                                                                where batch_id='${batch_id}'
+                                                                GROUP BY origin_id, root_pipeline_id, batch_id, tenant_id, group_id);
+                                        "} on condition if "true"=="true"
+
+}
+
+	catch{
+
+                 transform as "Update to FAILED in paperWiseAgenticFilter agentic paper filter payload queue" on "intics_zio_db_conn" using
+                  {"
+                   UPDATE paper_filter.paper_wise_filter_sub_batch_queue
+                   SET status='FAILED', consumed_on_ts = now(), consumer_process_id = '${process-id}'
+                   WHERE group_id='${group_id}' AND status='IN_PROGRESS' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+                 "} on condition if "true"=="true"
+
+                  transform as "Update to FAILED in paperWiseAgenticFilter agentic paper filter payload queue" on "intics_zio_db_conn" using
+                    {"
+                        UPDATE paper_filter.sub_batch_agentic_paper_filter_payload_queue
+                        SET status='FAILED', consumed_on_ts = now(), consumer_process_id = '${process-id}'
+                        WHERE group_id='${group_id}' AND status='IN_PROGRESS' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+                    "} on condition if "true"=="true"
+                 	}
+	}
+	finally{
+
+                transform as "Update to COMPLETED in sub batch paperWiseAgenticFilter agentic paper filter payload queue" on "intics_zio_db_conn" using
+                 {"
+                        UPDATE paper_filter.paper_wise_filter_sub_batch_queue
+                        SET status='COMPLETED', consumed_on_ts =  now(), consumer_process_id = '${process-id}'
+                        WHERE batch_id ='${batch_id}' and status='IN_PROGRESS' and group_id='${group_id}' and tenant_id = ${tenant_id};
+                 "}  on-condition if "true"=="true"
+
+                 transform as "Update to COMPLETED in agentic paper filter payload queue" on "intics_zio_db_conn" using
+                  {"
+                    UPDATE paper_filter.sub_batch_agentic_paper_filter_payload_queue
+                    SET status='COMPLETED', consumed_on_ts =  now(), consumer_process_id = '${process-id}'
+                    WHERE batch_id ='${batch_id}' and status='IN_PROGRESS' and group_id='${group_id}' and tenant_id = ${tenant_id};
+                  "}  on-condition if "true"=="true
+
+	}
+}

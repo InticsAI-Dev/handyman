@@ -1,7 +1,7 @@
 package in.handyman.raven.lib.adapters.comparison;
 
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lib.model.controldatacomaprison.ControlDataComparisonQueryInputTable;
+import in.handyman.raven.lib.services.controldatacomaprison.ControlDataComparisonQueryInputTable;
 import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.slf4j.Logger;
 

@@ -1,0 +1,62 @@
+process "preprocess.main.caller"
+{
+	try{
+			assign as "time_stamp_preprocess" source "intics_zio_db_conn" using
+            {"
+                    SELECT now() as consumed_on_ts;
+            "} on-condition if "true"=="true"
+
+            callprocess as "calling preprocess processor"
+            with-target "preprocess.sot.process"
+            from-file "${basepath}/preprocess/preprocess.sot.process.lmd"
+            using "intics_zio_db_conn"
+            for-every
+            {"
+                   SELECT DISTINCT group_id, batch_id
+                   FROM preprocess.preprocess_payload_queue
+                   WHERE batch_id ='${batch_id}' and status='STAGED' AND stage='PREPROCESS' and tenant_id = ${tenant_id} and group_id = '${gen_group_id.group_id}';
+            "} on-condition if "true"=="true"
+
+
+            transform as "Insert into source of truth audit table" on "intics_zio_db_conn" using
+            {"
+               INSERT INTO ${temp_schema_name}.source_of_truth_${init_process_id.process_id}
+               (truth_id, created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, content, encode, group_id, height, paper_no, preprocessed_file_id, root_pipeline_id, template_name, transaction_id, width, workspace_id, asset_id, origin_id, tenant_id, document_type, channel_id, batch_id)
+               SELECT truth_id, created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, content, encode, group_id, height, paper_no, preprocessed_file_id, root_pipeline_id, template_name, transaction_id, width, workspace_id, asset_id, origin_id, tenant_id, document_type, channel_id, batch_id
+               FROM info.source_of_truth
+               WHERE batch_id='${batch_id}' and group_id='${gen_group_id.group_id}' and tenant_id = ${tenant_id};
+
+
+                INSERT INTO ${temp_schema_name}.asset_${init_process_id.process_id}
+                (asset_id, created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, file_checksum, file_extension, file_id, file_name, file_path, file_size, root_pipeline_id, tenant_id, transaction_id, workspace_id, height, width, dpi, channel_id, batch_id, decoded_file_name)
+                SELECT a.asset_id, a.created_on, a.created_user_id, a.last_updated_on, a.last_updated_user_id, a.status, a.version, a.file_checksum, a.file_extension, a.file_id, a.file_name, a.file_path, a.file_size, a.root_pipeline_id, a.tenant_id, a.transaction_id, a.workspace_id, a.height, a.width, a.dpi, a.channel_id, a.batch_id, a.decoded_file_name
+                FROM info.asset a
+                JOIN info.source_of_truth sot on a.asset_id=sot.asset_id and a.tenant_id=sot.tenant_id
+                where sot.batch_id='${batch_id}' and sot.group_id='${gen_group_id.group_id}' and sot.tenant_id = ${tenant_id};
+            "}on-condition if "true"=="true"
+
+	}
+	catch{
+
+        transform as "failed in preprocess main caller" on "intics_zio_db_conn" using
+        {"
+           INSERT INTO preprocess.preprocess_pipeline_audit
+               (process_id, group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id )
+               VALUES('${init_process_id.process_id}', '${gen_group_id.group_id}', now(), 'FAILED', 'PREPROCESS_MAIN_CALLER', 'failed in preprocess main caller','${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}');
+        "}on-condition if "true"=="true"
+	}
+	finally{
+            transform as "completed in preprocess main caller" on "intics_zio_db_conn" using
+            {"
+                    INSERT INTO preprocess.preprocess_pipeline_audit
+                    (process_id, group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+                    VALUES('${init_process_id.process_id}', '${gen_group_id.group_id}', now(), 'COMPLETED', 'PREPROCESS_MAIN_CALLER', 'completed in preprocess main caller','${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}');
+            "}on-condition if "true"=="true"
+
+            transform as "delete from queue for channel" on "intics_zio_db_conn" using
+            {"
+                    DELETE FROM preprocess.preprocess_payload_queue where batch_id='${batch_id}';
+            "} on-condition if "${origin_type}"=="WORKSPACE"
+
+	}
+}

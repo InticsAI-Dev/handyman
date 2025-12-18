@@ -1,0 +1,828 @@
+process "preprocess.sot.process"
+{
+
+	try{
+
+	    transform as "Create temporary table for the downloaded asset source details" on "intics_zio_db_conn" using
+        {"
+            INSERT INTO ${temp_schema_name}.downloaded_asset_source_details_${init_process_id.process_id}
+            (origin_id, asset_id, document_id, file_downloaded_time, inbound_transaction_id, downloaded_file_path, request_txn_id, file_id, file_name, file_size, total_pages, file_path, height, width, file_checksum, file_extension, transaction_id, group_id, root_pipeline_id, batch_id, tenant_id, reference_id)
+            SELECT soo.origin_id, soo.asset_id, idfd.document_id, idfd.download_completed_on, idfd.inbound_transaction_id, idfd.file_path, idfd.request_txn_id, a.file_id, a.file_name, a.file_size, idfd.total_pages, a.file_path, a.height, a.width, a.file_checksum, a.file_extension, COALESCE(soo.transaction_id, '') AS transaction_id, soo.group_id, soo.root_pipeline_id, soo.batch_id, soo.tenant_id, idfd.reference_id
+            FROM ${temp_schema_name}.source_of_origin_${init_process_id.process_id} soo
+            JOIN ${temp_schema_name}.asset_${init_process_id.process_id} a on a.asset_id = soo.asset_id
+            LEFT JOIN inbound_config.ingestion_downloaded_file_details idfd on idfd.transaction_id = soo.transaction_id and idfd.file_name = a.file_name
+            WHERE soo.batch_id='${batch_id}' and soo.tenant_id =${tenant_id};
+        "} on-condition if "true"=="true"
+
+        transform as "Insert into chrono-clash file wise input table using the common time interval for preprocess" on "intics_zio_db_conn" using {"
+            INSERT INTO ${temp_schema_name}.preprocess_chrono_clash_input_${init_process_id.process_id}
+            (root_pipeline_id, created_on, updated_on, batch_id, group_id, origin_id, tenant_id, time_frame, stage, status, transaction_id, downloaded_time, remaining_time)
+            SELECT ppq.root_pipeline_id, now(), now(), ppq.batch_id, ppq.group_id, ppq.origin_id, ppq.tenant_id,
+            ${chronoclash.threshold.time} AS time_frame,
+            'PREPROCESS' as stage,
+            CASE
+                WHEN now() - soo.file_downloaded_time >= (${chronoclash.threshold.time} * interval '1 minute')
+                     AND '${chronoclash.activator}' = 'true' AND POSITION('PREPROCESS' IN '${chronoclash.stage.controller}') > 0
+                THEN 'ABORTED'
+                ELSE 'IN_PROGRESS'
+            END AS status,
+            soo.transaction_id,
+            soo.file_downloaded_time as downloaded_time,
+            ((${chronoclash.threshold.time} * interval '1 minute') - (now() - soo.file_downloaded_time)) as remaining_time
+            FROM preprocess.preprocess_payload_queue ppq
+            JOIN ${temp_schema_name}.downloaded_asset_source_details_${init_process_id.process_id} soo on soo.root_pipeline_id = ppq.root_pipeline_id and soo.origin_id = ppq.origin_id
+            WHERE ppq.batch_id='${batch_id}' and ppq.tenant_id =${tenant_id} and ppq.stage ='PREPROCESS' and ppq.status = 'STAGED';
+        "} on-condition if "${chronoclash.specific.time.interval.enabler}" == "false"
+
+        transform as "Insert into chrono-clash file wise input table using the specific time interval for preprocess" on "intics_zio_db_conn" using {"
+            INSERT INTO ${temp_schema_name}.preprocess_chrono_clash_input_${init_process_id.process_id}
+            (root_pipeline_id, created_on, updated_on, batch_id, group_id, origin_id, tenant_id, time_frame, stage, status, transaction_id, downloaded_time, remaining_time)
+            SELECT ppq.root_pipeline_id, now(), now(), ppq.batch_id, ppq.group_id, ppq.origin_id, ppq.tenant_id,
+            CASE
+                WHEN (CURRENT_TIME BETWEEN scti.start_time_frame::time AND scti.end_time_frame::time)
+                THEN scti.time_frame
+                ELSE ${chronoclash.threshold.time}
+            END AS time_frame,
+            'PREPROCESS' as stage,
+            CASE
+                WHEN now() - soo.file_downloaded_time >= ((time_frame) * interval '1 minute') AND '${chronoclash.activator}' = 'true' AND POSITION('PREPROCESS' IN '${chronoclash.stage.controller}') > 0
+                THEN 'ABORTED'
+                ELSE 'IN_PROGRESS'
+            END AS status,
+            soo.transaction_id,
+            soo.file_downloaded_time as downloaded_time,
+            ((time_frame * interval '1 minute') - (now() - soo.file_downloaded_time)) as remaining_time
+            FROM preprocess.preprocess_payload_queue ppq
+            JOIN ${temp_schema_name}.downloaded_asset_source_details_${init_process_id.process_id} soo on soo.root_pipeline_id = ppq.root_pipeline_id and soo.origin_id = ppq.origin_id
+            JOIN config.spw_chrono_clash_time_interval scti on scti.tenant_id = ppq.tenant_id and scti.instance = '${root-pipeline-name}' and CURRENT_TIME BETWEEN scti.start_time_frame::time AND scti.end_time_frame::time
+            WHERE ppq.batch_id='${batch_id}' and ppq.tenant_id =${tenant_id} and ppq.stage ='PREPROCESS' and ppq.status = 'STAGED';
+        "} on-condition if "${chronoclash.specific.time.interval.enabler}" == "true"
+
+            transform as "Update to IN_PROGRESS in preprocess payload queue" on "intics_zio_db_conn" using
+             {"
+                  UPDATE preprocess.preprocess_payload_queue as ppq
+                  SET status= a.status, consumed_on_ts = '${time_stamp_preprocess.consumed_on_ts}', consumer_process_id = '${process-id}'
+                  FROM ${temp_schema_name}.preprocess_chrono_clash_input_${init_process_id.process_id} a
+                  WHERE a.origin_id = ppq.origin_id and ppq.batch_id ='${batch_id}' and ppq.status='STAGED' and ppq.group_id='${group_id}' and ppq.tenant_id = ${tenant_id};
+
+                update ingestion.pipeline_queue_status_audit as ppq
+                set status = a.status, consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                FROM ${temp_schema_name}.preprocess_chrono_clash_input_${init_process_id.process_id} a
+                where a.origin_id = ppq.origin_id and ppq.group_id=${group_id} and ppq.batch_id='${batch_id}' and ppq.tenant_id =${tenant_id} and ppq.stage ='PREPROCESS' ;
+
+                  UPDATE info.transaction
+                  SET transaction_status='IN_PROGRESS'
+                  WHERE transaction_id='${transaction_id}' and tenant_id=${tenant_id};
+
+                    UPDATE batching.sub_batching_process_payload_queue as ppq
+                    SET status=a.status,  stage='PREPROCESS'
+                    FROM ${temp_schema_name}.preprocess_chrono_clash_input_${init_process_id.process_id} a
+                    WHERE a.origin_id = ppq.origin_id and ppq.group_id='${group_id}'  and ppq.tenant_id='${tenant_id}' and ppq.batch_id ='${batch_id}';
+
+					INSERT INTO preprocess.preprocess_pipeline_audit
+					(process_id, origin_id,group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+					SELECT ppq.producer_process_id, ppq.origin_id, ppq.group_id, now(), 'STARTED','PREPROCESS','preprocess started for group_id ${group_id}','${gen_id.root_pipeline_id}', ${tenant_id}, ppq.batch_id
+					FROM preprocess.preprocess_payload_queue ppq
+					JOIN ${temp_schema_name}.preprocess_chrono_clash_input_${init_process_id.process_id} a on a.origin_id = ppq.origin_id AND a.tenant_id = ppq.tenant_id AND a.batch_id = ppq.batch_id
+					WHERE ppq.status=a.status and ppq.group_id='${group_id}' and ppq.tenant_id = ${tenant_id} and ppq.batch_id = '${batch_id}';
+
+             "}  on-condition if "true"=="true"
+
+            assign as "gen_directory" source "intics_zio_db_conn" using
+            {"
+                SELECT concat ('${gen_directory.current_directory}','/preprocess/paper_itemizer') as denoise_dest_path,
+                concat ('${gen_directory.current_directory}','/preprocess/autorotation') as autorotation_dest_path;
+           "} on-condition if "true"=="true"
+
+			assign as "pipeline_train_mode" source "intics_zio_db_conn" using
+			{"
+			        select  (case when '${paper.itemization.start.action}'='true'  AND '${pipeline.train.mode}'='true' then 'true' else 'false' end) as paper_itemizer;
+			        select  (case when '${auto.rotation.start.action}'='true'  AND '${pipeline.train.mode}'='true' then 'true' else 'false' end) as auto_rotation;
+			        select  (case when '${template.detection.start.action}'='true'  AND '${pipeline.train.mode}'='true' then 'true' else 'false' end) as template_detection;
+			        select  (case when '${text.extraction.start.action}'='true'  AND '${pipeline.train.mode}'='true' then 'true' else 'false' end) as text_extraction;
+			"}on-condition if "true"=="true"
+
+			assign as "multipart_activator" source "intics_zio_db_conn" using
+            {"
+                    select  (case when '${multipart.file.upload.activator}'='true' AND '${preprocess.main.caller.activator}'='true' then 'true' else 'false' end) as preprocess;
+                    select  (case when '${multipart.file.upload.activator}'='true' AND '${template.detection.activator}'='true' then 'true' else 'false' end) as template_detection;
+                    select  (case when '${multipart.file.upload.activator}'='true' AND '${table.extraction.activator}'='true' then 'true' else 'false' end) as table_extraction;
+                    select  (case when '${multipart.file.upload.activator}'='true' AND '${paper.classification.activator}'='true' then 'true' else 'false' end) as paper_classification;
+                    select  (case when '${multipart.file.upload.activator}'='true' AND '${qr.extraction.processor.activator}'='true' then 'true' else 'false' end) as qr_extraction;
+                    select  (case when '${multipart.file.upload.activator}'='true' AND '${ut.model.activator}'='true' then 'true' else 'false' end) as ut_model;
+                    select  (case when '${multipart.file.upload.activator}'='true' AND '${noise.model.caller.activator}'='true' then 'true' else 'false' end) as noise_detection;
+                    select  (case when '${multipart.file.upload.activator}'='true' AND '${sor.transaction.activator}'='true' then 'true' else 'false' end) as sor_transaction;
+                    select  (case when '${multipart.file.upload.activator}'='true' AND '${origin_type}'='WORKSPACE' then 'true' else 'false' end) as workspace;
+                    select  (case when '${multipart.file.upload.activator}'='true' AND '${origin_type}'='TRANSACTION' then 'true' else 'false' end) as pipeline_transaction;
+            "} on-condition if "true"=="true"
+
+            createDirectory as "creating_directory" using
+            {
+                "${gen_directory.denoise_dest_path}"
+            } on-condition if "true"=="true"
+
+            createDirectory as "creating_directory" using
+            {
+                "${gen_directory.autorotation_dest_path}"
+            } on-condition if "true"=="true"
+
+            transform as "Insert into pipeline directory info" on "intics_zio_db_conn" using
+            {"
+            INSERT INTO ingestion.pipeline_directory_info
+            (target_directory_path, tenant_id, group_id, root_pipeline_id, created_on, updated_on, created_user_id, last_updated_user_id,
+             transaction_id, formatted_date, current_directory, zip_directory, process_name, status)
+            select '${target_directory_path}',${tenant_id},${gen_group_id.group_id},${root-ref-id},now(),now(),'${created_user_id}','${last_updated_user_id}',
+            '${transaction_id}','${gen_id.formatted_date}','${gen_directory.denoise_dest_path}','${gen_directory.zip_directory}','PREPROCESS', case when '${preprocess_stage_chronoclash.enabler}' = 'true' then 'ABORTED' else 'STAGED' end;
+
+            INSERT INTO ingestion.pipeline_directory_info
+            (target_directory_path, tenant_id, group_id, root_pipeline_id, created_on, updated_on, created_user_id, last_updated_user_id,
+             transaction_id, formatted_date, current_directory, zip_directory, process_name, status)
+            select '${target_directory_path}',${tenant_id},${gen_group_id.group_id},${root-ref-id},now(),now(),'${created_user_id}','${last_updated_user_id}',
+            '${transaction_id}','${gen_id.formatted_date}','${gen_directory.autorotation_dest_path}','${gen_directory.zip_directory}','DENOISE', case when '${preprocess_stage_chronoclash.enabler}' = 'true' then 'ABORTED' else 'STAGED' end;
+
+            "} on-condition if "true"=="true"
+
+
+
+			 transform as "insert into audit table for paper itemizer started" on "intics_zio_db_conn" using
+	             {"
+
+	                   INSERT INTO preprocess.preprocess_pipeline_audit
+	                   (process_id, origin_id,group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+	                   SELECT  a.producer_process_id,a.origin_id, a.group_id,now(), 'STARTED','PAPER_ITEMIZER','paper itemizer macro started for group id ${group_id}','${gen_id.root_pipeline_id}', ${tenant_id}, a.batch_id
+	                   FROM preprocess.preprocess_payload_queue a
+	                   WHERE  a.batch_id ='${batch_id}' and a.status='IN_PROGRESS' and a.group_id='${group_id}' and a.tenant_id = ${tenant_id};
+	         "}  on-condition if "true"=="true"
+
+	         multipartUpload as "multipart file upload for paper itemization"
+             resource-conn "intics_zio_db_conn"
+             upload-url "${paper.itemizer.multipart.upload.url}"
+             using {"
+                SELECT c.file_path
+                from preprocess.preprocess_payload_queue a
+                join ${temp_schema_name}.source_of_origin_${init_process_id.process_id} b on a.origin_id=b.origin_id and a.tenant_id=b.tenant_id
+                join ${temp_schema_name}.asset_${init_process_id.process_id} c on b.file_id=c.file_id
+                where a.batch_id ='${batch_id}' and a.status='IN_PROGRESS' and a.group_id='${group_id}' and  a.tenant_id = ${tenant_id};
+             "} on-condition if "${multipart_activator.preprocess}"=="true"
+
+            coproStart as "Calling paper itemization copro start action" for "PAPER_ITEMIZATION"
+            copro-server-url "${copro.paper.itemization.admin.start.url}"
+            export-command "${copro.paper.itemization.export}"
+            process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+            using
+            {"
+               ${paperItemizationStartCommand}
+
+            "} on-condition if "${pipeline_train_mode.paper_itemizer}" == "true"
+
+            paperItemizer as "paper itemizer for group id ${group_id} and batch_id ${batch_id}"
+            outputDir "${gen_directory.denoise_dest_path}"
+            copro-url "${copro.paper-itemizer.url}"
+            result-table "${temp_schema_name}.paper_itemizer_${init_process_id.process_id}"
+            processId "${init_process_id.process_id}"
+            resource-conn "intics_zio_db_conn"
+            using {"
+                    SELECT a.origin_id, a.group_id ,c.file_path,b.tenant_id,a.producer_process_id as process_id,a.root_pipeline_id, a.batch_id, now() as created_on
+                    from preprocess.preprocess_payload_queue a
+                    join ${temp_schema_name}.source_of_origin_${init_process_id.process_id} b on a.origin_id=b.origin_id and a.tenant_id=b.tenant_id
+                    join ${temp_schema_name}.asset_${init_process_id.process_id} c on b.file_id=c.file_id
+                    where a.batch_id ='${batch_id}' and  a.status='IN_PROGRESS' and a.group_id='${group_id}' and  a.tenant_id = ${tenant_id};
+            "} on-condition if "true"=="true"
+
+            coproStop as "Calling paper itemization copro stop action" for "PAPER_ITEMIZATION"
+            copro-server-url "${copro.paper.itemization.admin.stop.url}"
+            process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+            using
+            {"
+                gunicorn
+
+            "} on-condition if "${paper.itemization.stop.action}"=="true"
+
+            transform as "insert into audit table for paper itemizer" on "intics_zio_db_conn" using
+            {"
+              insert into audit.process_audit_output
+                (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint,paper_no, batch_id)
+                select pi.tenant_id, pi.root_pipeline_id, pi.origin_id, pi.request, pi.response, pi.status,pi.stage, pi.message, now(), pi.endpoint, pi.paper_no, '${batch_id}'
+                from ${temp_schema_name}.paper_itemizer_${init_process_id.process_id} pi
+                where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id} and batch_id='${batch_id}'
+                group by pi.origin_id,pi.tenant_id, pi.root_pipeline_id,pi.request, pi.response, pi.status, pi.message, pi.endpoint, pi.stage, pi.paper_no
+            "}  on-condition if "true"=="true"
+
+
+            multipartDownload as "downloading response file of paper itemization"
+            resource-conn "intics_zio_db_conn"
+            download-url "${paper.itemizer.response.download.url}"
+            using {"
+                SELECT a.processed_file_path as file_path
+                FROM ${temp_schema_name}.paper_itemizer_${init_process_id.process_id} a
+                join preprocess.preprocess_payload_queue b on a.origin_id=b.origin_id and a.tenant_id=b.tenant_id
+                WHERE a.batch_id ='${batch_id}' and a.status='COMPLETED' AND b.status='IN_PROGRESS' AND a.group_id='${group_id}' and a.tenant_id = ${tenant_id};
+            "} on-condition if "${multipart_activator.preprocess}"=="true"
+
+
+         transform as "insert into audit table for paper itemizer completed/failed" on "intics_zio_db_conn" using
+             {"
+                    update preprocess.preprocess_payload_queue a
+                    set status='FAILED'
+                    from ${temp_schema_name}.paper_itemizer_${init_process_id.process_id} b
+                    where b.status='FAILED' and a.origin_id=b.origin_id and a.status='IN_PROGRESS' and a.tenant_id = ${tenant_id} and a.batch_id ='${batch_id}';
+
+					INSERT INTO preprocess.preprocess_pipeline_audit
+					(process_id, origin_id,group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+					SELECT  a.producer_process_id,a.origin_id, a.group_id,b.created_on, b.status, b.stage, b.message,'${gen_id.root_pipeline_id}', ${tenant_id}, a.batch_id
+					FROM preprocess.preprocess_payload_queue a, ${temp_schema_name}.paper_itemizer_${init_process_id.process_id} b
+					WHERE  a.batch_id ='${batch_id}' and a.origin_id =b.origin_id AND a.status='IN_PROGRESS' and a.group_id='${group_id}' and a.tenant_id = ${tenant_id};
+
+					INSERT INTO preprocess.preprocess_pipeline_audit
+					(process_id, origin_id,group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+					SELECT  a.producer_process_id,a.origin_id, a.group_id,now(), 'STARTED','AUTO_ROTATION','auto rotation macro started for group id ${group_id}','${gen_id.root_pipeline_id}', ${tenant_id}, a.batch_id
+					FROM preprocess.preprocess_payload_queue a
+					WHERE a.status='IN_PROGRESS' and a.group_id='${group_id}' and a.tenant_id = ${tenant_id} and a.batch_id ='${batch_id}';
+
+					INSERT INTO ${temp_schema_name}.summary_audit_papers_${process-id}
+					(process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken,root_pipeline_id, tenant_id, batch_id)
+					SELECT ${process-id} , 'PREPROCESS' ,'PAPER_ITERATOR',coalesce (sum(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END),0) ,coalesce (sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END),0),min(created_on),max(last_updated_on), EXTRACT(epoch FROM (max(last_updated_on)-min(created_on))),'${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}'
+					FROM ${temp_schema_name}.paper_itemizer_${init_process_id.process_id}
+					WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+					INSERT INTO ${temp_schema_name}.summary_audit_files_${process-id}
+					(process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken,root_pipeline_id, tenant_id, batch_id)
+					SELECT ${process-id} , 'PREPROCESS' ,'PAPER_ITERATOR',coalesce(sum(CASE WHEN status='IN_PROGRESS' THEN 1 ELSE 0 END) ,0),coalesce(sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END) ,0),min(created_on),max(created_on), EXTRACT(epoch FROM (max(created_on)-min(created_on))),'${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}'
+					FROM preprocess.preprocess_payload_queue
+					WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+					INSERT INTO audit.pipeline_summary_audit
+					(process_id, created_on, module_name, macro_process, files_processed_count,papers_processed_count,files_failed_count,papers_failed_count,start_time,end_time, time_taken, group_id, root_pipeline_id, created_user_id, template_id, tenant_id,average_time, batch_id)
+					SELECT msaf.process_id ,now(),msaf.module_name ,msaf.macro_process ,msaf.completed_count,msap.completed_count,msaf.failed_count,msap.failed_count,msap.min_created_on,msap.max_created_on, EXTRACT(epoch FROM (msap.max_created_on-msap.min_created_on)),
+					'${group_id}','${root-ref-id}','${created_user_id}','${document_id}',${tenant_id},(CASE WHEN (msap.time_taken/(msap.completed_count+msap.failed_count))=0 THEN msap.time_taken ELSE (msap.time_taken/(msap.completed_count+msap.failed_count)) END), msaf.batch_id
+					FROM ${temp_schema_name}.summary_audit_files_${process-id} msaf,
+					${temp_schema_name}.summary_audit_papers_${process-id} msap
+					WHERE msaf.module_name=msap.module_name AND msaf.macro_process=msap.macro_process AND
+					msaf.batch_id=msap.batch_id AND
+					msaf.module_name='PREPROCESS'
+					AND msaf.macro_process='PAPER_ITERATOR'
+					AND msaf.tenant_id = ${tenant_id}
+					AND msap.batch_id ='${batch_id}';
+
+
+         "}  on-condition if "true"=="true"
+
+            multipartUpload as "multipart file upload for auto rotation"
+            resource-conn "intics_zio_db_conn"
+            upload-url "${auto.rotation.multipart.upload.url}"
+            using {"
+                SELECT a.processed_file_path as file_path
+                FROM ${temp_schema_name}.paper_itemizer_${init_process_id.process_id} a
+                join preprocess.preprocess_payload_queue b on a.origin_id=b.origin_id and a.tenant_id=b.tenant_id
+                WHERE a.status='COMPLETED' AND b.status='IN_PROGRESS' AND a.group_id='${group_id}' and a.tenant_id = ${tenant_id} and a.batch_id ='${batch_id}';
+            "} on-condition if "${multipart_activator.preprocess}"=="true"
+
+           coproStart as "Calling auto rotation copro start action" for "AUTO_ROTATION"
+           copro-server-url "${copro.auto.rotation.admin.start.url}"
+           export-command "${copro.auto.rotation.export}"
+           process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+           using
+           {"
+               ${autoRotationStartCommand}
+
+           "} on-condition if "${pipeline_train_mode.auto_rotation}" == "true"
+
+        autoRotation as "auto rotation based on paper limit false and auto rotation true for group_id ${group_id} and batch_id ${batch_id}"
+        output-dir "${gen_directory.autorotation_dest_path}"
+        process-id "${init_process_id.process_id}"
+        copro-url "${copro.autorotation.url}"
+        resource-conn "intics_zio_db_conn"
+        using  {"
+             SELECT a.origin_id,a.group_id,a.processed_file_path as file_path,a.paper_no,a.tenant_id,a.template_id,a.process_id,b.root_pipeline_id, a.batch_id, now() as created_on
+             FROM ${temp_schema_name}.paper_itemizer_${init_process_id.process_id} a
+             join preprocess.preprocess_payload_queue b on a.origin_id=b.origin_id and a.tenant_id=b.tenant_id and a.batch_id=b.batch_id
+             WHERE a.status='COMPLETED' AND b.status='IN_PROGRESS' AND a.group_id='${group_id}' and a.tenant_id = ${tenant_id} and a.batch_id ='${batch_id}';
+         "} on-condition if "${preprocess.auto.rotation.activator}"=="true"
+
+
+
+        transform as "insert into auto rotation false and paper limit false" on "intics_zio_db_conn" using
+        {"
+            INSERT INTO ${temp_schema_name}.auto_rotation_${init_process_id.process_id}
+            (process_id, tenant_id, template_id, group_id, origin_id, paper_no, processed_file_path, status, stage, message,
+            created_on, root_pipeline_id, batch_id, last_updated_on)
+            select a.process_id, a.tenant_id, a.template_id, a.group_id, a.origin_id, a.paper_no, a.processed_file_path as file_path,'COMPLETED','AUTO_ROTATION','auto rotation activator is falsed.',
+            now(),${init_process_id.process_id},'${batch_id}',now()
+            FROM ${temp_schema_name}.paper_itemizer_${init_process_id.process_id} a
+            where a.status='COMPLETED' AND a.group_id=${group_id} and a.tenant_id = ${tenant_id} and a.batch_id ='${batch_id}';
+        "} on-condition if "${preprocess.auto.rotation.activator}"=="false"
+
+
+
+
+
+        coproStop as "Calling auto rotation copro stop action" for "AUTO_ROTATION"
+        copro-server-url "${copro.auto.rotation.admin.stop.url}"
+        process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+        using
+        {"
+
+        "}on-condition if "${auto.rotation.stop.action}"=="true"
+
+        transform as "insert into audit table for auto rotation" on "intics_zio_db_conn" using
+        {"
+                insert into audit.process_audit_output
+                (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint, paper_no, batch_id)
+                select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint, ai.paper_no, '${batch_id}'
+                from ${temp_schema_name}.auto_rotation_${init_process_id.process_id} ai
+                where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id} and batch_id='${batch_id}'
+                group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage, ai.paper_no
+        "}  on-condition if "true"=="true"
+
+
+        multipartDownload as "downloading response file of auto rotation"
+        resource-conn "intics_zio_db_conn"
+        download-url "${auto.rotation.response.download.url}"
+        using {"
+           select ar.processed_file_path as file_path
+           from ${temp_schema_name}.auto_rotation_${init_process_id.process_id} ar
+           where ar.status ='COMPLETED' and ar.group_id='${group_id}' and ar.tenant_id=${tenant_id} and ar.batch_id ='${batch_id}';
+        "} on-condition if "${multipart_activator.preprocess}"=="true"
+
+
+          transform as "insert into audit table for auto rotation completed/failed" on "intics_zio_db_conn" using
+          {"
+                update preprocess.preprocess_payload_queue a
+                set status='FAILED'
+                from ${temp_schema_name}.auto_rotation_${init_process_id.process_id} b
+                where b.status='FAILED' and a.origin_id=b.origin_id and a.status='IN_PROGRESS' and a.tenant_id = ${tenant_id} and a.group_id=${group_id} and a.batch_id ='${batch_id}';
+
+                INSERT INTO preprocess.preprocess_pipeline_audit
+                (process_id, origin_id,group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+                SELECT  a.producer_process_id,a.origin_id, a.group_id,b.created_on, b.status, b.stage, b.message,'${gen_id.root_pipeline_id}', ${tenant_id}, a.batch_id
+                FROM preprocess.preprocess_payload_queue a, ${temp_schema_name}.auto_rotation_${init_process_id.process_id} b
+                WHERE  a.origin_id =b.origin_id AND a.group_id='${group_id}' AND a.status='IN_PROGRESS' and a.tenant_id = ${tenant_id} and a.batch_id ='${batch_id}';
+
+                INSERT INTO preprocess.preprocess_pipeline_audit
+                (process_id, origin_id,group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+                SELECT  a.producer_process_id,a.origin_id, a.group_id,now(), 'STARTED','DATA_EXTRACTION','data extraction macro started ','${gen_id.root_pipeline_id}', ${tenant_id}, a.batch_id
+                FROM preprocess.preprocess_payload_queue a
+                WHERE  a.group_id='${group_id}' AND a.status='IN_PROGRESS' and a.tenant_id = ${tenant_id} and a.batch_id ='${batch_id}';
+
+                INSERT INTO ${temp_schema_name}.summary_audit_papers_${process-id}
+                (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken,root_pipeline_id, tenant_id, batch_id)
+                SELECT ${process-id} , 'PREPROCESS' ,'AUTO_ROTATION',coalesce (sum(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END),0) ,coalesce (sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END),0),min(created_on),max(last_updated_on), EXTRACT(epoch FROM (max(last_updated_on)-min(created_on))),'${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}'
+                FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id}
+                WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                INSERT INTO ${temp_schema_name}.summary_audit_files_${process-id}
+                (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken,root_pipeline_id, tenant_id, batch_id )
+                SELECT ${process-id} , 'PREPROCESS' ,'AUTO_ROTATION',coalesce(sum(CASE WHEN status='IN_PROGRESS' THEN 1 ELSE 0 END) ,0),coalesce(sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END),0),min(created_on),max(created_on), EXTRACT(epoch FROM (max(created_on)-min(created_on))),'${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}'
+                FROM preprocess.preprocess_payload_queue
+                WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                INSERT INTO audit.pipeline_summary_audit
+                (process_id, created_on, module_name, macro_process, files_processed_count,papers_processed_count,files_failed_count,papers_failed_count,start_time,end_time, time_taken, group_id, root_pipeline_id, created_user_id, template_id, tenant_id,average_time , batch_id)
+                SELECT msaf.process_id ,now(),msaf.module_name ,msaf.macro_process ,msaf.completed_count,msap.completed_count,msaf.failed_count,msap.failed_count,msap.min_created_on,msap.max_created_on, EXTRACT(epoch FROM (msap.max_created_on-msap.min_created_on)),
+                '${group_id}','${root-ref-id}','${created_user_id}','${document_id}',${tenant_id},(CASE WHEN (msap.time_taken/(msap.completed_count+msap.failed_count))=0 THEN msap.time_taken ELSE (msap.time_taken/(msap.completed_count+msap.failed_count)) END), msaf.batch_id
+                FROM ${temp_schema_name}.summary_audit_files_${process-id} msaf,
+                ${temp_schema_name}.summary_audit_papers_${process-id} msap
+                WHERE msaf.module_name=msap.module_name AND msaf.macro_process=msap.macro_process AND
+                msaf.module_name='PREPROCESS' AND
+                msaf.macro_process='AUTO_ROTATION' AND
+                msaf.batch_id=msap.batch_id AND
+                msaf.tenant_id = ${tenant_id} AND
+                msaf.batch_id ='${batch_id}';
+          "}  on-condition if "true"=="true"
+
+           callprocess as "calling preprocess grey scale detection macro"
+           with-target "preprocess.grey.scale.conversion"
+           from-file "${basepath}/preprocess/preprocess.grey.scale.conversion.lmd"
+           using "intics_zio_db_conn"
+           for-every
+           {"
+               SELECT 1;
+           "} on-condition if "true"=="true"
+
+            callprocess as "calling preprocess multipart post processing"
+            with-target "preprocess.multipart.post.processing"
+            from-file "${basepath}/preprocess/preprocess.multipart.post.processing.lmd"
+            using "intics_zio_db_conn"
+            for-every
+            {"
+             SELECT 1;
+            "} on-condition if "${multipart.file.upload.modules.based}"=="true"
+
+            callprocess as "calling preprocess multipart post processing with instance based upload"
+            with-target "preprocess.multipart.post.processing.instance"
+            from-file "${basepath}/preprocess/preprocess.multipart.post.processing.instance.lmd"
+            using "intics_zio_db_conn"
+            for-every
+            {"
+             select c.cluster_name ,m.machine_name ,m.utils_url as multipart_upload_base_url
+             from instance_config.cluster c
+             join instance_config.machine m on c.cluster_id =m.cluster_id
+             where c.status ='ACTIVE' and m.status='ACTIVE';
+            "} on-condition if "${multipart.file.upload.instance.based}"=="true" on-parallel-fielding "${multipart.file.upload.instance.parallel.fielding}"
+
+
+          coproStart as "Calling template detection copro start action" for "TEMPLATE_DETECTION"
+          copro-server-url "${copro.template.detection.admin.start.url}"
+          export-command "${copro.template.detection.export}"
+          process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+          using
+          {"
+              ${templateDetectionStartCommand}
+
+          "} on-condition if "${pipeline_train_mode.template_detection}" == "true"
+
+            callprocess as "calling preprocess template detection macro"
+            with-target "preprocess.template.detection"
+            from-file "${basepath}/preprocess/preprocess.template.detection.lmd"
+            using "intics_zio_db_conn"
+            for-every
+            {"
+                SELECT 1;
+            "} on-condition if "true"=="true"
+
+
+            coproStart as "Calling text extraction copro start action" for "TEXT_EXTRACTION"
+            copro-server-url "${copro.text.extraction.admin.start.url}"
+            export-command "${copro.text.extraction.export}"
+            process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+            using
+            {"
+                ${textExtractionStartCommand}
+
+            "} on-condition if "${pipeline_train_mode.text_extraction}" == "true"
+
+
+	        dataExtraction as "data extraction for group_id ${group_id} for batch id ${batch_id}"
+	        resource-conn "intics_zio_db_conn"
+	        result-table "${temp_schema_name}.data_extraction_${init_process_id.process_id}"
+	        copro-url "${copro.data-extraction.url}"
+	        process-id "${init_process_id.process_id}"
+	        using {"
+	                 SELECT a.process_id, a.tenant_id, a.template_id, a.group_id, a.origin_id, a.paper_no, a.processed_file_path as file_path,b.root_pipeline_id,c.template_name, b.batch_id, now() as created_on, r.base_prompt as user_prompt, r.system_prompt as system_prompt
+                     FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id} a
+                     left join info.template_detection_result c on c.origin_id=a.origin_id and a.tenant_id=c.tenant_id
+                     left join sor_meta.radon_prompt_table r on r.tenant_id=a.tenant_id
+                     join preprocess.preprocess_payload_queue b on a.origin_id=b.origin_id and c.tenant_id=b.tenant_id
+                     where a.status='COMPLETED' AND b.status='IN_PROGRESS' AND a.group_id=${group_id} and a.tenant_id = ${tenant_id} and b.batch_id ='${batch_id}'
+                            and r.process='TEXT_EXTRACTION' and r.use_case='PREPROCESS' and r.document_type='${document_type}';
+	        "} on-condition if "${preprocess.text.extraction.activator}"=="true"
+
+            transform as "insert into data extraction false case" on "intics_zio_db_conn" using
+            {"
+                    INSERT INTO ${temp_schema_name}.data_extraction_${init_process_id.process_id}
+                    ( process_id, tenant_id, template_id, group_id, origin_id, paper_no, file_path, extracted_text, status, stage, message, template_name, is_blank_page,
+                    created_on, root_pipeline_id, batch_id, last_updated_on)
+                     select a.process_id, a.tenant_id, a.template_id, a.group_id, a.origin_id, a.paper_no, a.processed_file_path as file_path,'','COMPLETED','DATA_EXTRACTION','Text extraction was activator was false.','${channel.name.placeholder.value}','no',
+                     now(),${init_process_id.process_id},'${batch_id}',now()
+                     FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id} a
+                     where a.status='COMPLETED' AND a.group_id=${group_id} and a.tenant_id = ${tenant_id} and a.batch_id ='${batch_id}';
+            "} on-condition if "${preprocess.text.extraction.activator.switch}"=="true"
+
+             coproStop as "Calling text extraction copro stop action" for "TEXT_EXTRACTION"
+            copro-server-url "${copro.text.extraction.admin.stop.url}"
+            process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+            using
+            {"
+                gunicorn
+            "} on-condition if "${text.extraction.stop.action}"=="true"
+
+
+            transform as "insert into audit table for data extraction" on "intics_zio_db_conn" using
+            {"
+                    insert into audit.process_audit_output
+                    (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint,paper_no, batch_id)
+                    select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint, ai.paper_no, '${batch_id}'
+                    from ${temp_schema_name}.data_extraction_${init_process_id.process_id} ai
+                    where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id} and batch_id='${batch_id}'
+                    group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage, ai.paper_no
+            "}  on-condition if "${preprocess.text.extraction.activator}"=="true"
+
+
+
+            transform as "insert into audit table for data extraction completed/failed" on "intics_zio_db_conn" using
+             {"
+                   INSERT INTO preprocess.preprocess_pipeline_audit
+                   (process_id, origin_id,group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+                   SELECT  a.producer_process_id,a.origin_id, a.group_id,b.created_on, b.status, b.stage, b.message,'${gen_id.root_pipeline_id}', ${tenant_id}, a.batch_id
+                   FROM preprocess.preprocess_payload_queue a, ${temp_schema_name}.data_extraction_${init_process_id.process_id} b
+                   WHERE  a.origin_id =b.origin_id AND a.group_id='${group_id}' AND a.status='IN_PROGRESS' and a.tenant_id = ${tenant_id} and a.batch_id ='${batch_id}';
+             "}  on-condition if "true"=="true"
+
+              assetInfo as "insert_into_macro_file_details"
+              on-resource-conn "intics_zio_db_conn"
+              get-audit-table "${temp_schema_name}.sanitizer_summary_truth_audit_${init_process_id.process_id}"
+              result-table "${temp_schema_name}.file_details_truth_${init_process_id.process_id}"
+              using {"
+                      SELECT a.file_path, b.batch_id
+                      FROM ${temp_schema_name}.data_extraction_${init_process_id.process_id} a
+                      join preprocess.preprocess_payload_queue b on a.origin_id=b.origin_id and a.tenant_id=b.tenant_id
+                      where a.status='COMPLETED'
+                      and a.is_blank_page='no' and a.group_id='${group_id}' and a.tenant_id = ${tenant_id} and b.batch_id ='${batch_id}';
+              "} on-condition if "true"=="true"
+
+			transform as "insert into asset " on "intics_zio_db_conn" using
+			{"
+				INSERT INTO info.asset
+				(file_id, file_name, decoded_file_name, file_checksum, file_path, file_extension, file_size, status, version, root_pipeline_id, tenant_id, channel_id, transaction_id, created_user_id, created_on, last_updated_user_id, last_updated_on, height, width, dpi, batch_id)
+				SELECT file_id,file_name, decoded_file_name, file_checksum,file_path,file_extension,cast(file_size as int), 'ACTIVE',1 ,'${gen_id.root_pipeline_id}' ,  ${tenant_id}, ${channel_id}, '${transaction_id}','${created_user_id}',now(),'${created_user_id}',now(), height, width, dpi, batch_id
+				FROM ${temp_schema_name}.file_details_truth_${init_process_id.process_id}
+				where batch_id ='${batch_id}';
+
+			"} on-condition if "true"=="true"
+
+				transform as "insert into source of truth multiverse falsed" on "intics_zio_db_conn" using
+			{"
+				INSERT INTO info.source_of_truth
+                (origin_id, paper_no, content, group_id, preprocessed_file_id, template_name, encode, height, width, tenant_id, root_pipeline_id, status, version, channel_id, created_user_id, created_on, last_updated_user_id, last_updated_on,asset_id,document_type, batch_id)
+                select c.origin_id ,c.paper_no ,c.extracted_text ,a.group_id ,b.file_id ,case when c.template_name is null then 'MULTIVERSE' when c.template_name = '' then 'MULTIVERSE' else c.template_name end,b.encode,
+                0,0,${tenant_id},'${gen_id.root_pipeline_id}','ACTIVE',1,${channel_id},'${created_user_id}',now(),'${created_user_id}',now(),d.asset_id, '${document_type}', ppq.batch_id
+                FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id} a
+                join preprocess.preprocess_payload_queue ppq on a.origin_id=ppq.origin_id and a.tenant_id=ppq.tenant_id
+                join ${temp_schema_name}.file_details_truth_${init_process_id.process_id} b on a.processed_file_path=b.file_path
+                join ${temp_schema_name}.data_extraction_${init_process_id.process_id} c on c.origin_id=a.origin_id and c.paper_no=a.paper_no
+                join info.asset d on d.batch_id = a.batch_id and d.file_id = b.file_id
+                WHERE c.is_blank_page='no' and a.group_id='${group_id}' and a.tenant_id = '${tenant_id}' AND '${origin_type}'='WORKSPACE' and ppq.batch_id ='${batch_id}';
+
+
+                INSERT INTO info.source_of_truth
+                (origin_id, paper_no, content, group_id, preprocessed_file_id, template_name, encode, height, width, tenant_id, root_pipeline_id, status, version, transaction_id, created_user_id, created_on, last_updated_user_id, last_updated_on,asset_id,document_type, batch_id)
+                select c.origin_id ,c.paper_no ,c.extracted_text ,a.group_id ,b.file_id ,case when c.template_name is null then 'MULTIVERSE' when c.template_name = '' then 'MULTIVERSE' else c.template_name end,b.encode,
+                0,0,${tenant_id},'${gen_id.root_pipeline_id}','ACTIVE',1,'${transaction_id}','${created_user_id}',now(),'${created_user_id}',now(),d.asset_id, '${document_type}', ppq.batch_id
+                FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id} a
+                join preprocess.preprocess_payload_queue ppq on a.origin_id=ppq.origin_id and a.tenant_id=ppq.tenant_id
+                join ${temp_schema_name}.file_details_truth_${init_process_id.process_id} b on a.processed_file_path=b.file_path
+                join ${temp_schema_name}.data_extraction_${init_process_id.process_id} c on c.origin_id=a.origin_id and c.paper_no=a.paper_no
+                join info.asset d on d.batch_id = a.batch_id and d.file_id = b.file_id
+                WHERE c.is_blank_page='no' and a.group_id='${group_id}' and a.tenant_id = '${tenant_id}' AND '${origin_type}'='TRANSACTION' and ppq.batch_id ='${batch_id}';
+
+			"} on-condition if "${multiverse.activator}"=="false"
+
+            transform as "insert into asset and source of truth multiverse true" on "intics_zio_db_conn" using
+            {"
+                INSERT INTO info.source_of_truth
+                (origin_id, paper_no, content, group_id, preprocessed_file_id, template_name, encode,
+                height, width, tenant_id, root_pipeline_id, status, version, channel_id, created_user_id, created_on, last_updated_user_id, last_updated_on,asset_id, document_type, batch_id)
+                select c.origin_id ,c.paper_no ,c.extracted_text ,a.group_id ,b.file_id ,case when c.template_name is null then 'MULTIVERSE' when c.template_name = '' then 'MULTIVERSE' else c.template_name end,b.encode,
+                0,0,${tenant_id}, '${gen_id.root_pipeline_id}','ACTIVE',1,${channel_id},'${created_user_id}',now(),'${created_user_id}',now(),d.asset_id, '${document_type}', ppq.batch_id
+                FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id} a
+                join preprocess.preprocess_payload_queue ppq on a.origin_id=ppq.origin_id and a.tenant_id=ppq.tenant_id
+                join ${temp_schema_name}.file_details_truth_${init_process_id.process_id} b on a.processed_file_path=b.file_path
+                join ${temp_schema_name}.data_extraction_${init_process_id.process_id} c on c.origin_id=a.origin_id and c.paper_no=a.paper_no
+                join info.asset d on d.file_id =b.file_id
+                WHERE c.is_blank_page='no' and a.group_id='${group_id}' and a.tenant_id = '${tenant_id}' AND '${origin_type}'='WORKSPACE' and ppq.batch_id ='${batch_id}';
+
+                INSERT INTO info.source_of_truth
+                (origin_id, paper_no, content, group_id, preprocessed_file_id, template_name, encode,
+                height, width, tenant_id, root_pipeline_id, status, version, transaction_id, created_user_id,
+                created_on, last_updated_user_id, last_updated_on,asset_id,document_type, batch_id)
+                select c.origin_id ,c.paper_no ,c.extracted_text ,a.group_id ,b.file_id ,case when c.template_name is null then 'MULTIVERSE' when c.template_name = '' then 'MULTIVERSE' else c.template_name end,b.encode,
+                0,0,${tenant_id}, '${gen_id.root_pipeline_id}','ACTIVE',1,'${transaction_id}','${created_user_id}',now(),'${created_user_id}',now(),d.asset_id, '${document_type}', ppq.batch_id
+                FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id} a
+                join preprocess.preprocess_payload_queue ppq on a.origin_id=ppq.origin_id and a.tenant_id=ppq.tenant_id
+                join ${temp_schema_name}.file_details_truth_${init_process_id.process_id} b on a.processed_file_path=b.file_path
+                join ${temp_schema_name}.data_extraction_${init_process_id.process_id} c on c.origin_id=a.origin_id and c.paper_no=a.paper_no
+                join info.asset d on d.file_id =b.file_id
+                WHERE c.is_blank_page='no' and a.group_id=${group_id} and a.tenant_id = ${tenant_id}  AND '${origin_type}'='TRANSACTION' and ppq.batch_id ='${batch_id}';
+
+            "} on-condition if "${multiverse.activator}"=="true"
+
+            transform as "update the origin for the first page of the encode for preview" on "intics_zio_db_conn" using
+            {"
+               UPDATE info.source_of_origin AS tgt
+               SET  preview_encode=src.encode,last_updated_on=now()
+               FROM info.source_of_truth AS src
+               WHERE tgt.origin_id=src.origin_id AND tgt.tenant_id=src.tenant_id and tgt.root_pipeline_id =${gen_id.root_pipeline_id} and src.tenant_id=${tenant_id} and paper_no=1 and src.batch_id ='${batch_id}';
+            "} on-condition if "true"=="true"
+
+
+
+			transform as "Update to COMPLETED in preprocess payload queue" on "intics_zio_db_conn" using
+             {"
+
+	                UPDATE preprocess.preprocess_payload_queue a
+	                SET status='FAILED'
+	                FROM ${temp_schema_name}.data_extraction_${init_process_id.process_id} b
+	                WHERE b.status='FAILED' and a.origin_id=b.origin_id and a.status='IN_PROGRESS' and a.tenant_id = ${tenant_id} and a.group_id=${group_id} and a.batch_id ='${batch_id}';
+					UPDATE preprocess.preprocess_payload_queue a
+                    SET status='COMPLETED'
+                    FROM ${temp_schema_name}.data_extraction_${init_process_id.process_id} b
+                    WHERE b.status='COMPLETED' and a.origin_id=b.origin_id and a.status='IN_PROGRESS' and a.tenant_id = ${tenant_id} and a.group_id=${group_id} and a.batch_id ='${batch_id}';
+
+                    UPDATE preprocess.preprocess_payload_queue
+                    SET status='FAILED', consumer_process_id = '${process-id}'
+                    WHERE status='IN_PROGRESS' AND group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                   INSERT INTO preprocess.preprocess_pipeline_audit
+                    (process_id, origin_id,group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id )
+                    SELECT  a.producer_process_id,a.origin_id, a.group_id,now(), 'COMPLETED','PREPROCESS','preprocess started for group_id ${group_id}','${gen_id.root_pipeline_id}', ${tenant_id}, a.batch_id
+                    FROM preprocess.preprocess_payload_queue a
+                    WHERE a.group_id='${group_id}' AND a.status='COMPLETED' and a.tenant_id = ${tenant_id} and a.batch_id ='${batch_id}';
+
+                    INSERT INTO ${temp_schema_name}.summary_audit_papers_${process-id}
+                    (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken,root_pipeline_id, tenant_id, batch_id)
+                    SELECT ${process-id} , 'PREPROCESS' ,'TEXT_EXTRACTION',coalesce (sum(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END),0) ,coalesce (sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END),0),min(created_on),max(last_updated_on), EXTRACT(epoch FROM (max(last_updated_on)-min(created_on))),'${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}'
+                    FROM ${temp_schema_name}.data_extraction_${init_process_id.process_id}
+                    WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                    INSERT INTO ${temp_schema_name}.summary_audit_files_${process-id}
+                    (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken,root_pipeline_id, tenant_id, batch_id)
+                    SELECT ${process-id} , 'PREPROCESS' ,'TEXT_EXTRACTION',coalesce (sum(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END),0) ,coalesce (sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END),0), min(created_on),max(created_on),EXTRACT(epoch FROM (max(created_on)-min(created_on))),'${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}'
+                    FROM preprocess.preprocess_payload_queue
+                    WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                    INSERT INTO audit.pipeline_summary_audit
+                    (process_id, created_on, module_name, macro_process, files_processed_count,papers_processed_count,files_failed_count,papers_failed_count,start_time,end_time, time_taken, group_id, root_pipeline_id, created_user_id, template_id, tenant_id,average_time, batch_id)
+                    SELECT msaf.process_id ,now(),msaf.module_name ,msaf.macro_process ,msaf.completed_count,msap.completed_count,msaf.failed_count,msap.failed_count,msap.min_created_on,msap.max_created_on, EXTRACT(epoch FROM (msap.max_created_on-msap.min_created_on)),
+                    '${group_id}','${root-ref-id}','${created_user_id}','${document_id}',${tenant_id},(CASE WHEN (msap.time_taken/(msap.completed_count+msap.failed_count))=0 THEN msap.time_taken ELSE (msap.time_taken/(msap.completed_count+msap.failed_count)) END), msap.batch_id
+                    FROM ${temp_schema_name}.summary_audit_files_${process-id} msaf,
+                    ${temp_schema_name}.summary_audit_papers_${process-id} msap
+                    WHERE msaf.module_name=msap.module_name AND msaf.macro_process=msap.macro_process
+                    AND msaf.batch_id=msap.batch_id AND msaf.module_name='PREPROCESS' AND msaf.macro_process='TEXT_EXTRACTION' and msaf.tenant_id = ${tenant_id} and msaf.batch_id ='${batch_id}';
+
+             "}  on-condition if "true"=="true"
+
+             transform as "Batch process update to completed for preprocess " on "intics_zio_db_conn" using {"
+                             UPDATE batching.sub_batching_process_payload_queue a
+                             SET status=b.status
+                             FROM preprocess.preprocess_payload_queue b
+                             WHERE a.status IN ('COMPLETED','FAILED','IN_PROGRESS') and a.group_id='${group_id}'  and a.origin_id=b.origin_id and b.batch_id ='${batch_id}' and a.tenant_id = ${tenant_id};
+
+              "} on-condition if "true"=="true"
+
+
+	}
+	catch{
+				transform as "Update to FAILED in preprocess payload queue" on "intics_zio_db_conn" using
+                 {"
+                      UPDATE preprocess.preprocess_payload_queue
+                      SET status='FAILED', consumed_on_ts = '${time_stamp_preprocess.consumed_on_ts}', consumer_process_id = '${process-id}'
+                      WHERE group_id='${group_id}' AND status='IN_PROGRESS' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                      UPDATE batching.sub_batching_process_payload_queue a
+                      SET status='FAILED',  stage='PREPROCESS'
+                      WHERE a.group_id='${group_id}'  and a.tenant_id='${tenant_id}'
+                      and a.batch_id ='${batch_id}';
+
+                 "}  on-condition if "true"=="true"
+	}
+	finally{
+
+            transform as "Update to FAILED in preprocess payload queue" on "intics_zio_db_conn" using
+            {"
+              UPDATE preprocess.preprocess_payload_queue a
+              SET status='FAILED'
+              FROM ${temp_schema_name}.data_extraction_${init_process_id.process_id} b
+              WHERE b.status='IN_PROGRESS' and a.origin_id=b.origin_id and a.status='IN_PROGRESS' and a.tenant_id = ${tenant_id} and a.group_id=${group_id} and a.batch_id ='${batch_id}';
+            "}  on-condition if "true"=="true"
+
+
+            transform as "Moving staging tables data into audit tables" on "intics_zio_db_conn" using
+            {"
+
+                    INSERT INTO info.paper_itemizer
+                    (process_id, group_id, tenant_id, template_id, origin_id, paper_no, processed_file_path, status, stage, message, created_on, root_pipeline_id, model_name, model_version, batch_id, last_updated_on)
+                    SELECT process_id, group_id, tenant_id, template_id, origin_id, paper_no, processed_file_path, status, stage, message, created_on, root_pipeline_id, model_name, model_version, batch_id, last_updated_on
+                    FROM ${temp_schema_name}.paper_itemizer_${init_process_id.process_id}
+                    WHERE batch_id='${batch_id}';
+
+                    INSERT INTO info.auto_rotation
+                    (process_id, tenant_id, template_id, group_id, paper_no, origin_id, processed_file_path, status, stage, message, created_on, root_pipeline_id, model_name, model_version, batch_id, last_updated_on)
+                    SELECT process_id, tenant_id, template_id, group_id, paper_no, origin_id, processed_file_path, status, stage, message, created_on, root_pipeline_id, model_name, model_version, batch_id, last_updated_on
+                    FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id}
+                    WHERE batch_id='${batch_id}';
+
+                    INSERT INTO info.data_extraction
+                    (process_id, tenant_id, template_id, group_id, origin_id, paper_no, file_path, file_name, extracted_text, status, stage, message, template_name, is_blank_page, created_on, root_pipeline_id, model_name, model_version,batch_id, last_updated_on)
+                    SELECT process_id, tenant_id, template_id, group_id, origin_id, paper_no, file_path, file_name, extracted_text, status, stage, message, template_name, is_blank_page, created_on, root_pipeline_id, model_name, model_version, batch_id, last_updated_on
+                    FROM ${temp_schema_name}.data_extraction_${init_process_id.process_id}
+                    WHERE batch_id='${batch_id}';
+
+            "}  on-condition if "true"=="true"
+
+
+            transform as "insert into potential feature payload queue after completed" on "intics_zio_db_conn" using
+            {"
+                INSERT INTO paper.potential_feature_payload_queue(producer_process_id ,
+                group_id,origin_id ,created_on, status,stage ,root_pipeline_id,tenant_id, batch_id)
+                SELECT  producer_process_id ,group_id,origin_id, now(),'STAGED','PAPER_FILTER','${gen_id.root_pipeline_id}',${tenant_id}, batch_id
+                FROM preprocess.preprocess_payload_queue
+                WHERE status = 'COMPLETED' and group_id=${group_id} and tenant_id = ${tenant_id} and '${origin_type}'='TRANSACTION' and batch_id ='${batch_id}' and '${root.filter.activator}'='true';
+
+                INSERT INTO ingestion.pipeline_queue_status_audit
+                (producer_process_id, consumer_process_id, origin_id,batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, origin_type)
+                select producer_process_id, consumer_process_id, origin_id, batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, '${origin_type}'
+                from paper.potential_feature_payload_queue
+                where group_id='${gen_group_id.group_id}' and batch_id='${batch_id}' and tenant_id =${tenant_id};
+
+            "}on-condition if "${root.filter.activator}"=="true"
+
+
+
+
+      transform as "insert into agentic paper filter payload queue after completed" on "intics_zio_db_conn" using
+                        {"
+                            INSERT INTO paper_filter.agentic_paper_filter_payload_queue(producer_process_id ,
+                            group_id,origin_id ,created_on, status,stage ,root_pipeline_id,tenant_id, batch_id)
+                            SELECT  producer_process_id ,group_id,origin_id, now(),'STAGED','AGENTIC_PAPER_FILTER',root_pipeline_id,tenant_id, batch_id
+                            FROM preprocess.preprocess_payload_queue
+                            WHERE status = 'COMPLETED' and group_id=${group_id} and tenant_id = ${tenant_id} and '${origin_type}'='TRANSACTION' and batch_id ='${batch_id}' and ('${agentic.paper.filter.activator}'='true' OR '${paper.range.filter.activator}' = 'true');
+
+                            INSERT INTO ingestion.pipeline_queue_status_audit
+                            (producer_process_id, consumer_process_id, origin_id,batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, origin_type)
+                            select producer_process_id, consumer_process_id, origin_id, batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, '${origin_type}'
+                            from paper_filter.agentic_paper_filter_payload_queue
+                            where group_id='${gen_group_id.group_id}' and batch_id='${batch_id}' and tenant_id =${tenant_id};
+
+                        "}on-condition if "true"=="true"
+
+             transform as "insert into deep sift payload queue" on "intics_zio_db_conn" using
+              {"
+                 INSERT INTO deep_sift.deep_sift_payload_queue(producer_process_id, consumer_process_id,  group_id, batch_id, origin_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id)
+                 SELECT producer_process_id, consumer_process_id, group_id, batch_id, origin_id, now(), 'STAGED', 'DEEP_SIFT', now(), root_pipeline_id, tenant_id
+                 FROM preprocess.preprocess_payload_queue
+                 WHERE status = 'COMPLETED'
+                   AND group_id = ${group_id}
+                   AND tenant_id = ${tenant_id}
+                   AND batch_id = '${batch_id}';
+
+                 INSERT INTO ingestion.pipeline_queue_status_audit
+                   (
+                       producer_process_id,
+                       consumer_process_id,
+                       origin_id,
+                       batch_id,
+                       group_id,
+                       created_on,
+                       status,
+                       stage,
+                       consumed_on_ts,
+                       root_pipeline_id,
+                       tenant_id,
+                       origin_type
+                   )
+                   SELECT
+                       producer_process_id,
+                       producer_process_id,
+                       origin_id,
+                       batch_id,
+                       group_id::INT,
+                       created_on,
+                       status,
+                       stage,
+                       consumed_on_ts,
+                       root_pipeline_id,
+                       tenant_id,
+                       '${origin_type}'
+                   FROM deep_sift.deep_sift_payload_queue
+                   WHERE group_id = ${gen_group_id.group_id}::VARCHAR
+                     AND batch_id = '${batch_id}'
+                     AND tenant_id = ${tenant_id};
+
+              "} on-condition if "${deep.sift.extraction.activator}"=="true"
+
+              transform as "update chronoclash audit form temporary tables" on "intics_zio_db_conn" using
+              {"
+                     INSERT INTO chrono_clash.chrono_clash_audit
+                     (root_pipeline_id, created_on, updated_on, batch_id, group_id, origin_id, tenant_id, time_frame, stage, status, transaction_id, downloaded_time, remaining_time)
+                     SELECT a.root_pipeline_id, a.created_on, now(), a.batch_id, a.group_id, a.origin_id, a.tenant_id, a.time_frame, a.stage, ppq.status, a.transaction_id, a.downloaded_time, ((a.time_frame * interval '1 minute') - (now() - a.downloaded_time)) as remaining_time
+                     FROM ${temp_schema_name}.preprocess_chrono_clash_input_${init_process_id.process_id} a
+                     JOIN preprocess.preprocess_payload_queue ppq ON ppq.origin_id = a.origin_id AND ppq.tenant_id = a.tenant_id
+                     WHERE a.group_id=${group_id} and a.tenant_id = ${tenant_id} and a.batch_id ='${batch_id}';
+
+                     DROP TABLE IF EXISTS ${temp_schema_name}.preprocess_chrono_clash_input_${init_process_id.process_id};
+
+              "}  on-condition if "${chronoclash.activator}"=="true"
+
+             transform as "move to preprocess archive after completed " on "intics_zio_db_conn" using
+              {"
+
+                    update ingestion.pipeline_queue_status_audit as a
+                    set status = 'COMPLETED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                    where  a.group_id=${group_id}
+                    and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='PREPROCESS' and a.status='IN_PROGRESS';
+
+                    INSERT INTO preprocess.preprocess_payload_queue_archive
+                    (producer_process_id, consumer_process_id, group_id,origin_id, created_on, status, stage, consumed_on_ts,root_pipeline_id,tenant_id, batch_id)
+                    SELECT producer_process_id, consumer_process_id, '${group_id}',origin_id, now(), status, stage, '${time_stamp_preprocess.consumed_on_ts}', root_pipeline_id, tenant_id, batch_id
+                    FROM preprocess.preprocess_payload_queue where status='COMPLETED' and group_id=${group_id} and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+					 DELETE FROM preprocess.preprocess_payload_queue WHERE status='COMPLETED' and group_id=${group_id} and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                    INSERT INTO preprocess.preprocess_payload_error_queue
+                    (producer_process_id, consumer_process_id,group_id, origin_id, created_on, status, stage, message, consumed_on_ts,root_pipeline_id,tenant_id, batch_id)
+                    SELECT  producer_process_id, consumer_process_id,'${group_id}',origin_id, now(),status,stage,'error in preprocess sot process','${time_stamp_preprocess.consumed_on_ts}',root_pipeline_id,${tenant_id}, batch_id
+                    FROM preprocess.preprocess_payload_queue where status = 'FAILED' and group_id=${group_id} and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                    DELETE FROM preprocess.preprocess_payload_queue WHERE status='FAILED' and group_id=${group_id} and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                    INSERT INTO preprocess.preprocess_payload_error_queue
+                    (producer_process_id, consumer_process_id,group_id, origin_id, created_on, status, stage, message, consumed_on_ts,root_pipeline_id,tenant_id, batch_id)
+                    SELECT  producer_process_id, consumer_process_id,'${group_id}',origin_id, now(),status,stage,'preprocess stage aborted batch_id=${batch_id} | root_pipeline_id=${root_pipeline_id} | group_id=${group_id} | transaction_id=${transaction_id} | reason=execution time exceeded the threshold limit','${time_stamp_preprocess.consumed_on_ts}',root_pipeline_id,${tenant_id}, batch_id
+                    FROM preprocess.preprocess_payload_queue where status = 'ABORTED' and group_id=${group_id} and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                    DELETE FROM preprocess.preprocess_payload_queue WHERE status='ABORTED' and group_id=${group_id} and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+              "} on-condition if "true"=="true"
+
+	}
+}

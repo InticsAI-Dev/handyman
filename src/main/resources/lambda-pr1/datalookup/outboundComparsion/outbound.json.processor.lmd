@@ -1,0 +1,60 @@
+process "outbound.json.processor.lmd"
+{
+try{
+
+              transform as "create input and result tables for the control data pipeline" on "intics_zio_db_conn" using {"
+
+
+          INSERT INTO ${CONTROL_DATA}.consolidated_coverage_input
+                         (root_pipeline_id, batch_id, created_on, group_id, file_name, origin_id, paper_no, actual_value, extracted_value, tenant_id, document_type, sor_container_id, sor_item_id)
+                         select distinct a.root_pipeline_id , d.batch_id , now(), d.group_id ,c.decoded_file_name , b.origin_id , d.paper_no
+                         , h.${sor_item_name} as actual_value , a.predicted_value as extracted_value, a.tenant_id as tenant_id,
+                         d.document_type as document_type, g.sor_container_id as sor_container_id, g.sor_item_id as sor_item_id
+                         from valuation.custom_json_audit a
+                         join ${temp_schema_name}.source_of_truth_${init_process_id.process_id} d on d.origin_id = a.origin_id and d.truth_id = a.truth_id and d.tenant_id = a.tenant_id
+                         join info.asset a2 on a2.asset_id =d.asset_id
+                         join ${temp_schema_name}.source_of_origin_${init_process_id.process_id} b on a.origin_id = b.origin_id and a.root_pipeline_id = b.root_pipeline_id
+                         join info.asset c on c.asset_id = b.asset_id and c.tenant_id = b.tenant_id
+                         join sor_meta.sor_container e on e.document_type = d.document_type and e.tenant_id = a.tenant_id
+                         join sor_meta.sor_tsynonym f on f.synonym_id = a.synonym_id and f.tenant_id = a.tenant_id
+                         join sor_meta.sor_item g on g.sor_item_id = f.sor_item_id and g.tenant_id = a.tenant_id
+                         join control_data_org.kafka_comparison_actual_input h on c.decoded_file_name = h.docid
+                         where h.${sor_item_name} = ${sor_item_name}
+                         and g.sor_item_name = '${sor_item_name}'
+                         and d.document_type = '${document_type}'
+                         and a.root_pipeline_id ='${init_process_id.process_id}'
+                         and e.status = 'ACTIVE' and f.status = 'ACTIVE' and g.status = 'ACTIVE';
+                         "} on-condition if "${accuracy_metrics_controller.control_data_without_dcnid}"=="true"
+
+               transform as "insert into the input table for all in one using dcnid" on "intics_zio_db_conn" using
+                    {"
+                             INSERT INTO ${CONTROL_DATA}.consolidated_coverage_input
+                             (root_pipeline_id, batch_id, created_on, group_id, file_name, origin_id, paper_no, actual_value, extracted_value, tenant_id, document_type, sor_container_id, sor_item_id)
+                             select distinct a.root_pipeline_id , d.batch_id , now(), d.group_id ,h.document_id , b.origin_id , d.paper_no
+                             , i.${sor_item_name} as actual_value , a.predicted_value as extracted_value, a.tenant_id as tenant_id,
+                             d.document_type as document_type, g.sor_container_id as sor_container_id, g.sor_item_id as sor_item_id
+                             from valuation.custom_json_audit a
+                             join ${temp_schema_name}.source_of_truth_${init_process_id.process_id} d on d.origin_id = a.origin_id and d.truth_id = a.truth_id and d.tenant_id = a.tenant_id
+                             join info.asset a2 on a2.asset_id =d.asset_id
+                             join ${temp_schema_name}.source_of_origin_${init_process_id.process_id} b on a.origin_id = b.origin_id and a.root_pipeline_id = b.root_pipeline_id
+                             join info.asset c on c.asset_id = b.asset_id and c.tenant_id = b.tenant_id
+                             join sor_meta.sor_container e on e.document_type = d.document_type and e.tenant_id = a.tenant_id
+                             join sor_meta.sor_tsynonym f on f.synonym_id = a.synonym_id and f.tenant_id = a.tenant_id
+                             join sor_meta.sor_item g on g.sor_item_id = f.sor_item_id and g.tenant_id = a.tenant_id
+                             join inbound_config.ingestion_downloaded_file_details h on h.file_name = c.file_name and h.transaction_id = d.transaction_id
+                             join control_data_org.kafka_comparison_actual_input i on h.document_id = i.docid
+                             where i.${sor_item_name} = ${sor_item_name}
+                             and g.sor_item_name = '${sor_item_name}'
+                             and d.document_type = '${document_type}'
+                             and a.root_pipeline_id ='${init_process_id.process_id}'
+                             and e.status = 'ACTIVE' and f.status = 'ACTIVE' and g.status = 'ACTIVE';
+                            "} on-condition if "${accuracy_metrics_controller.control_data_with_dcnid}"=="true"
+
+
+
+}
+catch{
+}
+finally{
+}
+}

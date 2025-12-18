@@ -1,0 +1,394 @@
+process "filter.processor"
+{
+try
+{
+
+        transform as " started  filter processor in paper filtering audit" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO paper.paper_filtering_pipeline_audit
+                (process_id,group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+                VALUES('${init_process_id.process_id}','${group_id}', now(), 'STARTED', 'PAPER_FILTER_PROCESSOR', 'fiter processor lambda started in paper filter',${gen_id.root_pipeline_id}, ${tenant_id}, '${batch_id}');
+        "} on-condition if "true"=="true"
+
+        transform as "Insert statements to put data into temp tables" on "intics_zio_db_conn" using
+        {"
+
+                INSERT INTO ${temp_schema_name}.model_score_result_${init_process_id.process_id}
+                (group_id, origin_id, paper_no, truth_entity, synonym, model_score,model_name,root_pipeline_id, tenant_id, batch_id)
+                select distinct group_id, origin_id, paper_no,truth_entity, synonym,
+                case when (pmfr.is_key_present::bool) = true then 200 else 0
+                end as model_score,
+                'phrase_match' as model_name,${gen_id.root_pipeline_id}, ${tenant_id}, pmfr.batch_id
+                from ${temp_schema_name}.phrase_match_filtering_result_${init_process_id.process_id} pmfr
+                where pmfr.batch_id='${batch_id}';
+
+                INSERT INTO ${temp_schema_name}.model_score_result_${init_process_id.process_id}
+                (group_id, origin_id, paper_no, truth_entity,synonym, model_score,model_name,root_pipeline_id, tenant_id, batch_id)
+                select distinct zscfr.group_id , zscfr.origin_id, zscfr.paper_no,truth_entity,
+                zscfr.synonym, round(zscfr.confidence_score::numeric, 4) * 100 as model_score,
+                'zero_shot_classifier' as model_name,${gen_id.root_pipeline_id}, ${tenant_id}, batch_id
+                from ${temp_schema_name}.zero_shot_classifier_filtering_result_${init_process_id.process_id} zscfr
+                where zscfr.batch_id='${batch_id}';
+
+                INSERT INTO ${temp_schema_name}.synonym_level_score_${init_process_id.process_id}
+                (potential_paper_id, origin_id, paper_no, sor_container_id, sor_container_name,
+                truth_entity, synonym, model_name,
+                model_score, model_id, model_actual_weight,root_pipeline_id, tenant_id, batch_id)
+                select pf.potential_paper_id,pf.origin_id,pf.paper_no,sl.sor_container_id,
+                sc.sor_container_name,
+                pf.truth_entity,pf.synonym,tr.model_name,
+                tr.model_score,mr.model_id,mr.weight as model_actual_weight,pf.root_pipeline_id , pf.tenant_id , tr.batch_id
+                from ${temp_schema_name}.potential_paper_${init_process_id.process_id} pf
+                join sor_meta.truth_entity te on te.truth_entity_id=pf.truth_entity_id
+                inner join sor_meta.truth_entity_placeholder sl on pf.truth_entity_id =sl.truth_entity_id and lower(sl.truth_entity_placeholder_value) = lower(pf.synonym)
+                inner join ${temp_schema_name}.model_score_result_${init_process_id.process_id} tr
+                on tr.origin_id = pf.origin_id and tr.paper_no = pf.paper_no and lower(tr.synonym) = lower(pf.synonym)
+                and tr.truth_entity=pf.truth_entity
+                inner join sor_meta.model_registry mr on
+                mr.model_name = tr.model_name
+                join sor_meta.sor_container sc on sc.sor_container_id=te.sor_container_id
+                where te.sip_type='KVP_SIP' and tr.batch_id='${batch_id}';
+
+
+
+                INSERT INTO ${temp_schema_name}.agg_phrase_match_score_${init_process_id.process_id}
+                (origin_id, paper_no, sor_container_id, sor_container_name, truth_entity, agg_score,root_pipeline_id, tenant_id, batch_id)
+                SELECT x.origin_id, x.paper_no, x.sor_container_id, x.sor_container_name, x.truth_entity,
+                sum(x.model_score) as agg_score,${gen_id.root_pipeline_id}, ${tenant_id}, x.batch_id
+                FROM ${temp_schema_name}.synonym_level_score_${init_process_id.process_id} x
+                WHERE  (model_score IN (200)) AND (model_id IN (1)) and x.batch_id='${batch_id}'
+                group by x.origin_id, x.paper_no, x.sor_container_id, x.sor_container_name, x.truth_entity, x.batch_id
+                ORDER BY x.origin_id, x.paper_no;
+
+                INSERT INTO ${temp_schema_name}.agg_zero_shot_classifier_score_${init_process_id.process_id}
+                (origin_id, paper_no, sor_container_id, sor_container_name, truth_entity, agg_score,root_pipeline_id, tenant_id, batch_id)
+                SELECT x.origin_id, x.paper_no, x.sor_container_id, x.sor_container_name, x.truth_entity,
+                sum(x.model_score) as agg_score,${gen_id.root_pipeline_id}, ${tenant_id}, x.batch_id
+                FROM ${temp_schema_name}.synonym_level_score_${init_process_id.process_id} x
+                inner join ${temp_schema_name}.agg_phrase_match_score_${init_process_id.process_id} y on y.origin_id=x.origin_id  and
+                y.paper_no = x.paper_no and x.sor_container_id=y.sor_container_id and x.truth_entity=y.truth_entity
+                WHERE x.model_id IN (2) and x.model_score > ${paper.filter.zsc.agg.score.threshold}::int4 and y.batch_id='${batch_id}'
+                group by x.origin_id, x.paper_no, x.sor_container_id, x.sor_container_name, x.truth_entity, x.batch_id;
+
+
+                INSERT INTO ${temp_schema_name}.model_level_score_${init_process_id.process_id}
+                (origin_id, paper_no, sor_container_id, sor_container_name, zsc_score, pm_score, truth_entity, model_agg_score,root_pipeline_id, tenant_id, batch_id)
+                select distinct slc.origin_id,slc.paper_no,slc.sor_container_id,
+                slc.sor_container_name,zsc.agg_score as zsc_score,pm.agg_score as pm_score,
+                case when zsc.truth_entity is not null and pm.truth_entity is not null then slc.truth_entity
+                when zsc.truth_entity is not null and pm.truth_entity is null then zsc.truth_entity
+                when zsc.truth_entity is null and pm.truth_entity is not null then pm.truth_entity
+                else slc.truth_entity  end as truth_entity,
+                case when zsc.agg_score is not null and pm.agg_score is not null then zsc.agg_score+pm.agg_score
+                when zsc.agg_score is not null and pm.agg_score is null then zsc.agg_score
+                when zsc.agg_score is null and pm.agg_score is not null then pm.agg_score
+                else 0 end as model_agg_score ,${gen_id.root_pipeline_id}, ${tenant_id}, slc.batch_id
+                from ${temp_schema_name}.synonym_level_score_${init_process_id.process_id} slc
+                left join ${temp_schema_name}.agg_zero_shot_classifier_score_${init_process_id.process_id} zsc on
+                zsc.origin_id = slc.origin_id and zsc.paper_no = slc.paper_no
+                and zsc.sor_container_id = slc.sor_container_id and zsc.truth_entity = slc.truth_entity
+                left join ${temp_schema_name}.agg_phrase_match_score_${init_process_id.process_id} pm
+                on pm.origin_id= slc.origin_id
+                and pm.paper_no = slc.paper_no and pm.sor_container_id = slc.sor_container_id
+                and pm.sor_container_name = slc.sor_container_name and pm.truth_entity = slc.truth_entity
+                where slc.batch_id='${batch_id}';
+
+                INSERT INTO ${temp_schema_name}.max_entity_score_${init_process_id.process_id}
+                (origin_id, sor_container_id, sor_container_name, max_score,root_pipeline_id,tenant_id, batch_id)
+                select t.origin_id, t.sor_container_id, t.sor_container_name,
+                max(t.model_agg_score) as max_score ,${gen_id.root_pipeline_id}, ${tenant_id}, t.batch_id
+                from ${temp_schema_name}.model_level_score_${init_process_id.process_id} t
+                where t.batch_id='${batch_id}'
+                group by t.origin_id, t.sor_container_id, t.sor_container_name ,t.batch_id;
+
+
+                INSERT INTO ${temp_schema_name}.entity_level_score_${init_process_id.process_id}
+                (origin_id, sor_container_id, sor_container_name, truth_entity, model_agg_score,root_pipeline_id, tenant_id, batch_id)
+                select distinct agg.origin_id, agg.sor_container_id,
+                agg.sor_container_name, agg.truth_entity,agg.model_agg_score ,${gen_id.root_pipeline_id}, ${tenant_id}, agg.batch_id
+                from ${temp_schema_name}.model_level_score_${init_process_id.process_id} agg
+                inner join ${temp_schema_name}.max_entity_score_${init_process_id.process_id}  ms
+                on ms.origin_id = agg.origin_id
+                and ms.sor_container_id = agg.sor_container_id
+                and ms.sor_container_name = agg.sor_container_name
+                and agg.model_agg_score = ms.max_score
+                where agg.batch_id='${batch_id}';
+
+                INSERT INTO ${temp_schema_name}.max_phrase_match_score_${init_process_id.process_id}
+                (origin_id, sor_container_id, sor_container_name, max_score,root_pipeline_id, tenant_id, batch_id)
+                select t.origin_id, t.sor_container_id, t.sor_container_name,
+                max(t.agg_score) as max_score,${gen_id.root_pipeline_id}, ${tenant_id}, t.batch_id
+                from ${temp_schema_name}.agg_phrase_match_score_${init_process_id.process_id} t
+                where t.batch_id='${batch_id}'
+                group by t.origin_id, t.sor_container_id, t.sor_container_name, t.batch_id;
+
+                INSERT INTO ${temp_schema_name}.max_zero_shot_classifier_score_${init_process_id.process_id}
+                (origin_id, sor_container_id, sor_container_name, max_score,root_pipeline_id, tenant_id, batch_id)
+                select t.origin_id, t.sor_container_id, t.sor_container_name,
+                max(t.agg_score)  as max_score ,${gen_id.root_pipeline_id}, ${tenant_id}, t.batch_id
+                from ${temp_schema_name}.agg_zero_shot_classifier_score_${init_process_id.process_id} t
+                where t.batch_id='${batch_id}'
+                group by t.origin_id, t.sor_container_id, t.sor_container_name,t.batch_id;
+
+                INSERT INTO ${temp_schema_name}.phrase_match_${init_process_id.process_id}
+                (origin_id, paper_no, sor_container_id, sor_container_name, truth_entity, agg_score,root_pipeline_id, tenant_id, batch_id)
+                select distinct agg.origin_id, agg.paper_no, agg.sor_container_id,
+                agg.sor_container_name, agg.truth_entity,agg.agg_score,${gen_id.root_pipeline_id}, ${tenant_id}, agg.batch_id
+                from ${temp_schema_name}.agg_phrase_match_score_${init_process_id.process_id} agg
+                inner join ${temp_schema_name}.max_phrase_match_score_${init_process_id.process_id} ms on ms.origin_id = agg.origin_id
+                and ms.sor_container_id = agg.sor_container_id and ms.sor_container_name = agg.sor_container_name
+                and agg.agg_score = ms.max_score
+                where agg.batch_id='${batch_id}';
+
+                INSERT INTO ${temp_schema_name}.zero_shot_classifier_${init_process_id.process_id}
+                (origin_id, paper_no, sor_container_id, sor_container_name, truth_entity, agg_score,root_pipeline_id, tenant_id, batch_id)
+                select distinct agg.origin_id, agg.paper_no, agg.sor_container_id,
+                agg.sor_container_name, agg.truth_entity,agg.agg_score,${gen_id.root_pipeline_id}, ${tenant_id}, agg.batch_id
+                from ${temp_schema_name}.agg_zero_shot_classifier_score_${init_process_id.process_id} agg
+                inner join ${temp_schema_name}.max_zero_shot_classifier_score_${init_process_id.process_id} ms
+                on ms.origin_id = agg.origin_id and ms.sor_container_id = agg.sor_container_id
+                and ms.sor_container_name = agg.sor_container_name and agg.agg_score = ms.max_score
+                where agg.batch_id='${batch_id}';
+
+
+                INSERT INTO ${temp_schema_name}.agg_doc_score_${init_process_id.process_id}
+                (origin_id, paper_no, entity_score, max_distance,root_pipeline_id, tenant_id, batch_id)
+                select els.origin_id, els.paper_no,
+                sum(els.model_agg_score) as entity_score, ${filter.doc.score.max.distance.threshold}::int8 as max_distance,${gen_id.root_pipeline_id}, ${tenant_id}, els.batch_id
+                from ${temp_schema_name}.model_level_score_${init_process_id.process_id} els
+                where els.batch_id='${batch_id}'
+                group by els.origin_id, els.paper_no, els.batch_id;
+
+                INSERT INTO ${temp_schema_name}.max_doc_score_${init_process_id.process_id}
+                (origin_id, max_doc_score,root_pipeline_id, tenant_id, batch_id)
+                select ap.origin_id,max(ap.entity_score) as max_doc_score,${gen_id.root_pipeline_id}, ${tenant_id}, ap.batch_id
+                from ${temp_schema_name}.agg_doc_score_${init_process_id.process_id} ap
+                where ap.batch_id='${batch_id}'
+                group by ap.origin_id, ap.batch_id;
+
+
+                INSERT INTO ${temp_schema_name}.paper_level_score_${init_process_id.process_id}
+                (origin_id, paper_no, entity_score, max_doc_score, max_distance, is_candidate_paper,root_pipeline_id, tenant_id, batch_id)
+                select ap.origin_id,ap.paper_no,ap.entity_score,ad.max_doc_score, ap.max_distance,
+                case when ad.max_doc_score - ap.entity_score <= ap.max_distance then 'yes'
+                else 'no' end as is_candidate_paper,${gen_id.root_pipeline_id}, ${tenant_id}, ap.batch_id
+                from ${temp_schema_name}.agg_doc_score_${init_process_id.process_id} ap
+                inner join ${temp_schema_name}.max_doc_score_${init_process_id.process_id} ad
+                on ad.origin_id = ap.origin_id
+                where ap.batch_id='${batch_id}';
+
+                UPDATE ${temp_schema_name}.paper_level_score_${init_process_id.process_id}
+                SET is_candidate_paper ='yes'
+                FROM (select origin_id, paper_no from ${temp_schema_name}.phrase_match_${init_process_id.process_id} pm where pm.agg_score>${filter.pm.full.match.threshold}::int8) AS subquery
+                WHERE ${temp_schema_name}.paper_level_score_${init_process_id.process_id}.origin_id =subquery.origin_id and
+                ${temp_schema_name}.paper_level_score_${init_process_id.process_id}.paper_no =subquery.paper_no and ${temp_schema_name}.paper_level_score_${init_process_id.process_id}.batch_id ='${batch_id}';
+
+                UPDATE ${temp_schema_name}.paper_level_score_${init_process_id.process_id}
+                SET is_candidate_paper ='yes'
+                FROM (select origin_id, paper_no from ${temp_schema_name}.zero_shot_classifier_${init_process_id.process_id} where agg_score>${filter.zsc.full.match.threshold}::int8 ) AS subquery
+                WHERE ${temp_schema_name}.paper_level_score_${init_process_id.process_id}.origin_id =subquery.origin_id and
+                ${temp_schema_name}.paper_level_score_${init_process_id.process_id}.paper_no =subquery.paper_no and ${temp_schema_name}.paper_level_score_${init_process_id.process_id}.batch_id ='${batch_id}';
+
+
+        "} on-condition if "true"=="true"
+
+               transform as "Mapping the right entity to the right paper " on "intics_zio_db_conn" using
+                {"
+                        INSERT INTO ${temp_schema_name}.paper_filter_score_${init_process_id.process_id}
+                        (origin_id, sor_container_id, sor_container_name, truth_entity, model_agg_score, paper_no,batch_id, tenant_id)
+                        select distinct agg.origin_id, agg.sor_container_id,
+                        agg.sor_container_name, agg.truth_entity,agg.model_agg_score, agg.paper_no,agg.batch_id, agg.tenant_id
+                        from ${temp_schema_name}.model_level_score_${init_process_id.process_id} agg
+                        inner join ${temp_schema_name}.max_entity_score_${init_process_id.process_id}  ms
+                        on ms.origin_id = agg.origin_id and agg.tenant_id=ms.tenant_id
+                        and ms.sor_container_id = agg.sor_container_id
+                        and ms.sor_container_name = agg.sor_container_name
+                        and agg.model_agg_score = ms.max_score
+                        where  agg.model_agg_score <>0;
+                 "} on-condition if "${right.entity.activator}"=="true"
+
+
+        transform as "Insert statements to put data into potential feature audit" on "intics_zio_db_conn" using
+        {"
+                insert into ${temp_schema_name}.potential_feature_${init_process_id.process_id}(created_on, created_user_id, last_updated_on,
+                last_updated_user_id, tenant_id, origin_id, paper_no, sor_item_attribution_id,
+                synonym, truth_entity,root_pipeline_id, batch_id) select pa.created_on, pa.created_user_id,
+                pa.last_updated_on, pa.last_updated_user_id, pa.tenant_id, pa.origin_id,
+                pa.paper_no, pa.sor_item_attribution_id,  pa.synonym, pa.truth_entity,${gen_id.root_pipeline_id}, ps.batch_id
+                from ${temp_schema_name}.potential_paper_${init_process_id.process_id} pa
+                inner join ${temp_schema_name}.paper_level_score_${init_process_id.process_id} ps
+                on ps.origin_id = pa.origin_id and ps.paper_no = pa.paper_no and
+                ps.is_candidate_paper in ('yes')
+                where ps.batch_id='${batch_id}';
+
+        "} on-condition if "true"=="true"
+
+
+        transform as "Insert statements to put data into audit tables " on "intics_zio_db_conn" using
+        {"
+
+                INSERT INTO paper.model_score_result_audit
+                (group_id, origin_id, paper_no, truth_entity,synonym, model_score,model_name,root_pipeline_id, tenant_id, batch_id)
+                select group_id, origin_id, paper_no, truth_entity, synonym, model_score,model_name,${gen_id.root_pipeline_id}, ${tenant_id}, pmfr.batch_id
+                from ${temp_schema_name}.model_score_result_${init_process_id.process_id} pmfr
+                where pmfr.batch_id='${batch_id}';
+
+
+                INSERT INTO paper.synonym_level_score_audit
+                (potential_paper_id, origin_id, paper_no, sor_container_id, sor_container_name,
+                sor_truth_entity_id, truth_entity, sor_synonym_id, synonym, model_name,
+                model_score, model_id, model_actual_weight,root_pipeline_id, tenant_id, batch_id)
+                select pf.potential_paper_id,pf.origin_id,pf.paper_no, pf.sor_container_id,
+                pf.sor_container_name,  pf.sor_truth_entity_id,
+                pf.truth_entity, pf.sor_synonym_id,pf.synonym,pf.model_name,
+                pf.model_score,pf.model_id,pf.model_actual_weight,${gen_id.root_pipeline_id}, ${tenant_id}, pf.batch_id
+                from ${temp_schema_name}.synonym_level_score_${init_process_id.process_id} pf
+                where pf.batch_id='${batch_id}';
+
+                INSERT INTO paper.agg_phrase_match_score_audit
+                (origin_id, paper_no, sor_container_id, sor_container_name, truth_entity, agg_score,root_pipeline_id, tenant_id, batch_id)
+                SELECT origin_id, paper_no, sor_container_id, sor_container_name, truth_entity, agg_score,${gen_id.root_pipeline_id}, ${tenant_id}, batch_id
+                FROM ${temp_schema_name}.agg_phrase_match_score_${init_process_id.process_id}
+                where batch_id='${batch_id}';
+
+                INSERT INTO paper.agg_zero_shot_classifier_score_audit
+                (origin_id, paper_no, sor_container_id, sor_container_name, truth_entity, agg_score,root_pipeline_id, tenant_id, batch_id)
+                SELECT origin_id, paper_no, sor_container_id, sor_container_name, truth_entity, agg_score,${gen_id.root_pipeline_id}, ${tenant_id}, batch_id
+                FROM ${temp_schema_name}.agg_zero_shot_classifier_score_${init_process_id.process_id}
+                where batch_id='${batch_id}';
+
+
+                INSERT INTO paper.model_level_score_audit
+                (origin_id, paper_no, sor_container_id, sor_container_name, zsc_score, pm_score,
+                truth_entity, model_agg_score,root_pipeline_id, tenant_id, batch_id)
+                SELECT origin_id, paper_no, sor_container_id, sor_container_name, zsc_score,
+                pm_score, truth_entity, model_agg_score,${gen_id.root_pipeline_id}, ${tenant_id}, batch_id
+                FROM ${temp_schema_name}.model_level_score_${init_process_id.process_id}
+                where batch_id='${batch_id}';
+
+                INSERT INTO paper.max_entity_score_audit
+                (origin_id, sor_container_id, sor_container_name, max_score,root_pipeline_id, tenant_id, batch_id)
+                SELECT origin_id, sor_container_id, sor_container_name, max_score,${gen_id.root_pipeline_id}, ${tenant_id}, batch_id
+                FROM ${temp_schema_name}.max_entity_score_${init_process_id.process_id}
+                where batch_id='${batch_id}';
+
+                INSERT INTO paper.entity_level_score_audit
+                (origin_id, sor_container_id, sor_container_name, truth_entity, model_agg_score,root_pipeline_id, tenant_id, batch_id)
+                SELECT origin_id, sor_container_id, sor_container_name, truth_entity, model_agg_score,${gen_id.root_pipeline_id}, ${tenant_id}, batch_id
+                FROM ${temp_schema_name}.entity_level_score_${init_process_id.process_id}
+                where batch_id='${batch_id}';
+
+
+                INSERT INTO paper.max_phrase_match_score_audit
+                (origin_id, sor_container_id, sor_container_name, max_score,root_pipeline_id, tenant_id, batch_id)
+                SELECT origin_id, sor_container_id, sor_container_name, max_score,${gen_id.root_pipeline_id}, ${tenant_id}, batch_id
+                FROM ${temp_schema_name}.max_phrase_match_score_${init_process_id.process_id}
+                where batch_id='${batch_id}';
+
+
+                INSERT INTO paper.max_zero_shot_classifier_score_audit
+                (origin_id, sor_container_id, sor_container_name, max_score,root_pipeline_id,tenant_id, batch_id)
+                SELECT origin_id, sor_container_id, sor_container_name, max_score,${gen_id.root_pipeline_id}, ${tenant_id}, batch_id
+                FROM ${temp_schema_name}.max_zero_shot_classifier_score_${init_process_id.process_id}
+                where batch_id='${batch_id}';
+
+
+                INSERT INTO paper.phrase_match_audit
+                (origin_id, paper_no, sor_container_id, sor_container_name, truth_entity, agg_score,root_pipeline_id, tenant_id, batch_id)
+                SELECT origin_id, paper_no, sor_container_id, sor_container_name, truth_entity, agg_score,${gen_id.root_pipeline_id}, ${tenant_id}, batch_id
+                FROM ${temp_schema_name}.phrase_match_${init_process_id.process_id}
+                where batch_id='${batch_id}';
+
+
+                INSERT INTO paper.zero_shot_classifier_audit
+                (origin_id, paper_no, sor_container_id, sor_container_name, truth_entity, agg_score,root_pipeline_id, tenant_id, batch_id)
+                SELECT origin_id, paper_no, sor_container_id, sor_container_name, truth_entity, agg_score,${gen_id.root_pipeline_id}, ${tenant_id}, batch_id
+                FROM ${temp_schema_name}.zero_shot_classifier_${init_process_id.process_id}
+                where batch_id='${batch_id}';
+
+                INSERT INTO paper.agg_doc_score_audit
+                (origin_id, paper_no, entity_score, max_distance,root_pipeline_id, tenant_id, batch_id)
+                SELECT origin_id, paper_no, entity_score, max_distance,${gen_id.root_pipeline_id}, ${tenant_id}, batch_id
+                FROM ${temp_schema_name}.agg_doc_score_${init_process_id.process_id}
+                where batch_id='${batch_id}';
+
+                INSERT INTO paper.max_doc_score_audit
+                (origin_id, max_doc_score,root_pipeline_id, tenant_id, batch_id)
+                SELECT origin_id, max_doc_score,${gen_id.root_pipeline_id}, ${tenant_id}, batch_id
+                FROM ${temp_schema_name}.max_doc_score_${init_process_id.process_id}
+                where batch_id='${batch_id}';
+
+                INSERT INTO paper.paper_level_score_audit
+                (origin_id, paper_no, entity_score, max_doc_score, max_distance, is_candidate_paper,root_pipeline_id, tenant_id, batch_id, created_on)
+                SELECT origin_id, paper_no, entity_score, max_doc_score, max_distance, is_candidate_paper,${gen_id.root_pipeline_id}, ${tenant_id}, batch_id, now()
+                FROM ${temp_schema_name}.paper_level_score_${init_process_id.process_id}
+                where batch_id='${batch_id}';
+
+
+                INSERT INTO paper.potential_paper_audit
+                (created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id,
+                final_score, origin_id, paper_no, sor_item_attribution_id,
+                synonym, truth_entity,root_pipeline_id,truth_entity_id, sub_batch_id, batch_id)
+                SELECT created_on, created_user_id, last_updated_on,
+                last_updated_user_id, tenant_id, final_score, origin_id, paper_no, sor_item_attribution_id,
+                synonym, truth_entity,${gen_id.root_pipeline_id},truth_entity_id, sub_batch_id, batch_id
+                FROM ${temp_schema_name}.potential_paper_${init_process_id.process_id}
+                where batch_id='${batch_id}';
+
+                INSERT INTO paper.potential_feature_audit
+                (created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id,
+                origin_id, paper_no, sor_item_attribution_id,  synonym, truth_entity, root_pipeline_id, batch_id)
+                SELECT created_on, created_user_id, last_updated_on,
+                last_updated_user_id, tenant_id, origin_id, paper_no, sor_item_attribution_id,
+                synonym, truth_entity,${gen_id.root_pipeline_id}, batch_id
+                FROM ${temp_schema_name}.potential_feature_${init_process_id.process_id}
+                where batch_id='${batch_id}';
+
+                INSERT INTO paper.zero_shot_classifier_filtering_result_audit
+                (group_id, origin_id, paper_no, truth_entity, synonym, confidence_score,
+                status, stage, message, created_on, root_pipeline_id, tenant_id, batch_id, model_name, model_version, last_updated_on)
+                SELECT group_id, origin_id, paper_no, truth_entity, synonym, confidence_score,
+                status, stage, message, created_on,${gen_id.root_pipeline_id}, ${tenant_id}, batch_id, model_name, model_version, last_updated_on
+                FROM ${temp_schema_name}.zero_shot_classifier_filtering_result_${init_process_id.process_id}
+                where batch_id='${batch_id}';
+
+                INSERT INTO paper.phrase_match_filtering_result_audit
+                (group_id, origin_id, paper_no, truth_entity, synonym, is_key_present, status,
+                stage, message, created_on,root_pipeline_id, tenant_id, batch_id,model_name, model_version, last_updated_on)
+                SELECT group_id, origin_id, paper_no, truth_entity, synonym, is_key_present,
+                status, stage, message, created_on,${gen_id.root_pipeline_id}, ${tenant_id}, batch_id, model_name, model_version, last_updated_on
+                FROM ${temp_schema_name}.phrase_match_filtering_result_${init_process_id.process_id}
+                where batch_id='${batch_id}';
+
+                INSERT INTO paper.paper_filter_score_audit
+                (origin_id, sor_container_id, sor_container_name, truth_entity, model_agg_score, paper_no, tenant_id, root_pipeline_id)
+                select origin_id, sor_container_id, sor_container_name, truth_entity, model_agg_score, paper_no, tenant_id ,${gen_id.root_pipeline_id}
+                from ${temp_schema_name}.paper_filter_score_${init_process_id.process_id};
+
+
+        "} on-condition if "true"=="true"
+
+        transform as "completed filter processor in paper filtering audit" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO paper.paper_filtering_pipeline_audit
+                (process_id,group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+                VALUES('${init_process_id.process_id}','${group_id}', now(), 'COMPLETED', 'PAPER_FILTER_PROCESSOR', 'fiter processor lambda completed in paper filter',${gen_id.root_pipeline_id}, ${tenant_id}, '${batch_id}');
+
+        "} on-condition if "true"=="true"
+
+}
+catch
+{
+        transform as "failed in paper filtering filter processor audit" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO paper.paper_filtering_pipeline_audit
+                (process_id,group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+                VALUES('${init_process_id.process_id}','${group_id}', now(), 'FAILED', 'PAPER_FILTER_PROCESSOR', 'fiter processor lambda failed in paper filter',${gen_id.root_pipeline_id}, ${tenant_id}, '${batch_id}');
+        "} on-condition if "true"=="true"
+}
+
+finally
+{
+
+}
+}

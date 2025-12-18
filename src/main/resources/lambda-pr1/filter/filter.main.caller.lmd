@@ -1,0 +1,391 @@
+process "filter.main.caller"
+{
+try
+{
+
+        transform as " paper filtering filter main caller started audit" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO paper.paper_filtering_pipeline_audit
+                (process_id,origin_id ,group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+                select producer_process_id  ,origin_id ,group_id , now(), 'STARTED', 'PAPER_FILTER_MAIN_CALLER', 'fiter main caller lambda started in paper filter',root_pipeline_id, ${tenant_id}, batch_id
+                from paper.potential_feature_payload_queue
+                where status='STAGED' and group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+        "} on-condition if "true"=="true"
+
+        assign as "pipeline_train_mode" source "intics_zio_db_conn" using
+        {"
+                select  (case when '${zero.shot.start.action}'='true' AND '${pipeline.train.mode}'='true' then 'true' else 'false' end) as zero_shot;
+                select  (case when '${phrase.match.start.action}'='true' AND '${pipeline.train.mode}'='true' then 'true' else 'false' end) as phrase_match;
+
+        "}on-condition if "true"=="true"
+
+        transform as "updating payload table to in progress and inserting audit" on "intics_zio_db_conn" using
+        {"
+                UPDATE batching.sub_batching_process_payload_queue
+                SET stage='PAPER_FILTER',status='IN_PROGRESS'
+                WHERE  group_id='${group_id}' and batch_id ='${batch_id}' and tenant_id = ${tenant_id};
+
+                UPDATE paper.potential_feature_payload_queue SET status  = 'IN_PROGRESS',
+                consumer_process_id='${process-id}', consumed_on_ts = now()
+                WHERE status = 'STAGED' and stage = 'PAPER_FILTER'
+                and group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                update ingestion.pipeline_queue_status_audit as a
+                set status = 'IN_PROGRESS' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                where  a.group_id=${group_id} and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='PAPER_FILTER' ;
+
+                INSERT INTO paper.paper_filtering_pipeline_audit
+                (process_id, origin_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+                select '${init_process_id.process_id}',sot.origin_id, now(), 'STARTED', 'PAPER_FILTER',
+                'Started inserting the synonyms in potential paper table','${gen_id.root_pipeline_id}', ${tenant_id}, pq.batch_id
+                from paper.potential_feature_payload_queue pq
+                inner join ${temp_schema_name}.source_of_truth_${init_process_id.process_id} sot on sot.origin_id = pq.origin_id and sot.tenant_id = pq.tenant_id  and sot.batch_id = pq.batch_id
+                where pq.stage='PAPER_FILTER' and pq.status='IN_PROGRESS'
+                and pq.batch_id='${batch_id}' and pq.tenant_id = ${tenant_id} ;
+
+        "} on-condition if "true"=="true"
+
+        transform as "Insert into potential feature table" on "intics_zio_db_conn" using
+        {"
+
+                INSERT INTO ${temp_schema_name}.potential_paper_${init_process_id.process_id}
+                (created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, origin_id, paper_no, sor_item_attribution_id, synonym,
+                truth_entity, truth_entity_id, root_pipeline_id, sub_batch_id, batch_id)
+                SELECT '${created_date}' as created_on,
+                 st.created_user_id,
+                 '${created_date}' as last_updated_on,
+                 st.last_updated_user_id,
+                 bp.tenant_id ,
+                 bp.origin_id,
+                 st.paper_no ,
+                 1,
+                 sl.truth_entity_placeholder_value as synonym,
+                 ts.truth_entity_name as truth_entity ,
+                 ts.truth_entity_id ,
+                 bp.root_pipeline_id ,
+                 bp.batch_id as sub_batch_id,
+                 bp.batch_id
+                FROM paper.potential_feature_payload_queue bp
+                inner join ${temp_schema_name}.source_of_truth_${init_process_id.process_id} st  on
+                bp.origin_id = st.origin_id and bp.batch_id = st.batch_id and bp.group_id = st.group_id
+                inner join sor_meta.asset_info ai on lower(ai.template_name) = lower(st.template_name) and ai.tenant_id = st.tenant_id
+                inner join sor_meta.truth_entity  ts on ts.asset_id = ai.asset_id  and ts.tenant_id = ai.tenant_id
+                inner join sor_meta.truth_entity_placeholder sl on sl.truth_entity_id = ts.truth_entity_id  and sl.tenant_id = ts.tenant_id
+                where
+                st.tenant_id=${tenant_id} and ts.sip_type='KVP_SIP' and
+                bp.batch_id='${batch_id}' and bp.tenant_id = ${tenant_id} and bp.group_id='${group_id}' and bp.status='IN_PROGRESS'
+                and ai.status ='ACTIVE' and ts.status ='ACTIVE' and sl.status ='ACTIVE'  and ai.document_type='${document_type}';
+
+
+                INSERT INTO ${temp_schema_name}.paper_filter_zsc_pm_input_${init_process_id.process_id}
+                (created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, origin_id, paper_no, sor_item_attribution_id, truth_placeholders,
+                truth_entity, truth_entity_id, root_pipeline_id, sub_batch_id, batch_id)
+                 SELECT '${created_date}' as created_on,
+                 a.created_user_id,
+                 '${created_date}' as last_updated_on,
+                 a.last_updated_user_id,
+                 a.tenant_id ,
+                 a.origin_id,
+                 a.paper_no ,1,
+                 jsonb_agg(a.synonym)::jsonb as truth_placeholders,
+                 a.truth_entity as truth_entity ,
+                 a.truth_entity_id ,
+                 a.root_pipeline_id ,
+                 a.batch_id as sub_batch_id,
+                 a.batch_id
+                FROM ${temp_schema_name}.potential_paper_${init_process_id.process_id} a
+                where a.tenant_id=${tenant_id} and a.batch_id = '${batch_id}' and a.root_pipeline_id = ${gen_id.root_pipeline_id}
+                group by a.created_user_id, a.last_updated_user_id,a.tenant_id,a.root_pipeline_id ,a.batch_id ,a.origin_id ,a.paper_no ,a.truth_entity , a.truth_entity_id;
+
+                INSERT INTO ${temp_schema_name}.paper_filter_zsc_pm_input_aggregate_${init_process_id.process_id}
+                ( tenant_id, origin_id, paper_no, truth_placeholder,
+                root_pipeline_id, sub_batch_id, batch_id, sor_item_attribution_id)
+                select a.tenant_id, a.origin_id,a.paper_no,
+                 jsonb_object_agg(a.truth_entity, a.truth_placeholders) as truth_placeholder,
+                 a.root_pipeline_id ,a.batch_id ,a.batch_id , a.sor_item_attribution_id
+                from ${temp_schema_name}.paper_filter_zsc_pm_input_${init_process_id.process_id} a
+                where a.batch_id='${batch_id}' and a.tenant_id = '${tenant_id}' and a.root_pipeline_id = ${gen_id.root_pipeline_id}
+                group by a.tenant_id, a.origin_id,a.paper_no,a.sor_item_attribution_id,a.root_pipeline_id ,a.batch_id ,a.batch_id ;
+
+                INSERT INTO paper.paper_filtering_pipeline_audit
+                (process_id, origin_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+                select '${init_process_id.process_id}',sot.origin_id, now(), 'IN_PROGRESS', 'PAPER_FILTER',
+                'Started initiating the copro api call','${gen_id.root_pipeline_id}', ${tenant_id}, pq.batch_id
+                from paper.potential_feature_payload_queue pq
+                inner join ${temp_schema_name}.source_of_truth_${init_process_id.process_id} sot
+                on sot.origin_id = pq.origin_id and sot.tenant_id = pq.tenant_id  and sot.batch_id = pq.batch_id
+                where pq.stage='PAPER_FILTER' and pq.status='IN_PROGRESS'
+                and pq.batch_id='${batch_id}' and pq.tenant_id = ${tenant_id} ;
+
+        "} on-condition if "true"=="true"
+
+        transform as "inprogress in paper filtering filter main caller audit" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO paper.paper_filtering_pipeline_audit
+                (process_id,origin_id ,group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+                select consumer_process_id  ,origin_id ,group_id , now(),'STARTED', 'COPRO_API',
+                'filter main caller phrase match and zero shot classifier macro started','${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                from paper.potential_feature_payload_queue
+                where status='IN_PROGRESS' and group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+        "} on-condition if "true"=="true"
+
+
+        coproStart as "Calling zero shot classifier copro start action" for "ZERO_SHOT_CLASSIFIER"
+        copro-server-url "${copro.zero.shot.admin.start.url}"
+        export-command "${copro.zero.shot.admin.export}"
+        process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+        using
+        {"
+                ${zeroShotStartCommand}
+
+        "} on-condition if "${pipeline_train_mode.zero_shot}"=="true"
+
+        coproStart as "Calling phrase match copro start action" for "PHRASE_MATCH"
+        copro-server-url "${copro.phrase.match.admin.start.url}"
+        export-command "${copro.phrase.match.export}"
+        process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+        using
+        {"
+                ${phraseMatchStartCommand}
+
+        "} on-condition if "${pipeline_train_mode.phrase_match}"=="true"
+
+        multitude as "multitude execution for phrase match and zero shot classifier"
+        on "PARALLEL" using
+        {
+
+                phrase-match-paper-filter as "phrase_match_filter_copro_api_call"
+                on-resource-conn "intics_zio_db_conn"
+                for-process-id "${init_process_id.process_id}"
+                copro-url "${copro.paper-filtering-phrase-match.url}"
+                thread-count "${filter.pm.api.consumer.API.count}"
+                read-batch-size "${read.batch.size}"
+                write-batch-size "${write.batch.size}"
+                with-input-query
+                {"
+
+                        select a.origin_id,a.paper_no,
+                        sot.content as page_content, ${group_id} as group_id ,a.root_pipeline_id as root_pipeline_id,
+                        '${init_process_id.process_id}' as process_id,
+                         a.truth_placeholder,a.tenant_id as tenant_id ,a.batch_id, now() as created_on
+                        from ${temp_schema_name}.paper_filter_zsc_pm_input_aggregate_${init_process_id.process_id} a
+                        join ${temp_schema_name}.source_of_truth_${init_process_id.process_id} sot on a.origin_id = sot.origin_id and a.paper_no = sot.paper_no and sot.batch_id = a.batch_id and sot.tenant_id = a.tenant_id
+                        where a.batch_id='${batch_id}' and a.tenant_id = '${tenant_id}' and a.root_pipeline_id = ${gen_id.root_pipeline_id};
+
+                "}on-condition if "true"=="true"
+
+                zero-shot-classifier-paper-filter as "zero_shot_classifier_copro_api"
+                on-resource-conn "intics_zio_db_conn"
+                for-process-id "${init_process_id.process_id}"
+                thread-count "${filter.zsc.api.consumer.API.count}"
+                copro-url "${copro.paper-filtering-zero-shot-classifier.url}"
+                read-batch-size "${read.batch.size}"
+                write-batch-size "${write.batch.size}"
+                with-input-query
+                {"
+                        select a.origin_id,a.paper_no,
+                        sot.content as page_content, ${group_id} as group_id ,a.root_pipeline_id as root_pipeline_id,
+                        '${init_process_id.process_id}' as process_id,
+                        a.truth_placeholder,a.tenant_id as tenant_id ,a.batch_id, now() as created_on
+                        from ${temp_schema_name}.paper_filter_zsc_pm_input_aggregate_${init_process_id.process_id} a
+                        join ${temp_schema_name}.source_of_truth_${init_process_id.process_id} sot on a.origin_id = sot.origin_id and a.paper_no = sot.paper_no and sot.batch_id = a.batch_id and sot.tenant_id = a.tenant_id
+                        where a.batch_id='${batch_id}' and a.tenant_id = '${tenant_id}' and a.root_pipeline_id = ${gen_id.root_pipeline_id};
+
+                "}on-condition if "true"=="true"
+
+        } on-condition if "true"=="true" fielding 2
+
+        transform as "insert into audit table for zero shot classifier result" on "intics_zio_db_conn" using
+        {"
+                insert into audit.process_audit_output
+                (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint,paper_no, batch_id)
+                select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint, ai.paper_no, '${batch_id}'
+                from ${temp_schema_name}.phrase_match_filtering_result_${init_process_id.process_id} ai
+                where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= '${group_id}' and batch_id='${batch_id}'
+                group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage, ai.paper_no;
+
+
+                insert into audit.process_audit_output
+                (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint,paper_no, batch_id)
+                select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint, ai.paper_no, '${batch_id}'
+                from ${temp_schema_name}.zero_shot_classifier_filtering_result_${init_process_id.process_id} ai
+                where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= '${group_id}' and batch_id='${batch_id}'
+                group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage, ai.paper_no
+        "}  on-condition if "true"=="true"
+
+
+
+        transform as "completed copro api in paper filtering filter main caller audit" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO paper.paper_filtering_pipeline_audit
+                (process_id,origin_id ,group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+                select pfpq.consumer_process_id  ,pfpq.origin_id ,pfpq.group_id , now(),case when exists
+                (SELECT x.* FROM ${temp_schema_name}.zero_shot_classifier_filtering_result_${init_process_id.process_id} x
+                WHERE status IN ('FAILED'))=true
+                then 'FAILED' else 'COMPLETED' end, 'COPRO_API_ZERO_SHOT', 'filter main caller zero shot classifier macro result','${gen_id.root_pipeline_id}', ${tenant_id}, pfpq.batch_id
+                from paper.potential_feature_payload_queue  pfpq
+                join ${temp_schema_name}.zero_shot_classifier_filtering_result_${init_process_id.process_id} zs
+                on zs.origin_id =pfpq.origin_id
+                where pfpq.batch_id='${batch_id}'
+                group by pfpq.consumer_process_id
+                ,pfpq.origin_id ,pfpq.group_id , pfpq.batch_id;
+
+                INSERT INTO paper.paper_filtering_pipeline_audit
+                (process_id,origin_id ,group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+                select pfpq.consumer_process_id  ,pfpq.origin_id ,pfpq.group_id , now(),case when exists(SELECT x.* FROM ${temp_schema_name}.zero_shot_classifier_filtering_result_${init_process_id.process_id} x
+                WHERE status IN ('FAILED'))=true
+                then 'FAILED' else 'COMPLETED' end, 'COPRO_API_PHRASE_MATCH', 'filter main caller phrase match macro result','${gen_id.root_pipeline_id}',${tenant_id}, pfpq.batch_id
+                from paper.potential_feature_payload_queue  pfpq
+                join ${temp_schema_name}.phrase_match_filtering_result_${init_process_id.process_id} zs
+                on zs.origin_id =pfpq.origin_id
+                where pfpq.batch_id='${batch_id}'
+                group by pfpq.consumer_process_id
+                ,pfpq.origin_id ,pfpq.group_id ,pfpq.batch_id;
+        "} on-condition if "true"=="true"
+
+        transform as "completed in paper filtering filter main caller audit" on "intics_zio_db_conn" using
+        {"
+
+                INSERT INTO paper.paper_filtering_pipeline_audit
+                (process_id,origin_id ,group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+                select producer_process_id  ,origin_id ,group_id , now(),  'COMPLETED', 'PAPER_FILTER_MAIN_CALLER', 'fiter main caller lambda completed in paper filter','${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                from paper.potential_feature_payload_queue
+                where status='IN_PROGRESS' and group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+        "} on-condition if "true"=="true"
+
+        transform as "update to completed in payload queue audit" on "intics_zio_db_conn" using
+        {"
+                UPDATE paper.potential_feature_payload_queue SET status  = 'COMPLETED'
+                WHERE status = 'IN_PROGRESS' and
+                stage = 'PAPER_FILTER' and group_id='${group_id}' and
+                tenant_id = ${tenant_id} and batch_id='${batch_id}';
+
+
+                UPDATE batching.sub_batching_process_payload_queue a
+                SET status='COMPLETED'
+                WHERE a.group_id='${group_id}'
+                and a.batch_id ='${batch_id}' and a.tenant_id = ${tenant_id} and a.batch_id='${batch_id}';
+
+        "} on-condition if "true"=="true"
+}
+catch
+{
+        transform as "updated payload table for failed while calling denoise processor lambda" on "intics_zio_db_conn" using
+        {"
+                UPDATE paper.potential_feature_payload_queue SET status  = 'FAILED'
+                WHERE status = 'IN_PROGRESS' and
+                stage = 'PAPER_FILTER' and group_id='${group_id}' and
+                tenant_id = ${tenant_id} and batch_id='${batch_id}';
+
+                INSERT INTO paper.paper_filtering_pipeline_audit
+                (process_id, origin_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+                select '${init_process_id.process_id}',sot.origin_id, now(), 'FAILED', 'PAPER_FILTER',
+                'Failed in paper filtration main calling lambda','${gen_id.root_pipeline_id}', ${tenant_id}, pq.batch_id
+                from paper.potential_feature_payload_queue bp
+                inner join paper.potential_feature_payload_queue pq on pq.origin_id = bp.origin_id
+                and pq.batch_id =bp.batch_id and pq.producer_process_id = bp.producer_process_id
+                inner join ${temp_schema_name}.source_of_truth_${init_process_id.process_id} sot
+                on sot.origin_id = bp.origin_id
+                where pq.stage='PAPER_FILTER' and pq.status='IN_PROGRESS'
+                and bp.batch_id='${batch_id}' and sot.group_id='${group_id}' and sot.tenant_id = ${tenant_id} and pq.batch_id ='${batch_id}';
+
+        "} on-condition if "true"=="true"
+        transform as "paper filtering filter main caller failed audit" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO paper.paper_filtering_pipeline_audit
+                (process_id,origin_id ,group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+                select producer_process_id  ,origin_id ,group_id , now(),   'FAILED', 'PAPER_FILTER_MAIN_CALLER', 'fiter main caller lambda failed in paper filter','${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                from paper.potential_feature_payload_queue
+                where status='FAILED' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+        "} on-condition if "true"=="true"
+
+
+}
+
+finally
+{
+
+        transform as "updated payload table for failed while calling denoise processor lambda" on "intics_zio_db_conn" using
+        {"
+                UPDATE paper.potential_feature_payload_queue SET status  = 'FAILED'
+                WHERE status = 'IN_PROGRESS' and
+                stage = 'PAPER_FILTER' and group_id='${group_id}' and
+                tenant_id = ${tenant_id} and batch_id='${batch_id}';
+        "} on-condition if "true"=="true"
+
+
+        transform as "pipeline summary audit for filter main caller" on "intics_zio_db_conn" using
+        {"
+
+                INSERT INTO ${temp_schema_name}.summary_audit_papers_${init_process_id.process_id}
+                (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken,root_pipeline_id, tenant_id, batch_id )
+                SELECT ${init_process_id.process_id} , 'PAPER_FILTER' ,'PHRASE_MATCH',coalesce (count(DISTINCT CASE WHEN status='COMPLETED' THEN concat(origin_id,'_',paper_no) END),0) ,coalesce (count(DISTINCT CASE WHEN status='FAILED' THEN concat(origin_id,'_',paper_no) END),0),min(created_on),max(last_updated_on), EXTRACT(epoch FROM (max(last_updated_on)-min(created_on))),'${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM ${temp_schema_name}.phrase_match_filtering_result_${init_process_id.process_id}
+                WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id ='${batch_id}'
+                group by batch_id;
+
+                INSERT INTO ${temp_schema_name}.summary_audit_files_${init_process_id.process_id}
+                (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken,root_pipeline_id, tenant_id, batch_id)
+                SELECT ${init_process_id.process_id} , 'PAPER_FILTER' ,'PHRASE_MATCH',coalesce (count(DISTINCT CASE WHEN status='COMPLETED' THEN origin_id END),0) ,coalesce (count(DISTINCT CASE WHEN status='FAILED' THEN origin_id END),0),min(created_on),max(last_updated_on), EXTRACT(epoch FROM (max(last_updated_on)-min(created_on))),'${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM ${temp_schema_name}.phrase_match_filtering_result_${init_process_id.process_id}
+                WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id ='${batch_id}'
+                group by batch_id;
+
+                INSERT INTO ${temp_schema_name}.summary_audit_papers_${init_process_id.process_id}
+                (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken,root_pipeline_id, tenant_id, batch_id)
+                SELECT ${init_process_id.process_id} , 'PAPER_FILTER' ,'ZERO_SHOT_CLASSIFIER',coalesce (count(DISTINCT CASE WHEN status='COMPLETED' THEN concat(origin_id,'_',paper_no) END),0) ,coalesce (count(DISTINCT CASE WHEN status='FAILED' THEN concat(origin_id,'_',paper_no) END),0),min(created_on),max(last_updated_on), EXTRACT(epoch FROM (max(last_updated_on)-min(created_on))),'${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM ${temp_schema_name}.zero_shot_classifier_filtering_result_${init_process_id.process_id}
+                WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id ='${batch_id}'
+                group by batch_id;
+
+                INSERT INTO ${temp_schema_name}.summary_audit_files_${init_process_id.process_id}
+                (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken,root_pipeline_id, tenant_id, batch_id)
+                SELECT ${init_process_id.process_id} , 'PAPER_FILTER' ,'ZERO_SHOT_CLASSIFIER',coalesce (count(DISTINCT CASE WHEN status='COMPLETED' THEN origin_id END),0) ,coalesce (count(DISTINCT CASE WHEN status='FAILED' THEN origin_id END),0),min(created_on),max(created_on), EXTRACT(epoch FROM (max(last_updated_on)-min(created_on))),'${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM ${temp_schema_name}.zero_shot_classifier_filtering_result_${init_process_id.process_id}
+                WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id ='${batch_id}'
+                group by batch_id;
+
+                INSERT INTO audit.pipeline_summary_audit
+                (process_id, created_on, module_name, macro_process, files_processed_count,papers_processed_count,files_failed_count,papers_failed_count,start_time,end_time, time_taken, group_id, root_pipeline_id, created_user_id, template_id, tenant_id,average_time , batch_id )
+                SELECT msaf.process_id ,now(),msaf.module_name ,msaf.macro_process ,msaf.completed_count,msap.completed_count,msaf.failed_count,msap.failed_count,msap.min_created_on,msap.max_created_on, EXTRACT(epoch FROM (msap.max_created_on-msap.min_created_on)),
+                '${group_id}','${root-ref-id}','${created_user_id}','${document_id}',${tenant_id},(CASE WHEN (msaf.completed_count+msaf.failed_count)=0 THEN msaf.time_taken WHEN (msaf.time_taken/(msaf.completed_count+msaf.failed_count))=0 THEN msaf.time_taken ELSE (msaf.time_taken/(msaf.completed_count+msaf.failed_count)) END), msaf.batch_id
+                FROM ${temp_schema_name}.summary_audit_files_${process-id} msaf,
+                ${temp_schema_name}.summary_audit_papers_${process-id} msap
+                WHERE msaf.module_name=msap.module_name AND msaf.macro_process=msap.macro_process AND msaf.batch_id=msap.batch_id AND
+                msaf.module_name='PAPER_FILTER' AND msaf.macro_process='PHRASE_MATCH' and msaf.tenant_id = ${tenant_id} and msaf.batch_id ='${batch_id}';
+
+                INSERT INTO audit.pipeline_summary_audit
+                (process_id, created_on, module_name, macro_process, files_processed_count,papers_processed_count,files_failed_count,papers_failed_count,start_time,end_time, time_taken, group_id, root_pipeline_id, created_user_id, template_id, tenant_id,average_time , batch_id )
+                SELECT msaf.process_id ,now(),msaf.module_name ,msaf.macro_process ,msaf.completed_count,msap.completed_count,msaf.failed_count,msap.failed_count,msap.min_created_on,msap.max_created_on, EXTRACT(epoch FROM (msap.max_created_on-msap.min_created_on)),
+                '${group_id}','${root-ref-id}','${created_user_id}','${document_id}',${tenant_id},(CASE WHEN (msaf.completed_count+msaf.failed_count)=0 THEN msaf.time_taken WHEN (msaf.time_taken/(msaf.completed_count+msaf.failed_count))=0 THEN msaf.time_taken ELSE (msaf.time_taken/(msaf.completed_count+msaf.failed_count)) END), msaf.batch_id
+                FROM ${temp_schema_name}.summary_audit_files_${process-id} msaf,
+                ${temp_schema_name}.summary_audit_papers_${process-id} msap
+                WHERE msaf.module_name=msap.module_name AND msaf.macro_process=msap.macro_process AND msaf.batch_id=msap.batch_id AND
+                msaf.module_name='PAPER_FILTER' AND msaf.macro_process='ZERO_SHOT_CLASSIFIER' AND msaf.tenant_id = ${tenant_id} and msaf.batch_id ='${batch_id}';
+
+        "} on-condition if "true"=="true"
+
+        coproStop as "Calling phrase match copro stop action" for "PHRASE_MATCH"
+        copro-server-url "${copro.phrase.match.admin.stop.url}"
+        process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+        using
+        {"
+                gunicorn
+
+        "} on-condition if "${phrase.match.stop.action}"=="true"
+
+        coproStop as "Calling zero shot classifier copro stop action" for "ZERO_SHOT_CLASSIFIER"
+        copro-server-url "${copro.zero.shot.admin.stop.url}"
+        process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+        using
+        {"
+                gunicorn
+
+        "} on-condition if "${zero.shot.stop.action}"=="true"
+
+
+}
+
+}

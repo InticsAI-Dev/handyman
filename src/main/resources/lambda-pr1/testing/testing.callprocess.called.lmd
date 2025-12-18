@@ -1,0 +1,20 @@
+process "testing.callprocess.called"
+{
+
+try{
+
+            transform as "update eoc_transformer.eoc_transformer_payload_queue" on "intics_zio_db_conn" using
+            {"
+            INSERT INTO eoc_transformer.eoc_transformer_payload_queue_1
+            (producer_process_id, consumer_process_id, batch_id, origin_id, group_id, created_on, consumed_on_ts, status, stage, root_pipeline_id, tenant_id)
+            VALUES(1, 1, 'batch-1', 'origin-1', ${payload.group_id}, '2025-05-06 17:40:31.461', '2025-05-06 17:40:31.461', 'IN_PROGRESS', 'TRANSFORM', 1, 1);
+
+            update eoc_transformer.eoc_transformer_payload_queue
+            set group_id=group_id+1;
+            "}on-condition if "true"=="true"
+
+}catch{
+
+}finally{
+}
+}

@@ -1,0 +1,300 @@
+process "paper.range.filter.ddl"
+
+{
+    try{
+			transform as "Table creation for paper wise filter  creating ddl " on "intics_zio_db_conn" using
+			{"
+			 CREATE TABLE IF NOT EXISTS paper_filter.paper_wise_filter_payload_queue_archive (
+              producer_process_id int8 NOT NULL,
+              consumer_process_id int8 NULL,
+              batch_id varchar NULL,
+              origin_id varchar NOT NULL,
+              group_id int4 NULL,
+              created_on timestamp NULL,
+              consumed_on_ts timestamp NULL,
+              status varchar NULL,
+              stage varchar NULL,
+              root_pipeline_id int8 NULL,
+              tenant_id int8 NULL,
+              paper_no int4 NULL,
+              model_name varchar NULL
+              );
+
+              CREATE TABLE IF NOT EXISTS paper_filter.paper_wise_filter_payload_error_queue (
+              producer_process_id int8 NOT NULL,
+              consumer_process_id int8 NULL,
+              batch_id varchar NULL,
+              origin_id varchar NOT NULL,
+              created_on timestamp NOT NULL,
+              group_id int4 NOT NULL,
+              status varchar NOT NULL,
+              stage varchar NOT NULL,
+              message varchar NULL,
+              consumed_on_ts timestamp NULL,
+              root_pipeline_id int8 NULL,
+              tenant_id int8 NULL,
+              paper_no int4 NULL,
+              model_name varchar NULL
+              );
+
+              CREATE TABLE IF NOT EXISTS paper_filter.paper_wise_filter_sub_batch_payload_queue (
+               producer_process_id int8 NULL,
+               consumer_process_id int8 NULL,
+               group_id int4 NULL,
+               batch_id varchar NULL,
+               origin_id varchar NULL,
+               created_on timestamp NULL,
+               status varchar NULL,
+               stage varchar NULL,
+               consumed_on_ts timestamp NULL,
+               paper_no int4 NULL,
+               root_pipeline_id int8 NULL,
+               tenant_id int8 NULL,
+               sub_batch_split_id int8 NULL,
+               model_name varchar NULL
+               );
+
+                  CREATE TABLE IF NOT EXISTS ${temp_schema_name}.paper_wise_filter_output_${init_process_id.process_id} (
+                      id serial4 NOT NULL,
+                      process_id int8 NULL,
+                      tenant_id int8 NULL,
+                      template_id varchar NULL,
+                      group_id int4 NULL,
+                      batch_id varchar NOT NULL,
+                      origin_id varchar NULL,
+                      paper_no int4 NULL,
+                      file_path varchar NULL,
+                      file_name varchar NULL,
+                      extracted_text varchar NULL,
+                      status varchar NULL,
+                      stage varchar NULL,
+                      message varchar NULL,
+                      template_name varchar NULL,
+                      is_blank_page varchar NULL,
+                      created_on timestamp NULL,
+                      last_updated_on timestamp NULL,
+                      root_pipeline_id int8 NULL,
+                      model_name varchar NULL,
+                      model_version varchar NULL,
+                      request text NULL,
+                      response text NULL,
+                      endpoint varchar NULL,
+                      container_name varchar NULL,
+                      container_value varchar NULL,
+                      container_id int8 NULL,
+                      prompt_type VARCHAR NULL
+                  );
+
+                  CREATE TABLE IF NOT EXISTS paper_filter.paper_wise_filter_output_audit (
+                      id serial4 NOT NULL,
+                      process_id int8 NULL,
+                      tenant_id int8 NULL,
+                      template_id varchar NULL,
+                      group_id int4 NULL,
+                      batch_id varchar NOT NULL,
+                      origin_id varchar NULL,
+                      paper_no int4 NULL,
+                      file_path varchar NULL,
+                      file_name varchar NULL,
+                      extracted_text varchar NULL,
+                      status varchar NULL,
+                      stage varchar NULL,
+                      message varchar NULL,
+                      template_name varchar NULL,
+                      is_blank_page varchar NULL,
+                      created_on timestamp NULL,
+                      last_updated_on timestamp NULL,
+                      root_pipeline_id int8 NULL,
+                      model_name varchar NULL,
+                      model_version varchar NULL,
+                      request text NULL,
+                      response text NULL,
+                      endpoint varchar NULL,
+                      container_name varchar NULL,
+                      container_value varchar NULL,
+                      container_id int8 NULL,
+                      prompt_type VARCHAR NULL
+                  );
+
+                  CREATE TABLE IF NOT EXISTS ${temp_schema_name}.paper_wise_filter_input_data_${init_process_id.process_id} (
+                      process_id int8 NULL,
+                      tenant_id int8 NULL,
+                      template_id varchar NULL,
+                      group_id int8 NULL,
+                      origin_id varchar NULL,
+                      paper_no int8 NULL,
+                      file_path varchar NULL,
+                      root_pipeline_id int8 NULL,
+                      template_name varchar NULL,
+                      batch_id varchar NULL,
+                      created_on timestamp NULL,
+                      user_prompt varchar NULL,
+                      system_prompt varchar NULL,
+                      model_name varchar  NULL,
+                      unique_id int8 NULL,
+                      unique_name varchar NULL,
+                      prompt_type varchar NULL
+                  );
+
+                  CREATE TABLE IF NOT EXISTS paper_filter.paper_wise_filter_input_data_audit (
+                      process_id int8 NULL,
+                      tenant_id int8 NULL,
+                      template_id varchar NULL,
+                      group_id int8 NULL,
+                      origin_id varchar NULL,
+                      paper_no int8 NULL,
+                      file_path varchar NULL,
+                      root_pipeline_id int8 NULL,
+                      template_name varchar NULL,
+                      batch_id varchar NULL,
+                      created_on timestamp NULL,
+                      user_prompt varchar NULL,
+                      system_prompt varchar NULL,
+                      model_name varchar NULL,
+                      unique_id int8 NULL,
+                      unique_name varchar NULL,
+                      prompt_type varchar NULL
+                  );
+
+                  CREATE TABLE IF NOT EXISTS paper_filter.paper_wise_filter_sub_batch_queue (
+                                          producer_process_id int8 NULL,
+                                          consumer_process_id int8 NULL,
+                                          group_id int4 NULL,
+                                          batch_id varchar NULL,
+                                          origin_id varchar NULL,
+                                          created_on timestamp NULL,
+                                          status varchar NULL,
+                                          stage varchar NULL,
+                                          consumed_on_ts timestamp NULL,
+                                          root_pipeline_id int8 NULL,
+                                          tenant_id int8 NULL,
+                                          sub_batch_id text NULL,
+                                          sub_batch_split_id int8 NULL,
+                                          lower_bound_paper_no int4 NULL,
+                                          upper_bound_paper_no int4 NULL,
+                                          model_name varchar null
+                                      );
+
+
+
+
+                  CREATE TABLE IF NOT EXISTS paper_filter.paper_wise_filter_config(
+                    tenant_id int8 NULL,
+                    created_on timestamp NULL,
+                    last_updated_on timestamp NULL,
+                    root_processor varchar NULL,
+                    min_page int4 NULL,
+                    max_page int4 NULL,
+                    model_id int4 NULL
+                  );
+
+                   CREATE TABLE IF NOT EXISTS ${temp_schema_name}.agentic_paper_level_score_${init_process_id.process_id} (
+                                        id bigserial NOT NULL,
+                                        origin_id varchar NULL,
+                                        paper_no int4 NULL,
+                                        root_pipeline_id int8 NULL,
+                                        batch_id varchar NULL,
+                                        tenant_id int8 NULL,
+                                        group_id int4 NULL,
+                                        is_candidate_paper text NULL,
+                                        paper_level_score int8 NULL
+                                    );
+
+                                    CREATE TABLE IF NOT EXISTS paper_filter.agentic_entity_level_score_audit (
+                                                          id bigserial NOT NULL,
+                                                          origin_id varchar NULL,
+                                                          paper_no int4 NULL,
+                                                          root_pipeline_id int8 NULL,
+                                                          batch_id varchar NULL,
+                                                          tenant_id int8 NULL,
+                                                          group_id int4 NULL,
+                                                          sor_container_id int8 NULL,
+                                                          container_name text NULL,
+                                                          container_value text NULL,
+                                                          is_candidate_paper text NULL
+                                                      );
+
+                                                      CREATE TABLE IF NOT EXISTS paper_filter.agentic_paper_level_score_audit (
+                                                          id bigserial NOT NULL,
+                                                          origin_id varchar NULL,
+                                                          paper_no int4 NULL,
+                                                          root_pipeline_id int8 NULL,
+                                                          batch_id varchar NULL,
+                                                          tenant_id int8 NULL,
+                                                          group_id int4 NULL,
+                                                          is_candidate_paper text NULL,
+                                                          paper_level_score int8 NULL
+                                                      );
+
+                                                      CREATE TABLE IF NOT EXISTS ${temp_schema_name}.agentic_entity_level_score_${init_process_id.process_id} (
+                                                                            id bigserial NOT NULL,
+                                                                            origin_id varchar NULL,
+                                                                            paper_no int4 NULL,
+                                                                            root_pipeline_id int8 NULL,
+                                                                            batch_id varchar NULL,
+                                                                            tenant_id int8 NULL,
+                                                                            group_id int4 NULL,
+                                                                            sor_container_id int8 NULL,
+                                                                            container_name text NULL,
+                                                                            container_value text NULL,
+                                                                            is_candidate_paper text NULL,
+                                                                            file_path varchar NULL
+                                                                        );
+
+                    CREATE TABLE IF NOT EXISTS paper_filter.paper_wise_filter_output_audit (
+                                                            id serial4 NOT NULL,
+                                                            process_id int8 NULL,
+                                                            tenant_id int8 NULL,
+                                                            template_id varchar NULL,
+                                                            group_id int4 NULL,
+                                                            batch_id varchar NOT NULL,
+                                                            origin_id varchar NULL,
+                                                            paper_no int4 NULL,
+                                                            file_path varchar NULL,
+                                                            file_name varchar NULL,
+                                                            extracted_text varchar NULL,
+                                                            status varchar NULL,
+                                                            stage varchar NULL,
+                                                            message varchar NULL,
+                                                            template_name varchar NULL,
+                                                            is_blank_page varchar NULL,
+                                                            created_on timestamp NULL,
+                                                            last_updated_on timestamp NULL,
+                                                            root_pipeline_id int8 NULL,
+                                                            model_name varchar NULL,
+                                                            model_version varchar NULL,
+                                                            request text NULL,
+                                                            response text NULL,
+                                                            endpoint varchar NULL,
+                                                            container_name varchar NULL,
+                                                            container_value varchar NULL,
+                                                            container_id int8 NULL,
+                                                            prompt_type varchar NULL
+                                                        );
+
+                 CREATE TABLE IF NOT EXISTS ${temp_schema_name}.agentic_range_paper_filter_chrono_clash_input_${init_process_id.process_id} (
+                     root_pipeline_id int8 NOT NULL,
+                     created_on timestamp NULL,
+                     updated_on timestamp NULL,
+                     batch_id varchar NOT NULL,
+                     group_id int4 NULL,
+                     origin_id varchar NOT NULL,
+                     tenant_id int8 NOT NULL,
+                     time_frame int4 NULL,
+                     stage varchar NULL,
+                     status varchar NULL,
+                     transaction_id varchar NOT NULL,
+                     downloaded_time timestamp NULL,
+                     remaining_time interval NULL,
+                     CONSTRAINT agentic_range_paper_filter_chrono_clash_input_${init_process_id.process_id}_pk PRIMARY KEY (origin_id,tenant_id,root_pipeline_id,transaction_id)
+                 );
+			"} on-condition if "${paper.range.filter.activator}"=="true"
+
+    }
+ catch{
+
+ }
+ finally{
+ }
+
+}

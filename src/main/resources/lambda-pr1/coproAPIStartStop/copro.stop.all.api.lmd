@@ -1,0 +1,125 @@
+process "copro.stop.all.api"
+{
+	try{
+
+		coproStop as "Calling paper itemization copro stop action" for "PAPER_ITEMIZATION"
+		copro-server-url "${copro.paper.itemization.admin.stop.url}"
+		process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+		using
+		{"
+				gunicorn
+		"} on-condition if "${paper.itemization.stop.action}"=="true"
+
+		coproStop as "Calling auto rotation copro stop action" for "AUTO_ROTATION"
+		copro-server-url "${copro.auto.rotation.admin.stop.url}"
+		process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+		using
+		{"
+				gunicorn
+		"}on-condition if "${auto.rotation.stop.action}"=="true"
+
+
+		coproStop as "Calling text extraction copro stop action" for "TEXT_EXTRACTION"
+		copro-server-url "${copro.text.extraction.admin.stop.url}"
+		process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+		using
+		{"
+				gunicorn
+		"} "${text.extraction.stop.action}"=="true"
+
+		coproStop as "Calling zero shot classifier copro stop action" for "ZERO_SHOT_CLASSIFIER"
+		copro-server-url "${copro.zero.shot.admin.stop.url}"
+		process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+		using
+		{"
+				gunicorn
+		"} on-condition if "${zero.shot.stop.action}"=="true"
+
+		coproStop as "Calling phrase match copro stop action" for "PHRASE_MATCH"
+		copro-server-url "${copro.phrase.match.admin.stop.url}"
+		process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+		using
+		{"
+				gunicorn
+
+		"} on-condition if "${phrase.match.stop.action}"=="true"
+
+
+		coproStop as "Calling UT classifier copro stop action" for "UT_CLASSIFIER"
+		copro-server-url "${copro.ut.classifier.admin.stop.url}"
+		process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+		using
+		{"
+				gunicorn
+
+		"}on-condition if "${ut.classifier.stop.action}"=="true"
+
+
+		coproStop as "Calling UT checkbox copro stop action" for "UT_CHECKBOX"
+		copro-server-url "${copro.ut.checkbox.admin.stop.url}"
+		process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+		using
+		{"
+				gunicorn
+
+		"}on-condition if "${ut.checkbox.stop.action}"=="true"
+
+
+
+
+		coproStop as "Calling paper classification copro stop action" for "PAPER_CLASSIFICATION"
+		copro-server-url "${copro.paper.classification.admin.stop.url}"
+		process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+		using
+		{"
+				gunicorn
+
+		"}on-condition if "${paper.classification.stop.action}"=="true"
+
+
+
+		coproStop as "Calling qr extraction copro stop action" for "QR_EXTRACTION"
+		copro-server-url "${copro.qr.extraction.admin.stop.url}"
+		process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+		using
+		{"
+				gunicorn
+
+		"}on-condition if "${qr.extraction.stop.action}"=="true"
+
+
+		coproStop as "Calling valuation copro stop action" for "VALUATION"
+		copro-server-url "${copro.valuation.admin.stop.url}"
+		process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+		using
+		{"
+				gunicorn
+		"} on-condition if "${valuation.stop.action}"=="true"
+
+		coproStop as "Calling validation copro stop action" for "VALIDATION"
+		copro-server-url "${copro.validation.admin.stop.url}"
+		process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+		using
+		{"
+				gunicorn
+
+		"} on-condition if "${validation.stop.action}"=="true"
+
+		coproStop as "Calling merger copro stop action" for "MERGER"
+		copro-server-url "${copro.merger.admin.stop.url}"
+		process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+		using
+		{"
+				gunicorn
+
+		"} on-condition if "${merger.stop.action}"=="true"
+
+	}
+	catch{
+
+
+	}
+	finally{
+
+	}
+}

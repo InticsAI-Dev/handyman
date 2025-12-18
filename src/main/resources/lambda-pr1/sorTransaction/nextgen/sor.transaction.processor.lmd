@@ -1,0 +1,362 @@
+process "sor.transaction.processor"
+{
+    try{
+
+        transform as "Insert into chrono-clash file wise input table using the common time interval for nextgen sor-transaction" on "intics_zio_db_conn" using {"
+            INSERT INTO ${temp_schema_name}.nextgen_sor_transaction_chrono_clash_input_${init_process_id.process_id}
+            (root_pipeline_id, created_on, updated_on, batch_id, group_id, origin_id, tenant_id, time_frame, stage, status, transaction_id, downloaded_time, remaining_time)
+            SELECT stpq.root_pipeline_id, now(), now(), stpq.batch_id, stpq.group_id, stpq.origin_id, stpq.tenant_id,
+            ${chronoclash.threshold.time} AS time_frame,
+            'SOR_TRANSACTION' AS stage,
+            CASE
+                WHEN now() - soo.file_downloaded_time >= (${chronoclash.threshold.time} * interval '1 minute')
+                     AND '${chronoclash.activator}' = 'true' AND POSITION('SOR_TRANSACTION_NEXT_GEN' IN '${chronoclash.stage.controller}') > 0
+                THEN 'ABORTED'
+                ELSE 'IN_PROGRESS'
+            END AS status,
+            soo.transaction_id,
+            soo.file_downloaded_time as downloaded_time,
+            ((${chronoclash.threshold.time} * interval '1 minute') - (now() - soo.file_downloaded_time)) as remaining_time
+            FROM sor_transaction.sor_transaction_payload_queue stpq
+            JOIN ${temp_schema_name}.downloaded_asset_source_details_${init_process_id.process_id} soo on soo.root_pipeline_id = stpq.root_pipeline_id and soo.origin_id = stpq.origin_id
+            WHERE stpq.batch_id='${batch_id}' and stpq.tenant_id =${tenant_id} and stpq.stage ='SOR_TRANSACTION' and stpq.status = 'STAGED';
+        "} on-condition if "${chronoclash.specific.time.interval.enabler}" == "false"
+
+        transform as "Insert into chrono-clash file wise input table using the specific time interval for nextgen sor-transaction" on "intics_zio_db_conn" using {"
+            INSERT INTO ${temp_schema_name}.nextgen_sor_transaction_chrono_clash_input_${init_process_id.process_id}
+            (root_pipeline_id, created_on, updated_on, batch_id, group_id, origin_id, tenant_id, time_frame, stage, status, transaction_id, downloaded_time, remaining_time)
+            SELECT stpq.root_pipeline_id, now(), now(), stpq.batch_id, stpq.group_id, stpq.origin_id, stpq.tenant_id,
+            CASE
+                WHEN (CURRENT_TIME BETWEEN scti.start_time_frame::time AND scti.end_time_frame::time)
+                THEN scti.time_frame
+                ELSE ${chronoclash.threshold.time}
+            END AS time_frame,
+            'SOR_TRANSACTION' AS stage,
+            CASE
+                WHEN now() - soo.file_downloaded_time >= ((time_frame) * interval '1 minute') AND '${chronoclash.activator}' = 'true' AND POSITION('SOR_TRANSACTION_NEXT_GEN' IN '${chronoclash.stage.controller}') > 0
+                THEN 'ABORTED'
+                ELSE 'IN_PROGRESS'
+            END AS status,
+            soo.transaction_id,
+            soo.file_downloaded_time as downloaded_time,
+            ((time_frame * interval '1 minute') - (now() - soo.file_downloaded_time)) as remaining_time
+            FROM sor_transaction.sor_transaction_payload_queue stpq
+            JOIN ${temp_schema_name}.downloaded_asset_source_details_${init_process_id.process_id} soo on soo.root_pipeline_id = stpq.root_pipeline_id and soo.origin_id = stpq.origin_id
+            JOIN config.spw_chrono_clash_time_interval scti on scti.tenant_id = stpq.tenant_id and scti.instance = '${root-pipeline-name}' and CURRENT_TIME BETWEEN scti.start_time_frame::time AND scti.end_time_frame::time
+            WHERE stpq.batch_id='${batch_id}' and stpq.tenant_id =${tenant_id} and stpq.stage ='SOR_TRANSACTION' and stpq.status = 'STAGED';
+        "} on-condition if "${chronoclash.specific.time.interval.enabler}" == "true"
+
+           transform as "update to in-progress sor transaction payload queue" on "intics_zio_db_conn" using
+           {"
+                UPDATE sor_transaction.sor_transaction_payload_queue as stpq
+                SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts='${time_stamp_sor_transaction.consumed_on_ts}', status=a.status
+                FROM ${temp_schema_name}.nextgen_sor_transaction_chrono_clash_input_${init_process_id.process_id} a
+                WHERE a.origin_id = stpq.origin_id and stpq.group_id ='${group_id}' AND stpq.status ='STAGED' AND stpq.stage ='SOR_TRANSACTION' and stpq.tenant_id = ${tenant_id} and stpq.batch_id = '${batch_id}';
+
+
+                UPDATE batching.sub_batching_process_payload_queue as stpq
+                SET status=a.status,  stage='SOR_TRANSACTION'
+                FROM ${temp_schema_name}.nextgen_sor_transaction_chrono_clash_input_${init_process_id.process_id} a
+                WHERE a.origin_id = stpq.origin_id and stpq.group_id='${group_id}' and stpq.batch_id ='${batch_id}' and stpq.tenant_id = ${tenant_id};
+
+                update ingestion.pipeline_queue_status_audit as stpq
+                set status = a.status, consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                FROM ${temp_schema_name}.nextgen_sor_transaction_chrono_clash_input_${init_process_id.process_id} a
+                WHERE a.origin_id = stpq.origin_id and stpq.group_id=${group_id} and stpq.batch_id='${batch_id}' and stpq.tenant_id =${tenant_id} and stpq.stage ='SOR_TRANSACTION' ;
+
+                UPDATE info.transaction
+                SET transaction_status='IN_PROGRESS'
+                WHERE transaction_id='${transaction_id}' and tenant_id=${tenant_id};
+
+                INSERT INTO sor_transaction.sor_transaction_pipeline_audit
+                (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+                SELECT stpq.group_id, now(), stpq.tenant_id, stpq.tenant_id, stpq.tenant_id, 'STARTED', 'SOR_TRANSACTION', 'Sor transaction process started for group_id ${group_id}', stpq.root_pipeline_id, stpq.batch_id
+                FROM sor_transaction.sor_transaction_payload_queue stpq
+                JOIN ${temp_schema_name}.nextgen_sor_transaction_chrono_clash_input_${init_process_id.process_id} a ON a.origin_id = stpq.origin_id AND a.tenant_id = stpq.tenant_id
+                WHERE stpq.status = a.status and stpq.group_id='${group_id}' and stpq.tenant_id = ${tenant_id} and stpq.batch_id = '${batch_id}';
+           "} on-condition if "true"=="true"
+
+           assign as "kvp_target_directory" source "intics_zio_db_conn" using
+           {"
+                SELECT concat('${gen_directory.current_directory}','/kvp_transaction/') as target_directory_path;
+          "} on-condition if "true"=="true"
+
+            assign as "voting" source "intics_zio_db_conn" using
+            {"
+                SELECT (CASE WHEN '${voting.activator}' = 'false' AND '${voting.multi.value.line.item.activator}' = 'true' then 'true' else 'false' end) as multi_value_sor_item;
+            "}on-condition if "true"=="true"
+
+            assign as "pipeline_train_mode" source "intics_zio_db_conn" using
+              {"
+                      select  (case when '${printed.start.action}'='true' AND '${pipeline.train.mode}'='true' then 'true' else 'false' end) as vqa_printed;
+                      select  (case when '${handwritten.start.action}'='true' AND '${pipeline.train.mode}'='true' then 'true' else 'false' end) as vqa_handwritten;
+                      select  (case when '${validation.start.action}'='true' AND '${pipeline.train.mode}'='true' then 'true' else 'false' end) as valuation;
+              "}on-condition if "true"=="true"
+
+            assign as "voting" source "intics_zio_db_conn" using
+            {"
+                SELECT (CASE WHEN '${voting.activator}' = 'true' AND '${voting.v1.activator}' = 'true' then 'true' else 'false' end) as voting_v1;
+                SELECT (CASE WHEN '${voting.activator}' = 'true' AND '${voting.v2.activator}' = 'true' then 'true' else 'false' end) as voting_v2;
+                SELECT (CASE WHEN '${voting.activator}' = 'true' AND '${voting.v3.activator}' = 'true' then 'true' else 'false' end) as voting_v3;
+            "}on-condition if "true"=="true"
+
+
+              assign as "multiverse.bootstraping" source "intics_zio_db_conn" using
+            {"
+                    select  (case
+                                 when '${multiverse.activator}'='true' AND '${document.type.enable.activator}'='false' then 'true'
+                                 when '${multiverse.activator}'='true' AND '${document.type.enable.activator}'='true' then 'true'
+                                 else 'false' end) as activator;
+
+            "}on-condition if "true"=="true"
+
+           assign as "gen_table_name" source "intics_zio_db_conn" using
+           {"
+                 SELECT lower(replace('sor_transaction_temp_tqa_synonym_${init_process_id.process_id}_${tenant_id}_${group_id}','-','_')) as tqa_x_synonym_table_name;
+                 SELECT lower(replace('docnet_attribution_response_${init_process_id.process_id}','-','_')) as docnet_attribution_response;
+           "} on-condition if "true"=="true"
+
+          assign as "llm_based_activator" source "intics_zio_db_conn" using
+          {"
+              select  (case when '${prompt.based.activator}'='true' AND '${radon.prompt.activator}'='true' then 'true' else 'false' end) as radon_activator;
+              select  (case when '${prompt.based.activator}'='true' AND '${neon.prompt.activator}'='true' then 'true' else 'false' end) as neon_activator;
+          "} on-condition if "true"=="true"
+
+
+
+             callprocess as "calling kvp input generation lambda"
+             with-target "sor.transaction.kvp.legacy"
+             from-file "${basepath}/sorTransaction/nextgen/archive/sor.transaction.kvp.legacy.lmd"
+             using "intics_zio_db_conn"
+             for-every {"
+                      SELECT '${group_id}' as group_id;
+             "} on-condition if "${prompt.based.activator}"=="false"
+
+
+              callprocess as "calling radon kvp pipeline lambda"
+              with-target "sor.transaction.radon.kvp"
+              from-file "${basepath}/sorTransaction/nextgen/sor.transaction.radon.kvp.lmd"
+              using "intics_zio_db_conn"
+              for-every {"
+                       SELECT '${group_id}' as group_id;
+              "} on-condition if "${llm_based_activator.radon_activator}"=="true"
+
+
+                callprocess as "calling neon kvp pipeline lambda"
+                with-target "sor.transaction.neon.kvp"
+                from-file "${basepath}/sorTransaction/nextgen/archive/sor.transaction.neon.kvp.lmd"
+                using "intics_zio_db_conn"
+                for-every {"
+                         SELECT '${group_id}' as group_id;
+                "} on-condition if "${llm_based_activator.neon_activator}"=="none"
+
+           transform as "insert audit for sortransaction" on "intics_zio_db_conn" using
+           {"
+                 INSERT INTO sor_transaction.sor_transaction_pipeline_audit
+                 (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+                 VALUES('${group_id}', now(), '${created_user_id}', '${created_user_id}', ${tenant_id}, 'COMPLETED', 'SOR_TRANSACTION', 'Sor transaction insert into vqa transaction finished ${group_id}', '${gen_id.root_pipeline_id}', '${batch_id}');
+           "} on-condition if "true"=="true"
+
+
+            transform as "update to completed sor transaction payload queue" on "intics_zio_db_conn" using
+            {"
+                  INSERT INTO sor_transaction.sor_transaction_pipeline_audit
+                  (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+                  VALUES('${group_id}', now(), '${created_user_id}', '${created_user_id}', ${tenant_id}, 'COMPLETED', 'AGGREGATOR', 'aggregation completed for the files with group_id ${group_id}', '${gen_id.root_pipeline_id}', '${batch_id}');
+
+                  UPDATE sor_transaction.sor_transaction_payload_queue
+                  SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts='${time_stamp_sor_transaction.consumed_on_ts}', status='COMPLETED'
+                  WHERE group_id ='${group_id}' AND status ='IN_PROGRESS'
+                  AND stage ='SOR_TRANSACTION' AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                  update ingestion.pipeline_queue_status_audit as a
+                  set status = 'COMPLETED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                  where  a.group_id=${group_id}
+                  and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='SOR_TRANSACTION' and a.status='IN_PROGRESS' ;
+
+					UPDATE batching.sub_batching_process_payload_queue a
+					 SET status='COMPLETED',  stage='SOR_TRANSACTION'
+					 WHERE a.group_id='${group_id}'  and a.batch_id ='${batch_id}'
+					 and a.tenant_id = ${tenant_id} and a.root_pipeline_id='${gen_id.root_pipeline_id}';
+
+            "} on-condition if "true"=="true"
+
+    }
+    catch{
+            transform as "Insert to failed sor transaction audit queue" on "intics_zio_db_conn" using
+            {"
+
+                    UPDATE sor_transaction.sor_transaction_payload_queue
+                    SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts='${time_stamp_sor_transaction.consumed_on_ts}', status='FAILED'
+                    WHERE group_id ='${group_id}' AND status ='IN_PROGRESS'
+                    AND stage ='SOR_TRANSACTION' AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                    update ingestion.pipeline_queue_status_audit as a
+                    set status = 'FAILED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                    where  a.group_id=${group_id}
+                    and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='SOR_TRANSACTION' and status='IN_PROGRESS' ;
+
+
+					UPDATE batching.sub_batching_process_payload_queue a
+					 SET status='FAILED',  stage='SOR_TRANSACTION'
+					 WHERE a.group_id='${group_id}'  and a.batch_id ='${batch_id}'
+					 and a.tenant_id = ${tenant_id} and a.root_pipeline_id='${gen_id.root_pipeline_id}';
+
+            "} on-condition if "true"=="true"
+    }
+    finally{
+
+            transform as "Insert to failed sor transaction audit queue" on "intics_zio_db_conn" using
+            {"
+                    UPDATE sor_transaction.sor_transaction_payload_queue
+                    SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts='${time_stamp_sor_transaction.consumed_on_ts}', status='FAILED'
+                    WHERE group_id ='${group_id}' AND status ='IN_PROGRESS'
+                    AND stage ='SOR_TRANSACTION' AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                    update ingestion.pipeline_queue_status_audit as a
+                    set status = 'FAILED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                    where  a.group_id=${group_id}
+                    and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='SOR_TRANSACTION' and status='IN_PROGRESS';
+
+            "} on-condition if "true"=="true"
+
+            transform as "insert into pipeline summary audit sor transaction Radon pipeline" on "intics_zio_db_conn" using
+            {"
+                 INSERT INTO ${temp_schema_name}.summary_audit_papers_${process-id}
+                 (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken, root_pipeline_id, tenant_id, batch_id)
+                   SELECT ${process-id} ,
+                           'SOR_TRANSACTION' ,
+                           'KVP_MACRO',
+                            coalesce (count(DISTINCT CASE WHEN B.status='COMPLETED' THEN concat(b.origin_id,'_',b.paper_no) WHEN B.status='ABSENT' THEN concat(b.origin_id,'_',b.paper_no) END),0) ,
+                            coalesce (count(DISTINCT CASE WHEN B.status='FAILED' THEN concat(b.origin_id,'_',b.paper_no) END),0),
+                            min(B.created_on),
+                            max(b.last_updated_on),
+                            EXTRACT(epoch FROM (max(B.last_updated_on)-min(B.created_on))),
+                             b.root_pipeline_id,
+                             b.tenant_id as tenant_id,
+                             b.batch_id as batch_id
+                  FROM ${temp_schema_name}.vqa_transaction_${init_process_id.process_id} b
+                  WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}'
+                  group by b.root_pipeline_id,b.tenant_id,b.batch_id;
+
+                 INSERT INTO ${temp_schema_name}.summary_audit_files_${process-id}
+                 (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken, root_pipeline_id, tenant_id, batch_id)
+                    SELECT ${process-id} ,
+                            'SOR_TRANSACTION' ,
+                            'KVP_MACRO',
+                            coalesce (sum(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END),0) ,
+                            coalesce (sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END),0),
+                            min(created_on),
+                            max(consumed_on_ts),
+                            EXTRACT(epoch FROM (max(consumed_on_ts)-min(created_on))),
+                            root_pipeline_id,
+                            tenant_id,
+                            batch_id
+                      FROM sor_transaction.sor_transaction_payload_queue
+                      WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}'
+                      group by batch_id,root_pipeline_id,tenant_id;
+
+
+                 INSERT INTO audit.pipeline_summary_audit
+                 (process_id, created_on, module_name, macro_process, files_processed_count,papers_processed_count,files_failed_count,papers_failed_count,start_time,end_time, time_taken, group_id, root_pipeline_id, created_user_id, template_id, tenant_id,average_time, batch_id )
+                 SELECT
+                    msaf.process_id ,
+                    now(),
+                    msaf.module_name ,
+                    msaf.macro_process ,
+                    msaf.completed_count,
+                    msap.completed_count,
+                    msaf.failed_count,
+                    msap.failed_count,
+                    msap.min_created_on,
+                    msap.max_created_on,
+                    EXTRACT(epoch FROM (msap.max_created_on-msap.min_created_on)),
+                   '${group_id}',
+                   '${gen_id.root_pipeline_id}',
+                   '${created_user_id}',
+                   '${document_id}',
+                   ${tenant_id},
+                   (CASE WHEN (msaf.completed_count+msaf.failed_count)=0 THEN msaf.time_taken WHEN (msaf.time_taken/(msaf.completed_count+msaf.failed_count))=0 THEN msaf.time_taken ELSE (msaf.time_taken/(msaf.completed_count+msaf.failed_count)) END),
+                   msaf.batch_id
+                 FROM ${temp_schema_name}.summary_audit_files_${process-id} msaf,
+                 ${temp_schema_name}.summary_audit_papers_${process-id} msap
+                 WHERE msaf.module_name=msap.module_name AND msaf.macro_process=msap.macro_process AND msaf.batch_id=msap.batch_id AND
+                 msaf.module_name='SOR_TRANSACTION'
+                 AND msaf.macro_process='KVP_MACRO' and msaf.tenant_id = ${tenant_id} and msaf.batch_id = '${batch_id}';
+
+         "} on-condition if "true"=="true"
+
+
+            transform as "Move to archive after completed" on "intics_zio_db_conn" using {"
+
+                INSERT INTO sor_transaction.sor_transaction_payload_queue_archive
+                (producer_process_id, consumer_process_id, origin_id,group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, batch_id)
+                SELECT producer_process_id, consumer_process_id, origin_id, group_id, created_on, status, stage,consumed_on_ts, root_pipeline_id, ${tenant_id}, batch_id
+                FROM sor_transaction.sor_transaction_payload_queue
+                where status='COMPLETED' and stage='SOR_TRANSACTION'
+                AND group_id='${group_id}' and tenant_id = ${tenant_id}
+                and batch_id = '${batch_id}';
+
+                  INSERT INTO sor_validation.sor_validation_payload_queue (producer_process_id, origin_id, group_id, created_on, status, stage,
+                   root_pipeline_id, tenant_id, batch_id)
+                   SELECT
+                        a.producer_process_id,
+                        a.origin_id,
+                        a.group_id,
+                        NOW(),
+                        'STAGED',
+                        'SOR_VALIDATION',
+                        a.root_pipeline_id,
+                        a.tenant_id,
+                        a.batch_id
+                    FROM sor_transaction.sor_transaction_payload_queue a
+                    WHERE
+                        a.status = 'COMPLETED'
+                        AND a.tenant_id = ${tenant_id}
+                        AND a.group_id = '${gen_group_id.group_id}'
+                        AND a.batch_id = '${batch_id}'
+                        AND '${sor.validation.main.activator}' = 'true';
+
+                        INSERT INTO ingestion.pipeline_queue_status_audit
+                        (producer_process_id, consumer_process_id, origin_id,batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, origin_type)
+                        select producer_process_id, consumer_process_id, origin_id, batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, '${origin_type}'
+                        from sor_validation.sor_validation_payload_queue
+                        where group_id =${group_id} and batch_id='${batch_id}' and tenant_id =${tenant_id};
+
+                Delete from sor_transaction.sor_transaction_payload_queue
+             where status='COMPLETED' and stage='SOR_TRANSACTION' AND group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+            "} on-condition if "true"=="true"
+
+            transform as "Move to archive after failed" on "intics_zio_db_conn" using {"
+                    INSERT INTO sor_transaction.sor_transaction_payload_error_queue
+                    (producer_process_id, consumer_process_id, origin_id,group_id, created_on, status, stage, message, consumed_on_ts, root_pipeline_id, tenant_id, batch_id)
+                    SELECT producer_process_id, consumer_process_id,origin_id, group_id, created_on, status, stage, 'sor_transaction Processor failed for group_id ${group_id}',consumed_on_ts, root_pipeline_id, ${tenant_id}, batch_id
+                    FROM sor_transaction.sor_transaction_payload_queue
+                    where status='FAILED' AND group_id='${group_id}' AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                    Delete from sor_transaction.sor_transaction_payload_queue
+                    where status='FAILED' and stage='SOR_TRANSACTION' AND group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                    INSERT INTO sor_transaction.sor_transaction_payload_error_queue
+                    (producer_process_id, consumer_process_id, origin_id,group_id, created_on, status, stage, message, consumed_on_ts, root_pipeline_id, tenant_id, batch_id)
+                    SELECT producer_process_id, consumer_process_id,origin_id, group_id, created_on, status, stage, 'sor_transaction next_gen stage aborted batch_id=${batch_id} | root_pipeline_id=${root_pipeline_id} | group_id=${group_id} | transaction_id=${transaction_id} | reason=execution time exceeded the threshold limit',consumed_on_ts, root_pipeline_id, ${tenant_id}, batch_id
+                    FROM sor_transaction.sor_transaction_payload_queue
+                    where status='ABORTED' AND group_id='${group_id}' AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                    Delete from sor_transaction.sor_transaction_payload_queue
+                    where status='ABORTED' and stage='SOR_TRANSACTION' AND group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+            "} on-condition if "true"=="true"
+
+         transform as "update chronoclash audit form temporary tables" on "intics_zio_db_conn" using
+         {"
+              UPDATE chrono_clash.chrono_clash_audit as cca
+              SET updated_on=now(), stage='SOR_TRANSACTION', status=ppq.status, remaining_time=((a.time_frame * interval '1 minute') - (now() - a.downloaded_time))
+              FROM ${temp_schema_name}.nextgen_sor_transaction_chrono_clash_input_${init_process_id.process_id} a
+              JOIN sor_transaction.sor_transaction_payload_error_queue ppq ON ppq.origin_id = a.origin_id AND ppq.tenant_id = a.tenant_id
+              WHERE cca.origin_id = a.origin_id and a.group_id=${group_id} and a.tenant_id = ${tenant_id} and a.batch_id ='${batch_id}';
+
+        "}  on-condition if "${chronoclash.activator}"=="true"
+
+    }
+}
+

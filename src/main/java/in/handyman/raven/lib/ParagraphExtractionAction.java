@@ -20,12 +20,9 @@ import java.util.Optional;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 
-import in.handyman.raven.lib.model.currency.detection.CurrencyDetectionConsumerProcess;
-import in.handyman.raven.lib.model.currency.detection.CurrencyDetectionInputQuerySet;
-import in.handyman.raven.lib.model.currency.detection.CurrencyDetectionOutputQuerySet;
-import in.handyman.raven.lib.model.paragraph.detection.ParagraphExtractionConsumerProcess;
-import in.handyman.raven.lib.model.paragraph.detection.ParagraphQueryInputTable;
-import in.handyman.raven.lib.model.paragraph.detection.ParagraphQueryOutputTable;
+import in.handyman.raven.lib.services.detection.ParagraphExtractionConsumerProcess;
+import in.handyman.raven.lib.services.detection.ParagraphQueryInputTable;
+import in.handyman.raven.lib.services.detection.ParagraphQueryOutputTable;
 import okhttp3.MediaType;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;

@@ -1,0 +1,77 @@
+process "data.shield.processor"
+{
+    try{
+
+            assign as "gen_database_backup_dir" source "intics_zio_db_conn" using
+            {"
+                SELECT replace(CONCAT('${backup_directory_path}', '/tenant_${tenant_id}/', 'database_backup_dir/'),'//','/') AS database_backup_dir;
+            "} on-condition if "true"=="true"
+
+            createDirectory as "creating_directory" using
+            {"
+            ${gen_database_backup_dir.database_backup_dir}
+            "} on-condition if "true"=="true"
+
+            transform as "input insert for the database backup pipeline" on "intics_zio_db_conn" using {"
+                INSERT INTO ${temp_schema_name}.table_backup_input_${init_process_id.process_id}
+                (backup_schema_list, restricted_schema_list, db_backup_dir_path, tenant_id, group_id, root_pipeline_id, process_id)
+                SELECT '${backup.schema.list}' AS backup_schema_list,
+                '${restricted.schema.list}' AS restricted_schema_list,
+                '${gen_database_backup_dir.database_backup_dir}' AS db_backup_dir_path,
+                ${tenant_id} AS tenant_id, 1 AS group_id,
+                '${init_process_id.process_id}' AS root_pipeline_id, '${init_process_id.process_id}' AS process_id;
+            "} on-condition if "true"=="true"
+
+             transform as "input insert for the database truncate pipeline" on "intics_zio_db_conn" using {"
+                INSERT INTO ${temp_schema_name}.table_truncate_input_${init_process_id.process_id}
+                (truncate_schema_list, exclude_table_with_schema_list, tenant_id, group_id, root_pipeline_id, process_id)
+                SELECT '${truncate.schema.list}' AS truncate_schema_list,
+                '${exclude.table.list}' AS exclude_table_with_schema_list,
+                ${tenant_id} AS tenant_id, 1 AS group_id,
+                '${init_process_id.process_id}' AS root_pipeline_id, '${init_process_id.process_id}' AS process_id
+                ;
+            "} on-condition if "true"=="true"
+
+            dbBackupEase as "Calling database backup macro"
+            db-name "intics_zio_db_conn"
+            audit-table "sanitary_hub.db_data_backup_audit"
+            resource-conn "intics_zio_db_conn"
+            using  {"
+                SELECT backup_schema_list, restricted_schema_list, db_backup_dir_path as target_directory, tenant_id, group_id, root_pipeline_id, process_id
+                FROM ${temp_schema_name}.table_backup_input_${init_process_id.process_id} where tenant_id ='${tenant_id}' ;
+            "} on-condition if "true"=="true"
+
+            dbDataDart as "Calling database truncation macro"
+            db-name "${backup.database.name}"
+            audit-table "sanitary_hub.db_data_backup_audit"
+            resource-conn "intics_zio_db_conn"
+            using  {"
+                SELECT a.truncate_schema_list, a.exclude_table_with_schema_list, a.tenant_id, a.group_id, a.root_pipeline_id, a.process_id
+                FROM ${temp_schema_name}.table_truncate_input_${init_process_id.process_id} a
+                join sanitary_hub.db_data_backup_audit b on a.tenant_id = b.tenant_id and a.root_pipeline_id = b.root_pipeline_id
+                where b.db_backup_status='SUCCESS' and a.root_pipeline_id = ${init_process_id.process_id} and a.tenant_id ='${tenant_id}';
+            "} on-condition if "true"=="true"
+
+
+    } catch {
+
+
+    } finally {
+           transform as "insert into audit table for sanitary hub" on "intics_zio_db_conn" using
+           {"
+                INSERT INTO sanitary_hub.table_backup_input_audit
+                (backup_schema_list, restricted_schema_list, db_backup_dir_path, tenant_id, group_id, root_pipeline_id, process_id, task_id, process_name)
+                SELECT backup_schema_list, restricted_schema_list, db_backup_dir_path, tenant_id, group_id, root_pipeline_id, process_id, task_id, process_name
+                FROM ${temp_schema_name}.table_backup_input_${init_process_id.process_id};
+
+                INSERT INTO sanitary_hub.table_truncate_input_audit
+                (truncate_schema_list, exclude_table_with_schema_list, tenant_id, group_id, root_pipeline_id, process_id, task_id, process_name)
+                SELECT truncate_schema_list, exclude_table_with_schema_list, tenant_id, group_id, root_pipeline_id, process_id, task_id, process_name
+                FROM ${temp_schema_name}.table_truncate_input_${init_process_id.process_id};
+
+                TRUNCATE TABLE ${temp_schema_name}.table_truncate_input_${init_process_id.process_id} cascade;
+                TRUNCATE TABLE ${temp_schema_name}.table_backup_input_${init_process_id.process_id} cascade;
+            "} on-condition if "true"=="true"
+
+    }
+}

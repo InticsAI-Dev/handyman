@@ -1,0 +1,224 @@
+process "currency.detection.processor"
+{
+try{
+
+            assign as "currency_detection" source "intics_zio_db_conn"
+	        using{"
+	                SELECT now() as consumed_on_ts;
+	        "} on-condition if "true"=="true"
+
+            assign  as "currency_detection" source "intics_zio_db_conn" using
+            {"
+                    SELECT concat ('${target_directory_path}','/${tenant_id}','/${group_id}','/${process-id}','/currency-detection/') as directory;
+            "} on-condition if "true"=="true"
+
+            createDirectory as "creating_directory" using
+            {"
+                ${currency_detection.directory}
+            "} on-condition if "true"=="true"
+
+	        transform as "Update to in-progress in payload queue" on "intics_zio_db_conn"
+            using {"
+
+                UPDATE currency_detection.currency_detection_payload_queue
+                SET status='IN_PROGRESS', consumed_on_ts = '${currency_detection.consumed_on_ts}', consumer_process_id = '${init_process_id.process_id}'
+                WHERE group_id='${group_id}' AND status='STAGED' AND stage='CURRENCY_DETECTION' and tenant_id = ${tenant_id} and batch_id = '${batch_id}' ;
+
+
+                update ingestion.pipeline_queue_status_audit as a
+                set status = 'IN_PROGRESS' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                where  a.group_id=${group_id}
+                and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='CURRENCY_DETECTION' ;
+
+				UPDATE batching.sub_batching_process_payload_queue a
+				SET status='STAGED',  stage='CURRENCY_DETECTION'
+				WHERE a.group_id='${group_id}'
+				and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+
+                INSERT INTO currency_detection.currency_detection_pipeline_audit
+                (process_id, origin_id,group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id )
+                select ${init_process_id.process_id},origin_id,group_id, now(),
+                'STARTED', 'CURRENCY_DETECTION','Currency detection process STARTED for group_id ${group_id}','${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM currency_detection.currency_detection_payload_queue
+                WHERE status='IN_PROGRESS' AND stage='CURRENCY_DETECTION' AND group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+            "}on-condition if "true"=="true"
+
+            transform as "Insert into currency detection payload_input_table" on "intics_zio_db_conn"
+            using {"
+            insert into ${temp_schema_name}.currency_detection_payload_input_table_${init_process_id.process_id}(origin_id, preprocessed_file_id, paper_no, input_file_path, created_user_id, last_updated_user_id, tenant_id, template_id,
+            process_id, model_registry_id, group_id, root_pipeline_id, batch_id)
+            SELECT chk.origin_id as originId, soo.preprocessed_file_id as preprocessedFileId,soo.paper_no as paperNo, b.file_path as inputFilePath,
+            b.created_user_id  as createdUserId, b.last_updated_user_id  as lastUpdatedUserId,
+            b.tenant_id as tenantId,'${document_id}' as templateId, '${init_process_id.process_id}' as processId,123 as modelRegistryId, chk.group_id as groupId,
+            '${gen_id.root_pipeline_id}' as root_pipeline_id, soo.batch_id
+            from currency_detection.currency_detection_payload_queue chk
+            JOIN ${temp_schema_name}.source_of_truth_${init_process_id.process_id} soo on soo.origin_id =chk.origin_id
+            JOIN ${temp_schema_name}.asset_${init_process_id.process_id} b on b.file_id =soo.preprocessed_file_id
+            WHERE chk.status ='IN_PROGRESS' AND chk.group_id='${group_id}' and soo.tenant_id = ${tenant_id} and soo.batch_id = '${batch_id}';
+            "}on-condition if "true"=="true"
+
+            currencyDetection as "currency detection macro for group id ${group_id}"
+            output-dir "${currency_detection.directory}"
+            process-id "${process-id}"
+            copro-url "${copro.currency.detection.url}"
+            resource-conn "intics_zio_db_conn"
+            using {"
+
+                select origin_id,
+                       paper_no,
+                       input_file_path as file_path,
+                       tenant_id,
+                       template_id,
+                       process_id,
+                       group_id,
+                       root_pipeline_id,
+                       batch_id
+                 from ${temp_schema_name}.currency_detection_payload_input_table_${init_process_id.process_id}
+                 where group_id=${group_id} and batch_id = '${batch_id}';
+
+            "} on-condition if "true"=="true"
+
+            transform as "insert into audit table for currency detection" on "intics_zio_db_conn" using
+            {"
+                    insert into audit.process_audit_output
+                    (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint, paper_no, batch_id)
+                    select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint, ai.paper_no, '${batch_id}'
+                    from currency_detection.currency_detection_result ai
+                    where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id} and batch_id='${batch_id}'
+                    group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage, ai.paper_no
+            "}  on-condition if "true"=="true"
+
+
+            transform as "Update to completed in payload queue" on "intics_zio_db_conn"
+            using {"
+
+                UPDATE currency_detection.currency_detection_payload_queue a
+                SET status=b.status,stage=b.stage,  consumer_process_id = '${init_process_id.process_id}'
+                FROM currency_detection.currency_detection_result b
+                WHERE  a.origin_id=b.origin_id and a.status='IN_PROGRESS' and b.status='FAILED' AND a.group_id='${group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                UPDATE currency_detection.currency_detection_payload_queue a
+                SET status=b.status, consumer_process_id = '${init_process_id.process_id}'
+                FROM currency_detection.currency_detection_result b
+                WHERE  a.origin_id=b.origin_id and a.status='IN_PROGRESS' and b.status='COMPLETED' AND a.group_id='${group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+				update currency_detection.currency_detection_payload_queue
+                set status='FAILED'
+                where status='IN_PROGRESS' and group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+
+				UPDATE batching.sub_batching_process_payload_queue a
+				SET status='FAILED',  stage='CURRENCY_DETECTION'
+				WHERE a.group_id='${group_id}'
+				and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                INSERT INTO currency_detection.currency_detection_pipeline_audit
+                (process_id, origin_id,group_id, created_on, status, stage, message, root_pipeline_id, tenant_id, batch_id)
+                select ${init_process_id.process_id},origin_id,group_id, now(),
+                status, 'CURRENCY_DETECTION','currency detection process COMPLETED for group_id ${group_id}','${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM currency_detection.currency_detection_payload_queue
+                WHERE stage='CURRENCY_DETECTION' AND group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+            "}on-condition if "true"=="true"
+
+
+}
+catch{
+    transform as "Update to failed in payload queue" on "intics_zio_db_conn"
+               using {"
+
+                   UPDATE currency_detection.currency_detection_payload_queue
+                   SET status='FAILED',  consumer_process_id = '${init_process_id.process_id}'
+                   WHERE group_id='${group_id}' AND status='IN_PROGRESS' AND group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                   INSERT INTO currency_detection.currency_detection_pipeline_audit
+                   (process_id, origin_id,group_id, created_on, status, stage, message, root_pipeline_id, tenant_id, batch_id)
+                   select ${init_process_id.process_id},origin_id,group_id, now(),
+                   'FAILED', 'CURRENCY_DETECTION','currency detection FAILED for group_id ${group_id}','${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                   FROM currency_detection.currency_detection_payload_queue
+                   WHERE status='FAILED' AND stage='CURRENCY_DETECTION' AND group_id='${group_id}' AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+               "}on-condition if "true"=="true"
+}
+finally{
+
+	        transform as "insert into pipeline summary audit paper classification" on "intics_zio_db_conn" using {"
+                INSERT INTO ${temp_schema_name}.summary_audit_papers_${process-id}
+                (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken, root_pipeline_id, tenant_id, batch_id)
+                SELECT ${process-id} , 'CURRENCY_DETECTION' ,'CURRENCY_DETECTION',coalesce (sum(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END),0) ,coalesce (sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END),0),min(created_on),max(created_on), EXTRACT(epoch FROM (max(created_on)-min(created_on))),'${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM currency_detection.currency_detection_result
+                 WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}'
+                 group by batch_id;
+
+                INSERT INTO ${temp_schema_name}.summary_audit_files_${process-id}
+                (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken, root_pipeline_id, tenant_id, batch_id)
+                SELECT ${process-id} , 'CURRENCY_DETECTION' ,'CURRENCY_DETECTION',coalesce (sum(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END),0) ,coalesce (sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END),0),min(created_on),max(created_on), EXTRACT(epoch FROM (max(created_on)-min(created_on))),'${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM currency_detection.currency_detection_payload_queue
+                WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}'
+                group by batch_id;
+
+                INSERT INTO audit.pipeline_summary_audit
+                (process_id, created_on, module_name, macro_process, files_processed_count,papers_processed_count,files_failed_count,papers_failed_count,start_time,end_time, time_taken, group_id, root_pipeline_id, created_user_id, template_id, tenant_id,average_time)
+                SELECT msaf.process_id ,now(),msaf.module_name ,msaf.macro_process ,msaf.completed_count,msap.completed_count,msaf.failed_count,msap.failed_count,msap.min_created_on,msap.max_created_on, EXTRACT(epoch FROM (msap.max_created_on-msap.min_created_on)),
+                '${group_id}','${gen_id.root_pipeline_id}','${created_user_id}','${document_id}',${tenant_id},(CASE WHEN (msaf.completed_count+msaf.failed_count)=0 THEN msaf.time_taken WHEN (msaf.time_taken/(msaf.completed_count+msaf.failed_count))=0 THEN msaf.time_taken ELSE (msaf.time_taken/(msaf.completed_count+msaf.failed_count)) END)
+                FROM ${temp_schema_name}.summary_audit_files_${process-id} msaf,
+                ${temp_schema_name}.summary_audit_papers_${process-id} msap
+                WHERE msaf.module_name=msap.module_name AND msaf.macro_process=msap.macro_process AND
+                msaf.module_name='CURRENCY_DETECTION'
+                AND msaf.macro_process='CURRENCY_DETECTION' and msaf.tenant_id = ${tenant_id} and msaf.batch_id = '${batch_id}';
+
+             "} on-condition if "true"=="true"
+
+
+	        transform as "moving to payload queue archive" on "intics_zio_db_conn"
+            using {"
+                        INSERT into currency_detection.currency_detection_payload_queue_archive (producer_process_id, consumer_process_id, origin_id,group_id, created_on, last_updated_on, status, stage, consumed_on_ts,root_pipeline_id, tenant_id, batch_id)
+                        SELECT producer_process_id, consumer_process_id, origin_id, group_id, created_on, last_updated_on,status, stage, consumed_on_ts,root_pipeline_id, ${tenant_id}, batch_id
+                        FROM currency_detection.currency_detection_payload_queue
+                        WHERE status='COMPLETED' and stage='CURRENCY_DETECTION'
+                        AND group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                        DELETE FROM currency_detection.currency_detection_payload_queue
+                        WHERE status='COMPLETED' and stage='CURRENCY_DETECTION'
+                         AND group_id='${group_id}' AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+            "}on-condition if "true"=="true"
+
+
+            transform as "moving to payload ERROR queue" on "intics_zio_db_conn"
+            using {"
+
+                update ingestion.pipeline_queue_status_audit as a
+                set status = 'COMPLETED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                where  a.group_id=${group_id}
+                and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='CURRENCY_DETECTION' ;
+
+                    INSERT into currency_detection.currency_detection_payload_error_queue(producer_process_id, consumer_process_id, origin_id,group_id, created_on,last_updated_on,status, stage, consumed_on_ts, root_pipeline_id, tenant_id, batch_id)
+                    SELECT producer_process_id, consumer_process_id, origin_id, group_id,created_on, last_updated_on,status, stage, consumed_on_ts, root_pipeline_id, ${tenant_id}, batch_id
+                    FROM currency_detection.currency_detection_payload_queue
+                    WHERE status='FAILED' and stage='CURRENCY_DETECTION'
+                    AND group_id='${group_id}' AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                    DELETE FROM currency_detection.currency_detection_payload_queue
+                    WHERE status='FAILED' and stage='CURRENCY_DETECTION'
+                     AND group_id='${group_id}' AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+            "}on-condition if "true"=="true"
+
+
+
+                transform as "insert the values into macro.currency_detection_input_table_audit" on "intics_zio_db_conn"
+                using {"
+
+                INSERT INTO macro.currency_detection_payload_input_table_audit
+                (origin_id, preprocessed_file_id, paper_no, input_file_path, created_user_id, last_updated_user_id, tenant_id, template_id,process_id, model_registry_id, group_id, root_pipeline_id,  batch_id)
+                SELECT origin_id, preprocessed_file_id, paper_no, input_file_path, created_user_id, last_updated_user_id, tenant_id, template_id, process_id, model_registry_id, group_id, root_pipeline_id, batch_id
+                FROM ${temp_schema_name}.currency_detection_payload_input_table_${init_process_id.process_id}
+                where batch_id='${batch_id}';
+
+                DELETE FROM ${temp_schema_name}.currency_detection_payload_input_table_${init_process_id.process_id} where batch_id='${batch_id}';
+
+                "}on-condition if "true"=="true"
+
+}
+
+}

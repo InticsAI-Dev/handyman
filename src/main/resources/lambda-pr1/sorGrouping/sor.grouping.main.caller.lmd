@@ -1,0 +1,108 @@
+process "sor.grouping.main.caller"
+{
+	try {
+
+			callprocess as "calling sor grouping processor "
+			with-target "sor.grouping.processor"
+			from-file "${basepath}/sorGrouping/sor.grouping.processor.lmd"
+			using "intics_zio_db_conn"
+			for-every {"
+					SELECT DISTINCT group_id,producer_process_id, origin_id, created_on, status, stage, batch_id
+					FROM sor_grouping.sor_grouping_payload_queue
+					WHERE status='STAGED' AND stage='SOR_GROUPING' and tenant_id = ${tenant_id} and group_id = '${gen_group_id.group_id}'and batch_id = '${batch_id}';
+			"} on-condition if "${eoc.splitting.main.activator}"=="true" on-parallel-fielding "${sor.grouping.iterator.threadcount}"
+
+            transform as "Insert into the voting.cummulative result" on "intics_zio_db_conn"
+            using {"
+		        INSERT INTO voting.cummulative_result
+                (created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, frequency, b_box, confidence_score, extracted_value, filter_score, group_id, maximum_score, origin_id, paper_no, question_id, root_pipeline_id, sor_item_name, synonym_id, tenant_id, model_registry, batch_id)
+                select created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, frequency, b_box, confidence_score, extracted_value, filter_score, group_id, maximum_score, origin_id, paper_no, question_id, root_pipeline_id, sor_item_name, synonym_id, tenant_id, model_registry, batch_id
+                from ${temp_schema_name}.cummulative_result_${process-id}
+                where batch_id='${batch_id}' and group_id='${group_id}' and tenant_id=${tenant_id};
+
+		    "} on-condition if "true"=="true"
+
+	}
+	catch{
+		transform as "Update to failed in sor grouping processor" on "intics_zio_db_conn" using {"
+		    UPDATE sor_grouping.sor_grouping_payload_queue
+		    SET status='FAILED'
+		    WHERE status IN ('IN_PROGRESS','STAGED') and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+		 "} on-condition if "true"=="true"
+
+	}
+	finally{
+
+			transform as "insert into pipeline summary audit sor grouping" on "intics_zio_db_conn" using {"
+                INSERT INTO ${temp_schema_name}.summary_audit_files_${process-id}
+                (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken, root_pipeline_id, tenant_id, batch_id)
+                SELECT ${process-id} , 'SOR_GROUPING' ,'SOR_GROUPING',coalesce (sum(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END),0) ,coalesce (sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END),0),min(consumed_on_ts),now(), EXTRACT(epoch FROM (now()-min(consumed_on_ts))),'${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}'
+                FROM sor_grouping.sor_grouping_payload_queue
+                WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}' ;
+
+                INSERT INTO audit.pipeline_summary_audit
+                (process_id, created_on, module_name, macro_process, files_processed_count,files_failed_count,start_time,end_time, time_taken, group_id, root_pipeline_id, created_user_id, template_id, tenant_id,average_time,papers_processed_count,papers_failed_count, batch_id )
+                SELECT msaf.process_id ,now(),msaf.module_name ,msaf.macro_process ,msaf.completed_count,msaf.failed_count,msaf.min_created_on,msaf.max_created_on, EXTRACT(epoch FROM (msaf.max_created_on-msaf.min_created_on)),
+                '${group_id}','${gen_id.root_pipeline_id}','${created_user_id}','${document_id}',${tenant_id},(CASE WHEN (msaf.completed_count+msaf.failed_count)=0 THEN msaf.time_taken WHEN (msaf.time_taken/(msaf.completed_count+msaf.failed_count))=0 THEN msaf.time_taken ELSE (msaf.time_taken/(msaf.completed_count+msaf.failed_count)) END)
+                ,0,0, msaf.batch_id
+                FROM ${temp_schema_name}.summary_audit_files_${process-id} msaf
+                WHERE msaf.module_name='SOR_GROUPING' AND msaf.macro_process='SOR_GROUPING' and msaf.tenant_id = ${tenant_id} and msaf.batch_id = '${batch_id}';
+			"} on-condition if "true"=="true"
+
+         transform as "update chronoclash audit form temporary tables" on "intics_zio_db_conn" using
+         {"
+                UPDATE chrono_clash.chrono_clash_audit as cca
+                SET updated_on=now(), stage='SOR_GROUPING', status=ppq.status, remaining_time=((a.time_frame * interval '1 minute') - (now() - a.downloaded_time))
+                FROM ${temp_schema_name}.grouping_chrono_clash_input_${init_process_id.process_id} a
+                JOIN sor_grouping.sor_grouping_payload_queue ppq ON ppq.origin_id = a.origin_id AND ppq.tenant_id = a.tenant_id
+                WHERE cca.origin_id = a.origin_id and a.group_id=${group_id} and a.tenant_id = ${tenant_id} and a.batch_id ='${batch_id}';
+
+                DROP TABLE IF EXISTS ${temp_schema_name}.grouping_chrono_clash_input_${init_process_id.process_id};
+         "}  on-condition if "${chronoclash.activator}"=="true"
+
+		transform as "Insert into sor grouping error queue as failed ${group_id}" on "intics_zio_db_conn" using
+        {"
+
+               update ingestion.pipeline_queue_status_audit as a
+               set status = 'COMPLETED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+               where  a.group_id=${group_id}
+               and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='SOR_GROUPING' and a.status = 'IN_PROGRESS';
+
+                INSERT INTO sor_grouping.sor_grouping_payload_error_queue
+                (producer_process_id, consumer_process_id, group_id, origin_id , created_on, status, stage, message, consumed_on_ts, root_pipeline_id, tenant_id, batch_id)
+                SELECT producer_process_id, consumer_process_id, group_id, origin_id, created_on, status, stage, 'Error insert into pahub patient instance', consumed_on_ts, root_pipeline_id, ${tenant_id}, batch_id
+                FROM sor_grouping.sor_grouping_payload_queue
+                 WHERE group_id='${group_id}' and status ='FAILED' and stage ='SOR_GROUPING' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                DELETE FROM sor_grouping.sor_grouping_payload_queue
+                WHERE group_id='${group_id}' and status ='FAILED'
+                and stage ='SOR_GROUPING' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                INSERT INTO sor_grouping.sor_grouping_payload_error_queue
+                (producer_process_id, consumer_process_id, group_id, origin_id , created_on, status, stage, message, consumed_on_ts, root_pipeline_id, tenant_id, batch_id)
+                SELECT producer_process_id, consumer_process_id, group_id, origin_id, created_on, status, stage, 'sor_grouping stage aborted batch_id=${batch_id} | root_pipeline_id=${root_pipeline_id} | group_id=${group_id} | transaction_id=${transaction_id} | reason=execution time exceeded the threshold limit', consumed_on_ts, root_pipeline_id, ${tenant_id}, batch_id
+                FROM sor_grouping.sor_grouping_payload_queue
+                 WHERE group_id='${group_id}' and status ='ABORTED' and stage ='SOR_GROUPING' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                DELETE FROM sor_grouping.sor_grouping_payload_queue
+                WHERE group_id='${group_id}' and status ='ABORTED'
+                and stage ='SOR_GROUPING' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+        "} on-condition if "true"=="true"
+
+
+        transform as "Insert into sor grouping payload queue archive as completed ${group_id}" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO sor_grouping.sor_grouping_payload_queue_archive
+                (producer_process_id, consumer_process_id, origin_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, batch_id)
+                SELECT producer_process_id, consumer_process_id, origin_id, group_id, created_on, status, stage , consumed_on_ts, root_pipeline_id, ${tenant_id}, '${batch_id}'
+                FROM sor_grouping.sor_grouping_payload_queue
+                WHERE group_id='${group_id}' and status ='COMPLETED'
+                and stage ='SOR_GROUPING' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                DELETE FROM sor_grouping.sor_grouping_payload_queue
+                WHERE group_id='${group_id}' and status ='COMPLETED'
+                and stage ='SOR_GROUPING' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+        "} on-condition if "true"=="true"
+	}
+}

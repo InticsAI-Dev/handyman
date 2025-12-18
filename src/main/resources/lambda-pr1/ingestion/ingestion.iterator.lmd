@@ -1,0 +1,105 @@
+process "ingestion.iterator"
+{
+	try{
+            transform as "Ingestion iterator started for inbound-id ${gen_group_id.inbound_id}" on "intics_zio_db_conn" using
+            {"
+                    INSERT INTO ingestion.ingestion_pipeline_audit
+                    (process_id, inbound_id, group_id, created_on, status, stage, message,root_pipeline_id, tenant_id)
+                    VALUES('${init_process_id.process_id}', '${gen_group_id.inbound_id}', '${gen_group_id.group_id}', now(), 'STARTED', 'INGESTION', 'Ingestion iterator started for inbound-id ${gen_group_id.inbound_id}','${gen_id.root_pipeline_id}', ${tenant_id});
+
+            "}  on-condition if "true"=="true"
+
+            transform as "creating sequence for origin_id " on "intics_zio_db_conn"
+            using{"
+                    CREATE SEQUENCE IF NOT EXISTS ingestion.origin_num
+                    AS INT8
+                    START WITH 1
+                    INCREMENT BY 1;
+            "} on-condition if "true"=="true"
+
+            assign as "gen_origin_seq" source "intics_zio_db_conn" using
+            {"
+                    SELECT concat('ORIGIN-',cast((nextval('ingestion.origin_num')) as int) ) as origin_id;
+            "} on-condition if "true"=="true"
+
+
+            assign as "gen_origin_id" source "intics_zio_db_conn" using
+            {"
+                    SELECT concat('INT-',cast(index as int) ) as origin_id
+                    FROM user_management.tenant_unique_identity where module='ORIGIN' and tenant_id =${tenant_id};
+            "} on-condition if "true"=="none"
+
+            transform as "updating sequence for origin_id " on "intics_zio_db_conn"
+            using{"
+                    UPDATE user_management.tenant_unique_identity
+                    SET last_updated_on=now(), last_updated_user_id=${created_user_id},index=index+1
+                    WHERE module='ORIGIN' and tenant_id =${tenant_id};
+            "} on-condition if "true"=="none"
+
+            assign as "gen_origin_info" source "intics_zio_db_conn" using
+            {"
+                    SELECT concat(UPPER('${file_name}_'),cast((900000* random() + 100000) as int)) as file_id;
+            "}on-condition if "true"=="true"
+
+            transform as "Insert into preprocess payload queue, asset" on "intics_zio_db_conn" using
+            {"
+                    INSERT INTO batching.batching_process_payload_queue
+                    (producer_process_id, origin_id,group_id, created_on, status, stage,root_pipeline_id, tenant_id)
+                    select  '${init_process_id.process_id}', '${gen_origin_seq.origin_id}','${gen_group_id.group_id}', now(), 'STAGED', 'BATCH_PROCESSING','${gen_id.root_pipeline_id}', ${tenant_id} ;
+
+                    INSERT INTO info.asset
+                    (file_id, file_name, file_checksum, file_path, file_extension, file_size, status, version, root_pipeline_id, tenant_id,channel_id, created_user_id, created_on, last_updated_user_id, last_updated_on)
+                    select '${gen_origin_info.file_id}', '${file_name}' ,'${file_checksum}', '${file_path}','${file_extension}','${file_size}', 'ACTIVE', 1 ,'${gen_id.root_pipeline_id}' ,${tenant_id},${channel_id},'${created_user_id}',now(), '${created_user_id}', now() ;
+
+            "} on-condition if "${origin_type}"=="WORKSPACE"
+
+            transform as "Insert into source of origin" on "intics_zio_db_conn" using
+            {"
+                    INSERT INTO info.source_of_origin
+                    (origin_id, group_id, origin_type, root_pipeline_id, tenant_id,channel_id, status, version, created_user_id, created_on, last_updated_user_id, last_updated_on, file_id, asset_id)
+                    select '${gen_origin_seq.origin_id}','${gen_group_id.group_id}','${origin_type}','${gen_id.root_pipeline_id}','${tenant_id}',${channel_id},'ACTIVE',1,'${created_user_id}',now(),'${created_user_id}',now(),file_id,asset_id
+                    from info.asset where tenant_id=${tenant_id} and file_id ='${gen_origin_info.file_id}';
+            "} on-condition if "${origin_type}"=="WORKSPACE"
+
+
+            transform as "Insert into preprocess payload queue, asset" on "intics_zio_db_conn" using
+            {"
+                    INSERT INTO batching.batching_process_payload_queue
+                    (producer_process_id, origin_id,group_id, created_on, status, stage,root_pipeline_id, tenant_id)
+                    select  '${init_process_id.process_id}', '${gen_origin_seq.origin_id}','${gen_group_id.group_id}', now(), 'STAGED', 'BATCH_PROCESSING','${gen_id.root_pipeline_id}', ${tenant_id} ;
+
+                    INSERT INTO info.asset
+                    (file_id, file_name, file_checksum, file_path, file_extension, file_size, status, version, root_pipeline_id, tenant_id, transaction_id, created_user_id, created_on, last_updated_user_id, last_updated_on)
+                    select '${gen_origin_info.file_id}', '${file_name}' ,'${file_checksum}', '${file_path}','${file_extension}','${file_size}', 'ACTIVE', 1 ,'${gen_id.root_pipeline_id}' ,${tenant_id},'${transaction_id}','${created_user_id}',now(), '${created_user_id}', now() ;
+
+            "} on-condition if "${origin_type}"=="TRANSACTION"
+
+            transform as "Insert into source of origin" on "intics_zio_db_conn" using
+            {"
+                    INSERT INTO info.source_of_origin
+                    (origin_id, group_id, origin_type, root_pipeline_id, tenant_id, transaction_id, status, version, created_user_id, created_on, last_updated_user_id, last_updated_on, file_id, asset_id)
+                    select '${gen_origin_seq.origin_id}','${gen_group_id.group_id}','${origin_type}','${gen_id.root_pipeline_id}','${tenant_id}','${transaction_id}','ACTIVE',1,'${created_user_id}',now(),'${created_user_id}',now(),file_id,asset_id
+                    from info.asset where tenant_id=${tenant_id} and file_id ='${gen_origin_info.file_id}';
+            "} on-condition if "${origin_type}"=="TRANSACTION"
+
+
+            transform as "Ingestion iterator completed for inbound-id ${gen_group_id.inbound_id} and origin id -${gen_origin_seq.origin_id}" on "intics_zio_db_conn" using
+            {"
+                    INSERT INTO ingestion.ingestion_pipeline_audit
+                    (tenant_id, process_id, inbound_id, group_id, created_on, status, stage, message,root_pipeline_id)
+                    VALUES(${tenant_id}, '${init_process_id.process_id}', '${gen_group_id.inbound_id}', '${gen_group_id.group_id}', now(), 'COMPLETED', 'INGESTION', 'Ingestion iterator completed for inbound-id ${gen_group_id.inbound_id} and origin id -${gen_origin_seq.origin_id}','${gen_id.root_pipeline_id}');
+            "}  on-condition if "true"=="true"
+    }
+    catch{
+            transform as "Ingestion iterator failed for inbound-id -${gen_group_id.inbound_id} and origin id -${gen_origin_seq.origin_id}" on "intics_zio_db_conn" using
+            {"
+                    INSERT INTO ingestion.ingestion_pipeline_audit
+                    (tenant_id, process_id, inbound_id, group_id, created_on, status, stage, message,root_pipeline_id)
+                    VALUES(${tenant_id}, '${init_process_id.process_id}', '${gen_group_id.inbound_id}', '${gen_group_id.group_id}', now(), 'FAILED', 'INGESTION', 'Ingestion iterator failed for inbound-id -${gen_group_id.inbound_id} and origin id -${gen_origin_seq.origin_id}','${gen_id.root_pipeline_id}');
+            "}  on-condition if "true"=="true"
+	}
+	finally{
+
+
+	}
+}

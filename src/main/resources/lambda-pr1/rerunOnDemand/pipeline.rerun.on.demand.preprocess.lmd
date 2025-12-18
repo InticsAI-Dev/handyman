@@ -1,0 +1,167 @@
+process "pipeline.rerun.on.demand.preprocess"
+{
+try{
+        transform as "Inserting failed origins into queue for preprocess AND alchemy migration AND outbound queues" on "intics_zio_db_conn" using
+        {"
+
+                INSERT INTO preprocess.preprocess_payload_queue
+                (producer_process_id, consumer_process_id, origin_id, group_id, created_on, consumed_on_ts, status, stage,root_pipeline_id, tenant_id, batch_id)
+                SELECT soo.root_pipeline_id , soo.root_pipeline_id, soo.origin_id, soo.group_id, soo.created_on, soo.created_on , 'STAGED', 'PREPROCESS', soo.root_pipeline_id, soo.tenant_id, soo.batch_id
+                FROM info.source_of_origin soo
+                WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+
+                INSERT INTO alchemy_migration.alchemy_migration_payload_queue
+                (producer_process_id, consumer_process_id, origin_id, group_id, created_on, consumed_on_ts, status, stage,root_pipeline_id, tenant_id, batch_id)
+                SELECT soo.root_pipeline_id , soo.root_pipeline_id, soo.origin_id, soo.group_id, soo.created_on, soo.created_on , 'STAGED', 'ALCHEMY_MIGRATION', soo.root_pipeline_id, soo.tenant_id, soo.batch_id
+                FROM info.source_of_origin soo
+                WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+
+
+                INSERT INTO product_outbound.product_outbound_payload_queue
+                (producer_process_id, consumer_process_id, origin_id, group_id, created_on, consumed_on_ts, status, stage,root_pipeline_id, tenant_id, batch_id)
+                SELECT soo.root_pipeline_id , soo.root_pipeline_id, soo.origin_id, soo.group_id, soo.created_on, soo.created_on , 'STAGED', 'PRODUCT_OUTBOUND', soo.root_pipeline_id, soo.tenant_id, soo.batch_id
+                FROM info.source_of_origin soo
+                WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+
+        "} on-condition if "true"=="true"
+
+        transform as "Deleting Failed origins FROM the payload queue AND error queue" on "intics_zio_db_conn" using
+        {"
+            DELETE FROM preprocess.preprocess_payload_error_queue WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+            DELETE FROM paper_filter.agentic_paper_filter_payload_error_queue WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+            DELETE FROM sor_transaction.sor_transaction_payload_error_queue WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+            DELETE FROM sor_grouping.sor_grouping_payload_error_queue WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+            DELETE FROM alchemy_migration.alchemy_migration_payload_error_queue WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+            DELETE FROM product_outbound.product_outbound_payload_error_queue WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+
+
+            DELETE FROM preprocess.preprocess_payload_queue_archive WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+            DELETE FROM paper_filter.agentic_paper_filter_payload_queue_archive WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+            DELETE FROM sor_transaction.sor_transaction_payload_queue_archive WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+            DELETE FROM sor_grouping.sor_grouping_payload_queue_archive WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+            DELETE FROM alchemy_migration.alchemy_migration_payload_queue_archive WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+            DELETE FROM product_outbound.product_outbound_payload_queue_archive WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+
+        "} on-condition if "true"=="true"
+
+        transform as "Batching queue entries are deleted IN the batch processing queue" on "intics_zio_db_conn" using
+        {"
+
+                DELETE FROM batching.batching_process_payload_queue_archive WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM  batching.batching_process_payload_error_queue WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+
+        "} on-condition if "true"=="true"
+
+        transform as "Deleting origins IN the preprocess output tables" on "intics_zio_db_conn" using
+        {"
+                             
+                DELETE FROM valuation.prediction WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                
+                DELETE FROM info.auto_rotation WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM info.data_extraction WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM info.grey_scale_conversion WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM info.paper_itemizer WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM info.source_of_truth WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM info.template_detection WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM info.template_detection_result WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                
+                
+                DELETE FROM paper_filter.agentic_container_filter_base_table_audit WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM paper_filter.agentic_entity_level_score_audit WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM paper_filter.agentic_paper_filter_input_data_audit WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM paper_filter.agentic_paper_filter_output_audit WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM paper_filter.agentic_paper_filter_pipeline_audit WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM paper_filter.agentic_paper_level_score_audit WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM paper_filter.paper_filter_max_score_papers_audit WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM paper_filter.paper_filter_only_false_containers_audit WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+
+                DELETE FROM aggressive_extraction.a_agentic_paper_filter_entity_details WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM aggressive_extraction.b_agentic_paper_filter_container_details WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM aggressive_extraction.c_agentic_paper_filter_count_of_containers WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM aggressive_extraction.d_agentic_paper_filter_matched_container_count WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+
+                DELETE FROM sor_transaction.accumulated_sor_transaction WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM sor_transaction.adapter_result_audit WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM sor_transaction.llm_json_parser_input_audit WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM sor_transaction.llm_json_parser_output_audit WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM sor_transaction.radon_kvp_input_audit WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM sor_transaction.radon_kvp_output_audit WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM sor_transaction.vqa_transaction WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                
+                
+                DELETE FROM score.aggregation_evaluator WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM score.consolidated_accumulated_eval_result WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM score.scalar_validation WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                
+                
+                DELETE FROM sor_grouping.eoc_result_audit WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM sor_grouping.pahub_patient_instance WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                
+                
+                DELETE FROM voting.paper_unnest_audit WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM voting.name_score_audit WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM voting.cummulative_result WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM voting.cummulative_score_audit WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM voting.score_count_audit WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM voting.cummulative_final_audit WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM voting.cummulative_max_filter_score_audit WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM voting.voting_phase_2_result_audit  WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM voting.cumulative_prescriber_name_audit WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM voting.cumulative_result_p2p_result_table_audit WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM voting.cumulative_patient_name_audit WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM voting.cumulative_provider_name_audit WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM voting.p2p_result_temp_table_audit WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+
+                DELETE FROM alchemy_migration.alchemy_papers WHERE pipeline_origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM alchemy_migration.alchemy_prediction_info WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM alchemy_migration.alchemy_response WHERE pipeline_origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM alchemy_migration.alchemy_transform_output_table WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                
+                
+                DELETE FROM alchemy_response.alchemy_feature_response WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM alchemy_response.alchemy_kvp_response WHERE pipeline_origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM alchemy_response.alchemy_product_response WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM alchemy_response.alchemy_table_response WHERE pipeline_origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM alchemy_response.cleaned_pdf_info WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM alchemy_response.origin_pdf_info WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                
+                
+                DELETE FROM product_outbound.error_document_detail WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM product_outbound.kafka_response_info WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM product_outbound.product_outbound_csv_input WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM product_outbound.product_outbound_zip_file_details WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM product_outbound.product_outbound_zip_file_input WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM product_outbound.product_response_details WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                
+
+        "} on-condition if "true"=="true"
+
+        transform as "Updating the status in the sub batching queues" on "intics_zio_db_conn" using
+        {"
+                
+                UPDATE batching.sub_batching_process_payload_queue sbppq 
+                SET status='STAGED',stage='PREPROCESS'
+                WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                
+                DELETE FROM ingestion.pipeline_queue_status_audit
+                WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ',')) AND stage IN ('AGENTIC_PAPER_FILTER','SOR_TRANSACTION','SOR_GROUPING');
+
+                UPDATE ingestion.pipeline_queue_status_audit
+                SET status='STAGED'
+                WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ',')) AND stage IN ('PREPROCESS','PRODUCT_OUTBOUND','ALCHEMY_MIGRATION');
+                
+                DELETE FROM paper_filter.sub_batch_agentic_paper_filter_payload_queue
+                WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ',')) ;
+                
+                DELETE FROM paper_filter.sub_batch_split_agentic_paper_filter
+                WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ',')) ;
+
+        "} on-condition if "true"=="true"
+
+}
+catch{
+
+}
+finally{
+}
+}

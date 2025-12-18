@@ -1,0 +1,22 @@
+process "datum.drift.processor"
+{
+    try{
+         transform as "delete the records from the audit tables using cron-trigger" on "intics_zio_db_conn" using
+         {"
+              DELETE FROM ${schema_name}.${table_name}
+              WHERE created_on < NOW() - INTERVAL '${cron_execution_time}' and '${table_type}' = 'AUDIT';
+
+         "} on-condition if "true"=="true"
+
+          transform as "delete the records from the truth tables using cron-trigger" on "intics_zio_db_conn" using
+          {"
+               DELETE FROM ${schema_name}.${table_name}
+               WHERE created_on < NOW() - INTERVAL '${cron_execution_time}' and '${table_type}' = 'TRUTH';
+          "} on-condition if "true"=="true"
+
+    } catch {
+
+    } finally {
+
+    }
+}

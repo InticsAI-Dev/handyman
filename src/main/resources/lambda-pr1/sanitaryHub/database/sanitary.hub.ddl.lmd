@@ -1,0 +1,196 @@
+process
+"sanitary.hub.ddl"
+{
+    try{
+
+            transform as "Creating ddl for data cleanup sanitary hub pipeline" on "intics_zio_db_conn" using
+            {"
+
+
+                create schema if not exists sanitary_hub;
+
+                create table if not exists sanitary_hub.table_backup_input_audit(
+                backup_schema_list varchar null,
+                restricted_schema_list varchar null,
+                db_backup_dir_path VARCHAR null,
+                tenant_id INT8 null,
+                group_id INT8 null,
+                root_pipeline_id INT8 null,
+                process_id INT8 null,
+                task_id VARCHAR null,
+                process_name VARCHAR NULL
+                );
+
+
+                create table if not exists sanitary_hub.table_truncate_input_audit(
+                truncate_schema_list varchar null,
+                exclude_table_with_schema_list varchar null,
+                tenant_id int8 null,
+                group_id int8 null,
+                root_pipeline_id int8 null,
+                process_id int8 null,
+                task_id varchar null,
+                process_name varchar null
+                );
+
+
+                create table if not exists ${temp_schema_name}.table_backup_input_${init_process_id.process_id}(
+                backup_schema_list varchar null,
+                restricted_schema_list varchar null,
+                db_backup_dir_path VARCHAR null,
+                tenant_id INT8 null,
+                group_id INT8 null,
+                root_pipeline_id INT8 null,
+                process_id INT8 null,
+                task_id VARCHAR null,
+                process_name VARCHAR NULL
+                );
+
+
+                create table if not exists ${temp_schema_name}.table_truncate_input_${init_process_id.process_id}(
+                truncate_schema_list varchar null,
+                exclude_table_with_schema_list varchar null,
+                tenant_id int8 null,
+                group_id int8 null,
+                root_pipeline_id int8 null,
+                process_id int8 null,
+                task_id varchar null,
+                process_name varchar null
+                );
+
+
+                CREATE TABLE IF NOT EXISTS sanitary_hub.db_data_backup_audit (
+                    backup_audit_id BIGSERIAL NOT NULL,
+                    created_on TIMESTAMP NULL,
+                    db_backup_status VARCHAR NULL,
+                    process_id INT8 NULL,
+                    root_pipeline_id INT8 NULL,
+                    tenant_id INT8 NULL,
+                    backup_schema_list VARCHAR NULL,
+                    restricted_schema_list VARCHAR NULL,
+                    db_backup_file_path VARCHAR NULL,
+                    db_backup_file_name VARCHAR NULL,
+                    backup_file_size VARCHAR NULL,
+                    group_id INT8 NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS sanitary_hub.db_data_truncate_audit (
+                    clean_audit_id BIGSERIAL NOT NULL,
+                    created_on TIMESTAMP NULL,
+                    schema_name VARCHAR NULL,
+                    table_name VARCHAR NULL,
+                    row_presented_status VARCHAR NULL,
+                    group_id INT8 NULL,
+                    process_id INT8 NULL,
+                    root_pipeline_id INT8 NULL,
+                    tenant_id INT8 NULL,
+                    total_row_count INT8 NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS sanitary_hub.sanitary_hub_payload_queue (
+                    producer_process_id int8 NULL,
+                    consumer_process_id int8 NULL,
+                    task_id varchar NOT NULL,
+                    group_id int4 NULL,
+                    created_on timestamp NULL,
+                    consumed_on_ts timestamp NULL,
+                    root_pipeline_id int8 NULL,
+                    status varchar NULL,
+                    stage varchar NULL,
+                    tenant_id int8 NULL,
+                    CONSTRAINT sanitary_hub_payload_queue_pk PRIMARY KEY (producer_process_id, task_id,tenant_id)
+                );
+
+                CREATE TABLE if not exists sanitary_hub.sanitary_hub_payload_queue_archive
+                (
+                    producer_process_id int8 NOT NULL,
+                    consumer_process_id int8 NULL,
+                    group_id int4 NOT NULL,
+                    task_id varchar NOT NULL,
+                    created_on timestamp NOT NULL,
+                    status varchar NOT NULL,
+                    stage  varchar NOT NULL,
+                    consumed_on_ts timestamp NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL,
+                    CONSTRAINT sanitary_hub_payload_queue_archive_pk PRIMARY KEY (group_id,task_id,tenant_id)
+                );
+
+                CREATE TABLE if not exists sanitary_hub.sanitary_hub_payload_error_queue
+                (
+                    producer_process_id int8 NOT NULL,
+                    consumer_process_id int8 NULL,
+                    task_id varchar NOT NULL,
+                    group_id int4 NULL,
+                    created_on timestamp NOT NULL,
+                    status varchar NOT NULL,
+                    stage  varchar NOT NULL,
+                    message varchar NULL,
+                    consumed_on_ts timestamp NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL,
+                    CONSTRAINT sanitary_hub_payload_error_queue_pk PRIMARY KEY (producer_process_id, task_id,tenant_id)
+                );
+
+                CREATE TABLE if not exists sanitary_hub.db_data_backup_audit (
+                	backup_audit_id bigserial NOT NULL,
+                	created_on timestamp NULL,
+                	db_backup_status varchar NULL,
+                	process_id int8 NULL,
+                	root_pipeline_id int8 NULL,
+                	tenant_id int8 NULL,
+                	group_id int8 NULL,
+                	backup_schema_list _varchar NULL,
+                	restricted_schema_list _varchar NULL,
+                	db_backup_file_path varchar NULL,
+                	db_backup_file_name varchar NULL,
+                	backup_file_size varchar NULL
+                );
+
+                CREATE TABLE if not exists sanitary_hub.db_data_truncate_audit (
+                	clean_audit_id bigserial NOT NULL,
+                	created_on timestamp NULL,
+                	schema_name varchar NULL,
+                	table_name varchar NULL,
+                	row_presented_status varchar NULL,
+                	group_id int8 NULL,
+                	process_id int8 NULL,
+                	root_pipeline_id int8 NULL,
+                	tenant_id int8 NULL,
+                	total_row_count int8 NULL
+                );
+
+
+                 CREATE SCHEMA IF NOT EXISTS ingestion;
+                 CREATE TABLE IF NOT EXISTS ingestion.pipeline_directory_info(
+                        id bigserial not null,
+                        target_directory_path varchar null,
+                        tenant_id int8 null,
+                        group_id int8 null,
+                        root_pipeline_id int8 null,
+                        created_on timestamp null,
+                        updated_on timestamp null,
+                        created_user_id int8 null,
+                        last_updated_user_id int8 null,
+                        transaction_id varchar null,
+                        formatted_date varchar null,
+                        process_name varchar null,
+                        current_directory varchar null,
+                        zip_directory varchar null,
+                        status varchar null
+                    );
+
+                    create table IF NOT EXISTS ingestion.generate_task_id(
+                    task_id int8 null
+                    )
+
+
+            "} on-condition if "true"=="true"
+
+
+    } catch {
+
+    } finally {
+
+    }
+}

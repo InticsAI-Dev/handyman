@@ -1,0 +1,670 @@
+process "deep.sift.processor"
+{
+    try
+    {
+        transform as "Insert into chrono-clash file wise input table using the common time interval for deep sift stage" on "intics_zio_db_conn" using {"
+            INSERT INTO ${temp_schema_name}.deep_sift_chrono_clash_input_${init_process_id.process_id}
+            (root_pipeline_id, created_on, updated_on, batch_id, group_id, origin_id, tenant_id, time_frame, stage, status, transaction_id, downloaded_time, remaining_time)
+            SELECT dspq.root_pipeline_id, now(), now(), dspq.batch_id, soo.group_id, dspq.origin_id, dspq.tenant_id,
+            ${chronoclash.threshold.time} AS time_frame,
+            'DEEP_SIFT' AS stage,
+            CASE
+                WHEN now() - soo.file_downloaded_time >= (${chronoclash.threshold.time} * interval '1 minute')
+                     AND '${chronoclash.activator}' = 'true' AND POSITION('DEEP_SIFT' IN '${chronoclash.stage.controller}') > 0
+                THEN 'ABORTED'
+                ELSE 'IN_PROGRESS'
+            END AS status,
+            soo.transaction_id,
+            soo.file_downloaded_time as downloaded_time,
+            ((${chronoclash.threshold.time} * interval '1 minute') - (now() - soo.file_downloaded_time)) as remaining_time
+            FROM deep_sift.deep_sift_payload_queue dspq
+            JOIN ${temp_schema_name}.downloaded_asset_source_details_${init_process_id.process_id} soo on soo.root_pipeline_id = dspq.root_pipeline_id and soo.origin_id = dspq.origin_id
+            WHERE dspq.batch_id='${batch_id}' and dspq.tenant_id =${tenant_id} and dspq.stage ='DEEP_SIFT' and dspq.status = 'STAGED';
+        "} on-condition if "${chronoclash.specific.time.interval.enabler}" == "false"
+
+        transform as "Insert into chrono-clash file wise input table using the specific time interval for deep sift stage" on "intics_zio_db_conn" using {"
+            INSERT INTO ${temp_schema_name}.deep_sift_chrono_clash_input_${init_process_id.process_id}
+            (root_pipeline_id, created_on, updated_on, batch_id, group_id, origin_id, tenant_id, time_frame, stage, status, transaction_id, downloaded_time, remaining_time)
+            SELECT dspq.root_pipeline_id, now(), now(), dspq.batch_id, soo.group_id, dspq.origin_id, dspq.tenant_id,
+            CASE
+                WHEN (CURRENT_TIME BETWEEN scti.start_time_frame::time AND scti.end_time_frame::time)
+                THEN scti.time_frame
+                ELSE ${chronoclash.threshold.time}
+            END AS time_frame,
+            'DEEP_SIFT' AS stage,
+            CASE
+                WHEN now() - soo.file_downloaded_time >= ((time_frame) * interval '1 minute') AND '${chronoclash.activator}' = 'true' AND POSITION('DEEP_SIFT' IN '${chronoclash.stage.controller}') > 0
+                THEN 'ABORTED'
+                ELSE 'IN_PROGRESS'
+            END AS status,
+            soo.transaction_id,
+            soo.file_downloaded_time as downloaded_time,
+            ((time_frame * interval '1 minute') - (now() - soo.file_downloaded_time)) as remaining_time
+            FROM deep_sift.deep_sift_payload_queue dspq
+            JOIN ${temp_schema_name}.downloaded_asset_source_details_${init_process_id.process_id} soo on soo.root_pipeline_id = dspq.root_pipeline_id and soo.origin_id = dspq.origin_id
+            JOIN config.spw_chrono_clash_time_interval scti on scti.tenant_id = dspq.tenant_id and scti.instance = '${root-pipeline-name}' and CURRENT_TIME BETWEEN scti.start_time_frame::time AND scti.end_time_frame::time
+            WHERE dspq.batch_id='${batch_id}' and dspq.tenant_id =${tenant_id} and dspq.stage ='DEEP_SIFT' and dspq.status = 'STAGED';
+        "} on-condition if "${chronoclash.specific.time.interval.enabler}" == "true"
+
+        transform as "update to IN PROGRESS in deep sift payload queue" on "intics_zio_db_conn" using
+        {"
+
+            INSERT INTO deep_sift.deep_sift_pipeline_audit (group_id, created_on, status, stage, message, root_pipeline_id, tenant_id)
+            SELECT dspq.group_id, now(), a.status,'DEEP_SIFT','Deep Sift process started group_id ${group_id}', dspq.root_pipeline_id, dspq.tenant_id
+            FROM deep_sift.deep_sift_payload_queue dspq
+            JOIN ${temp_schema_name}.deep_sift_chrono_clash_input_${init_process_id.process_id} a ON a.origin_id = dspq.origin_id AND a.tenant_id = dspq.tenant_id AND a.batch_id = dspq.batch_id
+            WHERE dspq.status = a.status and dspq.group_id='${group_id}' and dspq.tenant_id = ${tenant_id} and dspq.batch_id = '${batch_id}';
+
+            UPDATE deep_sift.deep_sift_payload_queue as dspq
+            SET status=a.status, consumed_on_ts = now(), producer_process_id = '${process-id}'
+            FROM ${temp_schema_name}.deep_sift_chrono_clash_input_${init_process_id.process_id} a
+            WHERE a.origin_id = dspq.origin_id and dspq.batch_id ='${batch_id}' and dspq.status='STAGED' and dspq.group_id='${group_id}' and dspq.tenant_id = ${tenant_id};
+
+            update ingestion.pipeline_queue_status_audit as dspq
+            set status = a.status, consumed_on_ts=now(), consumer_process_id = '${process-id}'
+            FROM ${temp_schema_name}.deep_sift_chrono_clash_input_${init_process_id.process_id} a
+            where a.origin_id = dspq.origin_id and dspq.group_id=${group_id} and dspq.batch_id='${batch_id}' and dspq.tenant_id =${tenant_id} and dspq.stage ='DEEP_SIFT' ;
+
+        "} on-condition if "true"=="true"
+
+        transform as "insert data into deep sift input table" on "intics_zio_db_conn" using
+        {"
+            INSERT INTO ${temp_schema_name}.deep_sift_input_${init_process_id.process_id} (
+                origin_id,
+                group_id,
+                created_on,
+                created_by,
+                input_file_path,
+                root_pipeline_id,
+                tenant_id,
+                batch_id,
+                paper_no,
+                source_document_type,
+                model_id,
+                model_name,
+                base_prompt,
+                system_prompt
+            )
+            SELECT
+                sepq.origin_id,
+                sepq.group_id,
+                NOW() AS created_on,
+                '1' AS created_by,
+                a.file_path,
+                sepq.root_pipeline_id,
+                sepq.tenant_id,
+                sepq.batch_id,
+                sot.paper_no,
+                sot.document_type AS source_document_type,
+                mr.model_id,
+                mr.model_name,
+                rpt.base_prompt,
+                rpt.system_prompt
+            FROM deep_sift.deep_sift_payload_queue sepq
+            JOIN ${temp_schema_name}.source_of_truth_${init_process_id.process_id} sot
+                ON sepq.origin_id = sot.origin_id
+                AND sepq.group_id = sot.group_id::VARCHAR
+                AND sepq.batch_id = sot.batch_id
+                AND sepq.tenant_id = sot.tenant_id::INTEGER
+            JOIN ${temp_schema_name}.asset_${init_process_id.process_id} a
+                ON sepq.batch_id = a.batch_id
+                AND a.asset_id = sot.asset_id
+                AND sepq.tenant_id = a.tenant_id::INTEGER
+                AND sepq.root_pipeline_id = a.root_pipeline_id
+            JOIN deep_sift.paper_wise_config pwc
+                ON pwc.tenant_id = sepq.tenant_id
+            JOIN sor_meta.model_registry mr
+                ON mr.model_id = pwc.model_id
+            JOIN sor_meta.radon_prompt_table rpt
+                ON rpt.model_id = mr.model_id
+            WHERE
+                sepq.batch_id = '${batch_id}'
+                AND sepq.tenant_id = ${tenant_id}
+                AND sepq.group_id = '${group_id}'
+                AND rpt.use_case = 'OCR'
+                AND rpt.process = 'DEEP_SIFT'
+                and rpt.prompt_type = 'DOCUMENT'
+                and rpt.document_type = '${document_type}'
+                and sepq.status = 'IN_PROGRESS'
+                and pwc.root_processor = '${root-pipeline-name}'
+                and sot.paper_no BETWEEN pwc.min_page AND pwc.max_page;
+
+        "} on-condition if "true"=="true"
+
+        multitude as "multitude execution for deep sift based on copro model" on "PARALLEL" using
+        {
+            deepSift as "xenon deep sift extraction for group_id ${group_id} for batch id ${batch_id}"
+            resource-conn "intics_zio_db_conn"
+            result-table "${temp_schema_name}.deep_sift_output_${init_process_id.process_id}"
+            copro-url "${copro.deep.sift.xenon.url}"
+            process-id "${init_process_id.process_id}"
+            using {"
+                SELECT
+                    dsi.origin_id,
+                    dsi.group_id,
+                    dsi.created_on,
+                    dsi.created_by,
+                    dsi.input_file_path,
+                    dsi.root_pipeline_id,
+                    dsi.tenant_id,
+                    dsi.batch_id,
+                    dsi.paper_no,
+                    dsi.source_document_type,
+                    dsi.model_id,
+                    dsi.model_name,
+                    dsi.base_prompt,
+                    dsi.system_prompt
+                FROM ${temp_schema_name}.deep_sift_input_${init_process_id.process_id} dsi
+                WHERE
+                    dsi.batch_id = '${batch_id}'
+                    AND dsi.tenant_id = ${tenant_id}
+                    AND dsi.group_id = '${group_id}'
+                    AND dsi.model_name = 'XENON';
+            "} on-condition if "true"=="true" on-parallel-fielding "${deep.sift.extraction.xenon.API.count}"
+
+            deepSift as "krypton deep sift extraction for group_id ${group_id} for batch id ${batch_id}"
+            resource-conn "intics_zio_db_conn"
+            result-table "${temp_schema_name}.deep_sift_output_${init_process_id.process_id}"
+            copro-url "${copro.deep.sift.krypton.url}"
+            process-id "${init_process_id.process_id}"
+            using {"
+                SELECT
+                    dsi.origin_id,
+                    dsi.group_id,
+                    dsi.created_on,
+                    dsi.created_by,
+                    dsi.input_file_path,
+                    dsi.root_pipeline_id,
+                    dsi.tenant_id,
+                    dsi.batch_id,
+                    dsi.paper_no,
+                    dsi.source_document_type,
+                    dsi.model_id,
+                    dsi.model_name,
+                    dsi.base_prompt,
+                    dsi.system_prompt
+                FROM ${temp_schema_name}.deep_sift_input_${init_process_id.process_id} dsi
+                WHERE
+                    dsi.batch_id = '${batch_id}'
+                    AND dsi.tenant_id = ${tenant_id}
+                    AND dsi.group_id = '${group_id}'
+                    AND dsi.model_name = 'KRYPTON';
+            "} on-condition if "true"=="true" on-parallel-fielding "${deep.sift.extraction.krypton.API.count}"
+
+        } on-condition if "true"=="true"
+
+        transform as "insert data into deep search input table" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO ${temp_schema_name}.deep_search_input_${init_process_id.process_id} (
+                    origin_id, group_id, created_on, created_by, extracted_text,
+                    root_pipeline_id, tenant_id, batch_id, paper_no, source_document_type,
+                    sor_container_id, sor_container_name, sor_item_id, sor_item_name,
+                    search_id, search_name, keywords
+                )
+                SELECT
+                    dsoa.origin_id,
+                    dsoa.group_id,
+                    dsoa.created_on,
+                    dsoa.created_by,
+                    dsoa.extracted_text,
+                    dsoa.root_pipeline_id,
+                    dsoa.tenant_id,
+                    dsoa.batch_id,
+                    dsoa.paper_no,
+                    dsoa.source_document_type,
+                    sc.sor_container_id,
+                    sc.sor_container_name,
+                    si.sor_item_id,
+                    si.sor_item_name,
+                    scg.search_id,
+                    scg.search_name,
+                    agg.keywords
+                FROM ${temp_schema_name}.deep_sift_output_${init_process_id.process_id} dsoa
+                JOIN sor_meta.sor_container sc
+                    ON sc.document_type = dsoa.source_document_type
+                   AND sc.tenant_id = dsoa.tenant_id
+                JOIN sor_meta.sor_item si
+                    ON si.sor_container_id = sc.sor_container_id
+                    AND si.search_id is not null
+                JOIN sor_meta.search_config scg
+                    ON scg.search_id = si.search_id
+                JOIN (
+                    SELECT
+                        te.sor_container_id,
+                        STRING_AGG(DISTINCT tep.truth_entity_placeholder_value, ', ') AS keywords
+                    FROM sor_meta.truth_entity te
+                    JOIN sor_meta.truth_entity_placeholder tep
+                        ON tep.sor_container_id = te.sor_container_id
+                       AND tep.truth_entity_id = te.truth_entity_id
+                    JOIN sor_meta.sor_tsynonym st
+                        ON st.truth_entity_id = te.truth_entity_id
+                    WHERE te.status = 'ACTIVE'
+                      AND tep.status = 'ACTIVE'
+                      AND st.status = 'ACTIVE'
+                    GROUP BY te.sor_container_id
+                ) agg
+                    ON agg.sor_container_id = sc.sor_container_id
+                WHERE dsoa.batch_id = '${batch_id}'
+                  AND dsoa.tenant_id = ${tenant_id}
+                  AND dsoa.group_id = '${group_id}'
+                  AND si.status = 'ACTIVE'
+                  AND sc.document_type = '${document_type}';
+
+
+        "} on-condition if "true"=="true"
+
+        deepSiftSearch as "search filteration for group_id ${group_id} for batch id ${batch_id}"
+        resource-conn "intics_zio_db_conn"
+        result-table "${temp_schema_name}.deep_search_output_${init_process_id.process_id}"
+        copro-url "${copro.deep.search.url}"
+        process-id "${init_process_id.process_id}"
+        using {"
+
+            SELECT
+                dsi.origin_id,
+                dsi.group_id,
+                dsi.created_on,
+                dsi.created_by,
+                dsi.extracted_text,
+                dsi.root_pipeline_id,
+                dsi.tenant_id,
+                dsi.batch_id,
+                dsi.paper_no,
+                dsi.source_document_type,
+                dsi.sor_container_id,
+                dsi.sor_container_name,
+                dsi.sor_item_id,
+                dsi.sor_item_name,
+                dsi.search_id,
+                dsi.search_name,
+                dsi.keywords
+            FROM ${temp_schema_name}.deep_search_input_${init_process_id.process_id} dsi
+            JOIN deep_sift.deep_sift_payload_queue dspq
+                ON dspq.origin_id = dsi.origin_id
+            WHERE dsi.batch_id = '${batch_id}'
+              AND dsi.tenant_id = ${tenant_id}
+              AND dsi.group_id = '${group_id}'
+              AND dspq.status = 'IN_PROGRESS';
+
+        "} on-condition if "${deep.sift.extraction.activator}"=="true"
+
+        transform as "merge response in deep search output table" on "intics_zio_db_conn" using
+        {"
+            INSERT INTO ${temp_schema_name}.final_deep_search_${init_process_id.process_id} (
+                origin_id, group_id, created_on, created_by, root_pipeline_id, tenant_id, batch_id,
+                source_document_type, sor_container_id, sor_container_name, sor_item_id, sor_item_name,
+                search_id, comma_separated_search_outputs, min_paper_no
+            )
+            SELECT
+                dso.origin_id,
+                dso.group_id,
+                dso.created_on,
+                dso.created_by,
+                dso.root_pipeline_id,
+                dso.tenant_id,
+                dso.batch_id,
+                dso.source_document_type,
+                dso.sor_container_id,
+                dso.sor_container_name,
+                dso.sor_item_id,
+                dso.sor_item_name,
+                dso.search_id,
+                COALESCE(
+                    STRING_AGG(DISTINCT TRIM(LOWER(unnest_val)), ', '),
+                    ''
+                ) AS comma_separated_search_outputs,
+                MIN(dso.paper_no) AS min_paper_no
+            FROM ${temp_schema_name}.deep_search_output_${init_process_id.process_id} dso
+            LEFT JOIN LATERAL
+                unnest(string_to_array(dso.search_output, ',')) AS unnest_val
+                ON TRUE
+            GROUP BY
+                dso.origin_id,
+                dso.group_id,
+                dso.created_on,
+                dso.created_by,
+                dso.root_pipeline_id,
+                dso.tenant_id,
+                dso.batch_id,
+                dso.source_document_type,
+                dso.sor_container_id,
+                dso.sor_container_name,
+                dso.sor_item_id,
+                dso.sor_item_name,
+                dso.search_id;
+
+        "} on-condition if "true"=="true"
+
+
+        transform as "insert into vqa_transaction table" on "intics_zio_db_conn" using
+        {"
+            INSERT INTO ${temp_schema_name}.vqa_transaction_${init_process_id.process_id} (
+                created_on,
+                created_user_id,
+                last_updated_on,
+                last_updated_user_id,
+                answer,
+                group_id,
+                origin_id,
+                paper_no,
+                root_pipeline_id,
+                sor_item_name,
+                tenant_id,
+                batch_id,
+                sor_question,
+                document_id,
+                sor_item_attribution_id,
+                weight,
+                model_id,
+                model_info,
+                model_registry,
+                question_id,
+                synonym_id,
+                vqa_score,
+                category,
+                stage,
+                b_box,
+                status
+            )
+            SELECT DISTINCT
+                dso.created_on,
+                CAST(dso.created_by AS bigint) AS created_user_id,
+                dso.created_on AS last_updated_on,
+                CAST(dso.created_by AS bigint) AS last_updated_user_id,
+                dso.comma_separated_search_outputs AS answer,
+                CAST(dso.group_id AS bigint),
+                dso.origin_id,
+                dso.min_paper_no AS paper_no,
+                dso.root_pipeline_id,
+                dso.sor_item_name,
+                dso.tenant_id,
+                dso.batch_id,
+                sq.question AS sor_question,
+                '${document_id}' AS document_id,
+                mr.sor_item_attribution_id AS sor_item_attribution_id,
+                150 AS weight,
+                mr.model_id,
+                'RADON' AS model_info,
+                'RADON' AS model_registry,
+                sq.question_id,
+                st.synonym_id,
+                50 AS vqa_score,
+                sq.category,
+                'SOR_TRANSACTION' AS stage,
+                '{}' as b_box,
+                'COMPLETED' as status
+            FROM ${temp_schema_name}.final_deep_search_${init_process_id.process_id} dso
+            JOIN sor_meta.sor_item si
+                ON dso.sor_item_id = si.sor_item_id
+                AND dso.tenant_id = si.tenant_id
+            JOIN sor_meta.sor_tsynonym st
+                ON st.sor_item_id = si.sor_item_id
+                AND st.tenant_id = si.tenant_id
+            JOIN sor_meta.truth_entity te
+                ON te.truth_entity_id = st.truth_entity_id
+            JOIN sor_meta.asset_info ai
+                ON ai.tenant_id = dso.tenant_id
+                AND ai.asset_id = te.asset_id
+            JOIN sor_meta.sor_question sq
+                ON sq.synonym_id = st.synonym_id
+            JOIN sor_meta.model_registry mr
+                ON mr.model_id = sq.model_registry_id
+            WHERE dso.batch_id = '${batch_id}'
+               AND dso.tenant_id = ${tenant_id}
+               AND dso.group_id = '${group_id}'
+               AND si.status ='ACTIVE'
+               AND te.status ='ACTIVE'
+               AND st.status='ACTIVE'
+               AND ai.template_name = 'UNIVERSE'
+            GROUP BY
+                dso.origin_id,
+                dso.group_id,
+                dso.created_on,
+                dso.created_by,
+                dso.root_pipeline_id,
+                dso.tenant_id,
+                dso.batch_id,
+                dso.sor_item_name,
+                dso.min_paper_no,
+                dso.comma_separated_search_outputs,
+                sq.question,
+                mr.sor_item_attribution_id,
+                mr.model_id,
+                sq.question_id,
+                st.synonym_id,
+                sq.category;
+
+        "} on-condition if "true"=="true"
+
+        transform as "update to Completed in deep sift payload queue" on "intics_zio_db_conn" using
+        {"
+            UPDATE deep_sift.deep_sift_payload_queue
+            SET status='COMPLETED', consumed_on_ts = now(), producer_process_id = '${process-id}'
+            WHERE batch_id ='${batch_id}' and status='IN_PROGRESS' and group_id='${group_id}' and tenant_id = ${tenant_id};
+        "} on-condition if "true"=="true"
+
+        transform as "update the pipeline audit for deep sift" on "intics_zio_db_conn" using
+        {"
+            INSERT INTO deep_sift.deep_sift_pipeline_audit (group_id, created_on, status, stage, message, root_pipeline_id, tenant_id)
+            VALUES ('${group_id}', now(), 'COMPLETED', 'DEEP_SIFT', 'Deep Sift process completed for group_id ${group_id}', ${gen_id.root_pipeline_id}, ${tenant_id});
+
+            INSERT INTO audit.process_audit_output
+            (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint,paper_no, batch_id)
+            SELECT
+                dsoa.tenant_id,
+                dsoa.root_pipeline_id,
+                dsoa.origin_id,
+                dsoa.request,
+                dsoa.response,
+                'COMPLETED' AS status,
+                'DEEP_SIFT' AS stage,
+                'Deep Sift process completed from ' || dsoa.model_name || ' for group_id ${group_id}' AS message,
+                NOW() AS created_on,
+                dsoa.endpoint AS endpoint,
+                dsoa.paper_no,
+                '${batch_id}' AS batch_id
+            FROM ${temp_schema_name}.deep_sift_output_${init_process_id.process_id} dsoa
+            WHERE dsoa.root_pipeline_id = '${gen_id.root_pipeline_id}'
+              AND dsoa.tenant_id = ${tenant_id}
+              AND dsoa.group_id = '${group_id}'
+              AND dsoa.batch_id = '${batch_id}'
+            GROUP BY
+                dsoa.origin_id,
+                dsoa.tenant_id,
+                dsoa.root_pipeline_id,
+                dsoa.paper_no,
+                dsoa.request,
+                dsoa.response,
+                dsoa.endpoint,
+                dsoa.model_name;
+
+        "} on-condition if "true"=="true"
+
+    }
+    catch
+    {
+        transform as "update to FAILED in deep sift pipeline audit and payload queue" on "intics_zio_db_conn" using
+        {"
+            UPDATE deep_sift.deep_sift_payload_queue
+            SET status='FAILED', consumed_on_ts = now(), producer_process_id = '${process-id}'
+            WHERE batch_id ='${batch_id}' and status='IN_PROGRESS' and group_id='${group_id}' and tenant_id = ${tenant_id};
+
+            INSERT INTO deep_sift.deep_sift_pipeline_audit ( group_id, created_on, status, stage, message, root_pipeline_id, tenant_id)
+            VALUES ('${group_id}', now(), 'FAILED', 'DEEP_SIFT', 'Deep Sift process failed for group_id ${group_id}', ${gen_id.root_pipeline_id}, ${tenant_id});
+
+        "} on-condition if "true"=="true"
+    }
+    finally{
+
+        transform as "insert into pipeline summary audit sor transaction Radon pipeline" on "intics_zio_db_conn" using
+        {"
+            INSERT INTO ${temp_schema_name}.summary_audit_papers_${process-id}
+            (
+                process_id,
+                module_name,
+                macro_process,
+                completed_count,
+                failed_count,
+                min_created_on,
+                max_created_on,
+                time_taken,
+                root_pipeline_id,
+                tenant_id,
+                batch_id
+            )
+            SELECT
+                ${process-id},
+                'DEEP_SIFT',
+                'DEEP_SIFT_SEARCH',
+                coalesce(sum(CASE WHEN dspq.status = 'COMPLETED' THEN 1 ELSE 0 END), 0),
+                coalesce(sum(CASE WHEN dspq.status = 'FAILED' THEN 1 ELSE 0 END), 0),
+                min(dso.created_on),
+                max(dso.created_on),
+                EXTRACT(epoch FROM (max(dso.created_on) - min(dso.created_on))),
+                '${gen_id.root_pipeline_id}',
+                ${tenant_id},
+                '${batch_id}'
+            FROM
+                ${temp_schema_name}.deep_search_output_${init_process_id.process_id} dso
+            JOIN
+                deep_sift.deep_sift_payload_queue dspq
+                ON dspq.group_id = '${group_id}'
+                AND dspq.tenant_id = ${tenant_id}
+                AND dspq.batch_id = '${batch_id}'
+            WHERE
+                dso.group_id = '${group_id}'
+                AND dso.tenant_id = ${tenant_id}
+                AND dso.batch_id = '${batch_id}';
+
+            INSERT INTO ${temp_schema_name}.summary_audit_files_${process-id}
+            (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken,root_pipeline_id, tenant_id, batch_id)
+            SELECT ${process-id} , 'DEEP_SIFT' ,'DEEP_SIFT_SEARCH',coalesce(sum(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END) ,0),coalesce(sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END) ,0),min(created_on),max(created_on), EXTRACT(epoch FROM (max(created_on)-min(created_on))),'${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}'
+            FROM deep_sift.deep_sift_payload_queue
+            WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+            INSERT INTO audit.pipeline_summary_audit
+            (process_id, created_on, module_name, macro_process,
+             files_processed_count, papers_processed_count,
+             files_failed_count, papers_failed_count,
+             start_time, end_time, time_taken,
+             group_id, root_pipeline_id, created_user_id, template_id, tenant_id, average_time, batch_id)
+            SELECT
+                msaf.process_id,
+                now(),
+                msaf.module_name,
+                msaf.macro_process,
+                msaf.completed_count,
+                (msap.completed_count + msap.failed_count) as papers_processed_count,
+                msaf.failed_count,
+                msap.failed_count,
+                msap.min_created_on,
+                msap.max_created_on,
+                EXTRACT(epoch FROM (msap.max_created_on - msap.min_created_on)),
+                '${group_id}',
+                '${root-ref-id}',
+                '${created_user_id}',
+                '${document_id}',
+                ${tenant_id},
+                (CASE
+                    WHEN (msap.completed_count + msap.failed_count) = 0
+                    THEN msap.time_taken
+                    ELSE (msap.time_taken / (msap.completed_count + msap.failed_count))
+                 END) as average_time,
+                msaf.batch_id
+            FROM ${temp_schema_name}.summary_audit_files_${process-id} msaf
+            JOIN ${temp_schema_name}.summary_audit_papers_${process-id} msap
+              ON msaf.module_name = msap.module_name
+             AND msaf.macro_process = msap.macro_process
+             AND msaf.batch_id = msap.batch_id
+            WHERE msaf.module_name = 'DEEP_SIFT'
+              AND msaf.macro_process = 'DEEP_SIFT_SEARCH'
+              AND msaf.tenant_id = ${tenant_id}
+              AND msap.batch_id = '${batch_id}';
+
+        "} on-condition if "true"=="true"
+
+        transform as "archive and move failed records from deep sift payload queue" on "intics_zio_db_conn" using
+        {"
+            -- Archive COMPLETED records
+            INSERT INTO deep_sift.deep_sift_payload_queue_archive (
+                producer_process_id, consumer_process_id, origin_id, tenant_id, group_id, batch_id, root_pipeline_id,
+                created_on, status, stage, consumed_on_ts
+            )
+            SELECT
+                producer_process_id,consumer_process_id, origin_id, tenant_id, group_id, batch_id, root_pipeline_id,
+                now(), status, stage, now()
+            FROM deep_sift.deep_sift_payload_queue
+            WHERE status = 'COMPLETED'
+              AND group_id = '${group_id}'
+              AND tenant_id = ${tenant_id}
+              AND batch_id = '${batch_id}';
+
+            -- Delete COMPLETED records
+            DELETE FROM deep_sift.deep_sift_payload_queue
+            WHERE status = 'COMPLETED'
+              AND group_id = '${group_id}'
+              AND tenant_id = ${tenant_id}
+              AND batch_id = '${batch_id}';
+
+            -- Move FAILED records to error queue
+            INSERT INTO deep_sift.deep_sift_error_queue (
+                producer_process_id, consumer_process_id, origin_id, tenant_id, group_id, batch_id, root_pipeline_id,
+                created_on, status, stage, message, consumed_on_ts
+            )
+            SELECT
+                producer_process_id, consumer_process_id, origin_id, tenant_id, group_id, batch_id, root_pipeline_id,
+                now(), status, stage, 'error in deep sift process', now()
+            FROM deep_sift.deep_sift_payload_queue
+            WHERE status = 'FAILED'
+              AND group_id = '${group_id}'
+              AND tenant_id = ${tenant_id}
+              AND batch_id = '${batch_id}';
+
+            -- Delete FAILED records
+            DELETE FROM deep_sift.deep_sift_payload_queue
+            WHERE status = 'FAILED'
+              AND group_id = '${group_id}'
+              AND tenant_id = ${tenant_id}
+              AND batch_id = '${batch_id}';
+
+            -- Move ABORTED records to error queue
+            INSERT INTO deep_sift.deep_sift_error_queue (
+                producer_process_id, consumer_process_id, origin_id, tenant_id, group_id, batch_id, root_pipeline_id,
+                created_on, status, stage, message, consumed_on_ts
+            )
+            SELECT
+                producer_process_id, consumer_process_id, origin_id, tenant_id, group_id, batch_id, root_pipeline_id,
+                now(), status, stage, 'deep_sift stage aborted batch_id=${batch_id} | root_pipeline_id=${root_pipeline_id} | group_id=${group_id} | transaction_id=${transaction_id} | reason=execution time exceeded the threshold limit', now()
+            FROM deep_sift.deep_sift_payload_queue
+            WHERE status = 'ABORTED'
+              AND group_id = '${group_id}'
+              AND tenant_id = ${tenant_id}
+              AND batch_id = '${batch_id}';
+
+            -- Delete FAILED records
+            DELETE FROM deep_sift.deep_sift_payload_queue
+            WHERE status = 'ABORTED'
+              AND group_id = '${group_id}'
+              AND tenant_id = ${tenant_id}
+              AND batch_id = '${batch_id}';
+        "} on-condition if "${deep.sift.extraction.activator}"=="true"
+
+        transform as "update to COMPLETE in pipeline queue status audit" on "intics_zio_db_conn" using
+        {"
+            update ingestion.pipeline_queue_status_audit as a
+            set status = 'COMPLETED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+            where  a.group_id=${group_id} and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='DEEP_SIFT' and a.status = 'IN_PROGRESS';
+        "} on-condition if "${deep.sift.extraction.activator}"=="true"
+
+
+          transform as "update chronoclash audit form temporary tables" on "intics_zio_db_conn" using
+          {"
+                 UPDATE chrono_clash.chrono_clash_audit as cca
+                 SET updated_on=now(), stage='DEEP_SIFT', status=ppq.status, remaining_time=((a.time_frame * interval '1 minute') - (now() - a.downloaded_time))
+                 FROM ${temp_schema_name}.deep_sift_chrono_clash_input_${init_process_id.process_id} a
+                 JOIN deep_sift.deep_sift_payload_queue ppq ON ppq.origin_id = a.origin_id AND ppq.tenant_id = a.tenant_id
+                 WHERE cca.origin_id = a.origin_id and a.group_id=${group_id} and a.tenant_id = ${tenant_id} and a.batch_id ='${batch_id}';
+
+                 DROP TABLE IF EXISTS ${temp_schema_name}.deep_sift_chrono_clash_input_${init_process_id.process_id};
+          "}  on-condition if "${chronoclash.activator}"=="true"
+}

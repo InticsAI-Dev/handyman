@@ -1,0 +1,479 @@
+process "voting.phase.two.v3"
+{
+    try
+    {
+        transform as "insert to started voting phase two audit" on "intics_zio_db_conn" using {"
+            INSERT INTO ${temp_schema_name}.temp_aggregation_evaluator_${init_process_id.process_id}
+            (
+                 created_on,
+                 created_user_id,
+                 last_updated_on,
+                 last_updated_user_id,
+                 tenant_id,
+                 aggregated_score,
+                 masked_score,
+                 group_id,
+                 origin_id,
+                 paper_no,
+                 predicted_value,
+                 vqa_score,
+                 rank,
+                 sor_item_attribution_id,
+                 sor_item_name,
+                 document_id,
+                 acc_transaction_id,
+                 b_box,
+                 root_pipeline_id,
+                 frequency,
+                 question_id,
+                 synonym_id,
+                 model_registry,
+                 status,
+                 version,
+                 model_registry_id,
+                 batch_id,
+                 category
+            )
+            SELECT
+                 ae.created_on,
+                 ae.created_user_id,
+                 ae.last_updated_on,
+                 ae.last_updated_user_id,
+                 ae.tenant_id,
+                 ae.aggregated_score,
+                 ae.masked_score,
+                 ae.group_id,
+                 ae.origin_id,
+                 ae.paper_no,
+                 ae.predicted_value,
+                 ae.vqa_score,
+                 ae.rank,
+                 ae.sor_item_attribution_id,
+                 ae.sor_item_name,
+                 ae.document_id,
+                 ae.acc_transaction_id,
+                 ae.b_box,
+                 ae.root_pipeline_id,
+                 ae.frequency,
+                 ae.question_id,
+                 ae.synonym_id,
+                 ae.model_registry,
+                 ae.status,
+                 ae.version,
+                 ae.model_registry_id,
+                 ae.batch_id,
+                 ae.category
+            FROM ${temp_schema_name}.aggregation_evaluator_${init_process_id.process_id} ae
+            JOIN ${temp_schema_name}.paper_unnest_${init_process_id.process_id} b
+              ON ae.origin_id = b.origin_id AND ae.paper_no = b.paper_number
+            WHERE ae.group_id = '${group_id}'
+              AND ae.tenant_id = ${tenant_id}
+              AND ae.batch_id = '${batch_id}'
+              AND ae.origin_id = '${origin_id}';
+        "} on-condition if "true"=="true"
+
+        transform as "insert to started voting phase two audit" on "intics_zio_db_conn" using {"
+            -- STEP 1: Count SOR items per origin_id + paper_no + sor_item_name ;
+            INSERT INTO ${temp_schema_name}.sor_item_name_counts_per_file_${init_process_id.process_id}
+            (tenant_id, batch_id, group_id, origin_id, sor_item_name, sor_item_count)
+            SELECT tenant_id, batch_id, group_id, origin_id, sor_item_name, COUNT(*) AS sor_item_count
+            FROM ${temp_schema_name}.temp_aggregation_evaluator_${init_process_id.process_id} ae
+            where ae.group_id = '${group_id}'
+            AND ae.tenant_id = ${tenant_id}
+            AND ae.batch_id = '${batch_id}'
+            AND ae.origin_id = '${origin_id}'
+            GROUP BY ae.origin_id, ae.sor_item_name, ae.tenant_id, ae.batch_id, ae.group_id;
+        "} on-condition if "true"=="true"
+
+        transform as "insert into final_cumulative_results for Insert single sor_item_name items from temp_aggregation_evaluator into final results in phase 3" on "intics_zio_db_conn" using {"
+            -- STEP 2: Entries with count = 1 → final result ;
+            INSERT INTO ${temp_schema_name}.final_cumulative_results_${init_process_id.process_id}
+            (
+                tenant_id, batch_id, group_id, origin_id, root_pipeline_id,
+                paper_no, sor_item_attribution_id, sor_item_name, question_id,
+                synonym_id, b_box, predicted_value
+            )
+            SELECT
+                ae.tenant_id, ae.batch_id, ae.group_id, ae.origin_id, ae.root_pipeline_id,
+                ae.paper_no, ae.sor_item_attribution_id, ae.sor_item_name, ae.question_id,
+                ae.synonym_id, ae.b_box, ae.predicted_value
+            FROM ${temp_schema_name}.temp_aggregation_evaluator_${init_process_id.process_id} ae
+            JOIN ${temp_schema_name}.sor_item_name_counts_per_file_${init_process_id.process_id} counts
+              ON ae.origin_id = counts.origin_id
+             AND ae.sor_item_name = counts.sor_item_name
+            WHERE counts.sor_item_count = 1 AND
+            ae.group_id = '${group_id}'
+            AND ae.tenant_id = ${tenant_id}
+            AND ae.batch_id = '${batch_id}'
+            AND ae.origin_id = '${origin_id}';
+        "} on-condition if "true"=="true"
+
+        transform as "insert into multi_sor_items_to_evaluate for Select multi sor_item_name items from temp_aggregation_evaluator into tie-breaking staging in phase 3" on "intics_zio_db_conn" using {"
+            -- STEP 3: Entries with count > 1 ;
+            INSERT INTO ${temp_schema_name}.multi_sor_items_to_evaluate_${init_process_id.process_id}
+            (
+                tenant_id, batch_id, group_id, origin_id, root_pipeline_id,
+                paper_no, sor_item_attribution_id, sor_item_name, question_id,
+                synonym_id, b_box, predicted_value
+            )
+            SELECT
+                ae.tenant_id, ae.batch_id, ae.group_id, ae.origin_id, ae.root_pipeline_id,
+                ae.paper_no, ae.sor_item_attribution_id, ae.sor_item_name, ae.question_id,
+                ae.synonym_id, ae.b_box, ae.predicted_value
+            FROM ${temp_schema_name}.temp_aggregation_evaluator_${init_process_id.process_id} ae
+            JOIN ${temp_schema_name}.sor_item_name_counts_per_file_${init_process_id.process_id} counts
+              ON ae.origin_id = counts.origin_id
+             AND ae.sor_item_name = counts.sor_item_name
+            WHERE counts.sor_item_count > 1 AND
+            ae.group_id = '${group_id}'
+            AND ae.tenant_id = ${tenant_id}
+            AND ae.batch_id = '${batch_id}'
+            AND ae.origin_id = '${origin_id}';
+        "} on-condition if "true"=="true"
+
+        transform as "insert into final_cumulative_results for Insert empty predicted_value items from multi_sor_items_to_evaluate into final results in phase 3" on "intics_zio_db_conn" using {"
+            -- STEP 4a: Insert data which has only empty predicted_value ;
+            INSERT INTO ${temp_schema_name}.final_cumulative_results_${init_process_id.process_id}
+            (
+                tenant_id,
+                batch_id,
+                group_id,
+                origin_id,
+                root_pipeline_id,
+                paper_no,
+                sor_item_attribution_id,
+                sor_item_name,
+                question_id,
+                synonym_id,
+                b_box,predicted_value
+            )
+            SELECT DISTINCT ON (t.sor_item_name)
+                t.tenant_id,
+                t.batch_id,
+                t.group_id,
+                t.origin_id,
+                t.root_pipeline_id,
+                t.paper_no,
+                t.sor_item_attribution_id,
+                t.sor_item_name,
+                t.question_id,
+                t.synonym_id,
+                t.b_box,
+                t.predicted_value
+            FROM ${temp_schema_name}.multi_sor_items_to_evaluate_${init_process_id.process_id} t
+            LEFT JOIN ${temp_schema_name}.multi_sor_items_to_evaluate_${init_process_id.process_id} j
+              ON t.sor_item_name = j.sor_item_name and t.origin_id = j.origin_id
+             AND j.predicted_value IS NOT NULL AND j.predicted_value != ''
+            WHERE (t.predicted_value IS NULL OR t.predicted_value = '')
+              AND j.sor_item_name IS NULL
+              AND t.group_id = '${group_id}'
+              AND t.tenant_id = ${tenant_id}
+              AND t.batch_id = '${batch_id}'
+              AND t.origin_id = '${origin_id}'
+            ORDER BY t.sor_item_name, t.origin_id, t.paper_no ASC;
+        "} on-condition if "true"=="true"
+
+        transform as "insert into non_empty_predicted_values for Remove empty predicted_value from multi_sor_items_to_evaluate into tie-breaking staging in phase 3" on "intics_zio_db_conn" using {"
+            -- STEP 4b: Remove empty predicted_value ;
+            INSERT INTO ${temp_schema_name}.non_empty_predicted_values_${init_process_id.process_id}
+            (
+                tenant_id, batch_id, group_id, origin_id, root_pipeline_id,
+                paper_no, sor_item_attribution_id, sor_item_name, question_id,
+                synonym_id, b_box, predicted_value
+            )
+            SELECT
+                tenant_id, batch_id, group_id, origin_id, root_pipeline_id,
+                paper_no, sor_item_attribution_id, sor_item_name, question_id,
+                synonym_id, b_box, predicted_value
+            FROM ${temp_schema_name}.multi_sor_items_to_evaluate_${init_process_id.process_id}
+            WHERE COALESCE(predicted_value, '') <> '' AND
+             group_id = '${group_id}'
+             AND tenant_id = ${tenant_id}
+             AND batch_id = '${batch_id}'
+             AND origin_id = '${origin_id}';
+        "} on-condition if "true"=="true"
+
+        transform as "insert into predicted_value_occurrence_counts for Count predicted_value occurrences from non_empty_predicted_values into tie-breaking staging in phase 3" on "intics_zio_db_conn" using {"
+            -- STEP 5: Count predicted_value per origin_id + sor_item_name ;
+            INSERT INTO ${temp_schema_name}.predicted_value_occurrence_counts_${init_process_id.process_id}
+            (tenant_id, batch_id, group_id, origin_id, sor_item_name, predicted_value, predicted_value_count)
+            SELECT
+                tenant_id, batch_id, group_id, origin_id, sor_item_name, predicted_value, COUNT(*) AS predicted_value_count
+            FROM ${temp_schema_name}.non_empty_predicted_values_${init_process_id.process_id}
+             WHERE group_id = '${group_id}'
+                  AND tenant_id = ${tenant_id}
+                  AND batch_id = '${batch_id}'
+                  AND origin_id = '${origin_id}'
+            GROUP BY tenant_id, batch_id, group_id, origin_id, sor_item_name, predicted_value;
+        "} on-condition if "true"=="true"
+
+        transform as "insert into single_predicted_value_items for Select unique predicted_value items from predicted_value_occurrence_counts into tie-breaking staging in phase 3" on "intics_zio_db_conn" using {"
+            -- STEP 6a: Select sor_item_name with only 1 predicted_value ;
+            INSERT INTO ${temp_schema_name}.single_predicted_value_items_${init_process_id.process_id}
+            (tenant_id, batch_id, group_id, origin_id, sor_item_name)
+            SELECT tenant_id, batch_id, group_id, origin_id, sor_item_name
+            FROM ${temp_schema_name}.predicted_value_occurrence_counts_${init_process_id.process_id}
+            WHERE group_id = '${group_id}'
+                  AND tenant_id = ${tenant_id}
+                  AND batch_id = '${batch_id}'
+                  AND origin_id = '${origin_id}'
+            GROUP BY tenant_id, batch_id, group_id, origin_id, sor_item_name
+            HAVING COUNT(*) = 1;
+        "} on-condition if "true"=="true"
+
+        transform as "insert into final_cumulative_results for Insert unique predicted_value items from single_predicted_value_items into final results in phase 3" on "intics_zio_db_conn" using {"
+            -- STEP 6b: Insert unique predicted_value into final result ;
+            INSERT INTO ${temp_schema_name}.final_cumulative_results_${init_process_id.process_id}
+            (
+                tenant_id, batch_id, group_id, origin_id, root_pipeline_id,
+                paper_no, sor_item_attribution_id, sor_item_name, question_id,
+                synonym_id, b_box, predicted_value
+            )
+            SELECT DISTINCT
+                pv.tenant_id, pv.batch_id, pv.group_id, pv.origin_id, pv.root_pipeline_id,
+                pv.paper_no, pv.sor_item_attribution_id, pv.sor_item_name, pv.question_id,
+                pv.synonym_id, pv.b_box, pv.predicted_value
+            FROM ${temp_schema_name}.non_empty_predicted_values_${init_process_id.process_id} pv
+            JOIN ${temp_schema_name}.single_predicted_value_items_${init_process_id.process_id} s
+              ON pv.origin_id = s.origin_id
+             AND pv.sor_item_name = s.sor_item_name
+            WHERE pv.paper_no = (
+                SELECT MIN(paper_no)
+                FROM ${temp_schema_name}.non_empty_predicted_values_${init_process_id.process_id} sub
+                WHERE sub.origin_id = pv.origin_id
+                  AND sub.sor_item_name = pv.sor_item_name
+                  AND pv.group_id = '${group_id}'
+                  AND pv.tenant_id = ${tenant_id}
+                  AND pv.origin_id = '${origin_id}'
+                  AND pv.batch_id = '${batch_id}'
+            ) and pv.batch_id = s.batch_id and pv.group_id = s.group_id and pv.tenant_id = s.tenant_id ;
+        "} on-condition if "true"=="true"
+
+        transform as "insert into tied_sor_items for Identify tied sor_item_names needing more logic from predicted_value_occurrence_counts into tie-breaking staging in phase 3" on "intics_zio_db_conn" using {"
+            -- STEP 6c: Identify tied sor_item_names needing more logic ;
+            INSERT INTO ${temp_schema_name}.tied_sor_items_${init_process_id.process_id}
+            (
+                tenant_id,
+                batch_id,
+                group_id,
+                origin_id,
+                sor_item_name,
+                sor_container_id,
+                sor_container_name
+            )
+            SELECT
+                pvc.tenant_id,
+                pvc.batch_id,
+                pvc.group_id,
+                pvc.origin_id,
+                pvc.sor_item_name,
+                audit.sor_container_id,
+                audit.sor_container_name
+            FROM ${temp_schema_name}.predicted_value_occurrence_counts_${init_process_id.process_id} pvc
+            JOIN ${temp_schema_name}.sor_meta_consolidated_${init_process_id.process_id} audit
+              ON pvc.tenant_id = audit.tenant_id
+             AND pvc.group_id = audit.group_id
+             AND pvc.sor_item_name = audit.sor_item_name
+            WHERE pvc.group_id = '${group_id}'
+              AND pvc.tenant_id = ${tenant_id}
+              AND pvc.batch_id = '${batch_id}'
+              AND pvc.origin_id = '${origin_id}'
+            GROUP BY
+                pvc.tenant_id,
+                pvc.batch_id,
+                pvc.group_id,
+                pvc.origin_id,
+                pvc.sor_item_name,
+                audit.sor_container_id,
+                audit.sor_container_name
+            HAVING COUNT(*) > 1;
+        "} on-condition if "true"=="true"
+
+        transform as "insert into predicted_values_joined for Join predicted_values with sor_meta from temp_aggregation_evaluator into joined staging in phase 3" on "intics_zio_db_conn" using {"
+            INSERT INTO ${temp_schema_name}.predicted_values_joined_${init_process_id.process_id}
+            (tenant_id, batch_id, group_id, origin_id, root_pipeline_id, paper_no, sor_item_name, predicted_value, sor_container_id, sor_container_name)
+            SELECT
+                ae.tenant_id,
+                ae.batch_id,
+                ae.group_id,
+                ae.origin_id,
+                ae.root_pipeline_id,
+                ae.paper_no,
+                ae.sor_item_name,
+                ae.predicted_value,
+                audit.sor_container_id,
+                audit.sor_container_name
+            FROM ${temp_schema_name}.temp_aggregation_evaluator_${init_process_id.process_id} ae
+            JOIN ${temp_schema_name}.sor_meta_consolidated_${init_process_id.process_id} audit
+              ON ae.tenant_id = audit.tenant_id
+             AND ae.sor_item_name = audit.sor_item_name
+             AND ae.group_id = audit.group_id
+            WHERE ae.group_id = '${group_id}'
+              AND ae.tenant_id = ${tenant_id}
+              AND ae.batch_id = '${batch_id}'
+              AND ae.origin_id = '${origin_id}'
+              AND ae.predicted_value IS NOT NULL
+              AND ae.predicted_value != '';
+        "} on-condition if "true"=="true"
+
+        transform as "insert into most_common_sor_items_in_ties for Select most common predicted_value in ties from predicted_values_joined into tie-breaking staging in phase 3" on "intics_zio_db_conn" using {"
+            -- STEP 8a: Select (origin_id, sor_item_name, paper_no) with max SOR container record count (break ties with min paper_no) ;
+            INSERT INTO ${temp_schema_name}.most_common_sor_items_in_ties_${init_process_id.process_id}
+            (tenant_id, batch_id, group_id, origin_id, paper_no, sor_container_id, sor_container_name)
+            SELECT DISTINCT ON (sor_container_id)
+                tenant_id,
+                batch_id,
+                group_id,
+                origin_id,
+                paper_no,
+                sor_container_id,
+                sor_container_name
+            FROM (
+                SELECT
+                    tenant_id,
+                    batch_id,
+                    group_id,
+                    origin_id,
+                    root_pipeline_id,
+                    paper_no,
+                    sor_container_id,
+                    sor_container_name,
+                    COUNT(*) AS record_count
+                FROM ${temp_schema_name}.predicted_values_joined_${init_process_id.process_id}
+                GROUP BY
+                    tenant_id,
+                    batch_id,
+                    group_id,
+                    origin_id,
+                    root_pipeline_id,
+                    paper_no,
+                    sor_container_id,
+                    sor_container_name
+            ) sub
+            WHERE group_id = '${group_id}'
+              AND tenant_id = ${tenant_id}
+              AND batch_id = '${batch_id}'
+              AND origin_id = '${origin_id}'
+            ORDER BY sor_container_id, record_count DESC, paper_no ASC;
+        "} on-condition if "true"=="true"
+
+        transform as "insert into white listed entries for filtering out the white listed labels in phase 3" on "intics_zio_db_conn" using {"
+            INSERT INTO ${temp_schema_name}.white_listed_entries_${init_process_id.process_id}
+            (tenant_id, batch_id, group_id, origin_id, root_pipeline_id, paper_no, sor_item_attribution_id, sor_item_name, question_id, synonym_id, b_box, predicted_value, whitelist_key)
+            SELECT DISTINCT
+                pvc.tenant_id, pvc.batch_id, pvc.group_id, pvc.origin_id, ${init_process_id.process_id} as root_pipeline_id,
+                pvc.paper_no, audit.sor_item_attribution_id, pvc.sor_item_name, audit.question_id,
+                audit.synonym_id, t.bbox as b_box, pvc.predicted_value, t.sor_item_label as whitelist_key
+            FROM ${temp_schema_name}.predicted_values_joined_${init_process_id.process_id} pvc
+            JOIN sor_meta.sor_tsynonym_whitelist tsw
+              ON pvc.tenant_id = tsw.tenant_id
+             AND pvc.sor_item_name = tsw.sor_item_name
+            JOIN ${temp_schema_name}.after_filtered_llm_json_parser_output_${init_process_id.process_id} t
+              ON pvc.origin_id = t.origin_id
+             AND pvc.tenant_id = t.tenant_id
+             AND pvc.group_id = t.group_id
+             AND pvc.sor_item_name = t.sor_item_name
+             AND pvc.paper_no = t.paper_no
+             AND tsw.whitelist_key = t.sor_item_label
+            JOIN ${temp_schema_name}.sor_meta_consolidated_${init_process_id.process_id} audit
+              ON pvc.tenant_id = audit.tenant_id
+             AND pvc.group_id = audit.group_id
+             AND pvc.sor_item_name = audit.sor_item_name
+            WHERE pvc.group_id = '${group_id}' AND pvc.tenant_id = ${tenant_id} AND pvc.batch_id = '${batch_id}' AND pvc.origin_id = '${origin_id}';
+        "} on-condition if "${voting.precedence.whitelabel}"=="true"
+
+        transform as "insert into final_cumulative_results for Insert resolved tie items from tied_sor_items + most_common_sor_items into final results in phase 3" on "intics_zio_db_conn" using {"
+            -- STEP 8b: Insert max-count SOR items into final result ;
+            INSERT INTO ${temp_schema_name}.final_cumulative_results_${init_process_id.process_id}
+            (
+                tenant_id,
+                batch_id,
+                group_id,
+                origin_id,
+                root_pipeline_id,
+                paper_no,
+                sor_item_attribution_id,
+                sor_item_name,
+                question_id,
+                synonym_id,
+                b_box,
+                predicted_value
+            )
+            SELECT DISTINCT
+                ae.tenant_id,
+                ae.batch_id,
+                ae.group_id,
+                ae.origin_id,
+                ae.root_pipeline_id,
+                COALESCE(wle.paper_no, mc.paper_no) as paper_no,
+                ae.sor_item_attribution_id,
+                ae.sor_item_name,
+                ae.question_id,
+                ae.synonym_id,
+                ae.b_box,
+                ae.predicted_value
+            FROM ${temp_schema_name}.tied_sor_items_${init_process_id.process_id} npv
+            LEFT JOIN  ${temp_schema_name}.white_listed_entries_${init_process_id.process_id} wle
+             ON npv.origin_id = wle.origin_id
+             AND npv.tenant_id = wle.tenant_id
+             AND npv.group_id = wle.group_id
+             AND npv.sor_item_name = wle.sor_item_name
+            JOIN ${temp_schema_name}.most_common_sor_items_in_ties_${init_process_id.process_id} mc
+              ON npv.origin_id = mc.origin_id
+             AND npv.tenant_id = mc.tenant_id
+             AND npv.group_id = mc.group_id
+             AND npv.sor_container_id::INT8 = mc.sor_container_id
+            JOIN ${temp_schema_name}.temp_aggregation_evaluator_${init_process_id.process_id} ae
+              ON ae.origin_id = npv.origin_id
+             AND ae.sor_item_name = npv.sor_item_name
+             AND ae.paper_no = COALESCE(wle.paper_no, mc.paper_no)
+             AND ae.tenant_id = npv.tenant_id
+             AND ae.group_id = npv.group_id
+            WHERE ae.group_id = '${group_id}'
+              AND ae.tenant_id = ${tenant_id}
+              AND ae.batch_id = '${batch_id}'
+              AND ae.origin_id = '${origin_id}';
+        "} on-condition if "true"=="true"
+
+        transform as "insert into voting.cummulative_result for Insert consolidated results into production table from final_cumulative_results in phase 3" on "intics_zio_db_conn" using {"
+            -- FINAL STEP: Insert one row per (origin_id, sor_item_name) with tie-breaking using paper_no and sor_item_attribution_id ;
+            INSERT INTO ${temp_schema_name}.cummulative_result_${init_process_id.process_id} (
+                tenant_id, batch_id, group_id, origin_id, root_pipeline_id,
+                paper_no, sor_item_name, question_id,
+                synonym_id, b_box, extracted_value,
+                created_on,created_user_id,last_updated_on,last_updated_user_id,status,version,confidence_score
+            )
+            SELECT DISTINCT ON (a.tenant_id, a.batch_id, a.group_id, a.origin_id, a.sor_item_name)
+                a.tenant_id, a.batch_id, a.group_id, a.origin_id, a.root_pipeline_id,
+                a.paper_no, a.sor_item_name, a.question_id::BIGINT,
+                a.synonym_id::BIGINT, a.b_box, a.predicted_value,now(),${created_user_id},now(),${created_user_id},'ACTIVE',1,b.vqa_score
+            FROM ${temp_schema_name}.final_cumulative_results_${init_process_id.process_id} as a
+            JOIN ${temp_schema_name}.temp_aggregation_evaluator_${init_process_id.process_id} as b
+                ON a.origin_id = b.origin_id
+                 AND a.sor_item_name = b.sor_item_name
+                 AND a.batch_id = b.batch_id
+                 AND a.paper_no = b.paper_no
+                 AND a.predicted_value = b.predicted_value
+                 AND a.tenant_id = b.tenant_id
+                 AND a.group_id = b.group_id
+            WHERE a.group_id = '${group_id}'
+              AND a.tenant_id = ${tenant_id}
+              AND a.batch_id = '${batch_id}'
+              AND a.origin_id = '${origin_id}'
+              and a.sor_item_name != 'multiple_member_indicator'
+            ORDER BY a.tenant_id, a.batch_id, a.group_id, a.origin_id, a.sor_item_name, a.paper_no ASC, a.sor_item_attribution_id ASC;
+        "} on-condition if "true"=="true"
+    }
+    catch
+    {
+        transform as "insert to completed voting phase two audit" on "intics_zio_db_conn" using
+        {"
+            INSERT INTO sor_transaction.sor_transaction_pipeline_audit
+            (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+            VALUES('${group_id}', now(), '${created_user_id}', '${created_user_id}', ${tenant_id}, 'FAILED', 'VOTING', 'voting failed for voting with group_id ${group_id}', '${gen_id.root_pipeline_id}', '${batch_id}');
+        "} on-condition if "true"=="true"
+    }
+    finally
+    {
+    }
+}

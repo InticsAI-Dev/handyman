@@ -1,0 +1,403 @@
+process "doc.eyecue.processor"
+{
+try {
+        transform as "Update to IN_PROGRESS in payload queue" on "intics_zio_db_conn" using {"
+            UPDATE doc_eyecue.doc_eyecue_payload_queue
+            SET status = 'IN_PROGRESS',
+                consumed_on_ts = now(),
+                consumer_process_id = ${init_process_id.process_id}
+            WHERE group_id = ${group_id}
+              AND batch_id = '${batch_id}'
+              AND status = 'STAGED'
+              AND stage = 'DOC_EYE_CUE'
+              AND tenant_id = ${tenant_id};
+        "} on-condition if "true"=="true"
+
+        transform as "Update sub-batching payload queue to IN_PROGRESS" on "intics_zio_db_conn" using {"
+            UPDATE batching.sub_batching_process_payload_queue
+            SET status = 'IN_PROGRESS',
+                stage = 'DOC_EYE_CUE',
+                consumer_process_id = ${init_process_id.process_id}
+            WHERE group_id = ${group_id}
+              AND batch_id = '${batch_id}'
+              AND tenant_id = ${tenant_id}
+              AND root_pipeline_id = ${gen_id.root_pipeline_id};
+        "} on-condition if "true"=="true"
+
+        transform as "Insert start audit entry in pipeline audit table" on "intics_zio_db_conn" using {"
+            INSERT INTO doc_eyecue.doc_eyecue_pipeline_audit
+              (process_id, origin_id, group_id, created_on, status, stage, message, root_pipeline_id, tenant_id, batch_id, template_id)
+            SELECT
+              ${init_process_id.process_id},
+              origin_id,
+              group_id,
+              now(),
+              'STARTED',
+              'DOC_EYE_CUE',
+              'doc_eyecue process STARTED for group_id ${group_id}',
+              ${gen_id.root_pipeline_id},
+              ${tenant_id},
+              batch_id,
+              template_id
+            FROM doc_eyecue.doc_eyecue_payload_queue
+            WHERE status = 'IN_PROGRESS'
+              AND stage = 'DOC_EYE_CUE'
+              AND group_id = ${group_id}
+              AND tenant_id = ${tenant_id}
+              AND batch_id = '${batch_id}';
+        "} on-condition if "true"=="true"
+
+        assign as "doc_eyecue_target_directory" source "intics_zio_db_conn" using {"
+            SELECT concat('${gen_directory.current_directory}','/doc_eyecue/') AS target_directory_path;
+        "} on-condition if "true"=="true"
+
+        createDirectory as "Create doc_eyecue output directory" using {
+            "${doc_eyecue_target_directory.target_directory_path}"
+        } on-condition if "true"=="true"
+
+        transform as "Insert into pipeline_directory_info for doc_eyecue" on "intics_zio_db_conn" using {"
+            INSERT INTO ingestion.pipeline_directory_info
+              (target_directory_path, tenant_id, group_id, root_pipeline_id, created_on, updated_on,
+               created_user_id, last_updated_user_id, transaction_id, formatted_date,
+               current_directory, zip_directory, process_name, status)
+            VALUES
+              ('${doc_eyecue_target_directory.target_directory_path}', ${tenant_id},
+               ${gen_group_id.group_id}, ${gen_id.root_pipeline_id}, now(), now(),
+               '${created_user_id}', '${last_updated_user_id}', '${transaction_id}',
+               '${gen_id.formatted_date}', '${doc_eyecue_target_directory.target_directory_path}',
+               '${gen_directory.zip_directory}', 'DOC_EYE_CUE', 'STAGED');
+
+                       INSERT INTO ${temp_schema_name}.doc_eyecue_input_table_${init_process_id.process_id}
+                       (
+                           origin_id,
+                           input_file_path,
+                           batch_id,
+                           tenant_id,
+                           template_id,
+                           process_id,
+                           group_id,
+                           root_pipeline_id,
+                           created_on,
+                           document_id,
+                           file_name
+                       )
+                       SELECT
+                           a.origin_id,
+                           c.file_path AS input_file_path,
+                           a.batch_id,
+                           a.tenant_id,
+                           a.template_id,
+                           a.producer_process_id AS process_id,
+                           a.group_id,
+                           a.root_pipeline_id,
+                           a.created_on,
+                           d.document_id,
+                           d.file_name
+                       FROM doc_eyecue.doc_eyecue_payload_queue a
+                       JOIN ${temp_schema_name}.source_of_origin_${init_process_id.process_id} b
+                           ON a.origin_id = b.origin_id
+                          AND a.tenant_id = b.tenant_id
+                       JOIN ${temp_schema_name}.asset_${init_process_id.process_id} c
+                           ON b.file_id = c.file_id
+                       LEFT JOIN inbound_config.ingestion_downloaded_file_details d
+                           ON b.transaction_id = d.transaction_id
+                          AND a.tenant_id = d.tenant_id
+                          AND c.file_name = d.file_name
+                       WHERE a.group_id = ${group_id}
+                         AND a.batch_id = '${batch_id}'
+                         AND a.status = 'IN_PROGRESS'
+                         AND a.stage = 'DOC_EYE_CUE'
+                         AND a.tenant_id = ${tenant_id};
+        "} on-condition if "true"=="true"
+
+            documentEyeCue as "Execute Doc EyeCue macro"
+            outputDir "${doc_eyecue_target_directory.target_directory_path}"
+            copro-url "${copro.eye-cue.url}"
+            result-table "${temp_schema_name}.doc_eyecue_pipeline_result_${init_process_id.process_id}"
+            processId "${init_process_id.process_id}"
+            resource-conn "intics_zio_db_conn"
+            using {"
+                SELECT
+                    i.origin_id,
+                    i.batch_id,
+                    i.process_id,
+                    i.group_id,
+                    i.tenant_id,
+                    i.root_pipeline_id,
+                    i.input_file_path AS file_path,
+                    i.created_on,
+                    i.document_id,
+                    i.file_name
+                FROM ${temp_schema_name}.doc_eyecue_input_table_${init_process_id.process_id} i
+                WHERE i.group_id = ${group_id}
+                  AND i.batch_id = '${batch_id}'
+                  AND i.root_pipeline_id = ${gen_id.root_pipeline_id}
+                  AND i.tenant_id = ${tenant_id};
+            "} on-condition if "true" == "true"
+
+        transform as "Update payload queue status from results" on "intics_zio_db_conn" using {"
+            UPDATE doc_eyecue.doc_eyecue_payload_queue a
+            SET status = b.status,
+                stage = b.stage,
+                consumed_on_ts = now(),
+                consumer_process_id = ${init_process_id.process_id}
+            FROM ${temp_schema_name}.doc_eyecue_pipeline_result_${init_process_id.process_id} b
+            WHERE a.origin_id = b.origin_id
+              AND a.group_id = ${group_id}
+              AND a.batch_id = '${batch_id}'
+              AND a.status = 'IN_PROGRESS'
+              AND b.status = 'FAILED'
+              AND a.tenant_id = ${tenant_id};
+
+            UPDATE doc_eyecue.doc_eyecue_payload_queue a
+            SET status = b.status,
+                stage = b.stage,
+                consumed_on_ts = now(),
+                consumer_process_id = ${init_process_id.process_id}
+            FROM ${temp_schema_name}.doc_eyecue_pipeline_result_${init_process_id.process_id} b
+            WHERE a.origin_id = b.origin_id
+              AND a.group_id = ${group_id}
+              AND a.batch_id = '${batch_id}'
+              AND a.status = 'IN_PROGRESS'
+              AND b.status = 'COMPLETED'
+              AND a.tenant_id = ${tenant_id};
+
+            UPDATE batching.sub_batching_process_payload_queue
+            SET status = 'COMPLETED',
+                stage = 'DOC_EYE_CUE'
+            WHERE group_id = ${group_id}
+              AND batch_id = '${batch_id}'
+              AND tenant_id = ${tenant_id}
+              AND root_pipeline_id = ${gen_id.root_pipeline_id};
+        "} on-condition if "true" == "true"
+
+        transform as "Insert completion audit entry" on "intics_zio_db_conn" using {"
+            INSERT INTO doc_eyecue.doc_eyecue_pipeline_audit
+              (process_id, origin_id, group_id, created_on, status, stage, message, root_pipeline_id, tenant_id, batch_id, template_id)
+            SELECT
+              ${init_process_id.process_id},
+              origin_id,
+              group_id,
+              now(),
+              status,
+              'DOC_EYE_CUE',
+              'doc_eyecue process COMPLETED for group_id ${group_id}',
+              ${gen_id.root_pipeline_id},
+              ${tenant_id},
+              batch_id,
+              template_id
+            FROM doc_eyecue.doc_eyecue_payload_queue
+            WHERE stage = 'DOC_EYE_CUE'
+              AND group_id = ${group_id}
+              AND batch_id = '${batch_id}'
+              AND tenant_id = ${tenant_id};
+        "} on-condition if "true"=="true"
+
+        transform as "Insert into process audit for Doc EyeCue" on "intics_zio_db_conn" using
+        {"
+            INSERT INTO audit.process_audit_output
+            (endpoint, message, origin_id, request, response, root_pipeline_id, stage, status, tenant_id, created_on, batch_id)
+            SELECT endpoint, message, origin_id, request, response, root_pipeline_id, stage, status, tenant_id, created_on, batch_id
+            FROM ${temp_schema_name}.doc_eyecue_pipeline_result_${init_process_id.process_id};
+        "} on-condition if "true"=="true"
+
+        transform as "Insert summary audit records for DocEyeCue" on "intics_zio_db_conn" using {"
+
+            INSERT INTO ${temp_schema_name}.summary_audit_papers_${process-id}
+            (process_id, module_name, macro_process, completed_count, failed_count,
+             min_created_on, max_created_on, time_taken, root_pipeline_id, tenant_id, batch_id)
+            SELECT ${process-id},
+                   'DOC_EYE_CUE',
+                   'DOC_EYE_CUE',
+                   coalesce(sum(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END), 0),
+                   coalesce(sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END), 0),
+                   min(created_on),
+                   max(last_updated_on),
+                   EXTRACT(epoch FROM (max(last_updated_on)-min(created_on))),
+                   '${gen_id.root_pipeline_id}',
+                   ${tenant_id},
+                   '${batch_id}'
+            FROM doc_eyecue.doc_eyecue_pipeline_result_audit
+            WHERE group_id='${group_id}' AND tenant_id=${tenant_id} AND batch_id='${batch_id}';
+
+            INSERT INTO ${temp_schema_name}.summary_audit_files_${process-id}
+            (process_id, module_name, macro_process, completed_count, failed_count,
+             min_created_on, max_created_on, time_taken, root_pipeline_id, tenant_id, batch_id)
+            SELECT ${process-id},
+                   'DOC_EYE_CUE',
+                   'DOC_EYE_CUE',
+                   coalesce(sum(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END), 0),
+                   coalesce(sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END), 0),
+                   min(created_on),
+                   max(last_updated_on),
+                   EXTRACT(epoch FROM (max(last_updated_on)-min(created_on))),
+                   '${gen_id.root_pipeline_id}',
+                   ${tenant_id},
+                   '${batch_id}'
+            FROM doc_eyecue.doc_eyecue_payload_queue
+            WHERE group_id='${group_id}' AND tenant_id=${tenant_id} AND batch_id='${batch_id}';
+
+            INSERT INTO audit.pipeline_summary_audit
+            (process_id, created_on, module_name, macro_process,
+             files_processed_count, papers_processed_count,
+             files_failed_count, papers_failed_count,
+             start_time, end_time, time_taken,
+             group_id, root_pipeline_id, created_user_id,
+             template_id, tenant_id, average_time, batch_id)
+            SELECT msaf.process_id,
+                   now(),
+                   msaf.module_name,
+                   msaf.macro_process,
+                   msaf.completed_count,
+                   msap.completed_count,
+                   msaf.failed_count,
+                   msap.failed_count,
+                   msap.min_created_on,
+                   msap.max_created_on,
+                   EXTRACT(epoch FROM (msap.max_created_on-msap.min_created_on)),
+                   '${group_id}',
+                   '${gen_id.root_pipeline_id}',
+                   '${created_user_id}',
+                   '${document_id}',
+                   ${tenant_id},
+                   (CASE WHEN (msap.time_taken/(msap.completed_count+msap.failed_count))=0
+                         THEN msap.time_taken
+                         ELSE (msap.time_taken/(msap.completed_count+msap.failed_count))
+                    END),
+                   msaf.batch_id
+            FROM ${temp_schema_name}.summary_audit_files_${process-id} msaf,
+                 ${temp_schema_name}.summary_audit_papers_${process-id} msap
+            WHERE msaf.module_name=msap.module_name
+              AND msaf.macro_process=msap.macro_process
+              AND msaf.batch_id=msap.batch_id
+              AND msaf.module_name='DOC_EYE_CUE'
+              AND msaf.macro_process='DOC_EYE_CUE'
+              AND msaf.tenant_id=${tenant_id}
+              AND msap.batch_id='${batch_id}';
+        "} on-condition if "true"=="true"
+
+        transform as "Insert final results into doc_eyecue result audit table" on "intics_zio_db_conn" using
+        {"
+            INSERT INTO doc_eyecue.doc_eyecue_pipeline_result_audit
+            ( origin_id, group_id, tenant_id, template_id, processed_file_path, status, stage, message, created_on, process_id, root_pipeline_id,
+            batch_id, last_updated_on, endpoint, encoded_file_path, doc_eyecue_duration)
+            SELECT origin_id, group_id, tenant_id, template_id, processed_file_path, status, stage, message, created_on, process_id, root_pipeline_id,
+            batch_id, last_updated_on, endpoint, encoded_file_path, doc_eyecue_duration
+            FROM ${temp_schema_name}.doc_eyecue_pipeline_result_${init_process_id.process_id};
+
+        "} on-condition if "${doc.eyecue.activator}" == "true"
+
+} catch {
+        transform as "Handle failure and mark FAILED" on "intics_zio_db_conn" using {"
+            UPDATE doc_eyecue.doc_eyecue_payload_queue
+            SET status = 'FAILED',
+                consumer_process_id = ${init_process_id.process_id}
+            WHERE group_id = ${group_id}
+              AND batch_id = '${batch_id}'
+              AND tenant_id = ${tenant_id}
+              AND status = 'IN_PROGRESS';
+
+            UPDATE batching.sub_batching_process_payload_queue
+            SET status = 'FAILED',
+                stage = 'DOC_EYE_CUE',
+                consumer_process_id = ${init_process_id.process_id}
+            WHERE group_id = ${group_id}
+              AND batch_id = '${batch_id}'
+              AND tenant_id = ${tenant_id}
+              AND root_pipeline_id = ${gen_id.root_pipeline_id};
+
+            INSERT INTO doc_eyecue.doc_eyecue_pipeline_audit
+              (process_id, origin_id, group_id, created_on, status, stage, message, root_pipeline_id, tenant_id, batch_id, template_id)
+            SELECT
+              ${init_process_id.process_id},
+              origin_id,
+              group_id,
+              now(),
+              'FAILED',
+              'DOC_EYE_CUE',
+              'doc_eyecue FAILED for group_id ${group_id}',
+              ${gen_id.root_pipeline_id},
+              ${tenant_id},
+              batch_id,
+              template_id
+            FROM doc_eyecue.doc_eyecue_payload_queue
+            WHERE status = 'FAILED'
+              AND stage = 'DOC_EYE_CUE'
+              AND group_id = ${group_id}
+              AND batch_id = '${batch_id}'
+              AND tenant_id = ${tenant_id};
+        "} on-condition if "true"=="true"
+
+} finally {
+        transform as "Fail any lingering IN_PROGRESS items" on "intics_zio_db_conn" using {"
+            UPDATE doc_eyecue.doc_eyecue_payload_queue
+            SET status = 'FAILED',
+                stage = 'DOC_EYE_CUE',
+                consumer_process_id = ${init_process_id.process_id},
+                consumed_on_ts = now()
+            WHERE status = 'IN_PROGRESS'
+              AND group_id = ${group_id}
+              AND batch_id = '${batch_id}'
+              AND tenant_id = ${tenant_id};
+
+            UPDATE batching.sub_batching_process_payload_queue
+            SET status = 'FAILED',
+                stage = 'DOC_EYE_CUE',
+                consumer_process_id = ${init_process_id.process_id}
+            WHERE status = 'IN_PROGRESS'
+              AND group_id = ${group_id}
+              AND batch_id = '${batch_id}'
+              AND tenant_id = ${tenant_id}
+              AND root_pipeline_id = ${gen_id.root_pipeline_id};
+        "} on-condition if "true"=="true"
+
+        transform as "Archive COMPLETED records" on "intics_zio_db_conn" using {"
+            INSERT INTO doc_eyecue.doc_eyecue_payload_queue_archive
+              (producer_process_id, origin_id, group_id,
+               created_on, status, stage, consumed_on_ts,
+               root_pipeline_id, tenant_id, batch_id, template_id)
+            SELECT
+              producer_process_id, origin_id, group_id,
+              created_on, status, stage, consumed_on_ts,
+              root_pipeline_id, tenant_id, batch_id, template_id
+            FROM doc_eyecue.doc_eyecue_payload_queue
+            WHERE status = 'COMPLETED'
+              AND stage = 'DOC_EYE_CUE'
+              AND group_id = ${group_id}
+              AND batch_id = '${batch_id}'
+              AND tenant_id = ${tenant_id};
+
+            DELETE FROM doc_eyecue.doc_eyecue_payload_queue
+            WHERE status = 'COMPLETED'
+              AND stage = 'DOC_EYE_CUE'
+              AND group_id = ${group_id}
+              AND batch_id = '${batch_id}'
+              AND tenant_id = ${tenant_id};
+        "} on-condition if "true"=="true"
+
+        transform as "Move FAILED records to Error Queue" on "intics_zio_db_conn" using {"
+            INSERT INTO doc_eyecue.doc_eyecue_payload_error_queue
+              (producer_process_id, origin_id, group_id,
+               created_on, status, stage, message, consumed_on_ts,
+               root_pipeline_id, tenant_id, batch_id, template_id)
+            SELECT
+              producer_process_id, origin_id, group_id,
+              created_on, status, stage, 'Auto copied to error queue due to DOC_EYE_CUE failure',
+              consumed_on_ts, root_pipeline_id, tenant_id, batch_id, template_id
+            FROM doc_eyecue.doc_eyecue_payload_queue
+            WHERE status = 'FAILED'
+              AND stage = 'DOC_EYE_CUE'
+              AND group_id = ${group_id}
+              AND batch_id = '${batch_id}'
+              AND tenant_id = ${tenant_id};
+
+            DELETE FROM doc_eyecue.doc_eyecue_payload_queue
+            WHERE status = 'FAILED'
+              AND stage = 'DOC_EYE_CUE'
+              AND group_id = ${group_id}
+              AND batch_id = '${batch_id}'
+              AND tenant_id = ${tenant_id};
+        "} on-condition if "true"=="true"
+
+    }
+}

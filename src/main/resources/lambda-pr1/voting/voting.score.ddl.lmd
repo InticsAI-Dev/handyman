@@ -1,0 +1,1464 @@
+process"voting.score.ddl"
+{
+		try
+		{
+
+            assign as "voting" source "intics_zio_db_conn" using
+            {"
+                SELECT (CASE WHEN '${voting.activator}' = 'true' AND '${voting.multi.value.line.item.activator}' = 'true' then 'true' else 'false' end) as multi_value_sor_item;
+            "}on-condition if "true"=="true"
+
+            transform as "voting precedence principle" on "intics_zio_db_conn" using
+            {"
+
+                    CREATE TABLE IF NOT EXISTS ${temp_schema_name}.temp_aggregation_evaluator_${init_process_id.process_id} (
+                        aggregation_evaluator_id bigserial NOT NULL,
+                        created_on timestamp NOT NULL,
+                        created_user_id varchar NOT NULL,
+                        last_updated_on timestamp NULL,
+                        last_updated_user_id varchar NULL,
+                        tenant_id int8 NULL,
+                        aggregated_score float8 NULL,
+                        masked_score float8 NULL,
+                        group_id int8 NULL,
+                        origin_id varchar NOT NULL,
+                        paper_no int4 NOT NULL,
+                        predicted_value text NULL,
+                        vqa_score float8 NULL,
+                        rank int4 NULL,
+                        sor_item_attribution_id int4 NOT NULL,
+                        sor_item_name varchar NOT NULL,
+                        document_id varchar NOT NULL,
+                        acc_transaction_id int8 NULL,
+                        b_box varchar NULL,
+                        root_pipeline_id int8 NULL,
+                        frequency int8 NULL,
+                        question_id int8 NULL,
+                        synonym_id int8 NULL,
+                        model_registry varchar NULL,
+                        status varchar NULL,
+                        version int4 NULL,
+                        acc_transcation_id int8 NULL,
+                        model_registry_id varchar NULL,
+                        batch_id varchar NULL,
+                        category varchar NULL
+                    );
+
+                    -- DDL for Step 1: Sor Item counts per file
+                    CREATE TABLE IF NOT EXISTS ${temp_schema_name}.sor_item_name_counts_per_file_${init_process_id.process_id}(
+                        tenant_id INT8 NULL,
+                        batch_id VARCHAR NULL,
+                        group_id INT8 NULL,
+                        origin_id VARCHAR NULL,
+                        sor_item_name varchar NULL,
+                        sor_item_count INT4 NULL,
+                        vqa_score float8 NULL,
+                        model_registry varchar NULL
+                    );
+
+
+                    -- DDL for Step 2: Final cumulative results
+                    CREATE TABLE IF NOT EXISTS ${temp_schema_name}.final_cumulative_results_${init_process_id.process_id}(
+                        tenant_id INT8 NULL,
+                        batch_id VARCHAR NULL,
+                        group_id INT8 NULL,
+                        origin_id VARCHAR NULL,
+                        root_pipeline_id INT8 NULL,
+                        paper_no INT4 NULL,
+                        sor_item_attribution_id VARCHAR NULL,
+                        sor_item_name varchar NULL,
+                        question_id VARCHAR NULL,
+                        synonym_id VARCHAR NULL,
+                        b_box VARCHAR NULL,
+                        predicted_value VARCHAR NULL,
+                        vqa_score float8 NULL,
+                        model_registry varchar NULL
+                    );
+
+                    -- DDL for Step 3: Multi SOR items to evaluate
+                    CREATE TABLE IF NOT EXISTS ${temp_schema_name}.multi_sor_items_to_evaluate_${init_process_id.process_id}(
+                        tenant_id INT8 NULL,
+                        batch_id VARCHAR NULL,
+                        group_id INT8 NULL,
+                        origin_id VARCHAR NULL,
+                        root_pipeline_id INT8 NULL,
+                        paper_no INT4 NULL,
+                        sor_item_attribution_id VARCHAR NULL,
+                        sor_item_name varchar NULL,
+                        question_id VARCHAR NULL,
+                        synonym_id VARCHAR NULL,
+                        b_box VARCHAR NULL,
+                        predicted_value VARCHAR NULL,
+                        vqa_score float8 NULL,
+                        model_registry varchar NULL
+                    );
+
+                    -- DDL for Step 4: Non-empty predicted values
+                    CREATE TABLE IF NOT EXISTS ${temp_schema_name}.non_empty_predicted_values_${init_process_id.process_id}(
+                        tenant_id INT8 NULL,
+                        batch_id VARCHAR NULL,
+                        group_id INT8 NULL,
+                        origin_id VARCHAR NULL,
+                        root_pipeline_id INT8 NULL,
+                        paper_no INT4 NULL,
+                        sor_item_attribution_id VARCHAR NULL,
+                        sor_item_name varchar NULL,
+                        question_id VARCHAR NULL,
+                        synonym_id VARCHAR NULL,
+                        b_box VARCHAR NULL,
+                        predicted_value VARCHAR NULL,
+                        vqa_score float8 NULL,
+                        model_registry varchar NULL
+                    );
+
+                    -- DDL for Step 5: Predicted value occurrence counts
+                    CREATE TABLE IF NOT EXISTS ${temp_schema_name}.predicted_value_occurrence_counts_${init_process_id.process_id}(
+                        tenant_id INT8 NULL,
+                        batch_id VARCHAR NULL,
+                        group_id INT8 NULL,
+                        origin_id VARCHAR NULL,
+                        sor_item_name varchar NULL,
+                        predicted_value VARCHAR NULL,
+                        predicted_value_count INT4 NULL,
+                        vqa_score float8 NULL,
+                        model_registry varchar NULL
+                    );
+
+                    -- DDL for Step 6a: Single predicted value items
+                    CREATE TABLE IF NOT EXISTS ${temp_schema_name}.single_predicted_value_items_${init_process_id.process_id}(
+                        tenant_id INT8 NULL,
+                        batch_id VARCHAR NULL,
+                        group_id INT8 NULL,
+                        origin_id VARCHAR NULL,
+                        sor_item_name varchar NULL,
+                        vqa_score float8 NULL,
+                        model_registry varchar NULL
+                    );
+
+                    -- DDL for Step 6c: Tied SOR items
+                    CREATE TABLE IF NOT EXISTS ${temp_schema_name}.tied_sor_items_${init_process_id.process_id}(
+                        tenant_id INT8 NULL,
+                        batch_id VARCHAR NULL,
+                        group_id INT8 NULL,
+                        origin_id VARCHAR NULL,
+                        sor_item_name varchar NULL,
+                        sor_container_id INT8 NULL,
+                        sor_container_name varchar NULL,
+                        vqa_score float8 NULL,
+                        model_registry varchar NULL
+                    );
+
+                    CREATE TABLE IF NOT EXISTS ${temp_schema_name}.predicted_values_joined_${init_process_id.process_id} (
+                        tenant_id INT8 NULL,
+                        batch_id VARCHAR NULL,
+                        group_id INT8 NULL,
+                        origin_id VARCHAR NULL,
+                        root_pipeline_id VARCHAR NULL,
+                        paper_no INT8 NULL,
+                        sor_item_name varchar NULL,
+                        predicted_value VARCHAR NULL,
+                        sor_container_id INT8 NULL,
+                        sor_container_name varchar NULL,
+                        vqa_score float8 NULL,
+                        model_registry varchar NULL
+                    );
+
+                    CREATE TABLE IF NOT EXISTS ${temp_schema_name}.white_listed_entries_${init_process_id.process_id}(
+                        tenant_id INT8 NULL,
+                        batch_id VARCHAR NULL,
+                        group_id INT8 NULL,
+                        origin_id VARCHAR NULL,
+                        root_pipeline_id INT8 NULL,
+                        paper_no INT4 NULL,
+                        sor_item_attribution_id VARCHAR NULL,
+                        sor_item_name varchar NULL,
+                        question_id VARCHAR NULL,
+                        synonym_id VARCHAR NULL,
+                        b_box VARCHAR NULL,
+                        predicted_value VARCHAR NULL,
+                        whitelist_key VARCHAR NULL,
+                        vqa_score float8 NULL,
+                        model_registry varchar NULL
+                    );
+
+
+                    -- DDL for Step 7: SOR item name global counts
+                    CREATE TABLE IF NOT EXISTS ${temp_schema_name}.predicted_value_global_counts_${init_process_id.process_id}(
+                        tenant_id INT8 NULL,
+                        batch_id VARCHAR NULL,
+                        group_id INT8 NULL,
+                        origin_id VARCHAR NULL,
+                        paper_no INT4 NULL,
+                        predicted_value_count INT4 NULL
+                    );
+
+                    -- DDL for Step 8: Most common SOR items in ties
+                    CREATE TABLE IF NOT EXISTS ${temp_schema_name}.most_common_sor_items_in_ties_${init_process_id.process_id}(
+                        tenant_id INT8 NULL,
+                        batch_id VARCHAR NULL,
+                        group_id INT8 NULL,
+                        origin_id VARCHAR NULL,
+                        paper_no INT4 NULL,
+                        sor_container_id INT8 NULL,
+                        sor_container_name varchar NULL,
+                        vqa_score float8 NULL,
+                        model_registry varchar NULL
+                    );
+
+                    -- DDL for Step 9: Remaining tied candidates
+                    CREATE TABLE IF NOT EXISTS ${temp_schema_name}.remaining_tied_candidates_${init_process_id.process_id}(
+                        tenant_id INT8 NULL,
+                        batch_id VARCHAR NULL,
+                        group_id INT8 NULL,
+                        origin_id VARCHAR NULL,
+                        root_pipeline_id INT8 NULL,
+                        paper_no INT4 NULL,
+                        sor_item_attribution_id VARCHAR NULL,
+                        sor_item_name varchar NULL,
+                        question_id VARCHAR NULL,
+                        synonym_id VARCHAR NULL,
+                        b_box VARCHAR NULL,
+                        predicted_value VARCHAR NULL
+                    );
+
+                    -- DDL for Step 9a: Tie break by min paper number
+                    CREATE TABLE IF NOT EXISTS ${temp_schema_name}.tie_break_by_min_paper_no_${init_process_id.process_id}(
+                        tenant_id INT8 NULL,
+                        batch_id VARCHAR NULL,
+                        group_id INT8 NULL,
+                        origin_id VARCHAR NULL,
+                        sor_item_name varchar NULL
+                    );
+
+                    -- DDL: Create table for storing min paper_no per empty predicted_value
+                    CREATE TABLE IF NOT EXISTS ${temp_schema_name}.empty_predicted_min_paper_${init_process_id.process_id} (
+                        id bigserial NOT NULL,
+                        tenant_id INT8 NULL,
+                        batch_id VARCHAR NULL,
+                        group_id INT8 NULL,
+                        sor_item_name varchar,
+                        origin_id VARCHAR NULL,
+                        min_paper_no INT
+                    );
+
+                    -- DDL: Create table for storing min paper_no per sor_item_name with non-empty predicted_value
+                    CREATE TABLE IF NOT EXISTS ${temp_schema_name}.non_empty_min_paper_${init_process_id.process_id} (
+                        id bigserial NOT NULL,
+                        tenant_id INT8 NULL,
+                        batch_id VARCHAR NULL,
+                        origin_id VARCHAR NULL,
+                        group_id INT8 NULL,
+                        sor_item_name varchar,
+                        min_paper_no INT
+                    );
+
+                    -- DDL: Create table to hold the earliest paper_no for each final result key
+                    CREATE TABLE IF NOT EXISTS  ${temp_schema_name}.min_final_cumulative_papers_${init_process_id.process_id} (
+                        id bigserial NOT NULL,
+                        tenant_id INT,
+                        batch_id VARCHAR,
+                        group_id BIGINT,
+                        origin_id VARCHAR NULL,
+                        sor_item_name varchar,
+                        min_paper_no INT
+                    );
+
+
+
+            "}on-condition if "true"=="true"
+
+
+            transform as "VOTING DDL Audit tables" on "intics_zio_db_conn" using
+            {"
+
+            CREATE TABLE IF NOT EXISTS macro.temp_aggregation_evaluator_audit (
+                aggregation_evaluator_id bigserial NOT NULL,
+                created_on timestamp NOT NULL,
+                created_user_id varchar NOT NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id varchar NULL,
+                tenant_id int8 NULL,
+                aggregated_score float8 NULL,
+                masked_score float8 NULL,
+                group_id int8 NULL,
+                origin_id varchar NOT NULL,
+                paper_no int4 NOT NULL,
+                predicted_value text NULL,
+                vqa_score float8 NULL,
+                rank int4 NULL,
+                sor_item_attribution_id int4 NOT NULL,
+                sor_item_name varchar NOT NULL,
+                document_id varchar NOT NULL,
+                acc_transaction_id int8 NULL,
+                b_box varchar NULL,
+                root_pipeline_id int8 NULL,
+                frequency int8 NULL,
+                question_id int8 NULL,
+                synonym_id int8 NULL,
+                model_registry varchar NULL,
+                status varchar NULL,
+                version int4 NULL,
+                acc_transcation_id int8 NULL,
+                model_registry_id varchar NULL,
+                batch_id varchar NULL,
+                category varchar NULL
+            );
+            CREATE TABLE IF NOT EXISTS macro.sor_item_name_counts_per_file_audit(
+                        id bigserial NOT NULL,
+                        tenant_id INT8 NULL,
+                        batch_id VARCHAR NULL,
+                        group_id INT8 NULL,
+                        origin_id VARCHAR NULL,
+                        sor_item_name varchar NULL,
+                        sor_item_count INT4 NULL
+                    );
+                CREATE TABLE IF NOT EXISTS macro.final_cumulative_results_audit (
+                    id bigserial NOT NULL,
+                    tenant_id INT8 NULL,
+                    batch_id VARCHAR NULL,
+                    group_id INT8 NULL,
+                    origin_id VARCHAR NULL,
+                    root_pipeline_id INT8 NULL,
+                    paper_no INT4 NULL,
+                    sor_item_attribution_id VARCHAR NULL,
+                    sor_item_name varchar NULL,
+                    question_id VARCHAR NULL,
+                    synonym_id VARCHAR NULL,
+                    b_box VARCHAR NULL,
+                    predicted_value VARCHAR NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS macro.white_listed_entries_audit (
+                    id bigserial NOT NULL,
+                    tenant_id INT8 NULL,
+                    batch_id VARCHAR NULL,
+                    group_id INT8 NULL,
+                    origin_id VARCHAR NULL,
+                    root_pipeline_id INT8 NULL,
+                    paper_no INT4 NULL,
+                    sor_item_attribution_id VARCHAR NULL,
+                    sor_item_name varchar NULL,
+                    question_id VARCHAR NULL,
+                    synonym_id VARCHAR NULL,
+                    whitelist_key VARCHAR NULL,
+                    b_box VARCHAR NULL,
+                    predicted_value VARCHAR NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS macro.multi_sor_items_to_evaluate_audit (
+                    id bigserial NOT NULL,
+                    tenant_id INT8 NULL,
+                    batch_id VARCHAR NULL,
+                    group_id INT8 NULL,
+                    origin_id VARCHAR NULL,
+                    root_pipeline_id INT8 NULL,
+                    paper_no INT4 NULL,
+                    sor_item_attribution_id VARCHAR NULL,
+                    sor_item_name varchar NULL,
+                    question_id VARCHAR NULL,
+                    synonym_id VARCHAR NULL,
+                    b_box VARCHAR NULL,
+                    predicted_value VARCHAR NULL
+                );
+                CREATE TABLE IF NOT EXISTS macro.non_empty_predicted_values_audit (
+                    id bigserial NOT NULL,
+                    tenant_id INT8 NULL,
+                    batch_id VARCHAR NULL,
+                    group_id INT8 NULL,
+                    origin_id VARCHAR NULL,
+                    root_pipeline_id INT8 NULL,
+                    paper_no INT4 NULL,
+                    sor_item_attribution_id VARCHAR NULL,
+                    sor_item_name varchar NULL,
+                    question_id VARCHAR NULL,
+                    synonym_id VARCHAR NULL,
+                    b_box VARCHAR NULL,
+                    predicted_value VARCHAR NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS macro.predicted_value_occurrence_counts_audit (
+                    id bigserial NOT NULL,
+                    tenant_id INT8 NULL,
+                    batch_id VARCHAR NULL,
+                    group_id INT8 NULL,
+                    origin_id VARCHAR NULL,
+                    sor_item_name varchar NULL,
+                    predicted_value VARCHAR NULL,
+                    predicted_value_count INT4 NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS macro.single_predicted_value_items_audit (
+                    id bigserial NOT NULL,
+                    tenant_id INT8 NULL,
+                    batch_id VARCHAR NULL,
+                    group_id INT8 NULL,
+                    origin_id VARCHAR NULL,
+                    sor_item_name varchar NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS macro.tied_sor_items_audit(
+                    id bigserial NOT NULL,
+                    tenant_id INT8 NULL,
+                    batch_id VARCHAR NULL,
+                    group_id INT8 NULL,
+                    origin_id VARCHAR NULL,
+                    sor_item_name varchar NULL,
+                    sor_container_id INT8 NULL,
+                    sor_container_name varchar NULL
+                );
+                CREATE TABLE IF NOT EXISTS macro.predicted_values_joined_audit (
+                    id bigserial NOT NULL,
+                    tenant_id INT8 NULL,
+                    batch_id VARCHAR NULL,
+                    group_id INT8 NULL,
+                    origin_id VARCHAR NULL,
+                    root_pipeline_id VARCHAR NULL,
+                    paper_no INT8 NULL,
+                    sor_item_name varchar NULL,
+                    predicted_value VARCHAR NULL,
+                    sor_container_id INT8 NULL,
+                    sor_container_name varchar NULL
+                );
+                CREATE TABLE IF NOT EXISTS macro.predicted_value_global_counts_audit(
+                    id bigserial NOT NULL,
+                    tenant_id INT8 NULL,
+                    batch_id VARCHAR NULL,
+                    group_id INT8 NULL,
+                    origin_id VARCHAR NULL,
+                    paper_no INT4 NULL,
+                    predicted_value_count INT4 NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS macro.most_common_sor_items_in_ties_audit (
+                    id bigserial NOT NULL,
+                    tenant_id INT8 NULL,
+                    batch_id VARCHAR NULL,
+                    group_id INT8 NULL,
+                    origin_id VARCHAR NULL,
+                    paper_no INT4 NULL,
+                    sor_container_id INT8 NULL,
+                    sor_container_name varchar NULL
+                );
+                CREATE TABLE IF NOT EXISTS macro.remaining_tied_candidates_audit (
+                    id bigserial NOT NULL,
+                    tenant_id INT8 NULL,
+                    batch_id VARCHAR NULL,
+                    group_id INT8 NULL,
+                    origin_id VARCHAR NULL,
+                    root_pipeline_id INT8 NULL,
+                    paper_no INT4 NULL,
+                    sor_item_attribution_id VARCHAR NULL,
+                    sor_item_name varchar NULL,
+                    question_id VARCHAR NULL,
+                    synonym_id VARCHAR NULL,
+                    b_box VARCHAR NULL,
+                    predicted_value VARCHAR NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS macro.tie_break_by_min_paper_no_audit (
+                    id bigserial NOT NULL,
+                    tenant_id INT8 NULL,
+                    batch_id VARCHAR NULL,
+                    group_id INT8 NULL,
+                    origin_id VARCHAR NULL,
+                    sor_item_name varchar NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS  macro.empty_predicted_min_paper_audit (
+                    id bigserial NOT NULL,
+                    tenant_id INT8 NULL,
+                    batch_id VARCHAR NULL,
+                    group_id INT8 NULL,
+                    sor_item_name varchar,
+                    origin_id VARCHAR NULL,
+                    min_paper_no INT
+                );
+
+                CREATE TABLE IF NOT EXISTS  macro.non_empty_min_paper_audit (
+                    id bigserial NOT NULL,
+                    tenant_id INT8 NULL,
+                    batch_id VARCHAR NULL,
+                    origin_id VARCHAR NULL,
+                    group_id INT8 NULL,
+                    sor_item_name varchar,
+                    min_paper_no INT
+                );
+
+                CREATE TABLE IF NOT EXISTS  macro.min_final_cumulative_papers_audit (
+                    id bigserial NOT NULL,
+                    tenant_id INT,
+                    batch_id VARCHAR,
+                    group_id BIGINT,
+                    origin_id VARCHAR NULL,
+                    sor_item_name varchar,
+                    min_paper_no INT
+                );
+
+            "}on-condition if "true"=="true"
+
+				transform as "VOTING DDL" on "intics_zio_db_conn" using
+				{"
+						CREATE TABLE IF NOT EXISTS voting.voting_pipeline_audit (
+						id bigserial NOT NULL,
+						process_id int8 NULL,
+						batch_id varchar NULL,
+						origin_id varchar NULL,
+						group_id int8 NULL,
+						created_on varchar NULL,
+						status varchar NULL,
+						stage varchar NULL,
+						message varchar NULL,
+						root_pipeline_id int8 NULL,
+						tenant_id int8 NULL
+						);
+				"} on-condition if "true"=="true"
+				
+				
+				transform as "create ddl for voting" on "intics_zio_db_conn" using {"
+
+						CREATE TABLE IF NOT EXISTS ${temp_schema_name}.ranking_table_${init_process_id.process_id} (
+						validation_id int8 NULL,
+						group_id int8 NULL,
+						batch_id varchar not NULL,
+						origin_id varchar NULL,
+						paper_no int4 NULL,
+						sor_item_name varchar NULL,
+						extracted_value text NULL,
+						vqa_score float8 NULL,
+						created_on timestamp NULL,
+						freq int8 NULL,
+						weight_score float8 NULL,
+						weight_rank int8 NULL,
+						ranking_id bigserial NOT NULL,
+						root_pipeline_id int8 NULL,
+						tenant_id int8 NULL,
+						CONSTRAINT ranking_table_${init_process_id.process_id}_pk PRIMARY KEY (ranking_id)
+						);
+
+						CREATE TABLE  IF NOT EXISTS ${temp_schema_name}.weight_difference_${init_process_id.process_id} (
+						validation_id int8 NULL,
+						batch_id varchar not NULL,
+						weight_diff_id bigserial not NULL,
+						origin_id varchar NULL,
+						paper_no int4 NULL,
+						group_id int8 NULL,
+						created_on timestamp NULL,
+						sor_item_name varchar NULL,
+						extracted_value text NULL,
+						vqa_score float8 NULL,
+						freq int8 NULL,
+						weight_score1 float8 NULL,
+						weight_score2 float8 NULL,
+						weight_rank int8 NULL,
+						difference float8 NULL,
+						root_pipeline_id int8 NULL,
+						tenant_id int8 NULL,
+						CONSTRAINT weight_difference_${init_process_id.process_id}_pk PRIMARY KEY (weight_diff_id)
+						);
+
+						CREATE TABLE IF NOT EXISTS ${temp_schema_name}.threshold_difference_${init_process_id.process_id} (
+						validation_id int8 NULL,
+						origin_id varchar NULL,
+						difference float8 NULL,
+						sor_item_name varchar NULL,
+						paper_no int4 NULL,
+						batch_id varchar not NULL,
+						group_id int8 NULL,
+						created_on timestamp NULL,
+						extracted_value text NULL,
+						freq int8 NULL,
+						weight_rank int8 NULL,
+						threshold_id bigserial,
+						root_pipeline_id int8 NULL,
+						tenant_id int8 NULL,
+						CONSTRAINT threshold_difference_${init_process_id.process_id}_pk primary key(threshold_id)
+						);
+
+						CREATE TABLE IF NOT EXISTS voting.ranking_table_audit (
+						validation_id int8  null,
+						batch_id varchar not NULL,
+						group_id int8 NULL,
+						origin_id varchar NULL,
+						paper_no int4 NULL,
+						sor_item_name varchar NULL,
+						extracted_value text NULL,
+						vqa_score float8 NULL,
+						created_on timestamp NULL,
+						freq int8 NULL,
+						weight_score float8 NULL,
+						weight_rank int8 NULL,
+						ranking_id bigserial NOT NULL,
+						root_pipeline_id int8 NULL,
+						tenant_id int8 NULL
+						);
+
+						CREATE TABLE  IF NOT EXISTS voting.weight_difference_audit (
+						validation_id int8 NULL,
+						weight_diff_id bigserial not NULL,
+						batch_id varchar not NULL,
+						origin_id varchar NULL,
+						paper_no int4 NULL,
+						group_id int8 NULL,
+						created_on timestamp NULL,
+						sor_item_name varchar NULL,
+						extracted_value text NULL,
+						vqa_score float8 NULL,
+						freq int8 NULL,
+						weight_score1 float8 NULL,
+						weight_score2 float8 NULL,
+						weight_rank int8 NULL,
+						difference float8 NULL,
+						root_pipeline_id int8 NULL,
+						tenant_id int8 NULL
+						);
+
+						CREATE TABLE IF NOT EXISTS voting.threshold_difference_audit (
+						validation_id bigserial not NULL,
+						batch_id varchar not NULL,
+						origin_id varchar NULL,
+						difference float8 NULL,
+						sor_item_name varchar NULL,
+						paper_no int4 NULL,
+						group_id int8 NULL,
+						created_on timestamp NULL,
+						extracted_value text NULL,
+						freq int8 NULL,
+						weight_rank int8 NULL,
+						threshold_id bigserial,
+						root_pipeline_id int8 NULL,
+						tenant_id int8 NULL,
+						CONSTRAINT threshold_difference_pk primary key(threshold_id)
+						);
+						CREATE TABLE IF NOT EXISTS ${temp_schema_name}.question_weight_${init_process_id.process_id} (
+						origin_id varchar NULL,
+						batch_id varchar not NULL,
+						paper_no int4 NULL,
+						sor_item_name varchar NULL,
+						question_weight int8 NULL,
+						group_id int4 NULL,
+						tenant_id int8 NULL,
+						root_pipeline_id int8 null
+						);
+				"} on-condition if "true"=="false"
+
+				transform as "creating ddl for confidence score" on "intics_zio_db_conn" using
+				{"
+						CREATE TABLE IF NOT EXISTS ${temp_schema_name}.voting_out_empty_entries_${init_process_id.process_id} (
+						origin_id varchar NULL,
+						batch_id varchar not NULL,
+						sor_item_name varchar NULL,
+						question varchar NULL,
+						predicted_value text NULL,
+						voting_out numeric NULL,
+						tenant_id int8 NULL,
+						root_pipeline_id int8 null
+						);
+
+
+
+						CREATE TABLE IF NOT EXISTS ${temp_schema_name}.voting_out_empty_entry_summary_${init_process_id.process_id} (
+						origin_id varchar NULL,
+						batch_id varchar not NULL,
+						sor_item_name varchar NULL,
+						empty_prediction_values int8 NULL,
+						voting_out_threshold numeric NULL,
+						tenant_id int8 NULL
+						);
+
+
+						CREATE TABLE IF NOT EXISTS ${temp_schema_name}.voting_out_agg_summary_${init_process_id.process_id} (
+						origin_id varchar NULL,
+						batch_id varchar not NULL,
+						sor_item_name varchar NULL,
+						total_questions int8 NULL,
+						tenant_id int8 NULL
+						);
+
+						CREATE TABLE IF NOT EXISTS ${temp_schema_name}.voting_out_empty_summary_percentage_${init_process_id.process_id} (
+						origin_id varchar NULL,
+						batch_id varchar not NULL,
+						sor_item_name varchar NULL,
+						total_questions int8 NULL,
+						empty_prediction_values int8 NULL,
+						empty_percentage float8 NULL,
+						voting_out_threshold numeric NULL,
+						voting_out_empty_flag text NULL,
+						tenant_id int8 NULL
+						);
+
+
+
+						CREATE TABLE IF NOT EXISTS ${temp_schema_name}.sor_item_based_max_value_${init_process_id.process_id} (
+						origin_id varchar NULL,
+						batch_id varchar not NULL,
+						paper_no int4 NULL,
+						sor_item_name varchar NULL,
+						max_score float8 NULL,
+						tenant_id int8 NULL,
+						predicted_value text NULL
+						);
+
+
+
+						CREATE TABLE IF NOT EXISTS ${temp_schema_name}.a_agg_input_table_${init_process_id.process_id} (
+						origin_id varchar NULL,
+						batch_id varchar not NULL,
+						paper_no int4 NULL,
+						sor_item_name varchar NULL,
+						predicted_value text NULL,
+						vqa_score float8 NULL,
+						root_pipeline_id int8 NULL,
+						tenant_id int8 NULL
+						);
+
+
+
+						CREATE TABLE IF NOT EXISTS ${temp_schema_name}.b1_scalar_max_score_multi_occur_${init_process_id.process_id} (
+						origin_id varchar NULL,
+						batch_id varchar not NULL,
+						paper_no int4 NULL,
+						sor_item_name varchar NULL,
+						occur_count int8 NULL,
+						vqa_score float8 NULL,
+						tenant_id int8 NULL
+						);
+
+						CREATE TABLE IF NOT EXISTS ${temp_schema_name}.b2_scalar_max_score_multi_occur_freq_${init_process_id.process_id} (
+                        origin_id varchar NULL,
+                        paper_no int4 NULL,
+                        sor_item_name varchar NULL,
+                        occur_count int8 NULL,
+                        vqa_score float8 NULL,
+                        tenant_id int8 NULL,
+                        batch_id varchar not NULL
+                        );
+
+                        CREATE TABLE IF NOT EXISTS macro.b2_scalar_max_score_multi_occur_freq_audit (
+                        origin_id varchar NULL,
+                        paper_no int4 NULL,
+                        sor_item_name varchar NULL,
+                        occur_count int8 NULL,
+                        vqa_score float8 NULL,
+                        tenant_id int8 NULL,
+                        batch_id varchar not NULL,
+                        root_pipeline_id int8 null
+                        );
+
+                        CREATE TABLE IF NOT EXISTS ${temp_schema_name}.b_max_occur_item_${init_process_id.process_id} (
+                        origin_id varchar NULL,
+                        paper_no int4 NULL,
+                        sor_item_name varchar NULL,
+                        occur_count int8 NULL,
+                        group_id int8 NULL,
+                        tenant_id int8 NULL,
+                        batch_id varchar not NULL
+                        );
+
+                        CREATE TABLE IF NOT EXISTS macro.b_max_occur_item_audit (
+                        origin_id varchar NULL,
+                        paper_no int4 NULL,
+                        sor_item_name varchar NULL,
+                        occur_count int8 NULL,
+                        group_id int8 NULL,
+                        tenant_id int8 NULL,
+                        batch_id varchar not NULL,
+                        root_pipeline_id int8 null
+                        );
+
+                        CREATE TABLE IF NOT EXISTS ${temp_schema_name}.a_agg_occur_max_${init_process_id.process_id} (
+                        origin_id varchar NULL,
+                        paper_no int4 NULL,
+                        sor_item_name varchar NULL,
+                        predicted_value text NULL,
+                        occur_count int8 NULL,
+                        max_score float8 NULL,
+                        group_id int8 NULL,
+                        tenant_id int8 NULL,
+                        batch_id varchar not NULL
+                        );
+
+                        CREATE TABLE IF NOT EXISTS macro.a_agg_occur_max_audit (
+                        origin_id varchar NULL,
+                        paper_no int4 NULL,
+                        sor_item_name varchar NULL,
+                        predicted_value text NULL,
+                        occur_count int8 NULL,
+                        max_score float8 NULL,
+                        group_id int8 NULL,
+                        tenant_id int8 NULL,
+                        batch_id varchar not NULL,
+                        root_pipeline_id int8 null
+                        );
+
+						CREATE TABLE IF NOT EXISTS ${temp_schema_name}.b2_scalar_max_score_single_occur_${init_process_id.process_id} (
+						origin_id varchar NULL,
+						paper_no int4 NULL,
+						sor_item_name varchar NULL,
+						occur_count int8 NULL,
+						vqa_score float8 NULL,
+						tenant_id int8 NULL,
+						batch_id varchar not NULL
+						);
+
+
+
+						CREATE TABLE IF NOT EXISTS  ${temp_schema_name}.c_multi_occur_freq_for_scalar_${init_process_id.process_id} (
+						origin_id varchar NULL,
+						batch_id varchar not NULL,
+						paper_no int4 NULL,
+						sor_item_name varchar NULL,
+						predicted_value text NULL,
+						freq int8 NULL,
+						vqa_score float8 NULL,
+						tenant_id int8 NULL
+						);
+
+
+						CREATE TABLE IF NOT EXISTS  ${temp_schema_name}.d_max_freq_from_multi_occur_${init_process_id.process_id} (
+						origin_id varchar NULL,
+						batch_id varchar not NULL,
+						paper_no int4 NULL,
+						sor_item_name varchar NULL,
+						freq int8 NULL,
+						tenant_id int8 NULL
+						);
+
+
+						CREATE TABLE IF NOT EXISTS  ${temp_schema_name}.e_final_result_for_freq_${init_process_id.process_id} (
+						origin_id varchar NULL,
+						batch_id varchar not NULL,
+						paper_no int4 NULL,
+						sor_item_name varchar NULL,
+						predicted_value text NULL,
+						freq int8 NULL,
+						vqa_score float8 NULL,
+						tenant_id int8 NULL
+						);
+
+
+
+						CREATE TABLE IF NOT EXISTS  ${temp_schema_name}.f1_single_freq_occur_${init_process_id.process_id} (
+						origin_id varchar NULL,
+						batch_id varchar not NULL,
+						paper_no int4 NULL,
+						sor_item_name varchar NULL,
+						vqa_score float8 NULL,
+						freq int8 NULL,
+						predicted_value text NULL,
+						root_pipeline_id int8 NULL,
+						tenant_id int8 NULL
+						);
+
+
+						CREATE TABLE IF NOT EXISTS  ${temp_schema_name}.f2_group_concat_based_on_freq_${init_process_id.process_id} (
+						origin_id varchar NULL,
+						batch_id varchar not NULL,
+						paper_no int4 NULL,
+						sor_item_name varchar NULL,
+						vqa_score float8 NULL,
+						freq int8 NULL,
+						predicted_value text NULL,
+						root_pipeline_id int8 NULL,
+						tenant_id int8 NULL
+						);
+						CREATE TABLE IF NOT EXISTS voting.voting_payload_error_queue (
+						producer_process_id int8 NOT NULL,
+						consumer_process_id int8 NULL,
+						batch_id varchar not NULL,
+						group_id int4 NOT NULL,
+						origin_id varchar NOT NULL,
+						created_on timestamp NOT NULL,
+						status varchar NOT NULL,
+						stage varchar NOT NULL,
+						message varchar NULL,
+						consumed_on_ts timestamp NULL,
+						root_pipeline_id int8 NULL,
+						tenant_id int8 NULL,
+						CONSTRAINT voting_payload_error_queue_pk PRIMARY KEY (origin_id)
+						);
+
+						CREATE TABLE IF NOT EXISTS voting.voting_payload_queue_archive (
+						producer_process_id int8 NOT NULL,
+						consumer_process_id int8 NULL,
+						batch_id varchar not NULL,
+						group_id int8 NOT NULL,
+						origin_id varchar NOT NULL,
+						created_on timestamp NOT NULL,
+						status varchar NOT NULL,
+						stage varchar NOT NULL,
+						consumed_on_ts timestamp NULL,
+						root_pipeline_id int8 NULL,
+						tenant_id int8 NULL,
+						CONSTRAINT voting_payload_queue_archive_pk PRIMARY KEY (origin_id)
+						);
+
+						CREATE TABLE IF NOT EXISTS voting.voting_result (
+						validation_id int8 NULL,
+						batch_id varchar not NULL,
+						origin_id varchar NULL,
+						sor_item_name varchar NULL,
+						paper_no int4 NULL,
+						extracted_value text NULL,
+						group_id int8 NULL,
+						created_on timestamp NULL,
+						freq int8 NULL,
+						weight_rank int8 NULL,
+						weight_score float8 NULL,
+						confidence_score float8 NULL,
+						difference int4 NULL,
+						result_id bigserial,
+						root_pipeline_id int8 NULL,
+						tenant_id int8 NULL,
+						CONSTRAINT voting_result_pk PRIMARY KEY (result_id)
+						);
+
+						CREATE TABLE IF NOT EXISTS voting.weighted_value (
+						validation_id int8 NULL,
+						batch_id varchar not NULL,
+						origin_id varchar NULL,
+						sor_item_name varchar NULL,
+						paper_no int4 NULL,
+						extracted_value text NULL,
+						group_id int8 NULL,
+						created_on timestamp NULL,
+						freq int8 NULL,
+						weight_rank int8 NULL,
+						weight_score float8 NULL,
+						confidence_score float8 NULL,
+						difference int4 NULL,
+						rank_id bigserial NOT NULL,
+						root_pipeline_id int8 NULL,
+						tenant_id int8 NULL,
+						model_registry varchar NULL,
+						CONSTRAINT weighted_value_pk PRIMARY KEY (rank_id)
+						);
+
+						CREATE TABLE  IF NOT EXISTS  ${temp_schema_name}.final_valuation_result_${init_process_id.process_id}(
+						origin_id varchar NULL,
+						batch_id varchar not NULL,
+						paper_no int4 NULL,
+						sor_item_name varchar NULL,
+						b_box varchar NULL,
+						rnk int8 NULL,
+						predicted_value text NULL,
+						vqa_score float8 NULL,
+						freq int8 NULL,
+						question_id int8 null,
+						synonym_id int8 null,
+						tenant_id int8 NULL,
+						model_registry varchar NULL
+						);
+
+						CREATE TABLE  IF NOT EXISTS macro.final_valuation_result_audit(
+						origin_id varchar NULL,
+						batch_id varchar not NULL,
+						paper_no int4 NULL,
+						sor_item_name varchar NULL,
+						b_box varchar NULL,
+						rnk int8 NULL,
+						predicted_value text NULL,
+						vqa_score float8 NULL,
+						freq int8 NULL,
+						root_pipeline_id int8 null,
+						question_id int8 null,
+                        synonym_id int8 null,
+                        tenant_id int8 NULL,
+                        model_registry varchar NULL
+						);
+				"} on-condition if "true"=="true"
+
+				transform as "voting out and in ddl creation" on "intics_zio_db_conn" using {"
+
+						CREATE TABLE  IF NOT EXISTS macro.voting_out_empty_entries_audit (
+						origin_id varchar NULL,
+						sor_item_name varchar NULL,
+						question varchar NULL,
+						predicted_value text NULL,
+						voting_out numeric NULL,
+						root_pipeline_id int8 null,
+						tenant_id int8 NULL,
+						batch_id varchar not NULL
+						);
+
+
+						CREATE TABLE  IF NOT EXISTS macro.voting_out_empty_entry_summary_audit (
+						origin_id varchar NULL,
+						sor_item_name varchar NULL,
+						empty_prediction_values int8 NULL,
+						voting_out_threshold numeric NULL,
+						root_pipeline_id int8 null,
+						tenant_id int8 NULL,
+						batch_id varchar not NULL
+						);
+
+
+						CREATE TABLE  IF NOT EXISTS macro.voting_out_agg_summary_audit (
+						origin_id varchar NULL,
+						sor_item_name varchar NULL,
+						total_questions int8 NULL,
+						root_pipeline_id int8 null,
+						tenant_id int8 NULL,
+						batch_id varchar not NULL
+						);
+
+
+						CREATE TABLE  IF NOT EXISTS macro.voting_out_empty_summary_percentage_audit (
+						origin_id varchar NULL,
+						sor_item_name varchar NULL,
+						total_questions int8 NULL,
+						empty_prediction_values int8 NULL,
+						empty_percentage float8 NULL,
+						voting_out_threshold numeric NULL,
+						voting_out_empty_flag text NULL,
+						root_pipeline_id int8 null,
+						tenant_id int8 NULL,
+						batch_id varchar not NULL
+						);
+
+
+						CREATE TABLE  IF NOT EXISTS macro.a_agg_input_table_audit (
+						origin_id varchar NULL,
+						paper_no int4 NULL,
+						sor_item_name varchar NULL,
+						predicted_value text NULL,
+						vqa_score float8 NULL,
+						root_pipeline_id int8 null,
+						tenant_id int8 NULL,
+						batch_id varchar not NULL
+						);
+
+						CREATE TABLE  IF NOT EXISTS macro.sor_item_based_max_value_audit (
+						origin_id varchar NULL,
+						paper_no int4 NULL,
+						sor_item_name varchar NULL,
+						max_score float8 NULL,
+						root_pipeline_id int8 null,
+						tenant_id int8 NULL,
+						batch_id varchar not NULL
+						);
+
+
+						CREATE TABLE  IF NOT EXISTS macro.b1_scalar_max_score_multi_occur_audit (
+						origin_id varchar NULL,
+						paper_no int4 NULL,
+						sor_item_name varchar NULL,
+						occur_count int8 NULL,
+						vqa_score float8 NULL,
+						root_pipeline_id int8 null,
+						tenant_id int8 NULL,
+						batch_id varchar not NULL
+						);
+
+
+						CREATE TABLE  IF NOT EXISTS macro.b2_scalar_max_score_single_occur_audit (
+						origin_id varchar NULL,
+						paper_no int4 NULL,
+						sor_item_name varchar NULL,
+						occur_count int8 NULL,
+						vqa_score float8 NULL,
+						root_pipeline_id int8 null,
+						tenant_id int8 NULL,
+						batch_id varchar not NULL
+						);
+
+
+						CREATE TABLE  IF NOT EXISTS macro.c_multi_occur_freq_for_scalar_audit (
+						origin_id varchar NULL,
+						paper_no int4 NULL,
+						sor_item_name varchar NULL,
+						predicted_value text NULL,
+						freq int8 NULL,
+						vqa_score float8 NULL,
+						root_pipeline_id int8 null,
+						tenant_id int8 NULL,
+						batch_id varchar not NULL
+						);
+
+
+						CREATE TABLE  IF NOT EXISTS macro.d_max_freq_from_multi_occur_audit (
+						origin_id varchar NULL,
+						paper_no int4 NULL,
+						sor_item_name varchar NULL,
+						freq int8 NULL,
+						root_pipeline_id int8 null,
+						tenant_id int8 NULL,
+						batch_id varchar not NULL
+						);
+
+						CREATE TABLE  IF NOT EXISTS macro.e_final_result_for_freq_audit (
+						origin_id varchar NULL,
+						paper_no int4 NULL,
+						sor_item_name varchar NULL,
+						predicted_value text NULL,
+						freq int8 NULL,
+						vqa_score float8 NULL,
+						root_pipeline_id int8 null,
+						tenant_id int8 NULL,
+						batch_id varchar not NULL
+						);
+
+						CREATE TABLE  IF NOT EXISTS macro.f1_single_freq_occur_a_agg_input_table_audit (
+						origin_id varchar NULL,
+						paper_no int4 NULL,
+						sor_item_name varchar NULL,
+						vqa_score float8 NULL,
+						freq int8 NULL,
+						predicted_value text NULL,
+						root_pipeline_id int8 null,
+						tenant_id int8 NULL,
+						batch_id varchar not NULL
+						);
+
+						CREATE TABLE  IF NOT EXISTS macro.f2_group_concat_based_on_freq_audit (
+						origin_id varchar NULL,
+						paper_no int4 NULL,
+						sor_item_name varchar NULL,
+						vqa_score float8 NULL,
+						freq int8 NULL,
+						predicted_value text NULL,
+						root_pipeline_id int8 null,
+						tenant_id int8 NULL,
+						batch_id varchar not NULL
+						);
+
+						CREATE TABLE  IF NOT EXISTS macro.f1_single_freq_occur_audit (
+						origin_id varchar NULL,
+						paper_no int4 NULL,
+						sor_item_name varchar NULL,
+						vqa_score float8 NULL,
+						freq int8 NULL,
+						predicted_value text NULL,
+						root_pipeline_id int8 null,
+						tenant_id int8 NULL,
+						batch_id varchar not NULL
+						);
+				"} on-condition if "true"=="true"
+
+				transform as "voting v2 file ddl create table" on "intics_zio_db_conn" using
+                {"
+                            CREATE TABLE if not exists voting.final_valuation_result_audit (
+                            origin_id varchar NULL,
+                            paper_no int4 NULL,
+                            sor_item_name varchar NULL,
+                            b_box varchar NULL,
+                            rnk int4 NULL,
+                            predicted_value text NULL,
+                            vqa_score float8 NULL,
+                            freq int4 NULL,
+                            question_id int8 NULL,
+                            synonym_id int8 NULL,
+                            tenant_id int4 NULL,
+                            model_registry varchar NULL,
+                            batch_id varchar NULL,
+                            root_pipeline_id int8 null
+                            );
+
+
+
+                            CREATE TABLE if not exists voting.c3_scalar_max_score_multi_line_audit (
+                            origin_id varchar NULL,
+                            paper_no int4 NULL,
+                            sor_item_name varchar NULL,
+                            b_box varchar NULL,
+                            rnk int8 NULL,
+                            predicted_value text NULL,
+                            vqa_score float8 NULL,
+                            occur_count int8 NULL,
+                            question_id int8 NULL,
+                            synonym_id int8 NULL,
+                            tenant_id int4 NULL,
+                            model_registry varchar NULL,
+                            batch_id varchar NULL,
+                            root_pipeline_id int8 null
+                            );
+
+
+
+
+                            CREATE TABLE if not exists voting.c2_scalar_max_score_multi_occur_freq_audit (
+                            origin_id varchar NULL,
+                            paper_no int4 NULL,
+                            sor_item_name varchar NULL,
+                            tenant_id int4 NULL,
+                            vqa_score float8 NULL,
+                            occur_count int8 NULL,
+                            batch_id varchar NULL,
+                            root_pipeline_id int8 null
+                            );
+
+
+
+                            CREATE TABLE if not exists voting.c1_rank_based_valuation_result_audit (
+                            origin_id varchar NULL,
+                            paper_no int4 NULL,
+                            sor_item_name varchar NULL,
+                            b_box varchar NULL,
+                            rnk int8 NULL,
+                            predicted_value text NULL,
+                            vqa_score float8 NULL,
+                            freq int4 NULL,
+                            question_id int8 NULL,
+                            synonym_id int8 NULL,
+                            tenant_id int4 NULL,
+                            model_registry varchar NULL,
+                            batch_id varchar NULL,
+                            root_pipeline_id int8 null
+                            );
+
+
+                            CREATE TABLE if not exists voting.b3_scalar_multi_line_single_occur_audit (
+                            origin_id varchar NULL,
+                            paper_no int4 NULL,
+                            sor_item_name varchar NULL,
+                            occur_count int8 NULL,
+                            vqa_score float8 NULL,
+                            tenant_id int4 NULL,
+                            sv_occur_count int8 NULL,
+                            batch_id varchar NULL,
+                            root_pipeline_id int8 null
+                            );
+
+
+
+                            CREATE TABLE if not exists voting.b2_scalar_single_line_single_occur_audit (
+                            origin_id varchar NULL,
+                            paper_no int4 NULL,
+                            sor_item_name varchar NULL,
+                            occur_count int8 NULL,
+                            max_vqa_score float8 NULL,
+                            tenant_id int4 NULL,
+                            sv_occur_count int8 NULL,
+                            batch_id varchar NULL,
+                            root_pipeline_id int8 null
+                            );
+
+
+
+                            CREATE TABLE if not exists voting.b1_scalar_multi_line_multi_occur_audit (
+                            origin_id varchar NULL,
+                            paper_no int4 NULL,
+                            sor_item_name varchar NULL,
+                            occur_count int8 NULL,
+                            tenant_id int4 NULL,
+                            sv_occur_count int8 NULL,
+                            batch_id varchar NULL,
+                            root_pipeline_id int8 null
+                            );
+
+
+
+                            CREATE TABLE if not exists voting.a3_agg_input_table_audit (
+                            origin_id varchar NULL,
+                            paper_no int4 NULL,
+                            sor_item_name varchar NULL,
+                            predicted_value text NULL,
+                            vqa_score float8 NULL,
+                            tenant_id int4 NULL,
+                            occur_count int8 NULL,
+                            batch_id varchar NULL,
+                            root_pipeline_id int8 null
+                            );
+
+
+
+                            CREATE TABLE if not exists voting.a2_max_occur_item_audit (
+                            group_id int4 NULL,
+                            origin_id varchar NULL,
+                            paper_no int4 NULL,
+                            sor_item_name varchar NULL,
+                            tenant_id int4 NULL,
+                            occur_count int8 NULL,
+                            batch_id varchar NULL,
+                            root_pipeline_id int8 null
+                            );
+
+
+
+
+                            CREATE TABLE if not exists voting.a1_agg_occur_count_audit (
+                            group_id int4 NULL,
+                            origin_id varchar NULL,
+                            paper_no int4 NULL,
+                            sor_item_name varchar NULL,
+                            predicted_value text NULL,
+                            max_score float8 NULL,
+                            tenant_id int4 NULL,
+                            occur_count int8 NULL,
+                            batch_id varchar NULL,
+                            root_pipeline_id int8 null
+                            );
+
+                            CREATE TABLE if not exists ${temp_schema_name}.final_valuation_result_${init_process_id.process_id} (
+                            origin_id varchar NULL,
+                            paper_no int4 NULL,
+                            sor_item_name varchar NULL,
+                            b_box varchar NULL,
+                            rnk int4 NULL,
+                            predicted_value text NULL,
+                            vqa_score float8 NULL,
+                            freq int4 NULL,
+                            question_id int8 NULL,
+                            synonym_id int8 NULL,
+                            tenant_id int4 NULL,
+                            model_registry varchar NULL,
+                            batch_id varchar NULL,
+                            root_pipeline_id int8 null
+                            );
+
+
+
+                            CREATE TABLE if not exists ${temp_schema_name}.c3_scalar_max_score_multi_line_${init_process_id.process_id} (
+                            origin_id varchar NULL,
+                            paper_no int4 NULL,
+                            sor_item_name varchar NULL,
+                            b_box varchar NULL,
+                            rnk int8 NULL,
+                            predicted_value text NULL,
+                            vqa_score float8 NULL,
+                            occur_count int8 NULL,
+                            question_id int8 NULL,
+                            synonym_id int8 NULL,
+                            tenant_id int4 NULL,
+                            model_registry varchar NULL,
+                            batch_id varchar NULL,
+                            root_pipeline_id int8 null
+                            );
+
+
+
+
+                            CREATE TABLE if not exists ${temp_schema_name}.c2_scalar_max_score_multi_occur_freq_${init_process_id.process_id} (
+                            origin_id varchar NULL,
+                            paper_no int4 NULL,
+                            sor_item_name varchar NULL,
+                            tenant_id int4 NULL,
+                            vqa_score float8 NULL,
+                            occur_count int8 NULL,
+                            batch_id varchar NULL,
+                            root_pipeline_id int8 null
+                            );
+
+
+
+                            CREATE TABLE if not exists ${temp_schema_name}.c1_rank_based_valuation_result_${init_process_id.process_id} (
+                            origin_id varchar NULL,
+                            paper_no int4 NULL,
+                            sor_item_name varchar NULL,
+                            b_box varchar NULL,
+                            rnk int8 NULL,
+                            predicted_value text NULL,
+                            vqa_score float8 NULL,
+                            freq int4 NULL,
+                            question_id int8 NULL,
+                            synonym_id int8 NULL,
+                            tenant_id int4 NULL,
+                            model_registry varchar NULL,
+                            batch_id varchar NULL,
+                            root_pipeline_id int8 null
+                            );
+
+
+                            CREATE TABLE if not exists ${temp_schema_name}.b3_scalar_multi_line_single_occur_${init_process_id.process_id} (
+                            origin_id varchar NULL,
+                            paper_no int4 NULL,
+                            sor_item_name varchar NULL,
+                            occur_count int8 NULL,
+                            vqa_score float8 NULL,
+                            tenant_id int4 NULL,
+                            sv_occur_count int8 NULL,
+                            batch_id varchar NULL,
+                            root_pipeline_id int8 null
+                            );
+
+
+
+                            CREATE TABLE if not exists ${temp_schema_name}.b2_scalar_single_line_single_occur_${init_process_id.process_id} (
+                            origin_id varchar NULL,
+                            paper_no int4 NULL,
+                            sor_item_name varchar NULL,
+                            occur_count int8 NULL,
+                            max_vqa_score float8 NULL,
+                            tenant_id int4 NULL,
+                            sv_occur_count int8 NULL,
+                            batch_id varchar NULL,
+                            root_pipeline_id int8 null
+                            );
+
+
+
+                            CREATE TABLE if not exists ${temp_schema_name}.b1_scalar_multi_line_multi_occur_${init_process_id.process_id} (
+                            origin_id varchar NULL,
+                            paper_no int4 NULL,
+                            sor_item_name varchar NULL,
+                            occur_count int8 NULL,
+                            tenant_id int4 NULL,
+                            sv_occur_count int8 NULL,
+                            batch_id varchar NULL,
+                            root_pipeline_id int8 null
+                            );
+
+
+
+                            CREATE TABLE if not exists ${temp_schema_name}.a3_agg_input_table_${init_process_id.process_id} (
+                            origin_id varchar NULL,
+                            paper_no int4 NULL,
+                            sor_item_name varchar NULL,
+                            predicted_value text NULL,
+                            vqa_score float8 NULL,
+                            tenant_id int4 NULL,
+                            occur_count int8 NULL,
+                            batch_id varchar NULL,
+                            root_pipeline_id int8 null
+                            );
+
+
+
+                            CREATE TABLE if not exists ${temp_schema_name}.a2_max_occur_item_${init_process_id.process_id} (
+                            group_id int4 NULL,
+                            origin_id varchar NULL,
+                            paper_no int4 NULL,
+                            sor_item_name varchar NULL,
+                            tenant_id int4 NULL,
+                            occur_count int8 NULL,
+                            batch_id varchar NULL,
+                            root_pipeline_id int8 null
+                            );
+
+
+
+
+                            CREATE TABLE if not exists ${temp_schema_name}.a1_agg_occur_count_${init_process_id.process_id} (
+                            group_id int4 NULL,
+                            origin_id varchar NULL,
+                            paper_no int4 NULL,
+                            sor_item_name varchar NULL,
+                            predicted_value text NULL,
+                            max_score float8 NULL,
+                            tenant_id int4 NULL,
+                            occur_count int8 NULL,
+                            batch_id varchar NULL,
+                            root_pipeline_id int8 null
+                            );
+
+					"} on-condition if "${voting.v3.activator}"=="true"
+
+		}
+		catch {
+				transform as "INSERTING FAILED STATUS FOR VOTING DDL" on "intics_zio_db_conn" using
+				{"
+						INSERT INTO voting.voting_pipeline_audit
+						(process_id, group_id, created_on, status, stage, message, root_pipeline_id, tenant_id)
+						VALUES('${init_process_id.process_id}','${gen_group_id.group_id}', now(), 'FAILED',
+						'VOTING', 'FAILED VOTING DDL', '${gen_id.root_pipeline_id}', ${tenant_id});
+				"} on-condition if "true"=="true"
+		}
+		finally {
+				transform as "INSERTING COMPLETION STATUS FOR VOTING DDL" on "intics_zio_db_conn" using
+				{"
+						INSERT INTO voting.voting_pipeline_audit
+						(process_id, group_id, created_on, status, stage, message, root_pipeline_id, tenant_id)
+						VALUES('${init_process_id.process_id}', '${gen_group_id.group_id}', now(), 'COMPLETED',
+						'VOTING', 'COMPLETED VOTING DDL', '${gen_id.root_pipeline_id}', ${tenant_id});
+				"} on-condition if "true"=="true"
+		}
+}

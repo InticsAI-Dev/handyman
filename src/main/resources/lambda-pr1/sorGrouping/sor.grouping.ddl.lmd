@@ -1,0 +1,784 @@
+process "sor.grouping.ddl"
+{
+	try{
+        transform as "create queue archive tables" on "intics_zio_db_conn" using
+        {"
+                CREATE TABLE IF NOT EXISTS sor_grouping.sor_grouping_payload_error_queue (
+                producer_process_id int8 NOT NULL,
+                consumer_process_id int8 NULL,
+                origin_id varchar NOT NULL,
+                batch_id varchar not null,
+                group_id int4 not null,
+                created_on timestamp NOT NULL,
+                status varchar NOT NULL,
+                stage varchar NOT NULL,
+                message varchar NULL,
+                consumed_on_ts timestamp NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                CONSTRAINT sor_grouping_payload_error_queue_pk PRIMARY KEY (tenant_id, origin_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS qr_extraction.qr_extraction_details (
+                id BIGSERIAL NOT NULL,
+                batch_id varchar NOT NULL,
+                process_id int8 NULL,
+                origin_id varchar NULL,
+                group_id INT4 NULL,
+                paper_no INT4 NULL,
+                created_on TIMESTAMP NULL,
+                qr_format VARCHAR NULL,
+                qr_format_id INT4 NULL,
+                decode_type varchar null,
+                extracted_value VARCHAR NULL,
+                file_id VARCHAR NULL,
+                b_box varchar NULL,
+                angle int8 NULL,
+                confidence_score INT4 NULL,
+                status VARCHAR NULL,
+                stage VARCHAR NULL,
+                message VARCHAR NULL,
+                is_candidate_qr VARCHAR NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                model_name varchar null,
+                model_version varchar null,
+                last_updated_on TIMESTAMP NULL,
+                request varchar null,
+                response varchar null,
+                endpoint varchar null,
+                CONSTRAINT qr_extraction_result_pk PRIMARY KEY (id)
+                );
+
+                CREATE TABLE IF NOT EXISTS sor_grouping.sor_grouping_payload_queue_archive (
+                producer_process_id int8 NOT NULL,
+                consumer_process_id int8 NULL,
+                batch_id varchar not null,
+                origin_id varchar NOT NULL,
+                group_id int4 not null,
+                created_on timestamp NOT NULL,
+                status varchar NOT NULL,
+                stage varchar NOT NULL,
+                consumed_on_ts timestamp NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                CONSTRAINT sor_grouping_payload_queue_archive_pk PRIMARY KEY (tenant_id, origin_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS sor_grouping.sor_grouping_pipeline_audit (
+                id bigserial NOT NULL,
+                origin_id varchar NULL,
+                batch_id varchar null,
+                created_on timestamp NOT NULL,
+                user_id varchar NOT NULL,
+                group_id varchar NOT NULL,
+                tenant_id int8 NULL,
+                status varchar NOT NULL,
+                stage varchar NOT NULL,
+                message varchar NOT NULL,
+                root_pipeline_id int8 NULL
+                );
+
+                CREATE TABLE if not exists sor_grouping.pahub_patient_instance (
+                pahub_patient_instance_id bigserial NOT NULL,
+                origin_id varchar NOT NULL,
+                batch_id varchar not null,
+                group_id int4 NOT NULL,
+                created_on timestamp NOT NULL,
+                created_user_id varchar NOT NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id varchar NULL,
+                source_of_pahub varchar NULL,
+                tenant_id int8 NULL,
+                document_id varchar NOT NULL,
+                pahub_id varchar NOT NULL,
+                paper_nos _int4 NOT NULL,
+                root_pipeline_id int8 NULL,
+                CONSTRAINT pahub_patient_instance_id_primary_key PRIMARY KEY (pahub_patient_instance_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS eoc_transformer.eoc_transformer_payload_queue (
+                producer_process_id int8 NOT NULL,
+                consumer_process_id int8 NULL,
+                batch_id varchar not null,
+                origin_id varchar NOT NULL,
+                group_id int4 NULL,
+                created_on timestamp NULL,
+                consumed_on_ts timestamp NULL,
+                status varchar NULL,
+                stage varchar NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                CONSTRAINT eoc_transformer_payload_queue_pk PRIMARY KEY (producer_process_id, origin_id,tenant_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.eoc_result_${init_process_id.process_id} (
+                pahub_id varchar null,
+                origin_id varchar NULL,
+                batch_id varchar not null,
+                group_id int4 null,
+                source_of_pahub varchar null,
+                paper_no int4 NULL,
+                created_on timestamp NULL,
+                status varchar null,
+                stage varchar null,
+                message varchar null,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS sor_grouping.eoc_result_audit (
+                id bigserial not null,
+                pahub_id varchar null,
+                batch_id varchar not null,
+                origin_id varchar NULL,
+                group_id int4 null,
+                source_of_pahub varchar null,
+                paper_no int4 NULL,
+                created_on timestamp NULL,
+                status varchar null,
+                stage varchar null,
+                message varchar null,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.cumulative_patient_name_${init_process_id.process_id} (
+                id BIGSERIAL NOT NULL,
+                first_name_question_id int8 null,
+                last_name_question_id int8 NULL,
+                patient_name_b_box varchar NULL,
+                question_id int8 null,
+                first_name_synonym_id int8 null,
+                last_name_synonym_id int8 null,
+                sor_item_name varchar null,
+                patient_name_maximum_score int8 null,
+                patient_first_name_b_box varchar NULL,
+                patient_name_confidence_score int8 null,
+                patient_last_name_b_box varchar NULL,
+                patient_first_name_confidence_score NUMERIC(10, 2) NULL,
+                patient_last_name_confidence_score NUMERIC(10, 2) NULL,
+                patient_first_name varchar NULL,
+                patient_last_name varchar NULL,
+                patient_name varchar NULL,
+                patient_first_name_filter_score NUMERIC(10, 2) NULL,
+                patient_last_name_filter_score NUMERIC(10, 2) NULL,
+                group_id INT8 NULL,
+                patient_first_name_maximum_score NUMERIC(10, 2) NULL,
+                patient_last_name_maximum_score NUMERIC(10, 2) NULL,
+                origin_id varchar NULL,
+                paper_no INT8 NULL,
+                root_pipeline_id INT8 NULL,
+                tenant_id INT8 NULL,
+                model_registry varchar NULL,
+                synonym_id int8 null,
+                batch_id varchar not null
+                );
+
+
+               CREATE TABLE IF NOT EXISTS voting.cumulative_p2p_name_audit (
+               id BIGSERIAL NOT NULL,
+               first_name_b_box varchar NULL,
+               last_name_b_box varchar null,
+               name_b_box varchar null,
+               patient_first_name_b_box varchar NULL,
+               patient_last_name_b_box varchar NULL,
+               patient_first_name_confidence_score NUMERIC(10, 2) NULL,
+               patient_last_name_confidence_score NUMERIC(10, 2) NULL,
+               first_name_confidence_score int8 null,
+               patient_first_name varchar NULL,
+               patient_last_name varchar NULL,
+               patient_name varchar NULL,
+               patient_first_name_filter_score NUMERIC(10, 2) NULL,
+               patient_last_name_filter_score NUMERIC(10, 2) NULL,
+               group_id INT8 NULL,
+               patient_first_name_maximum_score NUMERIC(10, 2) NULL,
+               patient_last_name_maximum_score NUMERIC(10, 2) NULL,
+               origin_id varchar NULL,
+               paper_no INT8 NULL,
+               root_pipeline_id INT8 NULL,
+               tenant_id INT8 NULL,
+               model_registry varchar NULL,
+               name_confidence_score int8 null,
+               last_name_confidence_score int8 null,
+               first_name varchar null,
+               last_name varchar null,
+               name varchar null,
+               first_name_maximum_score int8 null,
+               last_name_maximum_score int8 null,
+               name_maximum_score int8 null,
+               first_name_question_id int8 null,
+               last_name_question_id int8 null,
+               question_id int8 null,
+               first_name_synonym_id int8 null,
+               last_name_synonym_id int8 null,
+               synonym_id int8 null,
+               sor_item_name varchar null,
+               batch_id varchar not null
+               );
+
+
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.cumulative_prescriber_name_${init_process_id.process_id} (
+                id BIGSERIAL NOT NULL,
+                first_name_question_id int8 null,
+                last_name_question_id int8 NULL,
+                prescriber_name_b_box varchar NULL,
+                question_id int8 null,
+                first_name_synonym_id int8 null,
+                last_name_synonym_id int8 null,
+                sor_item_name varchar null,
+                prescriber_name_maximum_score int8 null,
+                prescriber_first_name_b_box varchar NULL,
+                prescriber_name_confidence_score int8 null,
+                prescriber_last_name_b_box varchar NULL,
+                prescriber_first_name_confidence_score NUMERIC(10, 2) NULL,
+                prescriber_last_name_confidence_score NUMERIC(10, 2) NULL,
+                prescriber_first_name varchar NULL,
+                prescriber_last_name varchar NULL,
+                prescriber_name varchar NULL,
+                prescriber_first_name_filter_score NUMERIC(10, 2) NULL,
+                prescriber_last_name_filter_score NUMERIC(10, 2) NULL,
+                group_id INT8 NULL,
+                prescriber_first_name_maximum_score NUMERIC(10, 2) NULL,
+                prescriber_last_name_maximum_score NUMERIC(10, 2) NULL,
+                origin_id varchar NULL,
+                paper_no INT8 NULL,
+                root_pipeline_id INT8 NULL,
+                tenant_id INT8 NULL,
+                model_registry varchar NULL,
+                synonym_id int8 null,
+                batch_id varchar not null
+                );
+
+                CREATE TABLE IF NOT EXISTS voting.cumulative_prescriber_name_audit (
+                id BIGSERIAL NOT NULL,
+                first_name_question_id int8 null,
+                last_name_question_id int8 NULL,
+                prescriber_name_b_box varchar NULL,
+                question_id int8 null,
+                first_name_synonym_id int8 null,
+                last_name_synonym_id int8 null,
+                sor_item_name varchar null,
+                prescriber_name_maximum_score int8 null,
+                prescriber_first_name_b_box varchar NULL,
+                prescriber_name_confidence_score int8 null,
+                prescriber_last_name_b_box varchar NULL,
+                prescriber_first_name_confidence_score NUMERIC(10, 2) NULL,
+                prescriber_last_name_confidence_score NUMERIC(10, 2) NULL,
+                prescriber_first_name varchar NULL,
+                prescriber_last_name varchar NULL,
+                prescriber_name varchar NULL,
+                prescriber_first_name_filter_score NUMERIC(10, 2) NULL,
+                prescriber_last_name_filter_score NUMERIC(10, 2) NULL,
+                group_id INT8 NULL,
+                prescriber_first_name_maximum_score NUMERIC(10, 2) NULL,
+                prescriber_last_name_maximum_score NUMERIC(10, 2) NULL,
+                origin_id varchar NULL,
+                paper_no INT8 NULL,
+                root_pipeline_id INT8 NULL,
+                tenant_id INT8 NULL,
+                model_registry varchar NULL,
+                synonym_id int8 null,
+                batch_id varchar not null
+                );
+
+
+
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.cumulative_provider_name_${init_process_id.process_id} (
+               id BIGSERIAL NOT NULL,
+               first_name_question_id int8 null,
+               last_name_question_id int8 NULL,
+               provider_name_b_box varchar NULL,
+               question_id int8 null,
+               first_name_synonym_id int8 null,
+               last_name_synonym_id int8 null,
+               sor_item_name varchar null,
+               provider_name_maximum_score int8 null,
+               provider_first_name_b_box varchar NULL,
+               provider_name_confidence_score int8 null,
+               provider_last_name_b_box varchar NULL,
+               provider_first_name_confidence_score NUMERIC(10, 2) NULL,
+               provider_last_name_confidence_score NUMERIC(10, 2) NULL,
+               provider_first_name varchar NULL,
+               provider_last_name varchar NULL,
+               provider_name varchar NULL,
+               provider_first_name_filter_score NUMERIC(10, 2) NULL,
+               provider_last_name_filter_score NUMERIC(10, 2) NULL,
+               group_id INT8 NULL,
+               provider_first_name_maximum_score NUMERIC(10, 2) NULL,
+               provider_last_name_maximum_score NUMERIC(10, 2) NULL,
+               origin_id varchar NULL,
+               paper_no INT8 NULL,
+               root_pipeline_id INT8 NULL,
+               tenant_id INT8 NULL,
+               model_registry varchar NULL,
+               synonym_id int8 null,
+               batch_id varchar not null
+                );
+
+                CREATE TABLE IF NOT EXISTS voting.cumulative_provider_name_audit (
+                id BIGSERIAL NOT NULL,
+                first_name_question_id int8 null,
+                last_name_question_id int8 NULL,
+                provider_name_b_box varchar NULL,
+                question_id int8 null,
+                first_name_synonym_id int8 null,
+                last_name_synonym_id int8 null,
+                sor_item_name varchar null,
+                provider_name_maximum_score int8 null,
+                provider_first_name_b_box varchar NULL,
+                provider_name_confidence_score int8 null,
+                provider_last_name_b_box varchar NULL,
+                provider_first_name_confidence_score NUMERIC(10, 2) NULL,
+                provider_last_name_confidence_score NUMERIC(10, 2) NULL,
+                provider_first_name varchar NULL,
+                provider_last_name varchar NULL,
+                provider_name varchar NULL,
+                provider_first_name_filter_score NUMERIC(10, 2) NULL,
+                provider_last_name_filter_score NUMERIC(10, 2) NULL,
+                group_id INT8 NULL,
+                provider_first_name_maximum_score NUMERIC(10, 2) NULL,
+                provider_last_name_maximum_score NUMERIC(10, 2) NULL,
+                origin_id varchar NULL,
+                paper_no INT8 NULL,
+                root_pipeline_id INT8 NULL,
+                tenant_id INT8 NULL,
+                model_registry varchar NULL,
+                synonym_id int8 null,
+                batch_id varchar not null
+                );
+
+
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.cumulative_result_p2p_result_table_${init_process_id.process_id} (
+                id BIGSERIAL NOT NULL,
+                b_box varchar NULL,
+                confidence_score NUMERIC(10,2) NULL,
+                extracted_value VARCHAR NULL,
+                filter_score INT8 NULL,
+                group_id INT8 NULL,
+                maximum_score NUMERIC(10, 2) NULL,
+                origin_id varchar NULL,
+                paper_no INT8 NULL,
+                root_pipeline_id INT8 NULL,
+                sor_item_name varchar NOT NULL,
+                tenant_id INT8 NULL,
+                model_registry varchar null,
+                batch_id varchar not null,
+                question_id int8 null,
+                synonym_id INT8 null
+                );
+
+                CREATE TABLE IF NOT EXISTS voting.cumulative_result_p2p_result_table_audit (
+                id BIGSERIAL NOT NULL,
+                b_box varchar NULL,
+                confidence_score NUMERIC(10,2) NULL,
+                extracted_value VARCHAR NULL,
+                filter_score INT8 NULL,
+                group_id INT8 NULL,
+                maximum_score NUMERIC(10, 2) NULL,
+                origin_id varchar NULL,
+                paper_no INT8 NULL,
+                root_pipeline_id INT8 NULL,
+                sor_item_name varchar NOT NULL,
+                tenant_id INT8 NULL,
+                model_registry varchar null,
+                batch_id varchar not null,
+                question_id int8 null,
+                synonym_id INT8 null
+                );
+
+                CREATE TABLE IF NOT EXISTS voting.cumulative_patient_name_audit (
+                id BIGSERIAL NOT NULL,
+                first_name_question_id int8 null,
+                last_name_question_id int8 NULL,
+                patient_name_b_box varchar NULL,
+                question_id int8 null,
+                first_name_synonym_id int8 null,
+                last_name_synonym_id int8 null,
+                sor_item_name varchar null,
+                patient_name_maximum_score int8 null,
+                patient_first_name_b_box varchar NULL,
+                patient_name_confidence_score int8 null,
+                patient_last_name_b_box varchar NULL,
+                patient_first_name_confidence_score NUMERIC(10, 2) NULL,
+                patient_last_name_confidence_score NUMERIC(10, 2) NULL,
+                patient_first_name varchar NULL,
+                patient_last_name varchar NULL,
+                patient_name varchar NULL,
+                patient_first_name_filter_score NUMERIC(10, 2) NULL,
+                patient_last_name_filter_score NUMERIC(10, 2) NULL,
+                group_id INT8 NULL,
+                patient_first_name_maximum_score NUMERIC(10, 2) NULL,
+                patient_last_name_maximum_score NUMERIC(10, 2) NULL,
+                origin_id varchar NULL,
+                paper_no INT8 NULL,
+                root_pipeline_id INT8 NULL,
+                tenant_id INT8 NULL,
+                model_registry varchar NULL,
+                synonym_id int8 null,
+                batch_id varchar not null
+                );
+
+
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.p2p_result_temp_table_${init_process_id.process_id} (
+                    id BIGSERIAL NOT NULL,
+                    b_box varchar NULL,
+                    confidence_score NUMERIC(10,2) NULL,
+                    extracted_value VARCHAR NULL,
+                    filter_score INT8 NULL,
+                    group_id INT8 NULL,
+                    maximum_score NUMERIC(10, 2) NULL,
+                    origin_id varchar NULL,
+                    paper_no INT8 NULL,
+                    root_pipeline_id INT8 NULL,
+                    sor_item_name varchar NOT NULL,
+                    tenant_id INT8 NULL,
+                    synonym_id INT8 NULL,
+                    question_id INT8 NULL,
+                    model_registry varchar NULL,
+                    batch_id varchar not null
+                );
+
+                CREATE TABLE IF NOT EXISTS voting.p2p_result_temp_table_audit (
+                    id BIGSERIAL NOT NULL,
+                    b_box varchar NULL,
+                    confidence_score NUMERIC(10,2) NULL,
+                    extracted_value VARCHAR NULL,
+                    filter_score INT8 NULL,
+                    group_id INT8 NULL,
+                    maximum_score NUMERIC(10, 2) NULL,
+                    origin_id varchar NULL,
+                    paper_no INT8 NULL,
+                    root_pipeline_id INT8 NULL,
+                    sor_item_name varchar NOT NULL,
+                    tenant_id INT8 NULL,
+                    synonym_id INT8 NULL,
+                    question_id INT8 NULL,
+                    model_registry varchar NULL,
+                    batch_id varchar not null
+                );
+
+                CREATE TABLE IF NOT EXISTS voting.cummulative_result (
+                    cummulative_id bigserial NOT NULL,
+                    created_on timestamp NULL,
+                    created_user_id int8 NULL,
+                    last_updated_on timestamp NULL,
+                    last_updated_user_id int8 NULL,
+                    status varchar NULL,
+                    version int4 NULL,
+                    frequency int8 NULL,
+                    b_box varchar NULL,
+                    confidence_score numeric(10, 2) NULL,
+                    extracted_value varchar NULL,
+                    filter_score numeric(10, 2) NULL,
+                    group_id int8 NULL,
+                    maximum_score numeric(10, 2) NULL,
+                    origin_id varchar NULL,
+                    paper_no int8 NULL,
+                    question_id int8 NULL,
+                    root_pipeline_id int8 NULL,
+                    sor_item_name varchar NOT NULL,
+                    synonym_id int8 NULL,
+                    tenant_id int8 NULL,
+                    model_registry varchar NULL,
+                    batch_id varchar not null,
+                    CONSTRAINT cummulative_result_pkey PRIMARY KEY (cummulative_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS voting.multi_member_final_audit (
+                    id bigserial NOT NULL,
+                    root_pipeline_id BIGINT NOT NULL,
+                    created_on timestamp NOT NULL,
+                    last_updated_on timestamp NOT NULL,
+                    created_user_id BIGINT,
+                    last_updated_user_id BIGINT,
+                    batch_id VARCHAR,
+                    origin_id VARCHAR,
+                    group_id BIGINT,
+                    document_type VARCHAR,
+                    tenant_id BIGINT,
+                    paper_no VARCHAR,
+                    sor_item_name VARCHAR,
+                    indicator_type VARCHAR,
+                    comments TEXT,
+                    CONSTRAINT multi_member_audit_table_pkey PRIMARY KEY (id)
+                );
+
+                 CREATE TABLE IF NOT EXISTS ${temp_schema_name}.cummulative_result_${init_process_id.process_id} (
+                                    cummulative_id bigserial NOT NULL,
+                                    created_on timestamp NULL,
+                                    created_user_id int8 NULL,
+                                    last_updated_on timestamp NULL,
+                                    last_updated_user_id int8 NULL,
+                                    status varchar NULL,
+                                    version int4 NULL,
+                                    frequency int8 NULL,
+                                    b_box varchar NULL,
+                                    confidence_score numeric(10, 2) NULL,
+                                    extracted_value varchar NULL,
+                                    filter_score numeric(10, 2) NULL,
+                                    group_id int8 NULL,
+                                    maximum_score numeric(10, 2) NULL,
+                                    origin_id varchar NULL,
+                                    paper_no int8 NULL,
+                                    question_id int8 NULL,
+                                    root_pipeline_id int8 NULL,
+                                    sor_item_name varchar NOT NULL,
+                                    synonym_id int8 NULL,
+                                    tenant_id int8 NULL,
+                                    model_registry varchar NULL,
+                                    batch_id varchar not null,
+                                    sor_container_instance varchar null
+                                );
+
+                CREATE TABLE IF NOT EXISTS md_lookup_systemKey.master_data_payload_queue (
+                    producer_process_id int8 NOT NULL,
+                    consumer_process_id int8 NULL,
+                    origin_id varchar NOT NULL,
+                    group_id int4 NULL,
+                    created_on timestamp NULL,
+                    consumed_on_ts timestamp NULL,
+                    status varchar NULL,
+                    stage varchar NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL,
+                    batch_id varchar not null,
+                    CONSTRAINT master_data_payload_queue_pk PRIMARY KEY (producer_process_id, origin_id,tenant_id)
+                );
+
+
+        "} on-condition if "true"=="true"
+
+        transform as "DDL creation for voting second phase module" on "intics_zio_db_conn" using {"
+
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.paper_unnest_${init_process_id.process_id} (
+                unnest_id bigserial,
+                batch_id varchar not null,
+                origin_id varchar NULL,
+                pahub_id varchar NULL,
+                paper_number int4 null,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                constraint unnest_pkey_${init_process_id.process_id} primary key(unnest_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.voting_phase_2_${init_process_id.process_id}_result (
+                    min_score_id int8 NULL,
+                    origin_id varchar NULL,
+                    paper_no int4 NULL,
+                    sor_item_name varchar NULL,
+                    weight_score float8 NULL,
+                    predicted_value text NULL,
+                    b_box varchar NULL,
+                    confidence_score int8 NULL,
+                    frequency int8 NULL,
+                    cummulative_score int8 NULL,
+                    question_id int8 null,
+                    synonym_id int8 null,
+                    tenant_id int8 NULL,
+                    model_registry varchar NULL,
+                    root_pipeline_id int8 NULL,
+                    batch_id varchar not null
+                );
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.cummulative_final_${init_process_id.process_id} (
+                    min_score_id int8 NULL,
+                    origin_id varchar NULL,
+                    sor_item_name varchar NULL,
+                    cummulative_score int8 NULL,
+                    tenant_id int8 NULL,
+                    batch_id varchar not null
+                );
+
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.cummulative_score_${init_process_id.process_id} (
+                    origin_id varchar NULL,
+                    sor_item_name varchar NULL,
+                    max_cummulative_score int8 NULL,
+                    tenant_id int8 NULL,
+                    batch_id varchar not null
+                );
+
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.name_score_${init_process_id.process_id} (
+                score_id bigserial NOT NULL,
+                origin_id varchar NULL,
+                batch_id varchar not null,
+                paper_no int4 NULL,
+                sor_item_name varchar NULL,
+                weight_score float8 NULL,
+                predicted_value text NULL,
+                b_box varchar NULL,
+                confidence_score int8 NULL,
+                root_pipeline_id int8 NULL,
+                frequency int8 NULL,
+                cummulative_score int8 NULL,
+                filter_score int8 null,
+                question_id int8 null,
+                synonym_id int8 null,
+                tenant_id int8 NULL,
+                model_registry varchar NULL,
+                CONSTRAINT score_pkey_${init_process_id.process_id} PRIMARY KEY (score_id)
+
+                );
+
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.cummulative_max_filter_score_${init_process_id.process_id} (
+                score_id int8 NULL,
+                batch_id varchar not null,
+                origin_id varchar NULL,
+                paper_no int4 NULL,
+                sor_item_name varchar NULL,
+                cummulative_score int8 NULL,
+                max_filter_score int8 NULL,
+                tenant_id int8 NULL
+                );
+
+                CREATE TABLE  IF NOT EXISTS ${temp_schema_name}.score_count_${init_process_id.process_id} (
+                origin_id varchar NULL,
+                batch_id varchar not null,
+                sor_item_name varchar NULL,
+                max_cummulative_score int8 NULL,
+                score_count int8 NULL,
+                tenant_id int8 NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS voting.paper_unnest_audit (
+                unnest_id bigserial,
+                origin_id varchar NULL,
+                batch_id varchar not null,
+                pahub_id varchar NULL,
+                paper_number int4 null,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                constraint unnest_pkey_audit primary key(unnest_id)
+                );
+                CREATE TABLE IF NOT EXISTS voting.voting_phase_2_result_audit (
+                min_score_id int8 NULL,
+                batch_id varchar not null,
+                origin_id varchar NULL,
+                paper_no int4 NULL,
+                sor_item_name varchar NULL,
+                weight_score float8 NULL,
+                predicted_value text NULL,
+                b_box varchar NULL,
+                confidence_score int8 NULL,
+                frequency int8 NULL,
+                cummulative_score int8 NULL,
+                root_pipeline_id int8 NULL,
+                question_id int8 null,
+                synonym_id int8 null,
+                tenant_id int8 NULL,
+                model_registry varchar NULL
+                );
+                CREATE TABLE IF NOT EXISTS voting.cummulative_final_audit (
+                min_score_id int8 NULL,
+                batch_id varchar not null,
+                origin_id varchar NULL,
+                sor_item_name varchar NULL,
+                cummulative_score int8 NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS voting.cummulative_score_audit(
+                origin_id varchar NULL,
+                batch_id varchar not null,
+                sor_item_name varchar NULL,
+                max_cummulative_score int8 NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS voting.name_score_audit (
+                score_id bigserial NOT NULL,
+                origin_id varchar NULL,
+                batch_id varchar not null,
+                paper_no int4 NULL,
+                sor_item_name varchar NULL,
+                weight_score float8 NULL,
+                predicted_value text NULL,
+                b_box varchar NULL,
+                confidence_score int8 NULL,
+                root_pipeline_id int8 NULL,
+                frequency int8 NULL,
+                cummulative_score int8 NULL,
+                filter_score int8 null,
+                question_id int8 null,
+                synonym_id int8 null,
+                tenant_id int8 NULL,
+                model_registry varchar NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS  voting.cummulative_max_filter_score_audit (
+                score_id int8 NULL,
+                origin_id varchar NULL,
+                batch_id varchar not null,
+                paper_no int4 NULL,
+                sor_item_name varchar NULL,
+                cummulative_score int8 NULL,
+                max_filter_score int8 NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS voting.score_count_audit (
+                origin_id varchar NULL,
+                sor_item_name varchar NULL,
+                batch_id varchar not null,
+                max_cummulative_score int8 NULL,
+                score_count int8 NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS control_data.control_data_payload_queue (
+                producer_process_id int8 NOT NULL,
+                consumer_process_id int8 NULL,
+                batch_id varchar not null,
+                origin_id varchar NOT NULL,
+                group_id int4 NULL,
+                created_on timestamp NULL,
+                consumed_on_ts timestamp NULL,
+                status varchar NULL,
+                stage varchar NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                CONSTRAINT control_data_payload_queue_pk PRIMARY KEY (producer_process_id, origin_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.grouping_chrono_clash_input_${init_process_id.process_id} (
+                    root_pipeline_id int8 NOT NULL,
+                    created_on timestamp NULL,
+                    updated_on timestamp NULL,
+                    batch_id varchar NOT NULL,
+                    group_id int4 NULL,
+                    origin_id varchar NOT NULL,
+                    tenant_id int8 NOT NULL,
+                    time_frame int4 NULL,
+                    stage varchar NULL,
+                    status varchar NULL,
+                    transaction_id varchar NOT NULL,
+                    downloaded_time timestamp NULL,
+                    remaining_time interval NULL,
+                    CONSTRAINT grouping_chrono_clash_input_${init_process_id.process_id}_pk PRIMARY KEY (origin_id,tenant_id,root_pipeline_id,transaction_id)
+                );
+
+        "} on-condition if "true"=="true"
+
+            transform as "sor grouping ddl completed" on "intics_zio_db_conn" using {"
+                INSERT INTO sor_grouping.sor_grouping_pipeline_audit
+                ( created_on, user_id, group_id, tenant_id, status, stage, message, root_pipeline_id)
+                VALUES( now(), '${created_user_id}', '${gen_group_id.group_id}', '${tenant_id}', 'COMPLETED',
+                'SOR_GROUPING', 'Completed creating ddl for sor grouping', '${gen_id.root_pipeline_id}');
+            "} on-condition if "true"=="true"
+
+	}
+	catch{
+            transform as "sor grouping ddl failed" on "intics_zio_db_conn" using {"
+                INSERT INTO sor_grouping.sor_grouping_pipeline_audit
+                ( created_on, user_id, group_id, tenant_id, status, stage, message, root_pipeline_id)
+                VALUES( now(), '${created_user_id}', '${gen_group_id.group_id}', '${tenant_id}', 'FAILED',
+                'SOR_GROUPING', 'Failed in creating ddl for sor grouping', '${gen_id.root_pipeline_id}');
+            "} on-condition if "true"=="true"
+	}
+	finally{
+
+	}
+}

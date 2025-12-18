@@ -1,0 +1,93 @@
+process "response.main"
+{
+    try {
+
+		transform as "update to in-progress response main outbound payload queue" on "intics_zio_db_conn" using
+       {"
+            UPDATE  outbound.outbound_payload_queue
+            SET consumer_process_id='${process-id}', consumed_on_ts=now() , status='IN_PROGRESS'
+            WHERE origin_id ='${origin_id}' AND status ='STAGED' AND stage ='OUTBOUND' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                UPDATE batching.sub_batching_process_payload_queue a
+                SET status='IN_PROGRESS',  stage='OUTBOUND'
+                WHERE a.group_id='${group_id}'  and a.tenant_id='${tenant_id}'
+                and a.batch_id ='${batch_id}';
+
+               update ingestion.pipeline_queue_status_audit as a
+               set status = 'IN_PROGRESS' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+               where  a.group_id=${group_id}
+               and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='OUTBOUND' ;
+
+            INSERT INTO outbound.outbound_pipeline_audit
+             (process_id, origin_id,group_id, created_on, status, stage, message, tenant_id, batch_id)
+             VALUES('${init_process_id.process_id}','${origin_id}', '${group_id}',now(),
+             'STARTED', 'OUTBOUND', 'outbound process started for origin_id ${origin_id}', ${tenant_id}, '${batch_id}');
+       "} on-condition if "true"=="true"
+
+        authToken as "auth_token" on-resource-conn "intics_zio_db_conn"
+        using {
+        } on-condition if "true"=="true"
+
+        callprocess as "Init response builder caller"
+        with-target "response.builder.creator"
+        from-file "${basepath}/responsebuilder/response.builder.creator.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+            SELECT pahub_id as eoc_id, origin_id,group_id
+            FROM sor_grouping.pahub_patient_instance
+            where origin_id='${origin_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+        "} on-condition if "true"=="true"
+
+
+        callprocess as "Init response artifact caller"
+        with-target "response.artifact.creator"
+        from-file "${basepath}/responsebuilder/response.artifact.creator.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+				SELECT soo.origin_id, soo.file_id, soo.created_on,group_id, soo.batch_id
+				FROM ${temp_schema_name}.source_of_origin_${init_process_id.process_id} soo
+				where soo.origin_id='${origin_id}' and soo.tenant_id = ${tenant_id} and soo.batch_id = '${batch_id}';
+           "} on-condition if "true"=="true"
+
+         transform as "update to completed ${group_id}" on "intics_zio_db_conn" using
+         {"
+                UPDATE outbound.outbound_payload_queue
+                SET consumer_process_id='${process-id}', status='COMPLETED'
+                WHERE  origin_id ='${origin_id}' and status ='IN_PROGRESS' and stage ='OUTBOUND' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                UPDATE batching.sub_batching_process_payload_queue a
+                SET status='COMPLETED',  stage='OUTBOUND'
+                WHERE a.group_id='${group_id}'  and a.tenant_id='${tenant_id}'
+                and a.batch_id ='${batch_id}';
+
+
+         "} on-condition if "true"=="true"
+
+    }
+
+    catch {
+            transform as "update to in-progress response main outbound payload queue" on "intics_zio_db_conn" using
+           {"
+                UPDATE  outbound.outbound_payload_queue
+                SET consumer_process_id='${process-id}' , status='FAILED'
+                WHERE origin_id ='${origin_id}' AND status ='IN_PROGRESS' AND stage ='OUTBOUND' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+				INSERT INTO outbound.outbound_pipeline_audit
+                 (process_id, origin_id,group_id, created_on, status, stage, message, root_pipeline_id, batch_id)
+                 VALUES('${init_process_id.process_id}','${origin_id}', '${group_id}',now(), 'FAILED', 'OUTBOUND', 'outbound process failed in response main lmd for origin_id ${origin_id}', '${gen_id.root_pipeline_id}', '${batch_id}');
+
+           "} on-condition if "true"=="true"
+
+    }
+    finally {
+            transform as "update to in-progress response main outbound payload queue" on "intics_zio_db_conn" using
+            {"
+                UPDATE  outbound.outbound_payload_queue
+                SET consumer_process_id='${process-id}', status='FAILED'
+                WHERE origin_id ='${origin_id}' AND status ='IN_PROGRESS' AND stage ='OUTBOUND' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+            "} on-condition if "true"=="true"
+
+
+    }
+
+
+}

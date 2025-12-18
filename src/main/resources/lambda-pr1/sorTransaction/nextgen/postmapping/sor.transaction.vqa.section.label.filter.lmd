@@ -1,0 +1,192 @@
+process "sor.transaction.vqa.section.label.filter"
+{
+try{
+
+            transform as "Insert into section filtering input audit" on "intics_zio_db_conn" using {"
+
+                    INSERT INTO ${temp_schema_name}.selection_over_filtering_input_${init_process_id.process_id}
+                    (created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, group_id,
+                    root_pipeline_id, batch_id, model_registry, sor_container_id, sor_container_name,
+                    sor_item_name, sor_item_label, section_alias, answer, confidence, bbox,
+                    paper_no, origin_id, extracted_image_unit, image_dpi, image_height,
+                    image_width, blacklisted_labels,
+                    blacklisted_sections, is_encrypted, encryption_policy,whitelisted_labels,whitelisted_labels_with_priority,sor_container_instance)
+                    SELECT
+                        now() AS created_on,
+                        a.tenant_id AS created_user_id,
+                        now() AS last_updated_on,
+                        a.tenant_id AS last_updated_user_id,
+                        a.tenant_id,
+                        a.group_id,
+                        a.root_pipeline_id,
+                        a.batch_id,
+                        a.model_registry,
+                        a.sor_container_id,
+                        sc.sor_container_name,
+                        a.sor_item_name,
+                        a.sor_item_label,
+                        a.section_alias,
+                        a.answer,
+                        a.confidence,
+                        a.bbox,
+                        a.paper_no,
+                        a.origin_id,
+                        a.extracted_image_unit,
+                        a.image_dpi,
+                        a.image_height,
+                        a.image_width,
+                        bl.blacklisted_labels,
+                        bs.blacklisted_sections,
+                        a.is_encrypted,
+                        a.encryption_policy,
+                        wl.whitelisted_labels,
+                        wlp.whitelisted_labels_with_priority,
+                        a.sor_container_instance
+                    FROM ${temp_schema_name}.llm_json_parser_output_${init_process_id.process_id} a
+                    LEFT JOIN sor_meta.sor_container sc
+                        ON sc.sor_container_id = a.sor_container_id
+                       AND sc.status = 'ACTIVE'
+                    LEFT JOIN (
+                        SELECT
+                            si.sor_container_id,
+                            si.sor_item_name,
+                            string_agg(DISTINCT silc.black_list_keyword, ',') AS blacklisted_labels
+                        FROM sor_meta.sor_item si
+                        JOIN sor_meta.sor_item_label_config silc
+                          ON silc.sor_item_id = si.sor_item_id
+                         AND silc.instance = '${root-pipeline-name}'
+                         AND silc.active IS TRUE
+                        WHERE si.status = 'ACTIVE'
+                        GROUP BY si.sor_container_id, si.sor_item_name
+                    ) bl
+                        ON bl.sor_container_id = a.sor_container_id
+                       AND bl.sor_item_name = a.sor_item_name
+                    LEFT JOIN (
+                        SELECT
+                            sor_container_id,
+                            string_agg(DISTINCT truth_entity, ',') AS blacklisted_sections
+                        FROM sor_meta.truth_entity_priority
+                        WHERE section_type = 'BLACKLISTED'
+                        GROUP BY sor_container_id
+                    ) bs
+                        ON bs.sor_container_id = sc.sor_container_id
+                    LEFT JOIN (
+                        SELECT
+                            sor_container_id,
+                            sor_item_name,
+                            jsonb_agg(jsonb_build_object('whitelistKey',whitelist_key,'labelSearchConfig',label_search_config))::varchar as whitelisted_labels
+                        FROM sor_meta.sor_tsynonym_whitelist
+                        WHERE active IS TRUE
+                        GROUP BY sor_container_id, sor_item_name
+                    ) wl
+                        ON wl.sor_container_id = sc.sor_container_id
+                       AND wl.sor_item_name = a.sor_item_name
+                    LEFT JOIN (
+                        SELECT
+                            sor_container_id,
+                            sor_item_name,
+                            jsonb_agg(jsonb_build_object('whitelistKey',whitelist_key,'labelPriority', label_priority,'labelSearchConfig',label_search_config))::varchar AS whitelisted_labels_with_priority
+                        FROM sor_meta.sor_tsynonym_whitelist
+                        WHERE active IS TRUE
+                        GROUP BY sor_container_id, sor_item_name
+                    ) wlp
+                                            ON wlp.sor_container_id = sc.sor_container_id
+                                            AND wlp.sor_item_name = a.sor_item_name
+                    WHERE a.is_label_matching='true' and  a.tenant_id = ${tenant_id} and a.group_id ='${group_id}' and a.batch_id ='${batch_id}';
+
+            "} on-condition if "true"=="true"
+
+
+            sectionFiltering as "Section and label filtering for radon kvp json parser results"
+            on-resource-conn "intics_zio_db_conn"
+            input-table "${temp_schema_name}.selection_over_filtering_input_${init_process_id.process_id}"
+            output-table "${temp_schema_name}.selection_over_filtering_output_${init_process_id.process_id}"
+            using
+            {"
+             SELECT id, created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, group_id,
+                    root_pipeline_id, batch_id, model_registry, sor_container_id, sor_container_name,
+                    sor_item_name, sor_item_label, section_alias, answer, confidence, bbox,
+                    bbox_asis, paper_no, origin_id, extracted_image_unit, image_dpi, image_height,
+                    image_width, blacklisted_labels,
+                    blacklisted_sections, is_encrypted, encryption_policy,whitelisted_labels, whitelisted_labels_with_priority,sor_container_instance
+                 from ${temp_schema_name}.selection_over_filtering_input_${init_process_id.process_id} a
+             WHERE a.tenant_id = ${tenant_id} and a.group_id ='${group_id}' and a.batch_id ='${batch_id}';
+
+            "} on-condition if "true"=="true"
+
+
+
+            transform as "Insert into vqa transaction for krypton route" on "intics_zio_db_conn" using {"
+
+                    INSERT INTO ${temp_schema_name}.vqa_transaction_${init_process_id.process_id}
+                    ( created_on, created_user_id, last_updated_on, last_updated_user_id,
+                    answer,extracted_image_unit, group_id, image_dpi, image_height,
+                    image_width, model_id, model_info, origin_id, paper_no, question_id, root_pipeline_id,
+                    sor_item_name, sor_question, synonym_id, tenant_id, weight,
+                    model_registry,status,stage, sor_item_attribution_id, document_id, vqa_score ,
+                    b_box, category, batch_id,sor_container_id,section_alias,sor_item_label, sor_container_instance)
+                    SELECT
+                    kjpo.created_on,
+                    kjpo.tenant_id,
+                    kjpo.last_updated_on as last_updated_on,
+                    kjpo.tenant_id ,
+                    (case when kjpo.answer = 'null' then null else kjpo.answer end) as answer ,
+                    kjpo.extracted_image_unit,
+                    kjpo.group_id ,
+                    kjpo.image_dpi ,
+                    kjpo.image_width ,
+                    kjpo.image_height ,
+                    si.model_id ,
+                    si.model_name as model_info,
+                    kjpo.origin_id ,
+                    kjpo.paper_no ,
+                    si.question_id ,
+                    kjpo.root_pipeline_id ,
+                    si.sor_item_name ,
+                    si.question ,
+                    si.synonym_id ,
+                    kjpo.tenant_id ,
+                    150 as weight,
+                    kjpo.model_registry,
+                    'COMPLETED' as status,
+                    'SOR_TRANSACTION' as stage,
+                    si.sor_item_attribution_id as sor_item_attribution_id,
+                    '${document_id}' as document_id,
+                    ( case
+                    when kjpo.answer = 'null' then 0 ::numeric
+                    when kjpo.answer = '' then ${radon.kvp.bbox.vqa.score.default} ::numeric
+                    when kjpo.confidence is null then ${radon.kvp.bbox.vqa.score.default} ::numeric
+                    else kjpo.confidence ::numeric end ) as vqa_score,
+                    (case when kjpo.answer='' then '{}'
+                    when kjpo.bbox is null then '{}'
+                    when kjpo.bbox is not null then kjpo.bbox
+                    else '{}' end ) as b_box, '${qn_category}',
+                    kjpo.batch_id,
+                    kjpo.sor_container_id,
+                    kjpo.section_alias,
+                    kjpo.sor_item_label,
+                    kjpo.sor_container_instance
+                    from ${temp_schema_name}.selection_over_filtering_output_${init_process_id.process_id} kjpo
+                    join ${temp_schema_name}.sor_meta_consolidated_${init_process_id.process_id} si
+                        on si.sor_item_name=kjpo.sor_item_name and si.sor_container_id=kjpo.sor_container_id and si.tenant_id=kjpo.tenant_id
+                    where si.model_name in('RADON','KRYPTON')
+                    and kjpo.group_id ='${group_id}'
+                    and kjpo.batch_id ='${batch_id}'
+                    and si.document_type='${document_type}'
+                    and si.template_name ='UNIVERSE'
+                    and kjpo.tenant_id='${tenant_id}';
+
+            "}on-condition if "true"=="true"
+
+
+}
+catch{
+
+
+}
+finally{
+
+
+}
+
+}

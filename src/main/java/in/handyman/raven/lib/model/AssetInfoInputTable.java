@@ -1,7 +1,7 @@
 package in.handyman.raven.lib.model;
 
 import in.handyman.raven.lib.CoproProcessor;
-import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
+import in.handyman.raven.lib.services.triton.ConsumerProcessApiStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

@@ -1,0 +1,20 @@
+process "datum.drift.main.caller"
+{
+    try{
+        callprocess as "calling datum.drift.processor caller"
+        with-target "datum.drift.processor"
+        from-file "${basepath}/datumDrift/datum.drift.processor.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+            SELECT schema_name, table_name, table_type, cron_execution_time
+            FROM config.datum_drift_config ddc
+            WHERE ddc.active = true;
+        "} on-condition if "true"=="true"
+
+
+    } catch {
+
+    } finally {
+
+    }
+}

@@ -1,0 +1,562 @@
+process "natural.keys.comparison"
+
+{
+    try {
+
+                transform as "natural keys insert for prescriber" on "intics_zio_db_conn" using
+                  {"
+                        create table md_lookup_systemkey.prescriber_name_rank as
+                        select  origin_id ,paper_no ,sor_item_name ,extracted_value ,weight_rank  from voting.ranking_table_717  a
+                        where a.weight_rank in (1,2,3) and a.sor_item_name ='prescriber_name';
+
+                        create table  md_lookup_systemkey.prescriber_name_similarity_check as
+                        select a.origin_id ,a.paper_no ,a.sor_item_name ,a.extracted_value ,b.prescriber_name,similarity(a.extracted_value,b.prescriber_name)  from md_lookup_systemkey.prescriber_name_rank a ,
+                        master_data.prescriber_metadata b where similarity(a.extracted_value,b.prescriber_name)>0.4
+                        group by a.origin_id ,a.sor_item_name ,a.paper_no ,a.extracted_value,b.prescriber_name;
+
+
+                        create table  md_lookup_systemkey.sequencing_name_rank as
+                        select a.origin_id ,a.paper_no,b.eoc_identifier , a.sor_item_name ,a.extracted_value ,a.prescriber_name ,a.similarity ,
+                        rank() over( partition by a.origin_id ,a.paper_no order by max(a.similarity) desc) as similarity_rank
+                        from md_lookup_systemkey.prescriber_name_similarity_check a inner join eoc_response.eoc_extraction b
+                        on a.origin_id =b.origin_id and a.paper_no=b.paper_no
+                        group by a.origin_id ,a.paper_no ,a.sor_item_name,
+                        a.extracted_value ,a.prescriber_name ,a.similarity,b.eoc_identifier;
+
+                        create table  md_lookup_systemkey.rank_1_prescriber_name as
+                        select a.* from md_lookup_systemkey.sequencing_name_rank  a where a.similarity_rank =1;
+
+                        create table   md_lookup_systemkey.prescriber_name_integration as
+                        SELECT a.origin_id, a.paper_no,b.eoc_identifier,b.prescriber_name as matched_name  , a.rank1_npi , a.rank2_npi , a.rank3_npi ,
+                        a.rank1_city, a.rank2_city, a.rank3_city, a.rank1_phone, a.rank2_phone, a.rank3_phone, a.rank1_fax,
+                        a.rank2_fax, a.rank3_fax, a.rank1_zip, a.rank2_zip, a.rank3_zip, a.rank1_address,
+                        a.rank2_address, a.rank3_address
+                        FROM md_lookup_systemkey.rank_distribution_prescriber_1 a join md_lookup_systemkey.rank_1_prescriber_name  b
+                        on a.origin_id =b.origin_id and a.paper_no=b.paper_no  where a.rank1_npi =' ' and a.rank2_npi =' ' and a.rank3_npi =' ' ;
+
+                  "}  on-condition if "true"=="true"
+
+                    transform as "insert into nk_final sor item tables prescriber " on "intics_zio_db_conn" using
+                    {"
+
+                     create table  md_lookup_naturalkey.nk_final_prescriber_city as
+                     SELECT a.origin_id ,a.paper_no ,a.eoc_identifier,b.actual_city   actual_value,
+                     (case
+                     WHEN similarity(a.rank1_city ,b.actual_city)>similarity(a.rank2_city ,b.actual_city)
+                     and similarity(a.rank1_city ,b.actual_city)>similarity(a.rank3_city  ,b.actual_city) then a.rank1_city
+                     WHEN similarity(a.rank2_city  ,b.actual_city)>similarity(a.rank3_city  ,b.actual_city)
+                     and similarity(a.rank2_city  ,b.actual_city)>similarity(a.rank1_city  ,b.actual_city) then a.rank2_city
+                     WHEN similarity(a.rank3_city  ,b.actual_city)>similarity(a.rank1_city  ,b.actual_city)
+                     and similarity(a.rank3_city  ,b.actual_city)>similarity(a.rank2_city  ,b.actual_city) then a.rank3_city
+                     else ' '
+                     end)as extracted_value,
+                     (case
+                     WHEN similarity(a.rank1_city ,b.actual_city)>similarity(a.rank2_city ,b.actual_city)
+                     and similarity(a.rank1_city ,b.actual_city)>similarity(a.rank3_city  ,b.actual_city) then similarity(a.rank1_city,b.actual_city)
+                     WHEN similarity(a.rank2_city  ,b.actual_city)>similarity(a.rank3_city  ,b.actual_city)
+                     and similarity(a.rank2_city  ,b.actual_city)>similarity(a.rank1_city  ,b.actual_city) then similarity(a.rank2_city ,b.actual_city)
+                     WHEN similarity(a.rank3_city  ,b.actual_city)>similarity(a.rank1_city  ,b.actual_city)
+                     and similarity(a.rank3_city  ,b.actual_city)>similarity(a.rank2_city  ,b.actual_city) then similarity(a.rank3_city ,b.actual_city)
+                     else 0
+                     END )as similarity_score
+                     from md_lookup_naturalkey.prescriber_name_integration  a ,master_data.prescriber_metadata b
+                     WHERE a.matched_name  =b.prescriber_name and a.tenant_id = ${tenant_id};
+
+
+
+                     create table  md_lookup_naturalkey.nk_final_prescriber_phone as
+                     SELECT a.origin_id ,a.paper_no ,a.eoc_identifier,b.actual_phone   actual_value,
+                     (case
+                     WHEN similarity(a.rank1_phone  ,b.actual_phone)>similarity(a.rank2_phone  ,b.actual_phone)
+                     and similarity(a.rank1_phone  ,b.actual_phone)>similarity(a.rank3_phone  ,b.actual_phone) then a.rank1_phone
+                     WHEN similarity(a.rank2_phone  ,b.actual_phone)>similarity(a.rank3_phone  ,b.actual_phone)
+                     and similarity(a.rank2_phone ,b.actual_phone)>similarity(a.rank1_phone  ,b.actual_phone) then a.rank2_phone
+                     WHEN similarity(a.rank3_phone  ,b.actual_phone)>similarity(a.rank1_phone  ,b.actual_phone)
+                     and similarity(a.rank3_phone  ,b.actual_phone)>similarity(a.rank2_phone  ,b.actual_phone) then a.rank3_phone
+                     else ' '
+                     end ) as extracted_value,
+                     (case
+                     WHEN similarity(a.rank1_phone  ,b.actual_phone)>similarity(a.rank2_phone  ,b.actual_phone)
+                     and similarity(a.rank1_phone  ,b.actual_phone)>similarity(a.rank3_phone  ,b.actual_phone) then similarity(a.rank1_phone,b.actual_phone)
+                     WHEN similarity(a.rank2_phone  ,b.actual_phone)>similarity(a.rank3_phone  ,b.actual_phone)
+                     and similarity(a.rank2_phone ,b.actual_phone)>similarity(a.rank1_phone  ,b.actual_phone) then similarity(a.rank2_phone,b.actual_phone)
+                     WHEN similarity(a.rank3_phone  ,b.actual_phone)>similarity(a.rank1_phone  ,b.actual_phone)
+                     and similarity(a.rank3_phone  ,b.actual_phone)>similarity(a.rank2_phone  ,b.actual_phone) then similarity(a.rank3_phone,b.actual_phone)
+                     else 0
+                     END )
+                     from md_lookup_naturalkey.prescriber_name_integration  a ,master_data.prescriber_metadata b
+                     WHERE a.matched_name  =b.prescriber_name and a.tenant_id = ${tenant_id};
+
+
+                     create table  md_lookup_naturalkey.nk_final_prescriber_fax as
+                     SELECT a.origin_id ,a.paper_no ,a.eoc_identifier,b.actual_fax   actual_value,
+                     (case
+                     WHEN similarity(a.rank1_fax  ,b.actual_fax)>similarity(a.rank2_fax ,b.actual_fax)
+                     and similarity(a.rank1_fax  ,b.actual_fax)>similarity(a.rank3_fax ,b.actual_fax) then a.rank1_fax
+                     WHEN similarity(a.rank2_fax  ,b.actual_fax)>similarity(a.rank3_fax ,b.actual_fax)
+                     and similarity(a.rank2_fax  ,b.actual_fax)>similarity(a.rank1_fax ,b.actual_fax) then a.rank2_fax
+                     WHEN similarity(a.rank3_fax  ,b.actual_fax)>similarity(a.rank1_fax ,b.actual_fax)
+                     and similarity(a.rank3_fax  ,b.actual_fax)>similarity(a.rank2_fax  ,b.actual_fax) then a.rank3_fax
+                     else ' '
+                     end )as extracted_value,
+                     (case
+                     WHEN similarity(a.rank1_fax  ,b.actual_fax)>similarity(a.rank2_fax ,b.actual_fax)
+                     and similarity(a.rank1_fax  ,b.actual_fax)>similarity(a.rank3_fax ,b.actual_fax) then similarity(a.rank1_fax,b.actual_fax)
+                     WHEN similarity(a.rank2_fax  ,b.actual_fax)>similarity(a.rank3_fax ,b.actual_fax)
+                     and similarity(a.rank2_fax  ,b.actual_fax)>similarity(a.rank1_fax ,b.actual_fax) then similarity(a.rank2_fax ,b.actual_fax)
+                     WHEN similarity(a.rank3_fax  ,b.actual_fax)>similarity(a.rank1_fax ,b.actual_fax)
+                     and similarity(a.rank3_fax  ,b.actual_fax)>similarity(a.rank2_fax  ,b.actual_fax) then similarity(a.rank3_fax ,b.actual_fax)
+                     else 0
+                     END )as similarity_score
+                     from md_lookup_naturalkey.prescriber_name_integration a  ,master_data.prescriber_metadata b
+                     WHERE a.matched_name  =b.prescriber_name and a.tenant_id = ${tenant_id};
+
+
+
+
+                     create table if not exists  md_lookup_naturalkey.nk_final_prescriber_zip as
+                     SELECT a.origin_id ,a.paper_no ,a.eoc_identifier,b.actual_zip   actual_value,
+                     (case
+                     WHEN similarity(a.rank1_zip  ,b.actual_zip)>similarity(a.rank2_zip  ,b.actual_zip)
+                     and similarity(a.rank1_zip  ,b.actual_zip)>similarity(a.rank3_zip  ,b.actual_zip) then a.rank1_zip
+                     WHEN similarity(a.rank2_zip  ,b.actual_zip)>similarity(a.rank3_zip  ,b.actual_zip)
+                     and similarity(a.rank2_zip  ,b.actual_zip)>similarity(a.rank1_zip  ,b.actual_zip) then a.rank2_zip
+                     WHEN similarity(a.rank3_zip  ,b.actual_zip)>similarity(a.rank1_zip  ,b.actual_zip)
+                     and similarity(a.rank3_zip  ,b.actual_zip)>similarity(a.rank2_zip  ,b.actual_zip) then a.rank3_zip
+                     else ' '
+                     end ) as extracted_value,
+                     (case
+                     WHEN similarity(a.rank1_zip  ,b.actual_zip)>similarity(a.rank2_zip  ,b.actual_zip)
+                     and similarity(a.rank1_zip  ,b.actual_zip)>similarity(a.rank3_zip  ,b.actual_zip) then similarity(a.rank1_zip,b.actual_zip)
+                     WHEN similarity(a.rank2_zip  ,b.actual_zip)>similarity(a.rank3_zip  ,b.actual_zip)
+                     and similarity(a.rank2_zip  ,b.actual_zip)>similarity(a.rank1_zip  ,b.actual_zip) then similarity(a.rank2_zip ,b.actual_zip)
+                     WHEN similarity(a.rank3_zip  ,b.actual_zip)>similarity(a.rank1_zip  ,b.actual_zip)
+                     and similarity(a.rank3_zip  ,b.actual_zip)>similarity(a.rank2_zip  ,b.actual_zip) then similarity(a.rank3_zip ,b.actual_zip)
+                     else 0
+                     END )as similarity_score
+                     from md_lookup_naturalkey.prescriber_name_integration a ,master_data.prescriber_metadata b
+                     WHERE a.matched_name  =b.prescriber_name and a.tenant_id = ${tenant_id};
+
+
+                     create table  md_lookup_naturalkey.nk_final_prescriber_address as
+                     SELECT a.origin_id ,a.paper_no ,a.eoc_identifier,b.actual_address   actual_value,
+                     (case
+                     WHEN similarity(a.rank1_address ,b.actual_address)>similarity(a.rank2_address ,b.actual_address)
+                     and similarity(a.rank1_address ,b.actual_address)>similarity(a.rank3_address  ,b.actual_address) then a.rank1_address
+                     WHEN similarity(a.rank2_address  ,b.actual_address)>similarity(a.rank3_address  ,b.actual_address)
+                     and similarity(a.rank2_address  ,b.actual_address)>similarity(a.rank1_address  ,b.actual_address) then a.rank2_address
+                     WHEN similarity(a.rank3_address  ,b.actual_address)>similarity(a.rank1_address  ,b.actual_address)
+                     and similarity(a.rank3_address  ,b.actual_address)>similarity(a.rank2_address  ,b.actual_address) then a.rank3_address
+                     else ' '
+                     end ),
+                     (case
+                     WHEN similarity(a.rank1_address ,b.actual_address)>similarity(a.rank2_address ,b.actual_address)
+                     and similarity(a.rank1_address ,b.actual_address)>similarity(a.rank3_address  ,b.actual_address) then similarity(a.rank1_address,b.actual_address)
+                     WHEN similarity(a.rank2_address  ,b.actual_address)>similarity(a.rank3_address  ,b.actual_address)
+                     and similarity(a.rank2_address  ,b.actual_address)>similarity(a.rank1_address  ,b.actual_address) then similarity(a.rank2_address ,b.actual_address)
+                     WHEN similarity(a.rank3_address  ,b.actual_address)>similarity(a.rank1_address  ,b.actual_address)
+                     and similarity(a.rank3_address  ,b.actual_address)>similarity(a.rank2_address  ,b.actual_address) then similarity(a.rank3_address ,b.actual_address)
+                     else 0
+                     END )
+                     from md_lookup_naturalkey.prescriber_name_integration a ,master_data.prescriber_metadata b
+                     WHERE a.matched_name  =b.prescriber_name and a.tenant_id = ${tenant_id};
+
+
+                    "}  on-condition if "true"=="true"
+
+                    transform as "natural keys insert for provider" on "intics_zio_db_conn" using
+                    {"
+
+                           create schema if not exists md_lookup_naturalkey;
+
+                           create table md_lookup_naturalkey.provider_name_rank as
+                           select  origin_id ,paper_no ,sor_item_name ,extracted_value ,weight_rank  from voting.ranking_table_717  a
+                           where a.weight_rank in (1,2,3) and a.sor_item_name ='provider_name';
+
+                           create table  md_lookup_naturalkey.provider_name_similarity_check as
+                           select a.origin_id ,a.paper_no ,a.sor_item_name ,a.extracted_value ,concat(b.providerfirsname,b.provider_lastname) as actual_value ,similarity(a.extracted_value,concat(b.providerfirsname,b.provider_lastname))
+                           from md_lookup_naturalkey.provider_name_rank a ,
+                           master_data.provider_metadata b where similarity(a.extracted_value,concat(b.providerfirsname,b.provider_lastname))>0.4
+                           group by a.origin_id ,a.sor_item_name ,a.paper_no ,a.extracted_value,b.providerfirsname ,b.provider_lastname ;
+
+
+                           create table  md_lookup_naturalkey.provider_sequencing_name_rank as
+                           select a.origin_id ,a.paper_no,b.eoc_identifier , a.sor_item_name ,a.extracted_value ,a.actual_value  ,a.similarity ,
+                           rank() over( partition by a.origin_id ,a.paper_no order by max(a.similarity) desc) as similarity_rank
+                           from md_lookup_naturalkey.provider_name_similarity_check a inner join eoc_response.eoc_extraction b
+                           on a.origin_id =b.origin_id and a.paper_no=b.paper_no
+                           group by a.origin_id ,a.paper_no ,a.sor_item_name,
+                           a.extracted_value ,a.actual_value  ,a.similarity,b.eoc_identifier ;
+
+                           create table  md_lookup_naturalkey.rank_1_provider_name as
+                           select a.origin_id ,A.paper_no ,A.eoc_identifier ,a.sor_item_name ,a.extracted_value ,
+                           a.actual_value ,a.similarity ,a.similarity_rank  from md_lookup_naturalkey.provider_sequencing_name_rank  a where a.similarity_rank =1;
+
+
+                           create table   md_lookup_naturalkey.provider_name_integration as
+                           SELECT a.origin_id, a.paper_no,b.eoc_identifier,b.actual_value  as matched_name  , a.rank1_npi , a.rank2_npi , a.rank3_npi ,
+                           a.rank1_city, a.rank2_city, a.rank3_city, a.rank1_phone, a.rank2_phone, a.rank3_phone, a.rank1_fax,
+                           a.rank2_fax, a.rank3_fax, a.rank1_zip, a.rank2_zip, a.rank3_zip, a.rank1_address,
+                           a.rank2_address, a.rank3_address
+                           FROM md_lookup_systemkey.rank_distribution_provider_1 a join md_lookup_naturalkey.rank_1_provider_name  b
+                           on a.origin_id =b.origin_id and a.paper_no=b.paper_no  where a.rank1_npi =' ' and a.rank2_npi =' ' and a.rank3_npi =' ' ;
+
+
+
+                    "}  on-condition if "true"=="true"
+
+                        transform as "insert into nk_final sor item tables prescriber" on "intics_zio_db_conn" using
+                        {"
+
+                                create table  md_lookup_naturalkey.nk_final_provider_city as
+                                SELECT a.origin_id ,a.paper_no ,b.provider_city   actual_value,
+                                (case
+                                WHEN similarity(a.rank1_city ,b.provider_city)>similarity(a.rank2_city ,b.provider_city)
+                                and similarity(a.rank1_city ,b.provider_city)>similarity(a.rank3_city  ,b.provider_city) then a.rank1_city
+                                WHEN similarity(a.rank2_city  ,b.provider_city)>similarity(a.rank3_city  ,b.provider_city)
+                                and similarity(a.rank2_city  ,b.provider_city)>similarity(a.rank1_city  ,b.provider_city) then a.rank2_city
+                                WHEN similarity(a.rank3_city  ,b.provider_city)>similarity(a.rank1_city  ,b.provider_city)
+                                and similarity(a.rank3_city  ,b.provider_city)>similarity(a.rank2_city  ,b.provider_city) then a.rank3_city
+                                else ' '
+                                end) as extracted_value,
+                                (case
+                                WHEN similarity(a.rank1_city ,b.provider_city)>similarity(a.rank2_city ,b.provider_city)
+                                and similarity(a.rank1_city ,b.provider_city)>similarity(a.rank3_city  ,b.provider_city) then similarity(a.rank1_city,b.provider_city)
+                                WHEN similarity(a.rank2_city  ,b.provider_city)>similarity(a.rank3_city  ,b.provider_city)
+                                and similarity(a.rank2_city  ,b.provider_city)>similarity(a.rank1_city  ,b.provider_city) then similarity(a.rank2_city ,b.provider_city)
+                                WHEN similarity(a.rank3_city  ,b.provider_city)>similarity(a.rank1_city  ,b.provider_city)
+                                and similarity(a.rank3_city  ,b.provider_city)>similarity(a.rank2_city  ,b.provider_city) then similarity(a.rank3_city ,b.provider_city)
+                                else 0
+                                END ) as similarity_score
+                                from md_lookup_naturalkey.provider_name_integration  a ,master_data.provider_metadata b
+                                where a.matched_name=concat(b.providerfirsname,b.provider_lastname) and a.tenant_id = ${tenant_id};
+
+
+                                create table  md_lookup_naturalkey.nk_final_provider_address as
+                                SELECT a.origin_id ,a.paper_no ,concat(b.provider_address_1,b.provider_address_2)   actual_value,
+                                (case
+                                WHEN similarity(a.rank1_address ,concat(b.provider_address_1,b.provider_address_2))>similarity(a.rank2_address ,concat(b.provider_address_1,b.provider_address_2))
+                                and similarity(a.rank1_address ,concat(b.provider_address_1,b.provider_address_2))>similarity(a.rank3_address  ,concat(b.provider_address_1,b.provider_address_2)) then a.rank1_address
+                                WHEN similarity(a.rank2_address  ,concat(b.provider_address_1,b.provider_address_2))>similarity(a.rank3_address  ,concat(b.provider_address_1,b.provider_address_2))
+                                and similarity(a.rank2_address  ,concat(b.provider_address_1,b.provider_address_2))>similarity(a.rank1_address  ,concat(b.provider_address_1,b.provider_address_2)) then a.rank2_address
+                                WHEN similarity(a.rank3_address  ,concat(b.provider_address_1,b.provider_address_2))>similarity(a.rank1_address  ,concat(b.provider_address_1,b.provider_address_2))
+                                and similarity(a.rank3_address  ,concat(b.provider_address_1,b.provider_address_2))>similarity(a.rank2_address  ,concat(b.provider_address_1,b.provider_address_2)) then a.rank3_address
+                                else ' '
+                                end )as extracted_value,
+                                (case
+                                WHEN similarity(a.rank1_address ,concat(b.provider_address_1,b.provider_address_2))>similarity(a.rank2_address ,concat(b.provider_address_1,b.provider_address_2))
+                                and similarity(a.rank1_address ,concat(b.provider_address_1,b.provider_address_2))>similarity(a.rank3_address  ,concat(b.provider_address_1,b.provider_address_2)) then similarity(a.rank1_address,concat(b.provider_address_1,b.provider_address_2))
+                                WHEN similarity(a.rank2_address  ,concat(b.provider_address_1,b.provider_address_2))>similarity(a.rank3_address  ,concat(b.provider_address_1,b.provider_address_2))
+                                and similarity(a.rank2_address  ,concat(b.provider_address_1,b.provider_address_2))>similarity(a.rank1_address  ,concat(b.provider_address_1,b.provider_address_2)) then similarity(a.rank2_address ,concat(b.provider_address_1,b.provider_address_2))
+                                WHEN similarity(a.rank3_address  ,concat(b.provider_address_1,b.provider_address_2))>similarity(a.rank1_address  ,concat(b.provider_address_1,b.provider_address_2))
+                                and similarity(a.rank3_address  ,concat(b.provider_address_1,b.provider_address_2))>similarity(a.rank2_address  ,concat(b.provider_address_1,b.provider_address_2)) then similarity(a.rank3_address ,concat(b.provider_address_1,b.provider_address_2))
+                                else 0
+                                END )as similarity_score
+                                from md_lookup_naturalkey.provider_name_integration  a ,master_data.provider_metadata b
+                                where a.matched_name=concat(b.providerfirsname,b.provider_lastname) and a.tenant_id = ${tenant_id};
+
+
+                                create table  md_lookup_naturalkey.nk_final_provider_phone as
+                                SELECT a.origin_id ,a.paper_no ,b.provider_phone   actual_value,
+                                (case
+                                WHEN similarity(a.rank1_phone  ,b.provider_phone)>similarity(a.rank2_phone  ,b.provider_phone)
+                                and similarity(a.rank1_phone  ,b.provider_phone)>similarity(a.rank3_phone  ,b.provider_phone) then a.rank1_phone
+                                WHEN similarity(a.rank2_phone  ,b.provider_phone)>similarity(a.rank3_phone  ,b.provider_phone)
+                                and similarity(a.rank2_phone ,b.provider_phone)>similarity(a.rank1_phone  ,b.provider_phone) then a.rank2_phone
+                                WHEN similarity(a.rank3_phone  ,b.provider_phone)>similarity(a.rank1_phone  ,b.provider_phone)
+                                and similarity(a.rank3_phone  ,b.provider_phone)>similarity(a.rank2_phone  ,b.provider_phone) then a.rank3_phone
+                                else ' '
+                                end )as extracted_value,
+                                (case
+                                WHEN similarity(a.rank1_phone  ,b.provider_phone)>similarity(a.rank2_phone  ,b.provider_phone)
+                                and similarity(a.rank1_phone  ,b.provider_phone)>similarity(a.rank3_phone  ,b.provider_phone) then similarity(a.rank1_phone,b.provider_phone)
+                                WHEN similarity(a.rank2_phone  ,b.provider_phone)>similarity(a.rank3_phone  ,b.provider_phone)
+                                and similarity(a.rank2_phone ,b.provider_phone)>similarity(a.rank1_phone  ,b.provider_phone) then similarity(a.rank2_phone,b.provider_phone)
+                                WHEN similarity(a.rank3_phone  ,b.provider_phone)>similarity(a.rank1_phone  ,b.provider_phone)
+                                and similarity(a.rank3_phone  ,b.provider_phone)>similarity(a.rank2_phone  ,b.provider_phone) then similarity(a.rank3_phone,b.provider_phone)
+                                else 0
+                                END )as similarity_score
+                                from md_lookup_naturalkey.provider_name_integration  a ,master_data.provider_metadata b
+                                where a.matched_name=concat(b.providerfirsname,b.provider_lastname) and a.tenant_id = ${tenant_id};
+
+
+
+                                create table md_lookup_naturalkey.nk_final_provider_fax as
+                                SELECT a.origin_id ,a.paper_no ,b.provider_fax  actual_value,
+                                (case
+                                WHEN similarity(a.rank1_fax  ,b.provider_fax)>similarity(a.rank2_fax ,b.provider_fax)
+                                and similarity(a.rank1_fax  ,b.provider_fax)>similarity(a.rank3_fax ,b.provider_fax) then a.rank1_fax
+                                WHEN similarity(a.rank2_fax  ,b.provider_fax)>similarity(a.rank3_fax ,b.provider_fax)
+                                and similarity(a.rank2_fax  ,b.provider_fax)>similarity(a.rank1_fax ,b.provider_fax) then a.rank2_fax
+                                WHEN similarity(a.rank3_fax  ,b.provider_fax)>similarity(a.rank1_fax ,b.provider_fax)
+                                and similarity(a.rank3_fax  ,b.provider_fax)>similarity(a.rank2_fax  ,b.provider_fax) then a.rank3_fax
+                                else ' '
+                                end ) as extracted_value,
+                                (case
+                                WHEN similarity(a.rank1_fax  ,b.provider_fax)>similarity(a.rank2_fax ,b.provider_fax)
+                                and similarity(a.rank1_fax  ,b.provider_fax)>similarity(a.rank3_fax ,b.provider_fax) then similarity(a.rank1_fax,b.provider_fax)
+                                WHEN similarity(a.rank2_fax  ,b.provider_fax)>similarity(a.rank3_fax ,b.provider_fax)
+                                and similarity(a.rank2_fax  ,b.provider_fax)>similarity(a.rank1_fax ,b.provider_fax) then similarity(a.rank2_fax ,b.provider_fax)
+                                WHEN similarity(a.rank3_fax  ,b.provider_fax)>similarity(a.rank1_fax ,b.provider_fax)
+                                and similarity(a.rank3_fax  ,b.provider_fax)>similarity(a.rank2_fax  ,b.provider_fax) then similarity(a.rank3_fax ,b.provider_fax)
+                                else 0
+                                END )as similarity_score
+                                from md_lookup_naturalkey.provider_name_integration  a ,master_data.provider_metadata b
+                                where a.matched_name=concat(b.providerfirsname,b.provider_lastname) and a.tenant_id = ${tenant_id};
+
+
+                                create table  md_lookup_naturalkey.nk_final_provider_zip as
+                                SELECT a.origin_id ,a.paper_no ,b.provider_postalcode   actual_value,
+                                (case
+                                WHEN similarity(a.rank1_zip  ,b.provider_postalcode)>similarity(a.rank2_zip  ,b.provider_postalcode)
+                                and similarity(a.rank1_zip  ,b.provider_postalcode)>similarity(a.rank3_zip  ,b.provider_postalcode) then a.rank1_zip
+                                WHEN similarity(a.rank2_zip  ,b.provider_postalcode)>similarity(a.rank3_zip  ,b.provider_postalcode)
+                                and similarity(a.rank2_zip  ,b.provider_postalcode)>similarity(a.rank1_zip  ,b.provider_postalcode) then a.rank2_zip
+                                WHEN similarity(a.rank3_zip  ,b.provider_postalcode)>similarity(a.rank1_zip  ,b.provider_postalcode)
+                                and similarity(a.rank3_zip  ,b.provider_postalcode)>similarity(a.rank2_zip  ,b.provider_postalcode) then a.rank3_zip
+                                else ' '
+                                end )as extracted_value,
+                                (case
+                                WHEN similarity(a.rank1_zip  ,b.provider_postalcode)>similarity(a.rank2_zip  ,b.provider_postalcode)
+                                and similarity(a.rank1_zip  ,b.provider_postalcode)>similarity(a.rank3_zip  ,b.provider_postalcode) then similarity(a.rank1_zip,b.provider_postalcode)
+                                WHEN similarity(a.rank2_zip  ,b.provider_postalcode)>similarity(a.rank3_zip  ,b.provider_postalcode)
+                                and similarity(a.rank2_zip  ,b.provider_postalcode)>similarity(a.rank1_zip  ,b.provider_postalcode) then similarity(a.rank2_zip ,b.provider_postalcode)
+                                WHEN similarity(a.rank3_zip  ,b.provider_postalcode)>similarity(a.rank1_zip  ,b.provider_postalcode)
+                                and similarity(a.rank3_zip  ,b.provider_postalcode)>similarity(a.rank2_zip  ,b.provider_postalcode) then similarity(a.rank3_zip ,b.provider_postalcode)
+                                else 0
+                                END )as similarity_score
+                                from md_lookup_naturalkey.provider_name_integration  a ,master_data.provider_metadata b
+                                where a.matched_name=concat(b.providerfirsname,b.provider_lastname) and a.tenant_id = ${tenant_id};
+
+
+                        "}  on-condition if "true"=="true"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                masterdataComparison as "matched prescriber name"
+                on-resource-conn "intics_zio_db_conn"
+                match-result "md_lookup_systemkey.prescriber_name_match_wo_npi"
+                audit-table "md_lookup_systemkey.prescriber_name_audit_wo_npi"
+                using {"
+
+                    SELECT a.origin_id ,a.paper_no ,a.eoc_identifier,a.name as extracted_value ,b.prescriber_name  as actual_value
+                    FROM md_lookup_systemkey.prescriber_extracted_data a,master_data.prescriber_metadata b
+                    WHERE a.prescriber_name =b.prescriber_name and a.npi is null and tenant_id = ${tenant_id} ;
+
+                "} on-condition if "true"=="true"
+
+                masterdataComparison as "matched prescriber city"
+                on-resource-conn "intics_zio_db_conn"
+                match-result "md_lookup_systemkey.prescriber_city_match_wo_npi"
+                audit-table "md_lookup_systemkey.prescriber_city_audit_wo_npi"
+                using {"
+
+                    SELECT a.origin_id ,a.paper_no ,a.eoc_identifier,a.city  as extracted_value ,b.actual_city  as actual_value
+                    FROM md_lookup_systemkey.prescriber_extracted_data a,master_data.prescriber_metadata b
+                    WHERE a.prescriber_name =b.prescriber_name and a.npi is null and tenant_id = ${tenant_id};
+
+                "} on-condition if "true"=="true"
+
+                masterdataComparison as "matched prescriber address"
+                on-resource-conn "intics_zio_db_conn"
+                match-result "md_lookup_systemkey.prescriber_address_match_wo_npi"
+                audit-table "md_lookup_systemkey.prescriber_address_audit_wo_npi"
+                using {"
+
+                SELECT a.origin_id ,a.paper_no ,a.eoc_identifier,a.address  as extracted_value ,b.actual_address  as actual_value
+                FROM md_lookup_systemkey.prescriber_extracted_data a,master_data.prescriber_metadata b
+                WHERE a.prescriber_name =b.prescriber_name and a.npi is null and tenant_id = ${tenant_id} ;
+
+                "} on-condition if "true"=="true"
+
+
+                masterdataComparison as "matched prescriber zipcode"
+                on-resource-conn "intics_zio_db_conn"
+                match-result "md_lookup_systemkey.prescriber_zipcode_match_wo_npi"
+                audit-table "md_lookup_systemkey.prescriber_zip_audit_wo_npi"
+                using {"
+
+                    SELECT a.origin_id ,a.paper_no ,a.eoc_identifier,a.zip as extracted_value ,b.actual_zip  as actual_value
+                    FROM md_lookup_systemkey.prescriber_extracted_data a,master_data.prescriber_metadata b
+                    WHERE a.prescriber_name =b.prescriber_name and a.npi is null and tenant_id = ${tenant_id};
+
+                "} on-condition if "true"=="true"
+
+                masterdataComparison as "matched prescriber phone"
+                on-resource-conn "intics_zio_db_conn"
+                match-result "md_lookup_systemkey.prescriber_phone_match_wo_npi"
+                audit-table "md_lookup_systemkey.prescriber_phone_audit_wo_npi"
+                using {"
+
+                SELECT a.origin_id ,a.paper_no ,a.eoc_identifier,a.phone as extracted_value ,b.actual_phone  as actual_value
+                FROM md_lookup_systemkey.prescriber_extracted_data a,master_data.prescriber_metadata b
+                WHERE a.prescriber_name =b.prescriber_name and a.npi is null and tenant_id = ${tenant_id};
+
+                "} on-condition if "true"=="true"
+
+                masterdataComparison as "matched prescriber fax"
+                on-resource-conn "intics_zio_db_conn"
+                match-result "md_lookup_systemkey.prescriber_fax_match_wo_npi"
+                audit-table "md_lookup_systemkey.prescriber_fax_audit_wo_npi"
+                using {"
+
+                    SELECT a.origin_id ,a.paper_no ,a.eoc_identifier,a.fax  as extracted_value ,b.actual_fax  as actual_value
+                    FROM md_lookup_systemkey.prescriber_extracted_data a,master_data.prescriber_metadata b
+                    WHERE a.prescriber_name =b.prescriber_name and a.npi is null and tenant_id = ${tenant_id};
+
+                "} on-condition if "true"=="true"
+
+
+                transform as "natural keys insert for provider" on "intics_zio_db_conn" using
+                {"
+
+                        insert into md_lookup_systemkey.sor_item_rank_provider
+                        select  origin_id ,paper_no ,sor_item_name ,extracted_value ,weight_rank  from voting.ranking_table_617  a
+                        where a.weight_rank in (1,2,3) and a.sor_item_name ='provider_name' and tenant_id = ${tenant_id};
+
+                        insert into md_lookup_systemkey.similarity_check_provider
+                        select a.origin_id ,a.paper_no ,a.sor_item_name ,a.extracted_value ,concat(b.providerfirsname ,' ',b.provider_lastname),
+                        similarity(a.extracted_value,concat(b.providerfirsname,' ',b.provider_lastname))
+                        from md_lookup_systemkey.sor_item_rank_provider a ,
+                        master_data.provider_metadata b
+                        where  similarity(a.extracted_value,concat(b.providerfirsname,' ',b.provider_lastname))>0.4 and tenant_id = ${tenant_id}
+                        group by a.origin_id ,a.sor_item_name ,a.paper_no ,a.extracted_value,b.providerfirsname ,b.provider_lastname ;
+
+                        insert into md_lookup_systemkey.similarity_rank_provider
+                        select a.origin_id ,a.paper_no, a.sor_item_name ,a.extracted_value ,a.provider_name  ,a.similarity ,
+                        rank() over( partition by origin_id ,paper_no order by max(similarity) desc) as similarity_rank
+                        from md_lookup_systemkey.similarity_check_provider a
+                        group by a.origin_id ,a.paper_no ,a.sor_item_name,
+                        a.extracted_value ,a.provider_name ,a.similarity;
+
+                        insert into md_lookup_systemkey.rank_1_provider
+                        select a.* from md_lookup_systemkey.similarity_rank_provider  a
+                        where a.similarity_rank =1;
+
+                        insert into md_lookup_systemkey.provider_extracted_data
+                        select a.*,b.provider_name from MD_lookUp_SystemKeys.sor_item_classifier a,
+                        md_lookup_systemkey.rank_1_provider b where a.origin_id =b.origin_id and a.paper_no =b.paper_no;
+
+                "}  on-condition if "true"=="true"
+
+                      masterdataComparison as "matched provider name for natural key"
+                                on-resource-conn "intics_zio_db_conn"
+                                match-result "md_lookup_systemkey.provider_name_match_wo_npi"
+                                audit-table "md_lookup_systemkey.provider_name_audit_wo_npi"
+                                using {"
+
+                                    SELECT a.origin_id ,a.paper_no ,a.eoc_identifier,a.name  as extracted_value ,concat(b.providerfirsname,' ',b.provider_lastname)  as actual_value
+                                    FROM md_lookup_systemkey.provider_extracted_data a,master_data.provider_metadata b
+                                    WHERE a.name =concat(b.providerfirsname,' ',b.provider_lastname)  and a.npi  is null ;
+
+                                "} on-condition if "true"=="true"
+
+                                masterdataComparison as "matched provider city for natural key"
+                                on-resource-conn "intics_zio_db_conn"
+                                match-result "md_lookup_systemkey.provider_city_match_wo_npi"
+                                audit-table "md_lookup_systemkey.provider_city_audit_wo_npi"
+                                using {"
+
+                                    SELECT a.origin_id ,a.paper_no ,a.eoc_identifier,a.city  as extracted_value ,b.provider_city  as actual_value
+                                    FROM md_lookup_systemkey.provider_extracted_data  a,master_data.provider_metadata b
+                                    WHERE a.name =concat(b.providerfirsname,' ',b.provider_lastname)  and a.npi  is null ;
+
+                                "} on-condition if "true"=="true"
+
+                                masterdataComparison as "matched provider address for natural key"
+                                on-resource-conn "intics_zio_db_conn"
+                                match-result "md_lookup_systemkey.provider_address_match_wo_npi"
+                                audit-table "md_lookup_systemkey.provider_address_audit_wo_npi"
+                                using {"
+
+                                    SELECT a.origin_id ,a.paper_no ,a.eoc_identifier,a.address as extracted_value
+                                    ,b.provider_address_1  as actual_value
+                                    FROM md_lookup_systemkey.provider_extracted_data  a,master_data.provider_metadata b
+                                    WHERE a.name =concat(b.providerfirsname,' ',b.provider_lastname)  and a.npi  is null ;
+
+                                "} on-condition if "true"=="true"
+
+
+                                masterdataComparison as "matched provider zipcode for natural key"
+                                on-resource-conn "intics_zio_db_conn"
+                                match-result "md_lookup_systemkey.provider_zipcode_match_wo_npi"
+                                audit-table "md_lookup_systemkey.provider_zip_audit_wo_npi"
+                                using {"
+
+                                    SELECT a.origin_id ,a.paper_no ,a.eoc_identifier,a.zip as extracted_value
+                                    ,b.provider_postalcode  as actual_value
+                                    FROM md_lookup_systemkey.provider_extracted_data  a,master_data.provider_metadata b
+                                    WHERE a.name =concat(b.providerfirsname,' ',b.provider_lastname)  and a.npi  is null ;
+
+
+                                "} on-condition if "true"=="true"
+
+                                masterdataComparison as "matched provider phone for natural key"
+                                on-resource-conn "intics_zio_db_conn"
+                                match-result "md_lookup_systemkey.provider_phone_match_wo_npi"
+                                audit-table "md_lookup_systemkey.provider_phone_audit_wo_npi"
+                    using {"
+                                    SELECT a.origin_id ,a.paper_no ,a.eoc_identifier,a.phone as extracted_value
+                                    ,b.provider_phone  as actual_value
+                                    FROM md_lookup_systemkey.provider_extracted_data  a,master_data.provider_metadata b
+                                    WHERE a.name =concat(b.providerfirsname,' ',b.provider_lastname)  and a.npi  is null ;
+
+                                "} on-condition if "true"=="true"
+
+                                masterdataComparison as "matched provider fax for natural key"
+                                on-resource-conn "intics_zio_db_conn"
+                                match-result "md_lookup_systemkey.provider_fax_match_wo_npi"
+                                audit-table "md_lookup_systemkey.provider_fax_audit_wo_npi"
+                                using {"
+
+                                    SELECT a.origin_id ,a.paper_no ,a.eoc_identifier,a.fax as extracted_value
+                                    ,b.provider_fax  as actual_value
+                                    FROM md_lookup_systemkey.provider_extracted_data  a,master_data.provider_metadata b
+                                    WHERE a.name =concat(b.providerfirsname,' ',b.provider_lastname)  and a.npi  is null ;
+
+                                "} on-condition if "true"=="true"
+
+
+
+
+    }  catch {
+
+    }
+    finally {
+
+    }
+}

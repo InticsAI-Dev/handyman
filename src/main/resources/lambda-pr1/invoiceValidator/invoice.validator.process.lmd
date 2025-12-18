@@ -1,0 +1,161 @@
+process "invoice.validator.process"
+{
+	try{
+
+          assign as "desc_schema_table_name" source "intics_zio_db_conn" using
+           {"
+
+             SELECT jsonb_object_keys(processed_file_path::jsonb) AS extracted_key
+             FROM table_extraction.table_extraction_result
+             WHERE root_pipeline_id = ${gen_id.root_pipeline_id} and batch_id='${batch_id}';
+
+            "} on-condition if "true"=="true"
+
+
+            transform as "invoice validator processor" on "intics_zio_db_conn" using
+             {"
+
+                    INSERT INTO ref_data.validation_results (
+                        root_pipeline_id,
+                        po_number,
+                        tax_amount,
+                        tax_amount_status,
+                        invoice_amount,
+                        description,
+                        file_name,
+                        tenant_id,
+                        batch_id)
+                    SELECT
+                        ${gen_id.root_pipeline_id} AS root_pipeline_id,
+                        ${tenant_id} AS tenant_id,
+                        '${batch_id}' as batch_id,
+                        (
+                            SELECT vt.answer
+                            FROM sor_transaction.vqa_transaction vt
+                            INNER JOIN sor_meta.sor_item si ON vt.sor_item_name = si.sor_item_name
+                            WHERE si.sor_item_id = 1
+                            AND vt.root_pipeline_id = ${gen_id.root_pipeline_id}
+                            ORDER BY vt.vqa_score DESC
+                            LIMIT 1
+                        )::varchar as po_number,
+                        (
+                            SELECT COALESCE(CAST(NULLIF(vt.answer , '') AS NUMERIC), 0.0)
+                            FROM sor_transaction.vqa_transaction vt
+                            INNER JOIN sor_meta.sor_item si ON vt.sor_item_name = si.sor_item_name
+                            WHERE si.sor_item_id = 5
+                            AND vt.root_pipeline_id = ${gen_id.root_pipeline_id}
+                            ORDER BY vt.vqa_score DESC
+                            LIMIT 1
+                       )::float8 as tax_amount,
+                       (
+                           SELECT
+                              CASE
+                                  WHEN COALESCE(CAST(vt.answer AS NUMERIC), 0.0) > 0 THEN 'yes'
+                                  ELSE 'no'
+                              END
+                          FROM sor_transaction.vqa_transaction vt
+                          INNER JOIN sor_meta.sor_item si ON vt.sor_item_name = si.sor_item_name
+                          WHERE si.sor_item_id = 5
+                          AND vt.root_pipeline_id = ${gen_id.root_pipeline_id}
+                          ORDER BY vt.vqa_score DESC
+                          LIMIT 1
+                       )::varchar as tax_amount_status,
+                       (
+                          SELECT COALESCE(CAST(NULLIF(vt.answer, '') AS NUMERIC), 0.0)
+                          FROM sor_transaction.vqa_transaction vt
+                          INNER JOIN sor_meta.sor_item si ON vt.sor_item_name = si.sor_item_name
+                          WHERE si.sor_item_id = 2
+                          AND vt.root_pipeline_id = ${gen_id.root_pipeline_id}
+                          ORDER BY vt.vqa_score DESC
+                          LIMIT 1
+                       )::float8 as invoice_amount,
+                        (
+
+                        SELECT c.description
+                        FROM ${desc_schema_table_name.extracted_key} c
+                        LIMIT 1
+
+                        )::text as description,
+                        (
+                            SELECT a.file_path
+                            FROM info.asset a
+                            WHERE file_extension = 'pdf' and root_pipeline_id=${gen_id.root_pipeline_id}
+                            LIMIT 1
+                        )::varchar as file_name;
+
+      "} on-condition if "true"=="true"
+
+
+
+            transform as "invoice validator update processor" on "intics_zio_db_conn" using
+            {"
+
+                    UPDATE ref_data.validation_results AS vr
+                    SET description_match = CASE
+                        WHEN EXISTS (
+                            SELECT 1
+                            FROM ref_data.poreport20230830053058 AS pr
+                            WHERE pr.item_description = vr.description
+                        ) THEN 'yes'
+                        ELSE 'no'
+                    END;
+
+                    UPDATE ref_data.validation_results AS vr
+                    SET po_number_match = CASE
+                        WHEN EXISTS (
+                            SELECT 1
+                            FROM ref_data.poreport20230830053058 AS pr
+                            WHERE (
+                            CAST(pr.po AS VARCHAR) = CAST(vr.po_number AS VARCHAR)
+                           )
+                        ) THEN 'yes'
+                        ELSE 'no'
+                    END;
+
+
+                    UPDATE ref_data.validation_results AS vr
+                    SET invoice_amount_match = CASE
+                        WHEN EXISTS (
+                            SELECT 1
+                            FROM ref_data.poreport20230830053058 AS pr
+                            WHERE (
+                                CAST(pr.open_amount AS VARCHAR) = CAST(vr.invoice_amount AS VARCHAR)
+                            )
+                        ) THEN 'yes'
+                        ELSE 'no'
+                    END;
+
+                    UPDATE ref_data.validation_results AS vr
+                    SET invoice_rejection =
+                      CASE
+                        WHEN (vr.po_number IS NULL OR vr.po_number_match != 'yes' OR vr.tax_amount != 0)
+                        THEN 'yes'
+                        ELSE 'no'
+                      END;
+
+             "} on-condition if "true"=="true"
+
+            assign as "tax_amount_status" source "intics_zio_db_conn" using
+            {"
+                select (case when invoice_rejection='yes' then 'true' else 'false' end) as is_active
+                from ref_data.validation_results
+                WHERE root_pipeline_id = ${gen_id.root_pipeline_id};
+            "} on-condition if "true"=="true"
+
+            mailServer as "mail server macro"
+            result-table "ref_data.validation_results"
+            processId "${init_process_id.process_id}"
+            resource-conn "intics_zio_db_conn"
+            using {"
+                select file_name, invoice_rejection from ref_data.validation_results;
+            "} on-condition if "${tax_amount_status.is_active}"=="true"
+
+	}
+
+	catch{
+
+	}
+	finally{
+
+	}
+}

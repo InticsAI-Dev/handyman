@@ -1,0 +1,112 @@
+process "data.coverage.lookup.average.lmd" {
+  try {
+    transform as "insert average touch percentage for ${sor_item_name}"
+    on "intics_zio_db_conn"
+    using {
+      "INSERT INTO ${COVERAGE_REPORT}.final_result_percentage (
+        root_pipeline_id,
+        created_on,
+        tenant_id,
+        no_touch_percentage,
+        one_touch_percentage,
+        low_touch_percentage,
+        high_touch_percentage
+      )
+    SELECT
+      '${init_process_id.process_id}' AS root_pipeline_id,
+      NOW() AS created_on,
+      '${tenant_id}' AS tenant_id,
+      CASE
+        WHEN ROUND(AVG(a.no_touch_percentage) - FLOOR(AVG(a.no_touch_percentage)), 1) = 0.5
+          THEN FLOOR(AVG(a.no_touch_percentage)) + 0.5
+        ELSE ROUND(AVG(a.no_touch_percentage))
+      END AS no_touch_percentage,
+      CASE
+        WHEN ROUND(AVG(a.one_touch_percentage) - FLOOR(AVG(a.one_touch_percentage)), 1) = 0.5
+          THEN FLOOR(AVG(a.one_touch_percentage)) + 0.5
+        ELSE ROUND(AVG(a.one_touch_percentage))
+      END AS one_touch_percentage,
+      CASE
+        WHEN ROUND(AVG(a.low_touch_percentage) - FLOOR(AVG(a.low_touch_percentage)), 1) = 0.5
+          THEN FLOOR(AVG(a.low_touch_percentage)) + 0.5
+        ELSE ROUND(AVG(a.low_touch_percentage))
+      END AS low_touch_percentage,
+      CASE
+        WHEN ROUND(AVG(a.high_touch_percentage) - FLOOR(AVG(a.high_touch_percentage)), 1) = 0.5
+          THEN FLOOR(AVG(a.high_touch_percentage)) + 0.5
+        ELSE ROUND(AVG(a.high_touch_percentage))
+      END AS high_touch_percentage
+    FROM ${COVERAGE_REPORT}.final_result a
+    WHERE a.root_pipeline_id = '${init_process_id.process_id}'
+      AND a.tenant_id = '${tenant_id}';"
+    } on-condition if "true" == "true"
+
+
+    transform as "insert average pass and fail percentage for ${sor_item_name}"
+        on "intics_zio_db_conn"
+        using {
+          "INSERT INTO ${COVERAGE_REPORT}.classification_match_summary_report_percentage (
+             root_pipeline_id,
+             created_on,
+             tenant_id,
+             pass_percentage,
+             fail_percentage
+           )
+           SELECT
+             '${init_process_id.process_id}' AS root_pipeline_id,
+             NOW() AS created_on,
+             '${tenant_id}' AS tenant_id,
+
+             CASE
+               WHEN ROUND(AVG(a.pass_percentage)::numeric - FLOOR(AVG(a.pass_percentage)::numeric), 1) = 0.5
+                 THEN FLOOR(AVG(a.pass_percentage)::numeric) + 0.5
+               ELSE ROUND(AVG(a.pass_percentage)::numeric)
+             END AS pass_percentage,
+
+             CASE
+               WHEN ROUND(AVG(a.fail_percentage)::numeric - FLOOR(AVG(a.fail_percentage)::numeric), 1) = 0.5
+                 THEN FLOOR(AVG(a.fail_percentage)::numeric) + 0.5
+               ELSE ROUND(AVG(a.fail_percentage)::numeric)
+             END AS fail_percentage
+
+           FROM ${COVERAGE_REPORT}.classification_match_summary_report a
+           WHERE a.root_pipeline_id = '${init_process_id.process_id}'
+             AND a.tenant_id = '${tenant_id}';"
+        } on-condition if "true" == "true"
+
+        transform as "insert average pass and fail percentage for container" on "intics_zio_db_conn"
+            using {"
+     INSERT INTO ${COVERAGE_REPORT}.container_level_summary_report (
+       root_pipeline_id,
+       created_on,
+       tenant_id,
+       sor_container_name,
+       sor_container_id,
+       overall_container_percentage
+     )
+     SELECT
+       a.root_pipeline_id,
+       NOW(),
+       a.tenant_id,
+       a.sor_container_name,
+       a.sor_container_id,
+       CASE
+         WHEN ROUND(AVG(a.pass_percentage)::numeric - FLOOR(AVG(a.pass_percentage)::numeric), 1) = 0.5
+           THEN FLOOR(AVG(a.pass_percentage)::numeric) + 0.5
+         ELSE ROUND(AVG(a.pass_percentage)::numeric)
+       END AS overall_container_percentage
+     FROM ${COVERAGE_REPORT}.classification_match_summary_report a
+     WHERE a.root_pipeline_id = '${init_process_id.process_id}'
+     GROUP BY
+       a.root_pipeline_id,
+       a.tenant_id,
+       a.sor_container_name,
+       a.sor_container_id;
+        "} on-condition if "true" == "true"
+
+  }
+  catch {
+  }
+  finally {
+  }
+}

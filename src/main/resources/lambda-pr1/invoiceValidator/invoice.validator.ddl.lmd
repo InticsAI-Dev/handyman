@@ -1,0 +1,47 @@
+process "invoice.validator.ddl"
+{
+     try{
+              transform as "create invoice validator ddl" on "intics_zio_db_conn" using
+            {"
+                CREATE SCHEMA if not exists ref_data;
+                CREATE TABLE if not exists ref_data.validation_results (
+                    root_pipeline_id INT8,
+                    file_name varchar,
+                    po_number varchar,
+                    tax_amount float8 null,
+                    invoice_amount float8 null,
+                    description TEXT,
+                    invoice_amount_match varchar,
+                    po_number_match varchar,
+                    tax_amount_status varchar,
+                    description_match varchar,
+                    invoice_rejection varchar,
+                    tenant_id int8 NULL,
+                    batch_id varchar NULL
+                );
+
+                CREATE SCHEMA if not exists alchemy_migration;
+                CREATE TABLE IF NOT EXISTS alchemy_migration.alchemy_migration_payload_queue (
+                    producer_process_id int8 NULL,
+                    consumer_process_id int8 NULL,
+                    origin_id varchar NOT NULL,
+                    group_id int4 NULL,
+                    batch_id varchar NULL,
+                    created_on timestamp NULL,
+                    consumed_on_ts timestamp NULL,
+                    root_pipeline_id int8 NULL,
+                    status varchar NULL,
+                    stage varchar NULL,
+                    tenant_id int8 NULL,
+                    CONSTRAINT alchemy_migration_payload_queue_pk PRIMARY KEY (producer_process_id, origin_id)
+                );
+
+            "} on-condition if "true"=="true"
+     }
+
+     catch{
+     }
+
+     finally{
+     }
+}

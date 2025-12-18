@@ -1,0 +1,62 @@
+process "pipeline.rerun.on.demand.outbound"
+{
+try{
+        transform as "Inserting failed origins into queue for preprocess AND alchemy migration AND outbound queues" on "intics_zio_db_conn" using
+        {"
+
+                INSERT INTO product_outbound.product_outbound_payload_queue
+                (producer_process_id, consumer_process_id, origin_id, group_id, created_on, consumed_on_ts, status, stage,root_pipeline_id, tenant_id, batch_id)
+                SELECT soo.root_pipeline_id , soo.root_pipeline_id, soo.origin_id, soo.group_id, soo.created_on, soo.created_on , 'STAGED', 'PRODUCT_OUTBOUND', soo.root_pipeline_id, soo.tenant_id, soo.batch_id
+                FROM info.source_of_origin soo
+                WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+
+        "} on-condition if "true"=="true"
+
+        transform as "Deleting Failed origins FROM the payload queue AND error queue" on "intics_zio_db_conn" using
+        {"
+            DELETE FROM product_outbound.product_outbound_payload_error_queue WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+
+            DELETE FROM product_outbound.product_outbound_payload_queue_archive WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+
+        "} on-condition if "true"=="true"
+
+        transform as "Batching queue entries are deleted IN the batch processing queue" on "intics_zio_db_conn" using
+        {"
+
+                DELETE FROM batching.batching_process_payload_queue_archive WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM  batching.batching_process_payload_error_queue WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+
+        "} on-condition if "true"=="true"
+
+        transform as "Deleting origins IN the preprocess output tables" on "intics_zio_db_conn" using
+        {"
+
+                DELETE FROM product_outbound.error_document_detail WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM product_outbound.kafka_response_info WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM product_outbound.product_outbound_csv_input WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM product_outbound.product_outbound_zip_file_details WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM product_outbound.product_outbound_zip_file_input WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                DELETE FROM product_outbound.product_response_details WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+
+        "} on-condition if "true"=="true"
+
+        transform as "Updating the status in the sub batching queues" on "intics_zio_db_conn" using
+        {"
+
+                UPDATE batching.sub_batching_process_payload_queue sbppq
+                SET status='STAGED',stage='PRODUCT_OUTBOUND'
+                WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+
+                UPDATE ingestion.pipeline_queue_status_audit
+                SET status='STAGED'
+                WHERE origin_id = ANY(string_to_array('${failed.origin.ids}', ',')) AND stage IN ('PRODUCT_OUTBOUND');
+
+        "} on-condition if "true"=="true"
+
+}
+catch{
+
+}
+finally{
+}
+}

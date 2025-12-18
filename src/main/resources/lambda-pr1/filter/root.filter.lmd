@@ -1,0 +1,184 @@
+process "root.filter"
+{
+try
+{
+        transform as "started root filter processor in paper filtering audit" on "intics_zio_db_conn" using
+        {"
+
+                INSERT INTO paper.paper_filtering_pipeline_audit
+                (process_id,origin_id ,group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+                select producer_process_id  ,origin_id ,group_id , now(), 'STARTED', 'ROOT_FILTER', 'root filter lambda started for paper filter','${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                from paper.potential_feature_payload_queue
+                where status='STAGED' AND tenant_id = ${tenant_id} AND batch_id ='${batch_id}';
+        "} on-condition if "true"=="true"
+
+        assign as "process_value" source "intics_zio_db_conn" using
+        {"
+                SELECT now() as value, ${init_process_id.process_id} as process_id;
+
+        "}
+
+                transform as "Create audit table for the paper potential feature, paper, synonyms" on "intics_zio_db_conn" using
+                  {"
+
+                   INSERT INTO ${temp_schema_name}.batching_potential_feature_queue_${init_process_id.process_id}
+                   (producer_process_id, consumer_process_id, group_id, batch_id, origin_id, created_on, status, stage, consumed_on_ts, sub_batch_id,root_pipeline_id, tenant_id)
+                   SELECT producer_process_id, consumer_process_id, group_id, batch_id, origin_id, created_on, status, stage, consumed_on_ts,
+                   (row_number() over () - 1) / (${batch.processing.split.count}::int8) as sub_batch_id,'${gen_id.root_pipeline_id}', ${tenant_id}
+                   from paper.potential_feature_payload_queue queue
+                   WHERE status='STAGED' AND tenant_id = ${tenant_id} and group_id=${group_id};
+
+                  "}
+
+
+        callprocess as "calling paper filter main processor lambda"
+        with-target "filter.main.caller"
+        from-file "${basepath}/filter/filter.main.caller.lmd"
+        using "intics_zio_db_conn"
+        for-every
+        {"
+                  -- TODO add tenant id
+
+                select distinct batch_id, '${process_value.value}' as created_date,
+                '${init_process_id.process_id}' as process_id, group_id as group_id
+                from paper.potential_feature_payload_queue
+                where group_id=${group_id} and batch_id is not null
+                and batch_id ='${batch_id}';
+
+        "} on-condition if "true"=="true" on-parallel-fielding "1"
+
+        callprocess as "calling paper filter processor lambda"
+        with-target "filter.processor"
+        from-file "${basepath}/filter/filter.processor.lmd"
+        using "intics_zio_db_conn"
+        for-every
+        {"
+                select '${init_process_id.process_id}' as process_id;
+
+        "} on-condition if "true"=="true" on-parallel-fielding "1"
+
+        transform as "completed filter processor in paper filtering audit" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO paper.paper_filtering_pipeline_audit
+                (process_id,origin_id ,group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+                select consumer_process_id  ,origin_id ,group_id , now(), 'COMPLETED', 'ROOT_FILTER', 'root filter lambda completed for paper filter','${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                from paper.potential_feature_payload_queue
+                where status='COMPLETED' AND tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+        "} on-condition if "true"=="true"
+
+}
+catch
+{
+        transform as "failed in paper filtering root filter audit" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO paper.paper_filtering_pipeline_audit
+                (process_id,origin_id ,group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+                select consumer_process_id  ,origin_id ,group_id , now(), 'FAILED', 'ROOT_FILTER', 'root filter lambda failed in paper filter','${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                from paper.potential_feature_payload_queue
+                where status='FAILED' AND tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+        "} on-condition if "true"=="true"
+
+}
+
+finally {
+        transform as "Move to archive after completed and also inserted into next queue" on "intics_zio_db_conn" using
+        {"
+
+
+                INSERT INTO paper.paper_filtering_pipeline_audit
+                (process_id, origin_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+                select '${init_process_id.process_id}',sot.origin_id, now(), 'COMPLETED', 'PAPER_FILTER',
+                'Completed paper filtration main calling lambda','${gen_id.root_pipeline_id}', ${tenant_id}, pq.batch_id
+                from ${temp_schema_name}.batching_potential_feature_queue_${init_process_id.process_id} bp
+                inner join paper.potential_feature_payload_queue pq on pq.origin_id = bp.origin_id and pq.batch_id = bp.batch_id
+                and pq.batch_id =bp.batch_id and pq.producer_process_id = bp.producer_process_id
+                inner join ${temp_schema_name}.source_of_truth_${init_process_id.process_id} sot
+                on sot.origin_id = bp.origin_id
+                where pq.stage='PAPER_FILTER' and pq.status='IN_PROGRESS'
+                AND sot.tenant_id = ${tenant_id} AND pq.group_id='${gen_group_id.group_id}' and pq.batch_id ='${batch_id}';
+
+                update ingestion.pipeline_queue_status_audit as a
+                set status = 'COMPLETED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                where  a.group_id=${group_id}
+                and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='PAPER_FILTER' ;
+
+                INSERT INTO paper.potential_feature_payload_error_queue
+                (producer_process_id, consumer_process_id, origin_id, group_id, created_on,
+                consumed_on_ts, status, stage,root_pipeline_id, tenant_id, batch_id )
+                SELECT producer_process_id, consumer_process_id, origin_id, group_id, created_on,
+                consumed_on_ts, status, stage,'${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM paper.potential_feature_payload_queue
+                where status = 'FAILED' and stage = 'PAPER_FILTER'
+                and group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                INSERT INTO paper.potential_feature_payload_queue_archive
+                (producer_process_id, consumer_process_id, origin_id, group_id, created_on,
+                consumed_on_ts, status, stage,root_pipeline_id, tenant_id, batch_id)
+                SELECT producer_process_id, consumer_process_id, origin_id, group_id, created_on,
+                consumed_on_ts, status, stage ,root_pipeline_id, ${tenant_id}, batch_id
+                FROM paper.potential_feature_payload_queue
+                WHERE status = 'COMPLETED' and stage = 'PAPER_FILTER' AND tenant_id = ${tenant_id} AND group_id='${gen_group_id.group_id}' and batch_id ='${batch_id}';
+
+                INSERT INTO paper_classification.paper_classification_payload_queue
+                (producer_process_id, origin_id, group_id, created_on, status, stage, root_pipeline_id, tenant_id, batch_id)
+                SELECT producer_process_id, origin_id, group_id, now(), 'STAGED', 'PAPER_CLASSIFICATION',root_pipeline_id, ${tenant_id}, batch_id
+                FROM paper.potential_feature_payload_queue
+                WHERE status = 'COMPLETED' and stage = 'PAPER_FILTER' AND tenant_id = ${tenant_id} AND group_id='${gen_group_id.group_id}' and batch_id ='${batch_id}' and '${paper.classification.activator}'='true';
+
+                INSERT INTO ingestion.pipeline_queue_status_audit
+                (producer_process_id, consumer_process_id, origin_id,batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, origin_type)
+                select producer_process_id, consumer_process_id, origin_id, batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, '${origin_type}'
+                from paper_classification.paper_classification_payload_queue
+                where group_id='${gen_group_id.group_id}' and batch_id='${batch_id}' and tenant_id =${tenant_id};
+
+
+                INSERT INTO qr_extraction.qr_extraction_payload_queue
+                (producer_process_id, origin_id, group_id, created_on, status, stage,root_pipeline_id,tenant_id, batch_id)
+                SELECT producer_process_id, origin_id, group_id, now(), 'STAGED', 'QR_EXTRACTION',root_pipeline_id, ${tenant_id}, batch_id
+                FROM paper.potential_feature_payload_queue
+                WHERE status = 'COMPLETED' and stage = 'PAPER_FILTER' AND tenant_id = ${tenant_id} AND group_id='${gen_group_id.group_id}' and batch_id ='${batch_id}' and '${qr.extraction.processor.activator}'='true';
+
+                INSERT INTO urgency_triage.ut_model_payload_queue
+                (producer_process_id, origin_id, group_id, created_on, status, stage,root_pipeline_id, tenant_id, batch_id)
+                SELECT producer_process_id, origin_id, group_id, now(), 'STAGED', 'URGENCY_TRIAGE_MODEL',root_pipeline_id, ${tenant_id}, batch_id
+                FROM paper.potential_feature_payload_queue
+                WHERE status = 'COMPLETED' and stage = 'PAPER_FILTER' AND tenant_id = ${tenant_id} AND group_id='${gen_group_id.group_id}' and batch_id ='${batch_id}' and '${ut.model.activator}'='true';
+
+                INSERT INTO ingestion.pipeline_queue_status_audit
+                (producer_process_id, consumer_process_id, origin_id,batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, origin_type)
+                select producer_process_id, consumer_process_id, origin_id, batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, '${origin_type}'
+                from urgency_triage.ut_model_payload_queue
+                where group_id='${gen_group_id.group_id}' and batch_id='${batch_id}' and tenant_id =${tenant_id};
+
+                INSERT INTO sor_transaction.sor_transaction_payload_queue
+                (producer_process_id, origin_id, group_id, created_on, status, stage, root_pipeline_id,tenant_id, batch_id)
+                SELECT producer_process_id, origin_id, group_id, now(), 'STAGED', 'SOR_TRANSACTION', root_pipeline_id,tenant_id, batch_id
+                FROM paper.potential_feature_payload_queue
+                WHERE status = 'COMPLETED' and stage = 'PAPER_FILTER' AND tenant_id = ${tenant_id} AND group_id='${gen_group_id.group_id}' and batch_id ='${batch_id}' and '${sor.transaction.nextgen.activator}'='true';
+
+                INSERT INTO ingestion.pipeline_queue_status_audit
+                (producer_process_id, consumer_process_id, origin_id,batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, origin_type)
+                select producer_process_id, consumer_process_id, origin_id, batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, '${origin_type}'
+                from sor_transaction.sor_transaction_payload_queue
+                where group_id='${gen_group_id.group_id}' and batch_id='${batch_id}' and tenant_id =${tenant_id};
+
+        "} on-condition if "true"=="true"
+
+
+        transform as "remove from queue if failed" on "intics_zio_db_conn" using
+        {"
+
+                DELETE FROM paper.potential_feature_payload_queue
+                WHERE stage IN ('PAPER_FILTER')
+                and status IN ('FAILED') AND tenant_id = ${tenant_id} and batch_id ='${batch_id}' ;
+
+                DELETE FROM paper.potential_feature_payload_queue
+                WHERE stage IN ('PAPER_FILTER')
+                and status IN ('COMPLETED') AND tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+        "} on-condition if "true"=="true"
+
+
+}
+}

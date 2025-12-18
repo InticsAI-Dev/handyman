@@ -18,10 +18,10 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import in.handyman.raven.lib.model.multi.member.indicator.MultiValueMemberMapperInputTable;
-import in.handyman.raven.lib.model.multi.member.indicator.MultiValueMemberMapperOutputTable;
-import in.handyman.raven.lib.model.multi.member.indicator.MultiValueMemberMapperTransformInputTable;
-import in.handyman.raven.lib.model.multi.member.indicator.extractedSorItemList;
+import in.handyman.raven.lib.services.indicator.MultiValueMemberMapperInputTable;
+import in.handyman.raven.lib.services.indicator.MultiValueMemberMapperOutputTable;
+import in.handyman.raven.lib.services.indicator.MultiValueMemberMapperTransformInputTable;
+import in.handyman.raven.lib.services.indicator.extractedSorItemList;
 import in.handyman.raven.util.CommonQueryUtil;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
@@ -53,11 +53,11 @@ public class MultiValueMemberMapperAction implements IActionExecution {
   public static final String MULTI_MEMBER_CONSUMER_API_COUNT = "multi.member.consumer.API.count";
 
   public static final String INSERT_INTO = "INSERT INTO ";
-  public static final String INSERT_INTO_VALUES_UPDATED = "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+  public static final String INSERT_INTO_VALUES_UPDATED = "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
   private List<MultiValueMemberMapperOutputTable> multiValueMemberMapperOutputTables;
 
-  public static final String INSERT_COLUMNS_UPDATED = "created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, frequency, b_box, confidence_score, extracted_value, filter_score, group_id, maximum_score, origin_id, paper_no, question_id, root_pipeline_id, sor_item_name, synonym_id, tenant_id, model_registry, batch_id";
+  public static final String INSERT_COLUMNS_UPDATED = "created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, frequency, b_box, confidence_score, extracted_value, filter_score, group_id, maximum_score, origin_id, paper_no, question_id, root_pipeline_id, sor_item_name, synonym_id, tenant_id, model_registry, batch_id, sor_container_instance";
 
 
   public MultiValueMemberMapperAction(final ActionExecutionAudit action, final Logger log,
@@ -164,6 +164,7 @@ public class MultiValueMemberMapperAction implements IActionExecution {
                                 .rootPipelineId(row.getRootPipelineId())
                                 .batchId(row.getBatchId())
                                 .documentType(row.getDocumentType())
+                                .sorContainerInstance(row.getSorContainerName())
                                 .build();
 
                         return item;
@@ -222,7 +223,8 @@ public class MultiValueMemberMapperAction implements IActionExecution {
                 .bind(18, row.getSynonymId())
                 .bind(19, row.getTenantId())
                 .bind(20, row.getModelRegistry())
-                .bind(21, row.getBatchId());
+                .bind(21, row.getBatchId())
+                .bind(22, row.getSorContainerInstance());
         batch.add();
       });
       int[] counts = batch.execute();

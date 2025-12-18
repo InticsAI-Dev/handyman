@@ -21,9 +21,9 @@ import java.util.Optional;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 
-import in.handyman.raven.lib.model.common.IntellimatchConsumerProcess;
-import in.handyman.raven.lib.model.common.IntellimatchInputTable;
-import in.handyman.raven.lib.model.common.IntellimatchOutputTable;
+import in.handyman.raven.lib.services.common.IntellimatchConsumerProcess;
+import in.handyman.raven.lib.services.common.IntellimatchInputTable;
+import in.handyman.raven.lib.services.common.IntellimatchOutputTable;
 import in.handyman.raven.util.ExceptionUtil;
 import in.handyman.raven.util.InstanceUtil;
 import okhttp3.OkHttpClient;

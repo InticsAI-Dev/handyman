@@ -1,0 +1,38 @@
+process "urgency.triage.beta.main"
+{
+	try {
+            assign as "init_process_id" source "intics_zio_db_conn" using {"
+                SELECT ${process-id} as process_id;
+            "} on-condition if "true"=="true"
+
+
+            assign as "time_stamp_ut" source "intics_zio_db_conn" using
+             {"
+                     SELECT now() as consumed_on_ts;
+             "} on-condition if "true"=="true"
+
+
+            callprocess as "calling ut model urgency triage processor"
+            with-target "urgency.triage.beta.processor"
+            from-file "${basepath}/urgencyTriageBeta/urgency.triage.beta.processor.lmd"
+            using "intics_zio_db_conn"
+            for-every {"
+                SELECT DISTINCT group_id
+                FROM urgency_triage.ut_model_payload_queue
+                WHERE status='STAGED' AND stage='URGENCY_TRIAGE_MODEL'
+                and tenant_id = ${tenant_id} and group_id = '${gen_group_id.group_id}' and batch_id ='${batch_id}';
+            "} on-condition if "true"=="true"
+
+	}
+	catch{
+			transform as "failed in urgency triage main caller " on "intics_zio_db_conn" using {"
+                INSERT INTO urgency_triage.ut_model_pipeline_audit
+                (process_id,group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+                values( ${init_process_id.process_id},'${gen_group_id.group_id}', now(),
+                'FAILED', 'UT_MAIN',' urgency triage main caller FAILED for process_id ${init_process_id.process_id}',
+                '${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}');
+			"} on-condition if "true"=="true"
+	}
+	finally{
+	}
+}

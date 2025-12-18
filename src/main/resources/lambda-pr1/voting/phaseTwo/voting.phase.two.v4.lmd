@@ -1,0 +1,352 @@
+process "voting.phase.two.v4"
+{
+    try
+    {
+        transform as "sor grouping voting phase 2 version 4" on "intics_zio_db_conn" using
+        {"
+
+            INSERT INTO ${temp_schema_name}.temp_aggregation_evaluator_${init_process_id.process_id}
+            (
+                 created_on,
+                 created_user_id,
+                 last_updated_on,
+                 last_updated_user_id,
+                 tenant_id,
+                 aggregated_score,
+                 masked_score,
+                 group_id,
+                 origin_id,
+                 paper_no,
+                 predicted_value,
+                 vqa_score,
+                 rank,
+                 sor_item_attribution_id,
+                 sor_item_name,
+                 document_id,
+                 acc_transaction_id,
+                 b_box,
+                 root_pipeline_id,
+                 frequency,
+                 question_id,
+                 synonym_id,
+                 model_registry,
+                 status,
+                 version,
+                 model_registry_id,
+                 batch_id,
+                 category
+            )
+            SELECT
+                 ae.created_on,
+                 ae.created_user_id,
+                 ae.last_updated_on,
+                 ae.last_updated_user_id,
+                 ae.tenant_id,
+                 ae.aggregated_score,
+                 ae.masked_score,
+                 ae.group_id,
+                 ae.origin_id,
+                 ae.paper_no,
+                 ae.predicted_value,
+                 ae.vqa_score,
+                 ae.rank,
+                 ae.sor_item_attribution_id,
+                 ae.sor_item_name,
+                 ae.document_id,
+                 ae.acc_transaction_id,
+                 ae.b_box,
+                 ae.root_pipeline_id,
+                 ae.frequency,
+                 ae.question_id,
+                 ae.synonym_id,
+                 ae.model_registry,
+                 ae.status,
+                 ae.version,
+                 ae.model_registry_id,
+                 ae.batch_id,
+                 ae.category
+            FROM ${temp_schema_name}.aggregation_evaluator_${init_process_id.process_id} ae
+            JOIN ${temp_schema_name}.paper_unnest_${init_process_id.process_id} b
+              ON ae.origin_id = b.origin_id AND ae.paper_no = b.paper_number
+            WHERE ae.group_id = '${group_id}'
+              AND ae.tenant_id = ${tenant_id}
+              AND ae.batch_id = '${batch_id}'
+              AND ae.origin_id = '${origin_id}';
+
+
+            -- STEP 1: Count SOR items per origin_id + paper_no + sor_item_name ;
+            INSERT INTO ${temp_schema_name}.sor_item_name_counts_per_file_${init_process_id.process_id}
+            (tenant_id, batch_id, group_id, origin_id, sor_item_name, sor_item_count)
+            SELECT tenant_id, batch_id, group_id, origin_id, sor_item_name, COUNT(*) AS sor_item_count
+            FROM ${temp_schema_name}.temp_aggregation_evaluator_${init_process_id.process_id} ae
+            where ae.group_id = '${group_id}'
+            AND ae.tenant_id = ${tenant_id}
+            AND ae.batch_id = '${batch_id}'
+            AND ae.origin_id = '${origin_id}'
+            GROUP BY ae.origin_id, ae.sor_item_name, ae.tenant_id, ae.batch_id, ae.group_id;
+
+            -- STEP 2: Entries with count = 1 → final result ;
+            INSERT INTO ${temp_schema_name}.final_cumulative_results_${init_process_id.process_id}
+            (
+                tenant_id, batch_id, group_id, origin_id, root_pipeline_id,
+                paper_no, sor_item_attribution_id, sor_item_name, question_id,
+                synonym_id, b_box, predicted_value
+            )
+            SELECT
+                ae.tenant_id, ae.batch_id, ae.group_id, ae.origin_id, ae.root_pipeline_id,
+                ae.paper_no, ae.sor_item_attribution_id, ae.sor_item_name, ae.question_id,
+                ae.synonym_id, ae.b_box, ae.predicted_value
+            FROM ${temp_schema_name}.temp_aggregation_evaluator_${init_process_id.process_id} ae
+            JOIN ${temp_schema_name}.sor_item_name_counts_per_file_${init_process_id.process_id} counts
+              ON ae.origin_id = counts.origin_id
+             AND ae.sor_item_name = counts.sor_item_name
+            WHERE counts.sor_item_count = 1 AND
+            ae.group_id = '${group_id}'
+            AND ae.tenant_id = ${tenant_id}
+            AND ae.batch_id = '${batch_id}'
+            AND ae.origin_id = '${origin_id}';
+
+            -- STEP 3: Entries with count > 1 ;
+            INSERT INTO ${temp_schema_name}.multi_sor_items_to_evaluate_${init_process_id.process_id}
+            (
+                tenant_id, batch_id, group_id, origin_id, root_pipeline_id,
+                paper_no, sor_item_attribution_id, sor_item_name, question_id,
+                synonym_id, b_box, predicted_value
+            )
+            SELECT
+                ae.tenant_id, ae.batch_id, ae.group_id, ae.origin_id, ae.root_pipeline_id,
+                ae.paper_no, ae.sor_item_attribution_id, ae.sor_item_name, ae.question_id,
+                ae.synonym_id, ae.b_box, ae.predicted_value
+            FROM ${temp_schema_name}.temp_aggregation_evaluator_${init_process_id.process_id} ae
+            JOIN ${temp_schema_name}.sor_item_name_counts_per_file_${init_process_id.process_id} counts
+              ON ae.origin_id = counts.origin_id
+             AND ae.sor_item_name = counts.sor_item_name
+            WHERE counts.sor_item_count > 1 AND
+            ae.group_id = '${group_id}'
+            AND ae.tenant_id = ${tenant_id}
+            AND ae.batch_id = '${batch_id}'
+            AND ae.origin_id = '${origin_id}';
+
+
+            -- STEP 4a.1: Insert into pre-created temp table empty_predicted_min_paper_${init_process_id.process_id}
+            INSERT INTO ${temp_schema_name}.empty_predicted_min_paper_${init_process_id.process_id}
+            (
+                tenant_id,
+                batch_id,
+                group_id,
+                sor_item_name,
+                origin_id,
+                min_paper_no
+            )
+            SELECT
+                t.tenant_id,
+                t.batch_id,
+                t.group_id,
+                t.sor_item_name,
+                t.origin_id,
+                MIN(t.paper_no) AS min_paper_no
+            FROM ${temp_schema_name}.multi_sor_items_to_evaluate_${init_process_id.process_id} t
+            LEFT JOIN ${temp_schema_name}.multi_sor_items_to_evaluate_${init_process_id.process_id} j
+              ON t.sor_item_name = j.sor_item_name
+             AND t.origin_id = j.origin_id
+             AND j.predicted_value IS NOT NULL
+             AND j.predicted_value != ''
+            WHERE (t.predicted_value IS NULL OR t.predicted_value = '')
+              AND j.sor_item_name IS NULL
+              AND t.group_id = '${group_id}'
+              AND t.tenant_id = ${tenant_id}
+              AND t.batch_id = '${batch_id}'
+              AND t.origin_id = '${origin_id}'
+            GROUP BY t.tenant_id, t.batch_id, t.group_id, t.sor_item_name, t.origin_id;
+
+
+            -- STEP 4a.2: Insert only empty predicted_value records based on min_paper
+            INSERT INTO ${temp_schema_name}.final_cumulative_results_${init_process_id.process_id}
+            (
+                tenant_id,
+                batch_id,
+                group_id,
+                origin_id,
+                root_pipeline_id,
+                paper_no,
+                sor_item_attribution_id,
+                sor_item_name,
+                question_id,
+                synonym_id,
+                b_box,
+                predicted_value
+            )
+            SELECT
+                t.tenant_id,
+                t.batch_id,
+                t.group_id,
+                t.origin_id,
+                t.root_pipeline_id,
+                t.paper_no,
+                t.sor_item_attribution_id,
+                t.sor_item_name,
+                t.question_id,
+                t.synonym_id,
+                t.b_box,
+                t.predicted_value
+            FROM ${temp_schema_name}.multi_sor_items_to_evaluate_${init_process_id.process_id} t
+            JOIN ${temp_schema_name}.empty_predicted_min_paper_${init_process_id.process_id} min_paper
+              ON t.sor_item_name = min_paper.sor_item_name
+             AND t.origin_id = min_paper.origin_id
+             AND t.paper_no = min_paper.min_paper_no
+            WHERE (t.predicted_value IS NULL OR t.predicted_value = '')
+              AND t.group_id = '${group_id}'
+              AND t.tenant_id = ${tenant_id}
+              AND t.batch_id = '${batch_id}'
+              AND t.origin_id = '${origin_id}';
+
+
+
+            -- STEP 4b: Remove empty predicted_value ;
+            INSERT INTO ${temp_schema_name}.non_empty_predicted_values_${init_process_id.process_id}
+            (
+                tenant_id, batch_id, group_id, origin_id, root_pipeline_id,
+                paper_no, sor_item_attribution_id, sor_item_name, question_id,
+                synonym_id, b_box, predicted_value
+            )
+            SELECT
+                tenant_id, batch_id, group_id, origin_id, root_pipeline_id,
+                paper_no, sor_item_attribution_id, sor_item_name, question_id,
+                synonym_id, b_box, predicted_value
+            FROM ${temp_schema_name}.multi_sor_items_to_evaluate_${init_process_id.process_id}
+            WHERE COALESCE(predicted_value, '') <> '' AND
+             group_id = '${group_id}'
+             AND tenant_id = ${tenant_id}
+             AND batch_id = '${batch_id}'
+             AND origin_id = '${origin_id}';
+
+
+            -- STEP 5.1: Insert into pre-created temp table non_empty_min_paper_${init_process_id.process_id}
+            INSERT INTO ${temp_schema_name}.non_empty_min_paper_${init_process_id.process_id}
+            (
+                tenant_id,
+                batch_id,
+                group_id,
+                origin_id,
+                sor_item_name,
+                min_paper_no
+            )
+            SELECT
+                tenant_id,
+                batch_id,
+                group_id,
+                origin_id,
+                sor_item_name,
+                MIN(paper_no) AS min_paper_no
+            FROM ${temp_schema_name}.non_empty_predicted_values_${init_process_id.process_id}
+            WHERE group_id = '${group_id}'
+              AND tenant_id = ${tenant_id}
+              AND batch_id = '${batch_id}'
+              AND origin_id = '${origin_id}'
+            GROUP BY tenant_id, batch_id, group_id, origin_id, sor_item_name;
+
+
+            -- STEP 5.2: Insert final non-empty predicted values based on min(paper_no) per sor_item_name
+            INSERT INTO ${temp_schema_name}.final_cumulative_results_${init_process_id.process_id}
+            (
+                tenant_id, batch_id, group_id, origin_id, root_pipeline_id,
+                paper_no, sor_item_attribution_id, sor_item_name, question_id,
+                synonym_id, b_box, predicted_value
+            )
+            SELECT
+                f.tenant_id,
+                f.batch_id,
+                f.group_id,
+                f.origin_id,
+                f.root_pipeline_id,
+                f.paper_no,
+                f.sor_item_attribution_id,
+                f.sor_item_name,
+                f.question_id,
+                f.synonym_id,
+                f.b_box,
+                f.predicted_value
+            FROM ${temp_schema_name}.non_empty_predicted_values_${init_process_id.process_id} f
+            JOIN ${temp_schema_name}.non_empty_min_paper_${init_process_id.process_id} sub
+              ON f.sor_item_name = sub.sor_item_name
+             AND f.paper_no = sub.min_paper_no
+            WHERE f.group_id = '${group_id}'
+              AND f.tenant_id = ${tenant_id}
+              AND f.batch_id = '${batch_id}'
+              AND f.origin_id = '${origin_id}';
+
+
+            -- FINAL STEP.1: Insert into pre-created temp table min_final_cumulative_papers_${init_process_id.process_id}
+            INSERT INTO ${temp_schema_name}.min_final_cumulative_papers_${init_process_id.process_id}
+            (
+                tenant_id,
+                batch_id,
+                group_id,
+                origin_id,
+                sor_item_name,
+                min_paper_no
+            )
+            SELECT
+                tenant_id,
+                batch_id,
+                group_id,
+                origin_id,
+                sor_item_name,
+                MIN(paper_no) AS min_paper_no
+            FROM ${temp_schema_name}.final_cumulative_results_${init_process_id.process_id}
+            WHERE group_id = '${group_id}'
+              AND tenant_id = ${tenant_id}
+              AND batch_id = '${batch_id}'
+              AND origin_id = '${origin_id}'
+            GROUP BY tenant_id, batch_id, group_id, origin_id, sor_item_name;
+
+            -- FINAL STEP.2: Insert tie-broken final result per (origin_id, sor_item_name)
+            INSERT INTO ${temp_schema_name}.cummulative_result_${init_process_id.process_id} (
+                tenant_id, batch_id, group_id, origin_id, root_pipeline_id,
+                paper_no, sor_item_name, question_id,
+                synonym_id, b_box, extracted_value,
+                created_on, created_user_id, last_updated_on, last_updated_user_id, status, version
+            )
+            SELECT
+                fcr.tenant_id,
+                fcr.batch_id,
+                fcr.group_id,
+                fcr.origin_id,
+                fcr.root_pipeline_id,
+                fcr.paper_no,
+                fcr.sor_item_name,
+                fcr.question_id::BIGINT,
+                fcr.synonym_id::BIGINT,
+                fcr.b_box,
+                fcr.predicted_value,
+                now(), ${created_user_id}, now(), ${created_user_id}, 'ACTIVE', 1
+            FROM ${temp_schema_name}.final_cumulative_results_${init_process_id.process_id} fcr
+            JOIN ${temp_schema_name}.min_final_cumulative_papers_${init_process_id.process_id} sub
+              ON fcr.tenant_id = sub.tenant_id
+             AND fcr.batch_id = sub.batch_id
+             AND fcr.group_id = sub.group_id
+             AND fcr.origin_id = sub.origin_id
+             AND fcr.sor_item_name = sub.sor_item_name
+             AND fcr.paper_no = sub.min_paper_no
+            WHERE fcr.group_id = '${group_id}'
+              AND fcr.tenant_id = ${tenant_id}
+              AND fcr.batch_id = '${batch_id}'
+              AND fcr.origin_id = '${origin_id}'
+              and a.sor_item_name != 'multiple_member_indicator';
+
+
+        "} on-condition if "true"=="true"
+    }
+    catch
+    {
+        transform as "insert to completed voting phase two audit" on "intics_zio_db_conn" using
+        {"
+            INSERT INTO sor_transaction.sor_transaction_pipeline_audit
+            (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+            VALUES('${group_id}', now(), '${created_user_id}', '${created_user_id}', ${tenant_id}, 'FAILED', 'VOTING', 'voting failed for voting with group_id ${group_id}', '${gen_id.root_pipeline_id}', '${batch_id}');
+        "} on-condition if "true"=="true"
+    }
+    finally
+    {
+    }
+}

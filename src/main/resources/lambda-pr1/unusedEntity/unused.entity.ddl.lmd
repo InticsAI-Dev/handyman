@@ -1,0 +1,183 @@
+process "unused.entity.ddl"
+
+{
+    try{
+
+
+            transform as "DDL for unusedEntity migration master data ddl creation" on "intics_zio_db_conn" using
+             {"
+                    create schema if not exists unused_entity_master_data_process;
+                    create schema if not exists sor_meta_master_data;
+
+                    CREATE TABLE if not exists unused_entity_master_data_process.unused_entity_process_payload_queue (
+                    	producer_process_id int8 NOT NULL,
+                    	consumer_process_id int8 NULL,
+                    	migration_id varchar NOT NULL,
+                    	group_id int4 NULL,
+                    	created_on timestamp NULL,
+                    	consumed_on_ts timestamp NULL,
+                    	root_pipeline_id int8 NULL,
+                    	status varchar NULL,
+                    	stage varchar NULL,
+                    	tenant_id int8 NULL,
+                    	CONSTRAINT sor_transaction_payload_queue_pk PRIMARY KEY (producer_process_id, migration_id)
+                    );
+
+                    CREATE TABLE IF NOT EXISTS unused_entity_master_data_process.unused_entity_process_payload_error_queue (
+                        producer_process_id int8 NOT NULL,
+                        consumer_process_id int8 NULL,
+                        migration_id varchar NOT NULL,
+                        created_on timestamp NOT NULL,
+                        group_id int4 NOT NULL,
+                        status varchar NOT NULL,
+                        stage varchar NOT NULL,
+                        message varchar NULL,
+                        consumed_on_ts timestamp NULL,
+                        root_pipeline_id int8 NULL,
+                        tenant_id int8 NULL,
+                        CONSTRAINT sor_transaction_payload_error_queue_pk PRIMARY KEY (migration_id)
+                    );
+
+
+
+                    CREATE TABLE IF NOT EXISTS unused_entity_master_data_process.unused_entity_process_payload_queue (
+                        producer_process_id int8 NOT NULL,
+                        consumer_process_id int8 NULL,
+                        migration_id varchar NOT NULL,
+                        group_id int4 NULL,
+                        created_on timestamp NULL,
+                        consumed_on_ts timestamp NULL,
+                        root_pipeline_id int8 NULL,
+                        status varchar NULL,
+                        stage varchar NULL,
+                        tenant_id int8 NULL,
+                        CONSTRAINT sor_transaction_payload_queue_pk PRIMARY KEY (producer_process_id, migration_id)
+                    );
+
+
+                    CREATE TABLE IF NOT EXISTS unused_entity_master_data_process.unused_entity_process_payload_queue_archive (
+                        producer_process_id int8 NOT NULL,
+                        consumer_process_id int8 NULL,
+                        migration_id varchar NOT NULL,
+                        group_id int4 NULL,
+                        created_on timestamp NULL,
+                        consumed_on_ts timestamp NULL,
+                        status varchar NULL,
+                        stage varchar NULL,
+                        root_pipeline_id int8 NULL,
+                        tenant_id int8 NULL,
+                        CONSTRAINT sor_transaction_payload_queue_archive_pk PRIMARY KEY (producer_process_id, migration_id)
+                    );
+
+
+                    CREATE TABLE IF NOT EXISTS unused_entity_master_data_process.unused_entity_process_pipeline_audit (
+                        id bigserial NOT NULL,
+                        group_id int4 NOT NULL,
+                        created_on timestamp NOT NULL,
+                        created_by varchar NOT NULL,
+                        user_id varchar NOT NULL,
+                        tenant_id int8 NULL,
+                        status varchar NOT NULL,
+                        stage varchar NOT NULL,
+                        message varchar NOT NULL,
+                        root_pipeline_id int8 NULL
+                    );
+             "} on-condition if "true"=="true"
+
+            transform as "DLL for unusedEntity consolidated input table" on "intics_zio_db_conn" using
+             {"
+                CREATE TABLE if not exists ${temp_schema_name}.unused_entity_meta_data_placeholder_${process-id} (
+                                unused_entity_id int8 null,
+                              	asset_name varchar NULL,
+                              	document_type varchar NULL,
+                              	container_name varchar NULL,
+                              	sor_item_name varchar NULL,
+                              	truth_entity_name varchar NULL,
+                              	truth_entity_placeholder_value varchar NULL,
+                              	sip_type varchar NULL,
+                              	model_registry_id int8 NULL,
+                              	root_pipeline_id int8 NULL
+
+
+                );
+                CREATE TABLE if not exists sor_meta_master_data.unused_entity_meta_data_placeholder_audit (
+                                                     unused_entity_id int8 null,
+                                                     asset_name varchar NULL,
+                                                     document_type varchar NULL,
+                                                     container_name varchar NULL,
+                                                     sor_item_name varchar NULL,
+                                                     truth_entity_name varchar NULL,
+                                                     truth_entity_placeholder_value varchar NULL,
+                                                     root_pipeline_id int8 null,
+                                                     sip_type varchar NULL,
+                                                     model_registry_id int8 NULL
+                );
+
+                CREATE TABLE  if not exists sor_meta_master_data.unused_entity_meta_data_qn_audit (
+                                     unused_entity_id int8 null,
+                                     asset_name varchar NULL,
+                                     document_type varchar NULL,
+                                     container_name varchar NULL,
+                                     sor_item_name varchar NULL,
+                                     truth_entity_name varchar NULL,
+                                     synonym varchar NULL,
+                                     question varchar NULL,
+                                     root_pipeline_id int8 null,
+                                     sip_type varchar NULL,
+                                     model_registry_id int8 NULL
+                );
+
+
+                CREATE TABLE  if not exists ${temp_schema_name}.unused_entity_meta_data_qn_${process-id} (
+                        unused_entity_id int8 null,
+                        asset_name varchar NULL,
+                        document_type varchar NULL,
+                        container_name varchar NULL,
+                        sor_item_name varchar NULL,
+                        truth_entity_name varchar NULL,
+                        synonym varchar NULL,
+                        question varchar NULL,
+                        sip_type varchar null,
+                        model_registry_id int8 null,
+                        root_pipeline_id int8 NULL
+
+
+                );
+                  CREATE TABLE  if not exists sor_meta_master_data.import_unused_entity(
+                                        truth_entity_name varchar NULL,
+                                        asset_id int8 null,
+                                        sor_container_id int8 null,
+                                        status varchar NULL,
+                                        tenant_id int8 null,
+                                        version int8 null,
+                                        sip_type varchar null,
+                                        imported bool null,
+                                        created_on timestamp null,
+                                        created_user_id int8 null,
+                                        last_updated_on timestamp null,
+                                        last_updated_user_id int8 null
+                                );
+
+             "}on-condition if "true"=="true"
+
+             transform as "creating sequence for migration_id and group id" on "intics_zio_db_conn"
+                using{"
+                    CREATE SEQUENCE IF NOT EXISTS migration_id_seq
+                    AS INT8
+                    START WITH 1
+                    INCREMENT BY 1;
+                    CREATE SEQUENCE IF NOT EXISTS group_id_migration_seq
+                    AS INT8
+                    START WITH 1
+                    INCREMENT BY 1;
+                "} on-condition if "true"=="true"
+
+    }
+
+    catch{
+
+    }
+    finally{
+
+    }
+}

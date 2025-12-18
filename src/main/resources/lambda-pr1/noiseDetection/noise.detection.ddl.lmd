@@ -1,0 +1,122 @@
+process "noise.detection.ddl"
+{
+     try{
+        transform as "create noise detection ddl" on "intics_zio_db_conn" using
+        {"
+
+                CREATE TABLE if not exists paper.potential_feature_payload_queue (
+                producer_process_id int8  NULL,
+                consumer_process_id int8 NULL,
+                batch_id varchar NOT NULL,
+                origin_id varchar  NULL,
+                group_id int4  NULL,
+                created_on timestamp  NULL,
+                status varchar  NULL,
+                stage varchar  NULL,
+                consumed_on_ts timestamp NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8  NULL
+                );
+
+
+
+                CREATE TABLE if not exists noise_model.noise_detection_payload_queue_archive
+                (
+                producer_process_id int8 NOT NULL,
+                consumer_process_id int8 NULL,
+                batch_id varchar NOT NULL,
+                group_id int4 NOT NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NOT NULL,
+                status varchar NOT NULL,
+                stage varchar NOT NULL,
+                consumed_on_ts timestamp NULL,
+                last_updated_on timestamp NULL,
+                root_pipeline_id int8 NULL
+                );
+
+
+                CREATE TABLE if not exists noise_model.noise_model_payload_error_queue
+                (
+                producer_process_id int8 NOT NULL,
+                consumer_process_id int8 NULL,
+                batch_id varchar NOT NULL,
+                origin_id varchar NOT NULL,
+                group_id int4 NULL,
+                created_on timestamp NOT NULL,
+                status varchar NOT NULL,
+                stage varchar NOT NULL,
+                message varchar NULL,
+                consumed_on_ts timestamp NULL,
+                last_updated_on timestamp NULL,
+                root_pipeline_id int8 NULL
+                );
+
+
+                CREATE TABLE IF NOT EXISTS noise_model.noise_model_output_table (
+                id bigserial not null,
+                batch_id varchar NOT NULL,
+                origin_id varchar NULL,
+                paper_no int8 NULL,
+                process_id int8 NULL,
+                group_id int8 NULL,
+                tenant_id int8 NULL,
+                input_file_path varchar NULL,
+                consolidated_confidence_score numeric(10, 2) NULL,
+                consolidated_class varchar NULL,
+                noise_models_result varchar NULL,
+                hw_noise_detection_output varchar NULL,
+                check_noise_detection_output varchar NULL,
+                checkbox_mark_detection_output varchar NULL,
+                speckle_noise_detection_output varchar NULL,
+                created_on timestamp NULL,
+                last_updated_on timestamp NULL,
+                root_pipeline_id int8 NULL,
+                status varchar NULL,
+                stage varchar NULL,
+                request text null,
+                response text null,
+                endpoint varchar null,
+                message varchar NULL,
+                model_name varchar NULL,
+                model_version varchar NULL
+                );
+
+
+                CREATE TABLE IF NOT EXISTS noise_model.noise_detection_pipeline_audit (
+                id bigserial NOT NULL,
+                batch_id varchar NULL,
+                process_id bigint NULL,
+                origin_id varchar NULL,
+                group_id varchar NULL,
+                created_on varchar NULL,
+                status varchar NULL,
+                stage varchar NULL,
+                message varchar NULL,
+                root_pipeline_id int8 NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS noise_model.noise_model_input_table (
+                root_pipeline_id int8 NULL,
+                batch_id varchar NOT NULL,
+                action_id int8 NULL,
+                process varchar NULL,
+                input_file_path varchar NULL,
+                output_dir varchar NULL,
+                origin_id varchar NULL,
+                paper_no int8 NULL,
+                process_id int8 NULL,
+                group_id int8 NULL,
+                tenant_id int8 NULL,
+                status varchar NULL
+                );
+
+        "} on-condition if "true"=="true"
+     }
+
+     catch{
+     }
+
+     finally{
+     }
+}

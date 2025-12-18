@@ -1,0 +1,280 @@
+process "data.coverage.lookup.multiple.data.consolidated"
+{
+try{
+    transform as "create result tables for the control data pipeline for multiple transaction" on "intics_zio_db_conn" using {"
+
+        CREATE TABLE IF NOT EXISTS ${COVERAGE_REPORT}.multiple_trz_result_field_summary (
+            id bigserial NOT NULL,
+            reference_id varchar NULL,
+            root_pipeline_id varchar NULL,
+            created_on timestamp NULL,
+            group_id int8 NULL,
+            file_name varchar NULL,
+            origin_id varchar NULL,
+            batch_id varchar NULL,
+            paper_no varchar NULL,
+            actual_value text NULL,
+            extracted_value text NULL,
+            match_status varchar NULL,
+            mismatch_count int8 NULL,
+            tenant_id int8 NULL,
+            classification varchar NULL,
+            sor_container_id int8 NULL,
+            sor_item_name varchar NULL,
+            sor_item_id int8 NULL,
+            docid varchar NULL,
+            predicted_value varchar NULL,
+            sor_container_name varchar NULL
+         );
+
+        CREATE TABLE IF NOT EXISTS ${COVERAGE_REPORT}.multiple_trz_result_match_status (
+            id bigserial NOT NULL,
+            reference_id varchar NULL,
+            root_pipeline_id varchar NULL,
+            created_on timestamp NULL,
+            tenant_id int8 NULL,
+            sor_item_name varchar NULL,
+            true_positive int8 NULL,
+            false_positive int8 NULL,
+            false_negative int8 NULL,
+            true_negative int8 NULL
+         );
+
+        CREATE TABLE IF NOT EXISTS ${COVERAGE_REPORT}.multiple_trz_result_percentage (
+        	id bigserial NOT NULL,
+        	reference_id varchar NULL,
+        	root_pipeline_id varchar NULL,
+        	created_on timestamp NULL,
+        	tenant_id int8 NULL,
+        	no_touch_percentage float8 NULL,
+        	one_touch_percentage float8 NULL,
+        	low_touch_percentage float8 NULL,
+        	high_touch_percentage float8 NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS ${COVERAGE_REPORT}.multiple_trz_container_level_summary_report (
+            id bigserial NOT NULL,
+            reference_id varchar NULL,
+            root_pipeline_id varchar NULL,
+            created_on timestamp NULL,
+            tenant_id int8 NULL,
+            sor_container_name varchar NULL,
+            sor_container_id int8 NULL,
+            overall_container_percentage float8 NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS ${COVERAGE_REPORT}.multiple_trz_classification_match_summary_report (
+        	id bigserial NOT NULL,
+        	reference_id varchar NULL,
+        	root_pipeline_id varchar NULL,
+        	created_on timestamp NULL,
+        	fail_percentage float8 NULL,
+        	false_negative int8 NULL,
+        	false_positive int8 NULL,
+        	pass_percentage float8 NULL,
+        	sor_item_name varchar NULL,
+        	tenant_id int8 NULL,
+        	total_origins int8 NULL,
+        	true_negative int8 NULL,
+        	true_positive int8 NULL,
+        	field_type varchar NULL,
+        	sor_container_name varchar NULL,
+        	sor_container_id int8 NULL,
+        	sor_item_id int8 NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS ${COVERAGE_REPORT}.multiple_trz_classification_match_summary_report_percentage (
+        	id bigserial NOT NULL,
+        	root_pipeline_id varchar NULL,
+        	reference_id varchar NULL,
+        	created_on timestamp NULL,
+        	fail_percentage float8 NULL,
+        	pass_percentage float8 NULL,
+        	tenant_id int8 NULL
+        );
+
+    "} on-condition if "true"=="true"
+
+    transform as "insert into the multiple transaction for field summary table for the '${init_process_id.process_id}'" on "intics_zio_db_conn" using
+    {"
+        INSERT INTO ${COVERAGE_REPORT}.multiple_trz_result_field_summary
+        ( reference_id, root_pipeline_id, created_on, group_id, file_name, origin_id, batch_id,
+        paper_no, actual_value, extracted_value, match_status,
+        mismatch_count, tenant_id, classification, sor_container_id,
+        sor_item_name, sor_item_id, docid, predicted_value, sor_container_name)
+        SELECT '${reference_id}', root_pipeline_id, now(), group_id, file_name,
+        origin_id, batch_id, paper_no, actual_value, extracted_value, match_status, mismatch_count, tenant_id,
+        classification, sor_container_id, sor_item_name, sor_item_id, docid, predicted_value, sor_container_name
+        FROM ${COVERAGE_REPORT}.final_result_field_summary frfs
+        WHERE frfs.root_pipeline_id IN (${init_process_id.process_id});
+    "} on-condition if "true"=="true"
+
+    transform as "insert into the multiple transaction result for final match status table for the ${init_process_id.process_id}" on "intics_zio_db_conn" using
+    {"
+        INSERT INTO ${COVERAGE_REPORT}.multiple_trz_result_match_status
+        ( reference_id, root_pipeline_id, created_on, tenant_id, sor_item_name,
+        true_positive, false_positive, false_negative, true_negative)
+        select
+        	'${reference_id}',
+        	'${init_process_id.process_id}',
+        	now(),
+        	a.tenant_id ,
+        	a.sor_item_name ,
+        	SUM(a.true_positive) AS true_positive,
+            SUM(a.false_positive) AS false_positive,
+            SUM(a.false_negative) AS false_negative,
+            SUM(a.true_negative) AS true_negative
+         FROM ${COVERAGE_REPORT}.final_result_match_status a
+         WHERE a.root_pipeline_id in (${init_process_id.process_id})
+         GROUP BY a.tenant_id, a.sor_item_name;
+    "} on-condition if "true"=="true"
+
+    transform as "insert into the multiple transaction for final result percentage table for the '${init_process_id.process_id}'" on "intics_zio_db_conn" using
+    {"
+        INSERT INTO ${COVERAGE_REPORT}.multiple_trz_result_percentage
+        ( reference_id, root_pipeline_id, created_on, tenant_id,
+        no_touch_percentage, one_touch_percentage, low_touch_percentage, high_touch_percentage)
+        select
+        	  '${reference_id}',
+              '${init_process_id.process_id}',
+              NOW(),
+              a.tenant_id,
+              CASE
+                WHEN ROUND(AVG(a.no_touch_percentage) - FLOOR(AVG(a.no_touch_percentage)), 1) = 0.5
+                  THEN FLOOR(AVG(a.no_touch_percentage)) + 0.5
+                ELSE ROUND(AVG(a.no_touch_percentage))
+              END AS no_touch_percentage,
+              CASE
+                WHEN ROUND(AVG(a.one_touch_percentage) - FLOOR(AVG(a.one_touch_percentage)), 1) = 0.5
+                  THEN FLOOR(AVG(a.one_touch_percentage)) + 0.5
+                ELSE ROUND(AVG(a.one_touch_percentage))
+              END AS one_touch_percentage,
+              CASE
+                WHEN ROUND(AVG(a.low_touch_percentage) - FLOOR(AVG(a.low_touch_percentage)), 1) = 0.5
+                  THEN FLOOR(AVG(a.low_touch_percentage)) + 0.5
+                ELSE ROUND(AVG(a.low_touch_percentage))
+              END AS low_touch_percentage,
+              CASE
+                WHEN ROUND(AVG(a.high_touch_percentage) - FLOOR(AVG(a.high_touch_percentage)), 1) = 0.5
+                  THEN FLOOR(AVG(a.high_touch_percentage)) + 0.5
+                ELSE ROUND(AVG(a.high_touch_percentage))
+              END AS high_touch_percentage
+            FROM ${COVERAGE_REPORT}.final_result a
+            WHERE a.root_pipeline_id in (${init_process_id.process_id})
+        	group by a.tenant_id;
+
+    "} on-condition if "true"=="true"
+
+    transform as "insert into the multiple transaction for classification match summary report table for the '${init_process_id.process_id}'" on "intics_zio_db_conn" using
+    {"
+        INSERT INTO ${COVERAGE_REPORT}.multiple_trz_classification_match_summary_report
+        ( reference_id, root_pipeline_id, created_on, fail_percentage, false_negative, false_positive, pass_percentage, sor_item_name, tenant_id, total_origins, true_negative, true_positive, field_type, sor_container_name, sor_container_id, sor_item_id)
+        WITH a_agg AS (
+          SELECT
+            tenant_id,
+            sor_item_name,
+            field_type,
+            sor_container_name,
+            sor_container_id,
+            sor_item_id,
+            SUM(total_origins) AS total_origins,
+            SUM(true_positive) AS total_true_positive,
+            SUM(false_positive) AS total_false_positive,
+            SUM(false_negative) AS total_false_negative,
+            SUM(true_negative) AS total_true_negative
+          FROM ${COVERAGE_REPORT}.classification_match_summary_report
+          WHERE root_pipeline_id IN (${init_process_id.process_id})
+          GROUP BY tenant_id, sor_item_name, field_type, sor_container_name, sor_container_id, sor_item_id
+        )
+        SELECT
+          '${reference_id}',
+          '${init_process_id.process_id}',
+          now(),
+          -- Custom rounded fail_percentage
+          CASE
+        	WHEN ROUND((((a.total_false_positive + a.total_false_negative)::NUMERIC / NULLIF(a.total_origins, 0)) * 100)
+        	           - FLOOR(((a.total_false_positive + a.total_false_negative)::NUMERIC / NULLIF(a.total_origins, 0)) * 100), 1) = 0.5
+        	  THEN FLOOR(((a.total_false_positive + a.total_false_negative)::NUMERIC / NULLIF(a.total_origins, 0)) * 100) + 0.5
+        	ELSE ROUND(((a.total_false_positive + a.total_false_negative)::NUMERIC / NULLIF(a.total_origins, 0)) * 100)
+          END AS fail_percentage,
+          a.total_false_negative,
+          a.total_false_positive,
+          -- Custom rounded pass_percentage
+          CASE
+        	WHEN ROUND((((a.total_true_positive + a.total_true_negative)::NUMERIC / NULLIF(a.total_origins, 0)) * 100)
+        	           - FLOOR(((a.total_true_positive + a.total_true_negative)::NUMERIC / NULLIF(a.total_origins, 0)) * 100), 1) = 0.5
+        	  THEN FLOOR(((a.total_true_positive + a.total_true_negative)::NUMERIC / NULLIF(a.total_origins, 0)) * 100) + 0.5
+        	ELSE ROUND(((a.total_true_positive + a.total_true_negative)::NUMERIC / NULLIF(a.total_origins, 0)) * 100)
+          END AS pass_percentage,
+          a.sor_item_name,
+          a.tenant_id,
+          a.total_origins,
+          a.total_true_negative,
+          a.total_true_positive,
+          a.field_type,
+          a.sor_container_name,
+          a.sor_container_id,
+          a.sor_item_id
+        FROM a_agg a
+    "} on-condition if "true"=="true"
+
+    transform as "insert into the multiple transaction for container level summary report table for the '${init_process_id.process_id}'" on "intics_zio_db_conn" using
+    {"
+        INSERT INTO ${COVERAGE_REPORT}.multiple_trz_container_level_summary_report
+        (
+          reference_id, root_pipeline_id, created_on,
+          tenant_id, sor_container_name, sor_container_id, overall_container_percentage
+        )
+        SELECT
+          '${reference_id}',
+          '${init_process_id.process_id}',
+          NOW(),
+          '${tenant_id}',
+          a.sor_container_name,
+          a.sor_container_id,
+          CASE
+            WHEN ROUND(AVG(a.pass_percentage)::NUMERIC - FLOOR(AVG(a.pass_percentage)::NUMERIC), 1) = 0.5
+              THEN FLOOR(AVG(a.pass_percentage)::NUMERIC) + 0.5
+            ELSE ROUND(AVG(a.pass_percentage)::NUMERIC)
+          END AS overall_container_percentage
+        FROM ${COVERAGE_REPORT}.multiple_trz_classification_match_summary_report a
+        WHERE a.root_pipeline_id = '${init_process_id.process_id}'
+        GROUP BY
+          a.root_pipeline_id,
+          a.sor_container_name,
+          a.sor_container_id;
+
+    "} on-condition if "true"=="true"
+
+    transform as "insert into the multiple transaction for classification match summary report percentage table for the '${init_process_id.process_id}'" on "intics_zio_db_conn" using
+    {"
+        INSERT INTO ${COVERAGE_REPORT}.multiple_trz_classification_match_summary_report_percentage
+        ( root_pipeline_id, reference_id, created_on, pass_percentage, fail_percentage, tenant_id)
+        SELECT
+             '${init_process_id.process_id}',
+             '${reference_id}',
+             NOW(),
+             CASE
+               WHEN ROUND(AVG(a.pass_percentage)::numeric - FLOOR(AVG(a.pass_percentage)::numeric), 1) = 0.5
+                 THEN FLOOR(AVG(a.pass_percentage)::numeric) + 0.5
+               ELSE ROUND(AVG(a.pass_percentage)::numeric)
+             END AS pass_percentage,
+
+             CASE
+               WHEN ROUND(AVG(a.fail_percentage)::numeric - FLOOR(AVG(a.fail_percentage)::numeric), 1) = 0.5
+                 THEN FLOOR(AVG(a.fail_percentage)::numeric) + 0.5
+               ELSE ROUND(AVG(a.fail_percentage)::numeric)
+             END AS fail_percentage,
+             '${tenant_id}'
+
+           FROM ${COVERAGE_REPORT}.multiple_trz_classification_match_summary_report a
+           WHERE a.root_pipeline_id ='${init_process_id.process_id}'
+             AND a.tenant_id = '${tenant_id}';
+
+    "} on-condition if "true"=="true"
+}
+catch{
+}
+finally{
+}
+}

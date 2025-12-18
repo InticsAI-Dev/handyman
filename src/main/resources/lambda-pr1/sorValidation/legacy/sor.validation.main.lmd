@@ -1,0 +1,65 @@
+process "sor.validation.main"
+{
+try{
+
+		assign as "time_stamp_sor_validation" source "intics_zio_db_conn" using
+        {"
+                SELECT now() as consumed_on_ts;
+        "} on-condition if "true"=="true"
+
+        callprocess as "calling sor_validation processor"
+        with-target "sor.validation.processor"
+        from-file "${basepath}/sorValidation/legacy/sor.validation.processor.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                        SELECT DISTINCT group_id
+                        FROM sor_validation.sor_validation_payload_queue
+                        WHERE status='STAGED' and tenant_id = ${tenant_id} and group_id = '${gen_group_id.group_id}' and batch_id = '${batch_id}';
+        "} on-condition if "true"=="true"
+
+        transform as "Insert into scalar and aggregator transaction audits" on "intics_zio_db_conn" using
+       {"
+            INSERT INTO score.scalar_validation
+            (created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, origin_id, group_id, paper_no, question, predicted_value, vqa_score, score, weight, sor_item_attribution_id, sor_item_name, document_id, validation_name, b_box, root_pipeline_id, question_id, synonym_id, model_registry, status, version, category, batch_id)
+            select created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, origin_id, group_id, paper_no, question, predicted_value, vqa_score, score, weight, sor_item_attribution_id, sor_item_name, document_id, validation_name, b_box, root_pipeline_id, question_id, synonym_id, model_registry, status, version, category, batch_id
+            from ${temp_schema_name}.scalar_validation_${init_process_id.process_id}
+            where batch_id='${batch_id}' and group_id='${gen_group_id.group_id}' and tenant_id=${tenant_id};
+
+            INSERT INTO score.aggregation_evaluator
+            (created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, aggregated_score, masked_score, group_id, origin_id, paper_no, predicted_value, vqa_score, rank, sor_item_attribution_id, sor_item_name, document_id, acc_transaction_id, b_box, root_pipeline_id, frequency, question_id, synonym_id, model_registry, status, version, acc_transcation_id, model_registry_id, batch_id, category)
+            select created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, aggregated_score, masked_score, group_id, origin_id, paper_no, predicted_value, vqa_score, rank, sor_item_attribution_id, sor_item_name, document_id, acc_transaction_id, b_box, root_pipeline_id, frequency, question_id, synonym_id, model_registry, status, version, acc_transcation_id, model_registry_id, batch_id, category
+            from ${temp_schema_name}.aggregation_evaluator_${init_process_id.process_id}
+            where batch_id='${batch_id}' and group_id='${gen_group_id.group_id}' and tenant_id=${tenant_id};
+
+            INSERT INTO macro.ocr_text_comparison_result
+            (created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, origin_id, group_id, paper_no, sor_question, answer, vqa_score, score, weight, sor_item_attribution_id, sor_item_name, document_id, b_box, root_pipeline_id, question_id, synonym_id, model_registry, category, batch_id, is_ocr_field_comparable, extracted_text, threshold, best_score, regex_pattern, candidates)
+            SELECT created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, origin_id, group_id, paper_no, sor_question, answer, vqa_score, score, weight, sor_item_attribution_id, sor_item_name, document_id, b_box, root_pipeline_id, question_id, synonym_id, model_registry, category, batch_id, is_ocr_field_comparable, extracted_text, threshold, best_score, regex_pattern, candidates
+            FROM ${temp_schema_name}.ocr_text_comparison_result_${init_process_id.process_id}
+            where batch_id='${batch_id}' and group_id='${gen_group_id.group_id}' and tenant_id=${tenant_id};
+
+
+       "} on-condition if "true"=="true"
+	}
+	catch{
+			transform as "update to failed in sor validation audit" on "intics_zio_db_conn" using
+           {"
+                INSERT INTO sor_validation.sor_validation_pipeline_audit
+                (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+                VALUES('${gen_group_id.group_id}', now(), '${created_user_id}', '${created_user_id}',
+                 ${tenant_id}, 'FAILED', 'MAIN_SOR_VALIDATION',
+                 'Sor validation failed in main caller with group_id ${gen_group_id.group_id}', '${gen_id.root_pipeline_id}', '${batch_id}');
+           "} on-condition if "true"=="true"
+
+	}
+	finally{
+            transform as "update to failed in sor validation audit" on "intics_zio_db_conn" using
+            {"
+                    INSERT INTO sor_validation.sor_validation_pipeline_audit
+                    (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+                    VALUES('${gen_group_id.group_id}', now(), '${created_user_id}', '${created_user_id}',
+                    ${tenant_id}, 'COMPLETED', 'MAIN_SOR_VALIDATION',
+                    'Sor validation completed in main caller with group_id ${gen_group_id.group_id}', '${gen_id.root_pipeline_id}', '${batch_id}');
+            "} on-condition if "true"=="true"
+
+
+	}

@@ -1,0 +1,155 @@
+process "error.queue.processor"
+{
+try{
+
+
+            transform as "Update to inprogress error queue payload queue" on "intics_zio_db_conn"
+            using {"
+
+                    UPDATE error_queue.error_queue_payload_queue
+                    SET status='IN_PROGRESS', consumed_on_ts = now(), consumer_process_id = '${init_process_id.process_id}'
+                    WHERE group_id='${group_id}' AND status='STAGED' AND stage='ERROR_QUEUE' AND tenant_id = ${tenant_id} ;
+
+                    UPDATE batching.sub_batching_process_payload_queue a
+                    SET status='STAGED',  stage='ERROR_QUEUE'
+                    WHERE a.group_id='${group_id}' AND a.batch_id ='${batch_id}' and a.tenant_id = ${tenant_id};
+
+                    INSERT INTO error_queue.error_queue_pipeline_audit
+                    (process_id, origin_id, group_id, created_on, status, stage, message,root_pipeline_id,tenant_id)
+                    select producer_process_id,origin_id,group_id, now(),
+                    'STARTED', 'ERROR_QUEUE','Error queue main caller STARTED for group_id ${group_id}','${gen_id.root_pipeline_id}', ${tenant_id}
+                    FROM error_queue.error_queue_payload_queue
+                    WHERE group_id='${group_id}' AND status='IN_PROGRESS' AND stage='ERROR_QUEUE' AND tenant_id = ${tenant_id};
+
+            "}on-condition if "true"=="true"
+
+
+            transform as "Temporary table creation for the missing sor item list" on "intics_zio_db_conn"
+            using {"
+
+                    INSERT INTO ${temp_schema_name}.cummulative_result_eq_${init_process_id.process_id}
+                    (cum_count, frequency, b_box, confidence_score, extracted_value, filter_score, group_id, maximum_score, origin_id, paper_no, question_id, root_pipeline_id, sor_item_name, synonym_id, tenant_id,batch_id)
+                    SELECT count(sor_item_name) as cum_count,frequency, b_box, confidence_score, extracted_value, filter_score, group_id, maximum_score, origin_id, paper_no, question_id, root_pipeline_id, sor_item_name, synonym_id, tenant_id,batch_id
+                    FROM voting.cummulative_result
+                    where root_pipeline_id=${init_process_id.process_id}  and extracted_value!='' and batch_id='${batch_id}'
+                    group by frequency, b_box, confidence_score, extracted_value, filter_score, group_id, maximum_score, origin_id, paper_no, question_id, root_pipeline_id, sor_item_name, synonym_id, tenant_id,batch_id;
+
+
+                    INSERT INTO ${temp_schema_name}.sor_item_eq_${init_process_id.process_id}
+                    (sor_item_name, tenant_id,document_type,sor_container_name, batch_id)
+                    SELECT a.sor_item_name,a.tenant_id,d.document_type,sc.sor_container_name, '${batch_id}'
+                    -- a.allowed_adapter, a.allowed_characters, a.char_limit, a.char_threshold, a.comparable_characters, a.sor_container_id,
+                    --a.restricted_adapter, a.restricted_adapter_flag, a.validator_threshold, a.word_limit, a.word_threshold, a.allowed_adaptor_display_text, a.restricted_adapter_display_text
+                    FROM sor_meta.sor_item a
+                    join sor_meta.sor_container sc on sc.sor_container_id=a.sor_container_id
+                    join sor_meta.document d on d.document_type=sc.document_type and d.tenant_id=sc.tenant_id
+                    join sor_meta.truth_entity te on sc.sor_container_id=te.sor_container_id
+                    where a.tenant_id='${tenant_id}' and a.status='ACTIVE' and te.sip_type='KVP_SIP' and d.document_type='${document_type}'
+                    group by a.sor_item_name,a.tenant_id,d.document_type,sc.sor_container_name;
+
+            "}on-condition if "true"=="true"
+
+            transform as "Temporary sor item list missing for the origin id based" on "intics_zio_db_conn"
+            using {"
+
+                    INSERT INTO ${temp_schema_name}.mandatory_sor_item_list_${init_process_id.process_id}
+                    (root_pipeline_id, tenant_id, origin_id, paper_no, sor_item_name)
+                    select c.root_pipeline_id ,a.tenant_id,c.origin_id,b.paper_no,a.sor_item_name
+                    from error_queue.error_queue_payload_queue c
+                    left join ${temp_schema_name}.sor_item_eq_${init_process_id.process_id} a on c.tenant_id =a.tenant_id
+                    left join ${temp_schema_name}.cummulative_result_eq_${init_process_id.process_id} b
+                    on a.tenant_id = b.tenant_id and b.batch_id=a.batch_id
+                    and a.sor_item_name=b.sor_item_name and c.root_pipeline_id=${init_process_id.process_id}
+                    where a.batch_id='${batch_id}';
+
+                    insert into ${temp_schema_name}.mandatory_sor_item_aggregate_${init_process_id.process_id}
+                    (root_pipeline_id,tenant_id,origin_id,error_response)
+                    select root_pipeline_id ,tenant_id,origin_id, jsonb_agg(json_build_object('fieldName',sor_item_name,'message',concat('Mandatory field ',sor_item_name,' was  missing in outbound.'))) as error_response
+                    from ${temp_schema_name}.mandatory_sor_item_list_${init_process_id.process_id}
+                    where paper_no is null
+                    group by root_pipeline_id ,tenant_id,origin_id;
+
+            "}on-condition if "true"=="true"
+
+            transform as "error json for mandatory fields missing in output json output table insert" on "intics_zio_db_conn" using {"
+                insert into ${temp_schema_name}.error_queue_mandatory_json_creator_${init_process_id.process_id}
+                (document_id, origin_id, batch_id, group_id, total_no_of_pages, uploaded_on, root_pipeline_id, tenant_id, error_response)
+                SELECT  c.file_name as document_id ,a.origin_id as origin_id, '${batch_id}',eq.group_id as group_id,count(origin.origin_id) as total_no_of_pages,
+                origin.created_on as uploaded_on  ,'${gen_id.root_pipeline_id}' as root_pipeline_id, ${tenant_id} as tenant_id,a.error_response
+                from error_queue.error_queue_payload_queue eq
+                inner join ${temp_schema_name}.mandatory_sor_item_aggregate_${init_process_id.process_id} a on eq.origin_id=a.origin_id and eq.tenant_id=a.tenant_id
+                inner join ${temp_schema_name}.source_of_origin_${init_process_id.process_id} origin on a.origin_id=origin.origin_id and a.tenant_id=origin.tenant_id
+                inner join ${temp_schema_name}.asset_${init_process_id.process_id} c on a.origin_id=origin.origin_id and origin.file_id=c.file_id and a.tenant_id=c.tenant_id
+                group by c.file_name, a.origin_id, eq.group_id ,origin.created_on,a.error_response;
+
+            "} on-condition if "true"=="true"
+
+
+            transform as "Update to completed error queue payload queue" on "intics_zio_db_conn"
+            using {"
+
+                UPDATE error_queue.error_queue_payload_queue
+                SET status='COMPLETED', consumed_on_ts = now(), consumer_process_id = '${init_process_id.process_id}'
+                WHERE group_id='${group_id}' AND status='IN_PROGRESS' AND stage='ERROR_QUEUE' AND tenant_id = ${tenant_id} ;
+
+                UPDATE batching.sub_batching_process_payload_queue a
+                SET status='COMPLETED',  stage='ERROR_QUEUE'
+                WHERE  a.group_id='${group_id}' and a.batch_id ='${batch_id}' and a.tenant_id = ${tenant_id};
+
+                INSERT INTO error_queue.error_queue_pipeline_audit
+                (process_id, origin_id, group_id, created_on, status, stage, message,root_pipeline_id,tenant_id)
+                select producer_process_id,origin_id,group_id, now(),
+                'COMPLETED', 'ERROR_QUEUE','Error queue main caller completed for group_id ${group_id}','${gen_id.root_pipeline_id}', ${tenant_id}
+                FROM error_queue.error_queue_payload_queue
+                WHERE group_id='${group_id}' AND status='IN_PROGRESS' AND stage='ERROR_QUEUE' AND tenant_id = ${tenant_id};
+
+            "}on-condition if "true"=="true"
+
+}
+catch{
+
+            transform as "Update to failed error queue payload queue" on "intics_zio_db_conn"
+            using {"
+
+                UPDATE error_queue.error_queue_payload_queue
+                SET status='FAILED', consumed_on_ts = now(), consumer_process_id = '${init_process_id.process_id}'
+                WHERE group_id='${group_id}' AND status='IN_PROGRESS' AND stage='ERROR_QUEUE' AND tenant_id = ${tenant_id} ;
+
+                  UPDATE batching.sub_batching_process_payload_queue a
+                 SET status='FAILED',  stage='ERROR_QUEUE'
+                 WHERE a.group_id='${group_id}' and a.batch_id ='${batch_id}' and a.tenant_id = ${tenant_id};
+
+                INSERT INTO error_queue.error_queue_pipeline_audit
+                (process_id, origin_id, group_id, created_on, status, stage, message,root_pipeline_id,tenant_id)
+                select producer_process_id,origin_id,group_id, now(),
+                'FAILED', 'ERROR_QUEUE','Error queue main caller completed for group_id ${group_id}','${gen_id.root_pipeline_id}', ${tenant_id}
+                FROM error_queue.error_queue_payload_queue
+                WHERE group_id='${group_id}' AND status='IN_PROGRESS' AND stage='ERROR_QUEUE' AND tenant_id = ${tenant_id};
+
+            "}on-condition if "true"=="true"
+}
+finally{
+             transform as "moving to payload archive after completion in error queue pipeline" on "intics_zio_db_conn"
+            using {"
+                INSERT into error_queue.error_queue_payload_queue_archive(producer_process_id, consumer_process_id, origin_id,group_id, created_on,status, stage, consumed_on_ts, root_pipeline_id, tenant_id)
+                SELECT producer_process_id, consumer_process_id, origin_id, group_id,created_on, status, stage,consumed_on_ts, root_pipeline_id, ${tenant_id}
+                FROM error_queue.error_queue_payload_queue
+                where status='COMPLETED' and stage='ERROR_QUEUE' and tenant_id = ${tenant_id};
+
+                Delete from error_queue.error_queue_payload_queue
+                where status='COMPLETED' and stage='ERROR_QUEUE' and tenant_id = ${tenant_id};
+            "}on-condition if "true"=="true"
+
+
+             transform as "moving to payload error after completion in error queue pipeline" on "intics_zio_db_conn"
+             using {"
+                INSERT into error_queue.error_queue_payload_error_queue(producer_process_id, consumer_process_id, origin_id,group_id, created_on,status, stage, consumed_on_ts, root_pipeline_id, tenant_id)
+                SELECT producer_process_id, consumer_process_id, origin_id, group_id,created_on, status, stage,consumed_on_ts, root_pipeline_id, ${tenant_id}
+                FROM error_queue.error_queue_payload_queue
+                where status='FAILED' and stage='ERROR_QUEUE' and tenant_id = ${tenant_id};
+
+                Delete from error_queue.error_queue_payload_queue
+                where status='FAILED' and stage='ERROR_QUEUE' and tenant_id = ${tenant_id};
+            "}on-condition if "true"=="true"
+}
+}

@@ -1,0 +1,140 @@
+process "master.data.caller"
+{
+    try {
+
+				coproStart as "Calling cos similarity copro start action" for "MASTER-DATA&COVERAGE_REPORT"
+                copro-server-url "${copro.similarity.admin.start.url}"
+                export-command "${copro.similarity.export}"
+                process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+                using
+                {"
+                          ${similarityStartCommand}
+                "}on-condition if "${similarity.start.action}"=="true"
+
+                callprocess as "calling intellimatch for master data look up"
+                with-target "master.data.intellimatch"
+                from-file "${basepath}/masterDataLookup/master.data.intellimatch.lmd"
+                using "intics_zio_db_conn"
+                for-every {"
+                    SELECT
+                        t.sor_item_name AS sor_item_name,
+                        t.sor_container_id as sor_container_id,
+                        COUNT(t.system_key) AS count_system_key,
+                        MAX(CASE WHEN t.rn = 1 THEN t.system_key END) AS system_key1,
+                        MAX(CASE WHEN t.rn = 2 THEN t.system_key END) AS system_key2,
+                        MAX(CASE WHEN t.rn = 3 THEN t.system_key END) AS system_key3
+                    FROM (SELECT
+                            mdc.sor_item_name,
+                            sk.system_key,
+                            mdc.master_data_comparison,
+                            si.sor_container_id,
+                            ROW_NUMBER() OVER (PARTITION BY mdc.sor_item_name ORDER BY sk.system_key DESC) AS rn
+                        FROM
+                            config.master_data_config mdc
+                        JOIN
+                            md_lookup_systemkey.system_key sk ON sk.system_key_id = mdc.system_key_id
+                        join
+                            sor_meta.sor_item si on si.sor_item_name = mdc.sor_item_name
+                        where mdc.master_data_comparison = true
+                            ) AS t
+                        WHERE t.rn <= 3 -- Adjust this if you need more than 3 system keys
+                        GROUP BY
+                            t.sor_item_name,t.sor_container_id;
+                 "} on-condition if "true"=="true"
+
+                 callprocess as "calling drug name comparison for master data look up"
+                 with-target "drug.comparison"
+                 from-file "${basepath}/masterDataLookup/drug.comparison.lmd"
+                 using "intics_zio_db_conn"
+                 for-every {"
+                      SELECT 1;
+                 "} on-condition if "true"=="false"
+
+                coproStop as "Calling cos similarity copro stop action" for "MASTERDATA&COVERAGE_REPORT"
+                  copro-server-url "${copro.similarity.admin.stop.url}"
+                  process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+                  using
+                  {"
+                                  gunicorn
+                  "}on-condition if "${similarity.stop.action}"=="true"
+    }
+
+    catch {
+
+            transform as "insert into master data audit as failed" on "intics_zio_db_conn" using
+            {"
+
+                    INSERT INTO md_lookup_systemKey.master_data_pipeline_audit
+                    (process_id,origin_id, created_on, group_id,  status, stage, message, root_pipeline_id, tenant_id, batch_id)
+                    SELECT '${init_process_id.process_id}',a.origin_id,now(),'${gen_group_id.group_id}','FAILED','MASTER_DATA','master_data failed','${gen_id.root_pipeline_id}', ${tenant_id}, a.batch_id
+                    from  md_lookup_systemKey.master_data_payload_queue a
+                    where a.batch_id='${batch_id}';
+
+            "}  on-condition if "true"=="true"
+
+    }
+
+    finally {
+
+                transform as "updating payload queue for failed" on "intics_zio_db_conn" using
+                {"
+                    UPDATE  md_lookup_systemKey.master_data_payload_queue
+                    SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts=now(),status='FAILED'
+                    WHERE status='IN_PROGRESS' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+                "}  on-condition if "true"=="true"
+
+                transform as "insert into pipeline summary audit eoc transform" on "intics_zio_db_conn" using
+                {"
+                    INSERT INTO ${temp_schema_name}.summary_audit_files_${process-id}
+                    (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken, root_pipeline_id, tenant_id, batch_id)
+                    SELECT ${process-id} , 'MASTER_DATA' ,'MASTER_DATA',coalesce (sum(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END),0) ,
+                    coalesce (sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END),0),min(created_on),max(consumed_on_ts),
+                    EXTRACT(epoch FROM (max(created_on)-min(created_on))), '${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                    FROM md_lookup_systemKey.master_data_payload_queue
+                    WHERE group_id=${gen_group_id.group_id} AND tenant_id = ${tenant_id} and batch_id = '${batch_id}'
+                    group by batch_id;
+
+                    INSERT INTO audit.pipeline_summary_audit
+                    (process_id, created_on, module_name, macro_process, files_processed_count,files_failed_count,start_time,end_time, time_taken, group_id, root_pipeline_id, created_user_id, template_id, tenant_id,average_time,papers_processed_count,papers_failed_count, batch_id )
+                    SELECT ${process-id} ,now(),msaf.module_name ,msaf.macro_process ,msaf.completed_count,msaf.failed_count,msaf.min_created_on,msaf.max_created_on, EXTRACT(epoch FROM (msaf.max_created_on-msaf.min_created_on)),
+                    '${gen_group_id.group_id}','${root-ref-id}','${created_user_id}','${document_id}',${tenant_id},msaf.time_taken,0,0,msaf.batch_id
+                    FROM ${temp_schema_name}.summary_audit_files_${process-id} msaf
+                    WHERE msaf.module_name='MASTER_DATA' AND msaf.macro_process='MASTER_DATA' AND msaf.tenant_id = ${tenant_id} and msaf.batch_id = '${batch_id}'
+                    group by msaf.batch_id, msaf.module_name ,msaf.macro_process ,msaf.completed_count,msaf.failed_count,msaf.min_created_on,msaf.max_created_on,msaf.time_taken,msaf.batch_id;
+        "} on-condition if "true"=="true"
+
+      transform as "Insert into master data error queue as failed ${gen_group_id.group_id}" on "intics_zio_db_conn" using
+            {"
+                    INSERT INTO md_lookup_systemKey.master_data_payload_error_queue
+                    (producer_process_id, consumer_process_id, group_id, origin_id , created_on, status, stage, message, consumed_on_ts,root_pipeline_id, tenant_id, batch_id)
+                    SELECT producer_process_id, consumer_process_id, group_id, origin_id, created_on,
+                    status, stage, 'MASTER_DATA IS FAILED', consumed_on_ts,root_pipeline_id, ${tenant_id}, batch_id
+                    FROM md_lookup_systemKey.master_data_payload_queue
+                     WHERE group_id='${gen_group_id.group_id}' and status ='FAILED' and stage ='MASTER_DATA' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                    DELETE FROM md_lookup_systemKey.master_data_payload_queue
+                    WHERE group_id='${gen_group_id.group_id}' and status ='FAILED'
+                    and stage ='MASTER_DATA' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+            "} on-condition if "true"=="true"
+
+
+            transform as "Insert into master data payload queue archive as completed ${gen_group_id.group_id}" on "intics_zio_db_conn" using
+            {"
+                    INSERT INTO md_lookup_systemKey.master_data_payload_queue_archive
+                    (producer_process_id, consumer_process_id, origin_id, group_id, created_on, status, stage, consumed_on_ts,root_pipeline_id, tenant_id, batch_id)
+                    SELECT producer_process_id, consumer_process_id, origin_id, group_id, created_on, status, stage,
+                    consumed_on_ts,root_pipeline_id, ${tenant_id}, batch_id
+                    FROM md_lookup_systemKey.master_data_payload_queue
+                    WHERE group_id='${gen_group_id.group_id}' and status ='COMPLETED' and stage ='MASTER_DATA' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                    DELETE FROM md_lookup_systemKey.master_data_payload_queue
+                    WHERE group_id='${gen_group_id.group_id}' and status ='COMPLETED' and stage ='MASTER_DATA' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+            "} on-condition if "true"=="true"
+
+    }
+
+
+
+}

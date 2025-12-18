@@ -1,0 +1,155 @@
+process "smoke.test"
+{
+	try {
+
+            transform as "Smoke Test" on "intics_zio_db_conn" using
+            {"
+                CREATE SCHEMA IF NOT EXISTS smoke_test;
+                CREATE TABLE if not exists smoke_test.test_table (
+                     id bigserial NOT NULL,
+                     process_id int8 NULL,
+                     origin_id varchar NULL,
+                     group_id int8 NULL,
+                     created_on varchar NULL,
+                     status varchar NULL,
+                     stage varchar NULL,
+                     message varchar NULL,
+                     batch_id varchar NULL
+                );
+                CREATE TABLE IF NOT EXISTS alchemy_response.cleaned_pdf_info(
+                                            id bigserial  not null,
+                                            process_id int8  NULL,
+                                            group_id int8  NULL,
+                                            origin_id varchar  NULL,
+                                            processed_file_path varchar  null,
+                                            file_name varchar  null,
+                                            created_on timestamp  NULL,
+                                            last_updated_on timestamp  NULL,
+                                            tenant_id int8 NULL,
+                                            root_pipeline_id int8 NULL,
+                                            status varchar null,
+                                            stage varchar null,
+                                            message varchar null,
+                                            model_name varchar null,
+                                            model_version varchar null,
+                                            batch_id varchar NULL,
+                                            CONSTRAINT cleaned_pdf_info_pk PRIMARY KEY (id)
+
+                                    );
+
+                                     CREATE TABLE IF NOT EXISTS macro.cleaned_pdf_input (
+                                                    	origin_id varchar NULL,
+                                                    	output_file_name text NULL,
+                                                    	group_id int4 NULL,
+                                                    	filepaths _varchar NULL,
+                                                    	tenant_id int8 NULL,
+                                                    	root_pipeline_id int8 NULL,
+                                                    	process_id int8 NULL,
+                                                    	batch_id varchar NULL
+                                                    );
+        INSERT INTO macro.cleaned_pdf_input
+        (origin_id, output_file_name, group_id, filepaths, tenant_id, root_pipeline_id, process_id)
+        VALUES('ORIGIN-1', 'test-pdf_001.pdf', 001, '{/data/output/pdf_to_image/CM1882524/CM1882524_0.jpg}', 001, 001, 001, '${batch_id}');
+            "} on-condition if "true"=="false"
+
+            nerAdapter as "nerAdapter for vqa attribution"
+            on-resource-conn "intics_zio_db_conn"
+            result-table "sor_transaction.adapter_result_audit"
+            using-docnut-result
+            {"
+                SELECT 'patient_name' as sor_key, 'what is patient_name' as question, 'BILL' as input_value,1 as weight,99 as vqa_score,
+                'ner' as allowed_adapter ,'name' as restricted_adapter ,'${process-id}' as process_id,
+                10 as word_limit ,10 as word_threshold ,
+                10 as char_limit ,10 as char_threshold ,
+                20 as validator_threshold ,20 as allowed_characters ,
+                1 as comparable_characters,1 as restricted_adapter_flag,
+                'INT-1' as origin_id ,1 as paper_no ,1 as group_id,
+                1 as created_user_id, 1 as tenant_id,1 as b_box,1 as question_id, 1 as synonym_id, '${batch_id}';
+            "} on-condition if "true"=="false"
+
+
+            intellimatch as "match eval_prescriber_city_state_zip"
+            on-resource-conn "intics_zio_db_conn"
+            match-result "control_data.eval_prescriber_city_state_zip"
+            using {"
+                select 'Humana' as actual_value,'INT-1' as origin_id,now() as created_on,
+                1 as group_id,1 as root_pipeline_id,1 as similarity, 'huinana' as extracted_value,
+                1 as confidence_score,'test-001' as file_name, batch_id '${batch_id}';
+            "} on-condition if "true"=="false"
+
+
+            masterdataComparison as "matched provider npi"
+            on-resource-conn "intics_zio_db_conn"
+            match-result "md_lookup_systemKey.provider_npi_match"
+            using {"
+                SELECT 'INT-1' as origin_id ,1 as paper_no ,'12345' as eoc_identifier,12345 as extracted_value ,
+                12345 as actual_value,12345 as root_pipeline_id, '${batch_id}';
+            "} on-condition if "true"=="false"
+
+            assign as "context" source "intics_agadia_db_conn" using
+            {"
+               select
+               concat('${target_directory_path}', '/response_builder') as qr_grouping_path,
+               jsonb_build_object('outputFileName', concat(intics_reference_id, '.pdf'),
+               'inputFilePaths', paper_file_path_arr) as request_body;
+            "} on-condition if "true"=="false"
+
+            assign as "preprocessed_file_details" source "intics_zio_db_conn" using
+            {"
+                SELECT jsonb_build_object('outputFileName', concat('test', '_', '001', '.pdf'),
+                'inputFilePaths', jsonb_build_array('/data/output/pdf_to_image/CM1882524/CM1882524_0.jpg'),
+                 'outputDir', '/data/output/response_builder/CM1882524/' ,'originId','INT-1','groupId','1','tenant_id','1','processId','${process-id}','tenantId','1') as request_body;
+            "} on-condition if "true"=="false"
+
+             fileMerger as "merge_jpg_files" in "/data/output/pdf_to_image/CM1882524/" using
+           {
+               "${preprocessed_file_details.request_body}"
+           } on-condition if "true"=="false"
+
+            file-merger-pdf as "file merger pdf outbound"
+            result-table "alchemy_response.cleaned_pdf_info"
+            copro-url "${copro.file-merger.url}"
+            resource-conn "intics_zio_db_conn"
+            output-directory "/data/output/"
+            using {"
+                SELECT origin_id, output_file_name, group_id, filepaths, tenant_id, root_pipeline_id, process_id, batch_id
+                                    FROM macro.cleaned_pdf_input where group_id=001 and tenant_id =001 and batch_id='${batch_id}';
+            "} on-condition if "true"=="false"
+	 transform as "Smoke Test" on "intics_zio_db_conn" using
+              {"
+           CREATE SCHEMA IF NOT EXISTS smoke_test;
+                     CREATE TABLE if not exists smoke_test.${test_table} (
+                             id bigserial NOT NULL,
+                             process_id int8 NULL,
+                             origin_id varchar NULL,
+                             group_id int8 NULL,
+                             created_on varchar NULL,
+                             status varchar NULL,
+                             stage varchar NULL,
+                             message varchar NULL,
+                             batch_id varchar NULL
+                     );
+              "} on-condition if "true"=="false"
+
+
+
+        outbound-delivery-notify as "outbound zip to delivery"
+        document-id "${origin_file.file_name}"
+        intics-zip-uri "${notify_zip.file_uri}"
+        checksum "${zip_file_checksum}"
+        resource-conn "intics_zio_db_conn"
+        using  { "
+              select file_name as file_name, '' as file_uri,'' as zip_file_check_sum,
+              '${outbound.doc.delivery.notify.url}' as endpoint,'${outbound.appId}' as app_id,'${outbound.appKeyId}' as app_secret_key,product_json as outbound_json,'${outbound.context.condition}' as outbound_condition
+              from product_outbound.product_outbound_zip_file_input  where group_id=${group_id} and tenant_id = ${tenant_id} and batch_id='${batch_id}';
+
+        " } on-condition if "${outbound.delivery.notify}"=="true"
+
+	}
+	catch{
+
+	}
+	finally{
+
+	}
+}

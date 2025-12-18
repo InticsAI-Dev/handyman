@@ -1,0 +1,72 @@
+process "text.extraction.main.caller"
+{
+try{
+        assign as "time_stamp_text_extraction" source "intics_zio_db_conn" using
+        {"
+                SELECT now() as consumed_on_ts;
+        "} on-condition if "true"=="true"
+
+
+        callprocess as "calling text.extraction processor"
+        with-target "text.extraction.processor"
+        from-file "${basepath}/extraction/text/text.extraction.processor.lmd"
+        using "intics_zio_db_conn"
+        for-every
+        {"
+               SELECT DISTINCT group_id, batch_id
+               FROM text_extraction.text_extraction_payload_queue
+               WHERE batch_id ='${batch_id}' and status='STAGED' AND stage='TEXT_EXTRACTION'
+                 and tenant_id = ${tenant_id} and group_id = '${gen_group_id.group_id}';
+        "} on-condition if "true"=="true"
+
+
+
+}
+catch{
+        transform as "failed in text_extraction main caller" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO text_extraction.text_extraction_pipeline_audit
+                (process_id, group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id )
+                VALUES('${init_process_id.process_id}', '${gen_group_id.group_id}', now(), 'FAILED', 'TEXT_EXTRACTION_MAIN_CALLER', 'failed in text_extraction main caller','${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}');
+        "}on-condition if "true"=="true"
+
+}
+finally{
+        transform as "completed in text_extraction main caller" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO text_extraction.text_extraction_pipeline_audit
+                (process_id, group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+                VALUES('${init_process_id.process_id}', '${gen_group_id.group_id}', now(), 'COMPLETED', 'TEXT_EXTRACTION_MAIN_CALLER', 'completed in text_extraction main caller','${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}');
+        "}on-condition if "true"=="true"
+
+       transform as "Move to archive after completed" on "intics_zio_db_conn" using {"
+
+                update ingestion.pipeline_queue_status_audit as a
+                set status = 'COMPLETED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                where  a.group_id=${group_id}
+                and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='TEXT_EXTRACTION_MAIN_CALLER' ;
+
+           INSERT INTO text_extraction.text_extraction_payload_queue_archive
+           (producer_process_id, consumer_process_id, origin_id,group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, batch_id)
+           SELECT producer_process_id, consumer_process_id, origin_id, group_id, created_on, status, stage,consumed_on_ts, root_pipeline_id, ${tenant_id}, batch_id
+           FROM text_extraction.text_extraction_payload_queue
+           where status='COMPLETED' and stage='TEXT_EXTRACTION'
+           AND group_id='${group_id}' and tenant_id = ${tenant_id}
+           and batch_id = '${batch_id}';
+
+           Delete from text_extraction.text_extraction_payload_queue
+        where status='COMPLETED' and stage='TEXT_EXTRACTION' AND group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+       "} on-condition if "true"=="true"
+
+       transform as "Move to archive after failed" on "intics_zio_db_conn" using {"
+               INSERT INTO text_extraction.text_extraction_payload_error_queue
+               (producer_process_id, consumer_process_id, origin_id,group_id, created_on, status, stage, message, consumed_on_ts, root_pipeline_id, tenant_id, batch_id)
+               SELECT producer_process_id, consumer_process_id,origin_id, group_id, created_on, status, stage, 'text_extraction Processor failed for group_id ${group_id}',consumed_on_ts, root_pipeline_id, ${tenant_id}, batch_id
+               FROM text_extraction.text_extraction_payload_queue
+               where status='FAILED' AND group_id='${group_id}' AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+               Delete from text_extraction.text_extraction_payload_queue
+               where status='FAILED' and stage='TEXT_EXTRACTION' AND group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+       "} on-condition if "true"=="true"
+}
+}

@@ -1,0 +1,48 @@
+process "batch.process.multitude"
+{
+    try
+    {
+        callprocess as "calling paperWiseAgenticFilter.agentic.paper.filter.splitting.main lambda"
+        with-target "paper.range.filter.splitting.main"
+        from-file "${basepath}/agenticPaperFilter/paperRangeFilter/paper.range.filter.splitting.main.lmd"
+        using "intics_zio_db_conn"
+        for-every
+        {"
+            SELECT 1;
+        "} on-condition if "${paper.range.filter.activator}" == "true"
+
+        callprocess as "calling agentic.paper.filter.splitting.main lambda"
+        with-target "agentic.paper.filter.splitting.main"
+        from-file "${basepath}/agenticPaperFilter/agentic.paper.filter.splitting.main.lmd"
+        using "intics_zio_db_conn"
+        for-every
+        {"
+            SELECT 1;
+        "} on-condition if "${agentic.paper.filter.activator}" == "true"
+
+        callprocess as "calling legacy sor_transaction main "
+        with-target "sor.transaction.main"
+        from-file "${basepath}/sorTransaction/legacy/sor.transaction.main.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${sor.transaction.activator}"=="true"
+
+        callprocess as "calling nextgen sor_transaction main "
+        with-target "sor.transaction.nextgen.main"
+        from-file "${basepath}/sorTransaction/nextgen/sor.transaction.main.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${sor.transaction.nextgen.activator}"=="true"
+
+
+    }
+    catch
+    {
+
+    }
+    finally
+    {
+    }
+}

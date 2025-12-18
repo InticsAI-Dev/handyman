@@ -1,0 +1,297 @@
+process "sor.transaction.radon.kvp"
+{
+try{
+
+            assign as "bbox" source "intics_zio_db_conn" using
+            {"
+                    select  (case when '${sor.transaction.nextgen.bbox.outbound.activator}'='true' AND '${sor.transaction.radon.kvp.bbox.activator}'='true' then 'true' else 'false' end) as radon_bbox_activator;
+                    select  (case when '${sor.transaction.legacy.bbox.outbound.activator}'='true' AND '${sor.transaction.radon.kvp.bbox.activator}'='true' then 'true' else 'false' end) as legacy_bbox_activator;
+            "}on-condition if "true"=="true"
+
+            assign as "filter" source "intics_zio_db_conn" using
+            {"
+                    select  (case when '${agentic.paper.filter.activator}'='false' AND '${paper.range.filter.activator}'='false' then 'true' else 'false' end) as paper_filter_activator;
+            "}on-condition if "true"=="true"
+
+
+            transform as "Input table for radon kvp" on "intics_zio_db_conn" using {"
+                    INSERT INTO ${temp_schema_name}.radon_kvp_input_${init_process_id.process_id}
+                    (input_file_path, user_prompt, process, paper_no, origin_id, process_id, group_id, tenant_id, root_pipeline_id,
+                    model_registry, batch_id, category, created_on, sor_container_id, system_prompt)
+                    SELECT
+                    pl.file_path as input_file_path,
+                    pv.base_prompt AS user_prompt,
+                        CASE
+                        WHEN '${bbox.radon_bbox_activator}' = 'false' THEN 'RADON_KVP_ACTION'
+                        ELSE 'RADON_BBOX_ACTION'
+                        END AS process,
+                    pl.paper_no ,
+                    stpq.origin_id ,
+                    stpq.root_pipeline_id AS process_id,
+                    stpq.group_id ,
+                    stpq.tenant_id ,
+                    stpq.root_pipeline_id ,
+                    'RADON' AS model_registry,
+                    stpq.batch_id,
+                    '${qn_category}',
+                    now() as created_on,
+                    pv.sor_container_id,
+                    pv.system_prompt AS system_prompt
+                    FROM sor_transaction.sor_transaction_payload_queue stpq
+                    JOIN ${temp_schema_name}.paper_level_score_${init_process_id.process_id} pl
+                        ON pl.origin_id = stpq.origin_id
+                        AND pl.tenant_id = stpq.tenant_id
+                        AND pl.batch_id = stpq.batch_id
+                    JOIN sor_meta.radon_prompt_table pv ON pl.tenant_id = pv.tenant_id AND pl.sor_container_id = pv.sor_container_id
+                    WHERE
+                        stpq.group_id = '${group_id}'
+                        AND stpq.tenant_id = '${tenant_id}'
+                        AND pv.document_type='${document_type}'
+                        AND pv.status='ACTIVE'
+                        AND pv.version='${prompt_version.value}'
+                        AND pv.use_case = 'KVP'
+                        AND pv.process = CASE
+                                WHEN '${bbox.radon_bbox_activator}' = 'false' THEN 'RADON_KVP_BBOX'
+                                ELSE 'RADON_KVP'
+                                END
+                        AND stpq.batch_id ='${batch_id}'
+                        AND pl.is_candidate_paper = 'yes';
+            "} on-condition if "${filter.paper_filter_activator}"=="true"
+
+            transform as "Input table for radon kvp using agentic paper filter" on "intics_zio_db_conn" using {"
+                    INSERT INTO ${temp_schema_name}.radon_kvp_input_${init_process_id.process_id}
+                    (input_file_path, user_prompt, process, paper_no, origin_id, process_id, group_id, tenant_id, root_pipeline_id,
+                    model_registry, batch_id, category, created_on, sor_container_id, system_prompt)
+                    SELECT
+                    pl.file_path as input_file_path,
+                    pv.base_prompt AS user_prompt,
+                        CASE
+                        WHEN '${bbox.radon_bbox_activator}' = 'false' THEN 'RADON_KVP_ACTION'
+                        ELSE 'RADON_BBOX_ACTION'
+                        END AS process,
+                    pl.paper_no ,
+                    stpq.origin_id ,
+                    stpq.root_pipeline_id AS process_id,
+                    stpq.group_id ,
+                    stpq.tenant_id ,
+                    stpq.root_pipeline_id ,
+                    'RADON' AS model_registry,
+                    stpq.batch_id,
+                    '${qn_category}',
+                    now() as created_on,
+                    pv.sor_container_id,
+                    pv.system_prompt AS system_prompt
+                    FROM sor_transaction.sor_transaction_payload_queue stpq
+                    JOIN ${temp_schema_name}.agentic_entity_level_score_${init_process_id.process_id} pl
+                        ON pl.origin_id = stpq.origin_id
+                        AND pl.tenant_id = stpq.tenant_id
+                        AND pl.batch_id = stpq.batch_id
+                    JOIN sor_meta.radon_prompt_table pv on pl.tenant_id = pv.tenant_id and pl.sor_container_id = pv.sor_container_id
+                    WHERE
+                    stpq.group_id = '${group_id}'
+                    AND stpq.tenant_id = '${tenant_id}'
+                    AND pv.document_type='${document_type}'
+                    AND pv.status='ACTIVE'
+                    AND pv.version='${prompt_version.value}'
+                    AND pv.process = CASE
+                    WHEN '${bbox.radon_bbox_activator}' = 'false' THEN 'RADON_KVP_BBOX'
+                    ELSE 'RADON_KVP'
+                    END
+                    AND stpq.batch_id ='${batch_id}'
+                    AND pl.is_candidate_paper = 'yes';
+            "} on-condition if "true"=="true"
+
+
+            assign as "gen_directory" source "intics_zio_db_conn" using
+            {"
+                    SELECT concat ('${gen_directory.current_directory}','/radon-kvp-bbox/output') as radon_kvp_bbox_dest,
+                    (CASE WHEN '${sor.kvp.service.name.activator}' = 'RADON' then '${copro.trinity-radon.kvp.url}'
+                    WHEN '${sor.kvp.service.name.activator}' = 'KRYPTON' then '${copro.trinity-krypton.kvp.url}'
+                    WHEN '${sor.kvp.service.name.activator}' = 'NEON' then '${copro.trinity-neon.kvp.url}' end) as sor_transaction_copro_trinity_triton_url;
+            "} on-condition if "true"=="true"
+
+
+
+            createDirectory as "creating_directory" using
+            {
+                    "${gen_directory.radon_kvp_bbox_dest}"
+            } on-condition if "true"=="true"
+
+            radonKvp as "radon Kvp api calling macro"
+            on-resource-conn "intics_zio_db_conn"
+            copro-url "${gen_directory.sor_transaction_copro_trinity_triton_url}"
+            output-table "${temp_schema_name}.radon_kvp_output_${init_process_id.process_id}"
+            using
+            {"
+                    SELECT a.input_file_path, a.user_prompt, a.process, a.paper_no, a.origin_id, a.process_id, a.group_id, a.tenant_id, a.root_pipeline_id, a.system_prompt,a.model_name,
+                    a.batch_id, a.model_registry, a.category, now() as created_on, (CASE WHEN '${sor.kvp.service.name.activator}' = 'RADON' then 'RADON START'
+                    WHEN '${sor.kvp.service.name.activator}' = 'KRYPTON' then 'KRYPTON START'
+                    WHEN '${sor.kvp.service.name.activator}' = 'NEON' then 'NEON START' end) as api_name,sc.container_post_process_enable::bool as post_process,sc.container_post_process_class as post_process_class_name,sc.sor_container_id,sc.sor_container_name
+                    FROM ${temp_schema_name}.radon_kvp_input_${init_process_id.process_id} a
+                    JOIN ${temp_schema_name}.sor_meta_consolidated_${init_process_id.process_id} sc on a.sor_container_id=sc.sor_container_id
+                    WHERE a.model_registry = 'RADON'  and a.group_id ='${group_id}' and a.tenant_id='${tenant_id}' and a.batch_id ='${batch_id}';
+            "}on-condition if "true"=="true"
+
+
+            transform as "Input table for llm json parser input table bbox.radon_bbox_activator : ${bbox.radon_bbox_activator} " on "intics_zio_db_conn" using {"
+
+                    INSERT INTO ${temp_schema_name}.llm_json_parser_input_${init_process_id.process_id}
+                    (response,paper_no,origin_id,group_id,tenant_id,root_pipeline_id,batch_id,model_registry,category,created_on,sor_container_id,sor_meta_detail,image_dpi, image_width, image_height,sor_container_instance)
+                    SELECT
+                    b.total_response_json as response, b.paper_no,a.origin_id, a.group_id, a.tenant_id, a.root_pipeline_id, a.batch_id,
+                     b.model_registry, b.category, a.created_on, smca.sor_container_id,
+                     jsonb_agg(jsonb_build_object('sorItemName',smca.sor_item_name,'isEncrypted',smca.is_encrypted::varchar,'encryptionPolicy',smca.encryption_policy,'sorItemLabels',''))::varchar as sor_meta_detail,
+                      ast.dpi AS image_dpi,
+                      ast.width AS image_width,
+                      ast.height AS image_height,
+                      b.sor_container_instance
+                    from sor_transaction.sor_transaction_payload_queue a
+                    left join ${temp_schema_name}.radon_kvp_output_${init_process_id.process_id} b
+                    on a.origin_id = b.origin_id and a.batch_id = b.batch_id and a.tenant_id =b.tenant_id
+                    left join ${temp_schema_name}.sor_meta_consolidated_${init_process_id.process_id} smca
+                    	on a.group_id = a.group_id
+                    	and smca.sor_container_id = b.sor_container_id
+                    LEFT JOIN ${temp_schema_name}.source_of_truth_${init_process_id.process_id} st ON st.origin_id = b.origin_id AND st.paper_no = b.paper_no
+                    LEFT JOIN ${temp_schema_name}.asset_${init_process_id.process_id} ast ON ast.asset_id = st.asset_id
+                    WHERE a.tenant_id = ${tenant_id}
+                                and a.group_id ='${group_id}'
+                                and a.batch_id ='${batch_id}'
+                                AND b.total_response_json IS NOT NULL
+                                AND b.total_response_json <> ''
+                                AND smca.sor_container_id is not null
+                    group by b.total_response_json, b.paper_no,a.origin_id, a.group_id, a.tenant_id, a.root_pipeline_id, a.batch_id,
+                    b.model_registry, b.category, a.created_on,smca.sor_container_id, ast.dpi, ast.width, ast.height,b.sor_container_instance;
+
+            "} on-condition if "${bbox.radon_bbox_activator}"=="false"
+
+
+            llmJsonParser as "radon kvp json parser for kvp macro results"
+            on-resource-conn "intics_zio_db_conn"
+            input-table "${temp_schema_name}.llm_json_parser_input_${init_process_id.process_id}"
+            output-table "${temp_schema_name}.llm_json_parser_output_${init_process_id.process_id}"
+            using
+            {"
+                    SELECT a.response as response, a.paper_no, a.origin_id, a.group_id, a.tenant_id, a.root_pipeline_id, a.batch_id,
+                    a.model_registry, a.category, a.created_on,a.sor_container_id, a.sor_meta_detail,a.image_dpi, a.image_width, a.image_height,a.sor_container_instance
+                    from ${temp_schema_name}.llm_json_parser_input_${init_process_id.process_id} a
+                    WHERE a.tenant_id = ${tenant_id} and a.group_id ='${group_id}' and a.batch_id ='${batch_id}' AND a.response IS NOT NULL;
+
+            "} on-condition if "${bbox.radon_bbox_activator}"=="false"
+
+            callprocess as "Insert into vqa transaction for label and section filtering"
+            with-target "sor.transaction.vqa.section.label.filter"
+            from-file "${basepath}/sorTransaction/nextgen/postmapping/sor.transaction.vqa.section.label.filter.lmd"
+            using "intics_zio_db_conn"
+            for-every {"
+                SELECT 1;
+            "} on-condition if "${sor.transaction.radon.section.label.filter}"=="true"
+
+            callprocess as "Insert into vqa transaction for missing sor items in lln json parser"
+            with-target "sor.transaction.vqa.missing.entry.lmd"
+            from-file "${basepath}/sorTransaction/nextgen/postmapping/sor.transaction.vqa.missing.entry.lmd"
+            using "intics_zio_db_conn"
+            for-every {"
+                SELECT 1;
+            "} on-condition if "true"=="false"
+
+            callprocess as "Calling sor.transform.processor"
+            with-target "sor.transform.processor.lmd"
+            from-file "${basepath}/sorTransform/sor.transform.processor.lmd"
+            using "intics_zio_db_conn"
+            for-every {"
+                SELECT 1;
+            "} on-condition if "true"=="true"
+
+            transform as "Insert into audit table for Radon KVP" on "intics_zio_db_conn" using
+            {"
+                    INSERT INTO audit.process_audit_output
+                    (tenant_id, root_pipeline_id, origin_id, request, response, status, stage, message,
+                    created_on, endpoint, paper_no, batch_id)
+                    SELECT ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,
+                           CONCAT('${sor.transaction.temp.api.service.name}', ' KVP ACTION') AS stage,
+                           ai.message, NOW() AS created_on, ai.endpoint, ai.paper_no, '${batch_id}' AS batch_id
+                    FROM
+                        ${temp_schema_name}.radon_kvp_output_${init_process_id.process_id} ai
+                    WHERE tenant_id = ${tenant_id}
+                            AND group_id = ${group_id}
+                            AND batch_id = '${batch_id}'
+                    GROUP BY
+                            ai.origin_id, ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response,
+                            ai.status, ai.message, ai.endpoint, ai.stage, ai.paper_no;
+            "}  on-condition if "true"=="true"
+
+}
+catch{
+            transform as "Insert into failed sor transaction audit queue" on "intics_zio_db_conn" using
+            {"
+
+                    UPDATE sor_transaction.sor_transaction_payload_queue
+                    SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts='${time_stamp_sor_transaction.consumed_on_ts}', status='FAILED'
+                    WHERE group_id ='${group_id}' AND status ='IN_PROGRESS'
+                    AND stage ='SOR_TRANSACTION' AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                    update ingestion.pipeline_queue_status_audit as a
+                    set status = 'FAILED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                    where  a.group_id=${group_id}
+                    and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='SOR_TRANSACTION' and status='IN_PROGRESS';
+
+                    UPDATE batching.sub_batching_process_payload_queue a
+                    SET status='FAILED',  stage='SOR_TRANSACTION'
+                    WHERE a.group_id='${group_id}'  and a.batch_id ='${batch_id}'
+                    and a.tenant_id = ${tenant_id} and a.root_pipeline_id='${gen_id.root_pipeline_id}';
+
+            "}  on-condition if "true"=="true"
+
+}
+finally{
+
+            transform as "Update sor transaction table for failed in radon KVP" on "intics_zio_db_conn" using {"
+
+                    UPDATE sor_transaction.sor_transaction_payload_queue a
+                    SET    consumer_process_id='${init_process_id.process_id}',
+                           consumed_on_ts='${time_stamp_sor_transaction.consumed_on_ts}',
+                           status='FAILED'
+                    FROM   ${temp_schema_name}.radon_kvp_output_${init_process_id.process_id} b
+                    WHERE  b.group_id =a.group_id
+                            AND    a.origin_id=b.origin_id
+                            AND    a.batch_id=b.batch_id
+                            AND    b.group_id ='${group_id}'
+                            AND    b.status ='FAILED'
+                            AND    a.stage ='SOR_TRANSACTION'
+                            AND    b.tenant_id = ${tenant_id}
+                            AND    a.batch_id = '${batch_id}';
+
+                    UPDATE ingestion.pipeline_queue_status_audit a
+                    SET consumer_process_id='${init_process_id.process_id}',
+                        consumed_on_ts='${time_stamp_sor_transaction.consumed_on_ts}',
+                        status='FAILED'
+                    FROM  ${temp_schema_name}.radon_kvp_output_${init_process_id.process_id} b
+                    WHERE  b.group_id =a.group_id
+                             AND    a.origin_id=b.origin_id
+                             AND    a.batch_id=b.batch_id
+                             AND    b.group_id ='${group_id}'
+                             AND    b.status ='FAILED'
+                             AND    a.stage ='SOR_TRANSACTION'
+                             AND    b.tenant_id = ${tenant_id}
+                             AND    a.batch_id = '${batch_id}';
+
+
+                    UPDATE batching.sub_batching_process_payload_queue a
+                    SET consumer_process_id='${init_process_id.process_id}',
+                        consumed_on_ts='${time_stamp_sor_transaction.consumed_on_ts}',
+                        status='FAILED'
+                    FROM  ${temp_schema_name}.radon_kvp_output_${init_process_id.process_id} b
+                    WHERE  b.group_id =a.group_id
+                             AND    a.origin_id=b.origin_id
+                             AND    a.batch_id=b.batch_id
+                             AND    b.group_id ='${group_id}'
+                             AND    b.status ='FAILED'
+                             AND    a.stage ='SOR_TRANSACTION'
+                             AND    b.tenant_id = ${tenant_id}
+                             AND    a.batch_id = '${batch_id}';
+
+            "}on-condition if "true"=="true"
+
+}
+
+}

@@ -1,0 +1,248 @@
+process "ingestion.processor"
+{
+try{
+        transform as "Update to INPROGRESS in payload queue and Ingestion processor lambda has started inbound-id -${inbound_id}" on "intics_zio_db_conn" using
+        {"
+                UPDATE ingestion.ingestion_payload_queue
+                SET status='IN_PROGRESS', consumed_on_ts = '${time_stamp_ingestion.consumed_on_ts}', consumer_process_id = '${process-id}'
+                WHERE inbound_id='${inbound_id}' AND status='STAGED' and tenant_id = ${tenant_id};
+
+                UPDATE info.transaction
+                SET transaction_status='IN_PROGRESS'
+                WHERE transaction_id='${transaction_id}' and tenant_id=${tenant_id};
+
+                INSERT INTO ingestion.ingestion_pipeline_audit
+                (process_id, inbound_id, group_id, created_on, status, stage, message,root_pipeline_id, tenant_id)
+                VALUES('${init_process_id.process_id}', '${gen_group_id.inbound_id}', '${gen_group_id.group_id}', now(), 'STARTED', 'INGESTION', 'Ingestion processor lambda has started inbound-id -${inbound_id}','${gen_id.root_pipeline_id}', ${tenant_id});
+
+        "}  on-condition if "true"=="true"
+
+        transform as "insert_into_inbound_file" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO ingestion.inbound_file
+                (inbound_id,created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, file_path, document_id,root_pipeline_id)
+                VALUES('${inbound_id}',now(), '${created_user_id}', now(), '${created_user_id}', ${tenant_id}, '${dir_path}', '${document_info.document_id}','${gen_id.root_pipeline_id}');
+        "}  on-condition if "true"=="true"
+
+        transform as "inserting sequence for origin_id and transaction ID " on "intics_zio_db_conn"
+        using{"
+                INSERT INTO user_management.tenant_unique_identity
+                (module, tenant_id, created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, index)
+                VALUES('ORIGIN', ${tenant_id}, now(), ${created_user_id}, now(), ${created_user_id}, 'ACTIVE', 1, 1)
+                on conflict (tenant_id,module) do nothing;
+                INSERT INTO user_management.tenant_unique_identity
+                (module, tenant_id, created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, index)
+                VALUES('TRANSACTION', ${tenant_id}, now(), ${created_user_id}, now(), ${created_user_id}, 'ACTIVE', 1, 1)
+                on conflict (tenant_id,module) do nothing;
+        "} on-condition if "true"=="true"
+
+        assetInfo as "insert_into_macro_file_details"
+        on-resource-conn "intics_zio_db_conn"
+        get-audit-table "${temp_schema_name}.sanitizer_summary_origin_audit_${process-id}"
+        result-table "${temp_schema_name}.file_details_origin_${init_process_id.process_id}"
+        using {"
+                SELECT inbound_id, created_on,created_user_id, last_updated_on, last_updated_user_id, tenant_id, file_path, document_id
+                FROM ingestion.inbound_file
+                WHERE  inbound_id = '${gen_group_id.inbound_id}' and tenant_id = ${tenant_id};
+        "} on-condition if "true"=="true"
+
+        transform as "Inserted into macro.file_details failed" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO ingestion.ingestion_pipeline_audit
+                (process_id, inbound_id, group_id, created_on, status, stage, message,root_pipeline_id, tenant_id)
+                VALUES('${init_process_id.process_id}', '${gen_group_id.inbound_id}', '${gen_group_id.group_id}', now(), 'FAILED', 'INGESTION', 'Inserted into macro.file_details_origin failed ','${gen_id.root_pipeline_id}', ${tenant_id});
+        "}  on-condition if "${insert_into_macro_file_details.error}"=="true"
+
+        transform as "Inserted into macro.file_details completed" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO ingestion.ingestion_pipeline_audit
+                (process_id, inbound_id, group_id, created_on, status, stage, message,root_pipeline_id, tenant_id)
+                VALUES('${init_process_id.process_id}', '${gen_group_id.inbound_id}', '${gen_group_id.group_id}', now(), 'COMPLETED', 'INGESTION', 'Inserted into macro.file_details completed','${gen_id.root_pipeline_id}', ${tenant_id});
+        "}  on-condition if "${insert_into_macro_file_details.error}"=="false"
+
+        assign as "ingestion" source "intics_zio_db_conn" using
+        {"
+                SELECT  case when count(*)> ${sys_thread_count}::int8 then count(*) else  as  iterator.threadcount
+                from ${temp_schema_name}.file_details_origin_${init_process_id.process_id};
+        "} on-condition if "true"=="false"
+
+        transform as "insert into asset table from file details temporary table " on "intics_zio_db_conn" using
+        {"
+                INSERT INTO ${temp_schema_name}.batch_split_id_generation_${init_process_id.process_id}
+                (file_id, file_name, decoded_file_name, file_checksum, file_path, file_extension, file_size, status, version, root_pipeline_id, tenant_id,channel_id, created_user_id, created_on, last_updated_user_id, last_updated_on, height, width, dpi, row_count, split_count)
+                SELECT file_id,file_name, decoded_file_name, file_checksum,file_path, file_extension, CAST(file_size AS float8) as file_size ,'ACTIVE',1,root_pipeline_id,tenant_id, ${channel_id},${created_user_id},now(),${created_user_id},now(), height, width, dpi,(row_number() over () - 1) as row_count, ((row_number() over () - 1) / (${batch.processing.split.count}::int8)) as split_count
+                from ${temp_schema_name}.file_details_origin_${init_process_id.process_id}
+                where process_id='${process-id}';
+
+                INSERT into info.asset
+                (file_id, file_name, decoded_file_name, file_checksum, file_path, file_extension, file_size, status, version, root_pipeline_id, tenant_id,channel_id, created_user_id, created_on, last_updated_user_id, last_updated_on, height, width, dpi, batch_id)
+                SELECT file_id,file_name, decoded_file_name, file_checksum,file_path, file_extension, CAST(file_size AS float8) as file_size ,'ACTIVE',1,root_pipeline_id,tenant_id, ${channel_id},${created_user_id},now(),${created_user_id},now(), height, width, dpi, concat('BATCH-','${gen_group_id.group_id}','_',split_count)
+                from ${temp_schema_name}.batch_split_id_generation_${init_process_id.process_id};
+
+                INSERT INTO info.source_of_origin
+                (origin_id, group_id, origin_type, root_pipeline_id, tenant_id,channel_id, status, version, created_user_id, created_on, last_updated_user_id, last_updated_on, file_id, asset_id, batch_id)
+                SELECT concat('ORIGIN-',cast(a.origin_id_seq as int) ) as origin_id,'${gen_group_id.group_id}','${origin_type}', '${gen_id.root_pipeline_id}','${tenant_id}',${channel_id},'ACTIVE',1,${created_user_id},now(),${created_user_id},now(),a.file_id,b.asset_id, b.batch_id
+                from ${temp_schema_name}.file_details_origin_${init_process_id.process_id} a
+                JOIN info.asset b on a.file_id=b.file_id
+                where a.process_id='${process-id}';
+
+                INSERT INTO batching.batching_process_payload_queue
+                (producer_process_id, origin_id,group_id, created_on, status, stage,root_pipeline_id, tenant_id, batch_id)
+                select  '${init_process_id.process_id}', concat('ORIGIN-',cast(origin_id_seq as int) ) as origin_id,'${gen_group_id.group_id}', now(), 'STAGED', 'BATCH_PROCESSING','${gen_id.root_pipeline_id}', ${tenant_id}, b.batch_id
+                from ${temp_schema_name}.file_details_origin_${init_process_id.process_id} a
+                JOIN info.asset b on a.file_id=b.file_id
+                where process_id='${process-id}';
+        "}  on-condition if "${origin_type}"== "WORKSPACE"
+
+        transform as "insert into asset table from file details temporary table for Doc EyeCue " on "intics_zio_db_conn" using
+        {"
+                INSERT INTO ${temp_schema_name}.batch_split_id_generation_${init_process_id.process_id}
+                (file_id, file_name, decoded_file_name, file_checksum, file_path, file_extension, file_size, status, version, root_pipeline_id, tenant_id,channel_id, created_user_id, created_on, last_updated_user_id, last_updated_on, height, width, dpi, row_count, split_count)
+                SELECT file_id,file_name, decoded_file_name, file_checksum,file_path, file_extension, CAST(file_size AS float8) as file_size ,'ACTIVE',1,root_pipeline_id,tenant_id, ${channel_id},${created_user_id},now(),${created_user_id},now(), height, width, dpi,(row_number() over () - 1) as row_count, ((row_number() over () - 1) / (${batch.processing.split.count}::int8)) as split_count
+                from ${temp_schema_name}.file_details_origin_${init_process_id.process_id}
+                where process_id='${process-id}';
+
+                INSERT into info.asset
+                (file_id, file_name, decoded_file_name, file_checksum, file_path, file_extension, file_size, status, version, root_pipeline_id, tenant_id,channel_id, created_user_id, created_on, last_updated_user_id, last_updated_on, height, width, dpi, batch_id)
+                SELECT file_id,file_name, decoded_file_name, file_checksum,file_path, file_extension, CAST(file_size AS float8) as file_size ,'ACTIVE',1,root_pipeline_id,tenant_id, ${channel_id},${created_user_id},now(),${created_user_id},now(), height, width, dpi, concat('BATCH-','${gen_group_id.group_id}','_',split_count)
+                from ${temp_schema_name}.batch_split_id_generation_${init_process_id.process_id};
+
+                INSERT INTO info.source_of_origin
+                (origin_id, group_id, origin_type, root_pipeline_id, tenant_id,channel_id, status, version, created_user_id, created_on, last_updated_user_id, last_updated_on, file_id, asset_id, batch_id)
+                SELECT concat('ORIGIN-',cast(a.origin_id_seq as int) ) as origin_id,'${gen_group_id.group_id}','${origin_type}', '${gen_id.root_pipeline_id}','${tenant_id}',${channel_id},'ACTIVE',1,${created_user_id},now(),${created_user_id},now(),a.file_id,b.asset_id, b.batch_id
+                from ${temp_schema_name}.file_details_origin_${init_process_id.process_id} a
+                JOIN info.asset b on a.file_id=b.file_id
+                where a.process_id='${process-id}';
+
+                INSERT INTO batching.batching_process_payload_queue
+                (producer_process_id, origin_id,group_id, created_on, status, stage,root_pipeline_id, tenant_id, batch_id)
+                select  '${init_process_id.process_id}', concat('ORIGIN-',cast(origin_id_seq as int) ) as origin_id,'${gen_group_id.group_id}', now(), 'STAGED', 'BATCH_PROCESSING','${gen_id.root_pipeline_id}', ${tenant_id}, b.batch_id
+                from ${temp_schema_name}.file_details_origin_${init_process_id.process_id} a
+                JOIN info.asset b on a.file_id=b.file_id
+                where process_id='${process-id}';
+
+        "}  on-condition if "${origin_type}"== "EYECUE"
+
+        transform as "insert into source of origin from file details temporary table" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO ${temp_schema_name}.batch_split_id_generation_${init_process_id.process_id}
+                (file_id, file_name, decoded_file_name, file_checksum, file_path, file_extension, file_size, status, version, root_pipeline_id, tenant_id,channel_id, created_user_id, created_on, last_updated_user_id, last_updated_on, height, width, dpi, row_count, split_count)
+                SELECT file_id,file_name, decoded_file_name, file_checksum,file_path, file_extension, CAST(file_size AS float8) as file_size ,'ACTIVE',1,root_pipeline_id,tenant_id, -1,1,now(),1,now(), height, width, dpi,(row_number() over () - 1) as row_count, ((row_number() over () - 1) / (${batch.processing.split.count}::int8)) as split_count
+                from ${temp_schema_name}.file_details_origin_${init_process_id.process_id}
+                where process_id='${process-id}';
+
+                INSERT into info.asset
+                (file_id, file_name, decoded_file_name, file_checksum, file_path, file_extension, file_size, status, version, root_pipeline_id, tenant_id,channel_id, created_user_id, created_on, last_updated_user_id, last_updated_on, height, width, dpi, batch_id)
+                SELECT file_id,file_name,decoded_file_name, file_checksum,file_path, file_extension, CAST(file_size AS float8) as file_size ,'ACTIVE',1,root_pipeline_id,tenant_id, ${channel_id},${created_user_id},now(),${created_user_id},now(), height, width, dpi, concat('BATCH-','${gen_group_id.group_id}','_',split_count)
+                from ${temp_schema_name}.batch_split_id_generation_${init_process_id.process_id};
+
+                INSERT INTO info.source_of_origin
+                (origin_id, group_id, origin_type, root_pipeline_id, tenant_id,transaction_id, status, version, created_user_id, created_on, last_updated_user_id, last_updated_on, file_id, asset_id, batch_id)
+                SELECT concat('ORIGIN-',cast(a.origin_id_seq as int) ) as origin_id,'${gen_group_id.group_id}','${origin_type}', '${gen_id.root_pipeline_id}','${tenant_id}','${transaction_id}','ACTIVE',1,${created_user_id},now(),${created_user_id},now(),a.file_id,b.asset_id,b.batch_id
+                from ${temp_schema_name}.file_details_origin_${init_process_id.process_id} a
+                JOIN info.asset b on a.file_id=b.file_id
+                where a.process_id='${process-id}';
+
+                INSERT INTO batching.batching_process_payload_queue
+                (producer_process_id, origin_id,group_id, created_on, status, stage,root_pipeline_id, tenant_id,batch_id)
+                SELECT '${init_process_id.process_id}',c.origin_id as origin_id,'${gen_group_id.group_id}',
+                now(),'STAGED','BATCH_PROCESSING',${gen_id.root_pipeline_id},${tenant_id},b.batch_id
+                from ${temp_schema_name}.file_details_origin_${init_process_id.process_id} a
+                JOIN info.asset b on a.file_id=b.file_id
+                join info.source_of_origin c on c.asset_id=b.asset_id
+                where a.process_id='${process-id}';
+
+        "}  on-condition if "${origin_type}"=="TRANSACTION"
+
+        transform as "Insert into pipeline directory info origin" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO ingestion.pipeline_directory_info
+                (target_directory_path, tenant_id, group_id, root_pipeline_id, created_on, updated_on, created_user_id, last_updated_user_id,
+                transaction_id, formatted_date, current_directory, zip_directory, process_name, status)
+                select '${target_directory_path}',${tenant_id},${gen_group_id.group_id},${root-ref-id},now(),now(),'${created_user_id}','${last_updated_user_id}',
+                '${transaction_id}','${gen_id.formatted_date}','${inbound.file.path}','${gen_directory.zip_directory}','ORIGIN','STAGED';
+
+        "} on-condition if "true"=="true"
+
+        transform as "update status to COMPLETED in ingestion_payload_queue" on "intics_zio_db_conn" using
+        {"
+                UPDATE ingestion.ingestion_payload_queue
+                SET status='COMPLETED'
+                WHERE inbound_id='${inbound_id}' AND status='IN_PROGRESS' AND tenant_id = ${tenant_id};
+        "}  on-condition if "true"=="true"
+
+        transform as "Ingestion processor lambda has Completed ${inbound_id}" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO ingestion.ingestion_pipeline_audit
+                (process_id, inbound_id, group_id, created_on, status, stage, message,root_pipeline_id, tenant_id)
+                VALUES('${init_process_id.process_id}', '${gen_group_id.inbound_id}', '${gen_group_id.group_id}', now(), 'COMPLETED', 'INGESTION', 'Ingestion processor lambda has Completed ${inbound_id}','${gen_id.root_pipeline_id}', ${tenant_id});
+        "} on-condition if "true"=="true"
+
+}
+catch{
+            transform as "Update to FAILED in payload queue" on "intics_zio_db_conn" using
+            {"
+                    UPDATE ingestion.ingestion_payload_queue
+                    SET status='FAILED'
+                    WHERE inbound_id='${inbound_id}' AND status='IN_PROGRESS' AND tenant_id = ${tenant_id};
+            "}  on-condition if "true"=="true"
+
+            transform as "Ingestion processor lambda has failed ${inbound_id}" on "intics_zio_db_conn" using
+            {"
+                    INSERT INTO ingestion.ingestion_pipeline_audit
+                    (process_id, inbound_id, group_id, created_on, status, stage, message,root_pipeline_id, tenant_id)
+                    VALUES('${init_process_id.process_id}', '${gen_group_id.inbound_id}', '${gen_group_id.group_id}', now(), 'FAILED', 'INGESTION', 'Ingestion processor lambda has failed ${inbound_id}','${gen_id.root_pipeline_id}', ${tenant_id});
+            "} on-condition if "true"=="true"
+
+}
+finally{
+            transform as "insert into pipeline summary audit for ingestion" on "intics_zio_db_conn" using {"
+                    INSERT INTO ${temp_schema_name}.summary_audit_files_${process-id}
+                    (process_id ,module_name,macro_process,completed_count,min_created_on,max_created_on,time_taken, tenant_id)
+                    SELECT '${process-id}' , 'INGESTION' ,'ASSET_INFO',count(origin_id),min(created_on),max(created_on), EXTRACT(epoch FROM (max(created_on)-min(created_on))), ${tenant_id}
+                    from info.source_of_origin WHERE group_id='${group_id}' AND tenant_id = ${tenant_id} ;
+
+                    INSERT INTO audit.pipeline_summary_audit
+                    (process_id, created_on, module_name, macro_process, files_processed_count,papers_processed_count,files_failed_count,papers_failed_count,start_time,end_time, time_taken, group_id, root_pipeline_id, created_user_id, template_id, tenant_id,average_time)
+                    SELECT process_id,now(),module_name,macro_process,completed_count,0,failed_count,0,min_created_on,max_created_on,EXTRACT(epoch FROM (max_created_on-min_created_on)),
+                    '${group_id}','${gen_id.root_pipeline_id}','${created_user_id}','${document_id}',${tenant_id},(CASE WHEN (time_taken/(completed_count+failed_count))=0 THEN time_taken ELSE (time_taken/(completed_count+failed_count)) END)
+                    FROM ${temp_schema_name}.summary_audit_files_${process-id}
+                    WHERE process_id='${process-id}' AND tenant_id = ${tenant_id};
+
+            "} on-condition if "true"=="true"
+
+            transform as "Insert into ingestion error queue as failed ${group_id}" on "intics_zio_db_conn" using
+            {"
+
+                    INSERT INTO ingestion.pipeline_queue_status_audit
+                    (producer_process_id, consumer_process_id,origin_id,batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, origin_type)
+                    select root_pipeline_id as producer_process_id, root_pipeline_id as consumer_process_id,origin_id,batch_id, group_id, created_on as created_on, 'COMPLETED', 'INGESTION', created_on as consumed_on_ts , root_pipeline_id, tenant_id, '${origin_type}'
+                    from info.source_of_origin
+                    where group_id=${group_id} and root_pipeline_id =${gen_id.root_pipeline_id} and tenant_id =${tenant_id};
+
+                    INSERT INTO ingestion.ingestion_payload_error_queue
+                    (producer_process_id, consumer_process_id,group_id, inbound_id, created_on, status, stage, message, consumed_on_ts,root_pipeline_id, tenant_id)
+                    SELECT producer_process_id, consumer_process_id,group_id, inbound_id, now(),status,stage,'Error inserting into inbound file','${time_stamp_ingestion.consumed_on_ts}',root_pipeline_id, ${tenant_id}
+                    FROM ingestion.ingestion_payload_queue
+                    WHERE inbound_id='${inbound_id}' and status ='FAILED' and stage ='INGESTION' AND tenant_id = ${tenant_id};
+
+                    DELETE FROM ingestion.ingestion_payload_queue
+                    WHERE inbound_id='${inbound_id}' and status ='FAILED' and stage ='INGESTION' AND tenant_id = ${tenant_id};
+            "} on-condition if "true"=="true"
+
+
+            transform as "Insert into ingestion payload queue archive as completed ${group_id}" on "intics_zio_db_conn" using
+            {"
+                    INSERT INTO ingestion.ingestion_payload_queue_archive
+                    (producer_process_id, consumer_process_id,group_id, inbound_id, created_on, status, stage, consumed_on_ts,root_pipeline_id, tenant_id)
+                    SELECT producer_process_id, consumer_process_id,group_id, inbound_id, now(),status,stage,'${time_stamp_ingestion.consumed_on_ts}',root_pipeline_id, ${tenant_id}
+                    FROM ingestion.ingestion_payload_queue
+                    WHERE inbound_id='${inbound_id}' and status ='COMPLETED' and stage ='INGESTION' AND tenant_id = ${tenant_id};
+
+                    DELETE FROM ingestion.ingestion_payload_queue
+                    WHERE inbound_id='${inbound_id}' and status ='COMPLETED' and stage ='INGESTION' AND tenant_id = ${tenant_id};
+
+            "} on-condition if "true"=="true"
+
+}
+}

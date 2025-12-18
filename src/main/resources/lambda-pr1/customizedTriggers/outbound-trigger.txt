@@ -1,0 +1,32 @@
+--SQL INSERTS:
+
+INSERT INTO config.spw_process_config
+(process, variable, value, active, created_by, created_date, last_modified_by, last_modified_date, "version")
+VALUES('outbound.delivery.notify.trigger', 'filepath', 'customizedTriggers/outbound.delivery.notify.trigger.lmd', true, 1, '2023-07-17 13:43:02.539', 1, '2023-07-17 13:43:02.539', 1);
+INSERT INTO config.spw_process_config
+(process, variable, value, active, created_by, created_date, last_modified_by, last_modified_date, "version")
+VALUES('outbound.delivery.notify.trigger', 'outbound.appId', 'demo_user', true, 1, '2023-07-17 13:43:02.539', 1, '2023-07-17 13:43:02.539', 1);
+INSERT INTO config.spw_process_config
+(process, variable, value, active, created_by, created_date, last_modified_by, last_modified_date, "version")
+VALUES('outbound.delivery.notify.trigger', 'outbound.appKeyId', 'demo_user', true, 1, '2023-07-17 13:43:02.539', 1, '2023-07-17 13:43:02.539', 1);
+INSERT INTO config.spw_process_config
+(process, variable, value, active, created_by, created_date, last_modified_by, last_modified_date, "version")
+VALUES('outbound.delivery.notify.trigger', 'outbound.context.condition', 'Product', true, 1, '2023-07-17 13:43:02.539', 1, '2023-07-17 13:43:02.539', 1);
+INSERT INTO config.spw_process_config
+(process, variable, value, active, created_by, created_date, last_modified_by, last_modified_date, "version")
+VALUES('outbound.delivery.notify.trigger', 'outbound.doc.delivery.notify.url', '', true, 1, '2023-07-17 13:43:02.539', 1, '2023-07-17 13:43:02.539', 1);
+
+--API DETAILS:
+
+date && curl --location --request POST 'http://intics.app:11199/vulcan/api/v1/pipeline' --header 'accept: */*' --header 'Content-Type: application/json' --data-raw '{
+    "context": {
+        "tenant_id": "79",
+        "origin_id": "ORIGIN-145",
+        "outbound.context.condition":"PRODUCT",
+        "outbound.doc.delivery.notify.url":""
+    },
+    "processLoadType": "FILE",
+    "pipelineName": "outbound.delivery.notify.trigger"
+}' && date
+
+

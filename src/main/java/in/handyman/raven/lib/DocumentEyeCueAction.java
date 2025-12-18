@@ -22,9 +22,9 @@ import java.util.Optional;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 
-import in.handyman.raven.lib.model.documentEyeCue.DocumentEyeCueConsumerProcess;
-import in.handyman.raven.lib.model.documentEyeCue.DocumentEyeCueInputTable;
-import in.handyman.raven.lib.model.documentEyeCue.DocumentEyeCueOutputTable;
+import in.handyman.raven.lib.services.documentEyeCue.DocumentEyeCueConsumerProcess;
+import in.handyman.raven.lib.services.documentEyeCue.DocumentEyeCueInputTable;
+import in.handyman.raven.lib.services.documentEyeCue.DocumentEyeCueOutputTable;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;

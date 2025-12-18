@@ -1,0 +1,136 @@
+process "copro.start.all.api"
+{
+	try{
+
+		coproStart as "Calling paper itemization copro start action" for "PAPER_ITEMIZATION"
+		copro-server-url "${copro.paper.itemization.admin.start.url}"
+		process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+		using
+		{"
+				${paperItemizationStartCommand}
+
+		"} on-condition if "${paper.itemization.start.action}"=="true"
+
+		coproStart as "Calling auto rotation copro start action" for "AUTO_ROTATION"
+		copro-server-url "${copro.auto.rotation.admin.start.url}"
+		process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+		using
+		{"
+				${autoRotationStartCommand}
+
+		"} on-condition if "${auto.rotation.start.action}"=="true"
+
+
+		coproStart as "Calling text extraction copro start action" for "TEXT_EXTRACTION"
+		copro-server-url "${copro.text.extraction.admin.start.url}"
+		process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+		using
+		{"
+				${textExtractionStartCommand}
+
+		"} on-condition if "${text.extraction.start.action}"=="true"
+
+		coproStart as "Calling zero shot classifier copro start action" for "ZERO_SHOT_CLASSIFIER"
+		copro-server-url "${copro.zero.shot.admin.start.url}"
+		process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+		using
+		{"
+				${zeroShotStartCommand}
+
+		"} on-condition if "${zero.shot.start.action}"=="true"
+
+		coproStart as "Calling phrase match copro start action" for "PHRASE_MATCH"
+		copro-server-url "${copro.phrase.match.admin.start.url}"
+		process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+		using
+		{"
+				${phraseMatchStartCommand}
+
+		"} on-condition if "${phrase.match.start.action}"=="true"
+
+
+		coproStart as "Calling Urgency triage classifier copro start action" for "UT_CLASSIFIER"
+		copro-server-url "${copro.ut.classifier.admin.start.url}"
+		process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+		using
+		{"
+				${utClassifierStartCommand}
+
+		"}on-condition if "${ut.classifier.start.action}"=="true"
+
+
+
+		coproStart as "Calling Urgency triage check box copro start action" for "UT_CHECKBOX"
+		copro-server-url "${copro.ut.checkbox.admin.start.url}"
+		process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+		using
+		{"
+				${utCheckboxStartCommand}
+
+		"}on-condition if "${ut.checkbox.start.action}"=="true"
+
+
+
+
+		coproStart as "Calling paper classification copro start action" for "PAPER_CLASSIFICATION"
+		copro-server-url "${copro.paper.classification.admin.start.url}"
+		process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+		using
+		{"
+				${paperClassificationStartCommand}
+
+		"}on-condition if "${paper.classification.start.action}"=="true"
+
+
+
+		coproStart as "Calling QR extraction copro start action" for "QR_EXTRACTION"
+		copro-server-url "${copro.qr.extraction.admin.start.url}"
+		process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+		using
+		{"
+				${qrExtractionStartCommand}
+
+		"}on-condition if "${qr.extraction.start.action}"=="true"
+
+
+		coproStart as "Calling valuation copro start action" for "VALUATION"
+		copro-server-url "${copro.valuation.printed.admin.start.url}"
+		process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+		using
+		{"
+				${printedStartCommand}
+
+		"} on-condition if "${valuation.start.action}"=="true"
+
+
+		coproStart as "Calling validation copro start action" for "validation"
+		copro-server-url "${copro.validation.admin.start.url}"
+		process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+		using
+		{"
+				${validationStartCommand}
+
+		"} on-condition if "${validation.start.action}"=="true"
+
+		coproStart as "Calling merger copro start action" for "MERGER"
+		copro-server-url "${copro.merger.admin.start.url}"
+		process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+		using
+		{"
+				${mergerStartCommand}
+
+		"}on-condition if "${merger.start.action}"=="true"
+
+	}
+	catch{
+
+
+	}
+	finally{
+
+	}
+}
+
+
+
+

@@ -1,0 +1,23 @@
+process "root.bucketing.processor"
+{
+    try {
+
+                file-bucketing as "file-bucketing-based-on-number-of-pages"
+                output-dir "${outputDir}"
+                using
+                {
+
+                 "${inputDirectory}"
+
+                } on-condition if "true"=="true"
+
+
+    }
+    catch {
+
+    }
+    finally {
+
+
+    }
+}

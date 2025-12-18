@@ -1,0 +1,195 @@
+process "error.queue.main.ddl"
+{
+try{
+        transform as "error queue DDl creation for the main tables" on "intics_zio_db_conn" using {"
+
+                CREATE TABLE IF NOT EXISTS error_queue.error_queue_payload_error_queue (
+                     producer_process_id int8 NOT NULL,
+                     consumer_process_id int8 NULL,
+                     group_id int4 NOT NULL,
+                     origin_id varchar NOT NULL,
+                     created_on timestamp NOT NULL,
+                     status varchar NOT NULL,
+                     stage  varchar NOT NULL,
+                     message varchar NULL,
+                     consumed_on_ts timestamp NULL,
+                     root_pipeline_id int8 NULL,
+                     tenant_id int8 NULL,
+                     CONSTRAINT error_queue_payload_error_queue_pk PRIMARY KEY (tenant_id, origin_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS error_queue.error_queue_payload_queue (
+                     producer_process_id int8 NOT NULL,
+                     consumer_process_id int8 NULL,
+                     group_id int4 NOT NULL,
+                     origin_id varchar NOT NULL,
+                     created_on timestamp NOT NULL,
+                     status varchar NOT NULL,
+                     stage  varchar NOT NULL,
+                     message varchar NULL,
+                     consumed_on_ts timestamp NULL,
+                     root_pipeline_id int8 NULL,
+                     tenant_id int8 NULL,
+                     CONSTRAINT error_queue_payload_payload_queue_pk PRIMARY KEY (tenant_id, origin_id)
+                );
+
+
+                CREATE TABLE IF NOT EXISTS error_queue.error_queue_payload_queue_archive (
+                     producer_process_id int8 NOT NULL,
+                     consumer_process_id int8 NULL,
+                     group_id int4 NOT NULL,
+                     origin_id varchar NOT NULL,
+                     created_on timestamp NOT NULL,
+                     status varchar NOT NULL,
+                     stage  varchar NOT NULL,
+                     message varchar NULL,
+                     consumed_on_ts timestamp NULL,
+                     root_pipeline_id int8 NULL,
+                     tenant_id int8 NULL,
+                     CONSTRAINT error_queue_payload_payload_queue_archive_pk PRIMARY KEY (tenant_id, origin_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS error_queue.error_queue_pipeline_audit (
+                    id bigserial NOT NULL,
+                    process_id bigint NULL,
+                    origin_id varchar NULL,
+                    group_id varchar NULL,
+                    created_on varchar NULL,
+                    status varchar NULL,
+                    stage varchar NULL,
+                    message varchar NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL
+                );
+
+
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.mandatory_sor_item_aggregate_${init_process_id.process_id}
+                (
+                        root_pipeline_id int8 null,
+                        tenant_id int8 null,
+                        origin_id varchar null,
+                        error_response jsonb null
+                );
+
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.error_queue_mandatory_json_creator_${init_process_id.process_id}
+                (
+                document_id varchar null,
+                origin_id varchar null,
+                group_id int8 null,
+                total_no_of_pages int8 null,
+                uploaded_on timestamp null,
+                root_pipeline_id int8 null,
+                batch_id varchar null,
+                tenant_id int8 null,
+                 error_response jsonb null
+                 );
+                CREATE TABLE  IF NOT EXISTS ${temp_schema_name}.mandatory_sor_item_list_${init_process_id.process_id} (
+                	root_pipeline_id int8 NULL,
+                	tenant_id int4 NULL,
+                	origin_id varchar NULL,
+                	paper_no int8 NULL,
+                	sor_item_name varchar NULL
+                );
+
+
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.cummulative_result_eq_${init_process_id.process_id} (
+                	cum_count int8 NULL,
+                	frequency int8 NULL,
+                	b_box varchar NULL,
+                	confidence_score numeric(10, 2) NULL,
+                	extracted_value varchar NULL,
+                	filter_score numeric(10, 2) NULL,
+                	group_id int8 NULL,
+                	maximum_score numeric(10, 2) NULL,
+                	origin_id varchar NULL,
+                	paper_no int8 NULL,
+                	question_id int8 NULL,
+                	root_pipeline_id int8 NULL,
+                	sor_item_name varchar NULL,
+                	synonym_id int8 NULL,
+                	tenant_id int8 NULL,
+                	batch_id varchar null
+                );
+
+
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.sor_item_eq_${init_process_id.process_id} (
+                	sor_item_name varchar NULL,
+                	tenant_id int4 NULL,
+                	document_type varchar NULL,
+                	sor_container_name varchar NULL,
+                	batch_id varchar null
+                );
+        "} on-condition if "true"=="true"
+
+        transform as "error queue DDl creation for the main tables" on "intics_zio_db_conn" using {"
+
+                CREATE TABLE IF NOT EXISTS error_queue.mandatory_sor_item_aggregate_audit
+                (
+                        mandatory_sor_item_aggregate_id bigserial not null,
+                        root_pipeline_id int8 null,
+                        tenant_id int8 null,
+                        origin_id varchar null,
+                        error_response jsonb null
+                );
+
+                CREATE TABLE IF NOT EXISTS error_queue.error_queue_mandatory_json_creator_audit
+                (
+                 error_queue_mandatory_json_creator_id bigserial not null,
+                document_id varchar null,
+                origin_id varchar null,
+                group_id int8 null,
+                total_no_of_pages int8 null,
+                uploaded_on timestamp null,
+                root_pipeline_id int8 null,
+                batch_id varchar null,
+                tenant_id int8 null,
+                 error_response jsonb null
+                 );
+                CREATE TABLE  IF NOT EXISTS error_queue.mandatory_sor_item_list_audit (
+                    mandatory_sor_item_list_id bigserial not null,
+                	root_pipeline_id int8 NULL,
+                	tenant_id int4 NULL,
+                	origin_id varchar NULL,
+                	paper_no int8 NULL,
+                	sor_item_name varchar NULL
+                );
+
+
+                CREATE TABLE IF NOT EXISTS error_queue.cummulative_result_eq_audit (
+                    cummulative_result_eq_id bigserial not null,
+                	cum_count int8 NULL,
+                	frequency int8 NULL,
+                	b_box varchar NULL,
+                	confidence_score numeric(10, 2) NULL,
+                	extracted_value varchar NULL,
+                	filter_score numeric(10, 2) NULL,
+                	group_id int8 NULL,
+                	maximum_score numeric(10, 2) NULL,
+                	origin_id varchar NULL,
+                	paper_no int8 NULL,
+                	question_id int8 NULL,
+                	root_pipeline_id int8 NULL,
+                	sor_item_name varchar NULL,
+                	synonym_id int8 NULL,
+                	tenant_id int8 NULL,
+                	batch_id varchar null
+                );
+
+
+                CREATE TABLE IF NOT EXISTS error_queue.sor_item_eq_audit (
+                    sor_item_eq_id bigserial not null,
+                	sor_item_name varchar NULL,
+                	tenant_id int4 NULL,
+                	document_type varchar NULL,
+                	sor_container_name varchar NULL,
+                	batch_id varchar null
+                );
+        "} on-condition if "true"=="true"
+
+
+}
+catch{
+}
+finally{
+}
+}

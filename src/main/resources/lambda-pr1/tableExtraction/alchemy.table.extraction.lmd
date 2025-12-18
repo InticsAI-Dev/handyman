@@ -1,0 +1,151 @@
+process "alchemy.table.extraction"
+{
+    try{
+
+
+        callprocess as "calling table extraction ddl lambda"
+        with-target "table.extraction.ddl"
+        from-file "${basepath}/tableExtraction/table.extraction.ddl.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                    SELECT 1;
+        "} on-condition if "true"=="true"
+
+
+        transform as "temporary input tables for the table extraction" on "intics_zio_db_conn"
+        using {"
+
+           INSERT INTO ${temp_schema_name}.table_extraction_line_items_${process-id}
+           (tenant_id, root_pipeline_id, group_id, origin_id, paper_no, document_type, template_name, file_path,table_headers, truth_entity_id, sor_container_id, channel_id, model_name)
+             SELECT tenant_id, root_pipeline_id, group_id, origin_id, paper_no, document_type, template_name, file_path,
+                 cast(jsonb_agg(
+                     jsonb_build_object(
+                         'TruthEntity', truth_entity_name,
+                         'columnHeaders', synonym_array
+                     )
+                 )as varchar) AS table_headers,
+                 truth_entity_id  as truth_entity_id,
+                 sor_container_id as sor_container_id,
+                 channel_id,
+			(case when '${table.extraction.activator.v1}'='true' then '${NEON_MODEL_NAME}'
+			      when '${table.extraction.activator.v2}'='true' then '${ARGON_MODEL_NAME}'
+			      when '${table.extraction.activator.v3}'='true' then '${XENON_MODEL_NAME}'
+			      when '${table.extraction.activator.v4}'='true' then '${KRYPTON_MODEL_NAME}'
+			      else '${ARGON_MODEL_NAME}'
+			end )
+			as model_name
+             FROM ${table_extraction_temp_table}
+             GROUP by
+                 tenant_id,
+                 root_pipeline_id,
+                 group_id,
+                 origin_id,
+                 paper_no,
+                 document_type,
+                 template_name,
+                 file_path,
+                 truth_entity_id,
+                 sor_container_id,
+                 channel_id,
+                 model_name;
+
+
+       "}on-condition if "${table.extraction.activator.v1}"=="false"
+
+       assign as "gen_directory" source "intics_zio_db_conn" using
+       {"
+           SELECT concat ('${target_directory_path}','/${tenant_id}','/${group_id}','/${process-id}','/table_extraction-v1') as table_dest_path_v1;
+           SELECT concat ('${target_directory_path}','/${tenant_id}','/${group_id}','/${process-id}','/table_extraction-v2') as table_dest_path_v2;
+           SELECT concat ('${target_directory_path}','/${tenant_id}','/${group_id}','/${process-id}','/table_extraction-v3') as table_dest_path_v3;
+           SELECT concat ('${target_directory_path}','/${tenant_id}','/${group_id}','/${process-id}','/table_extraction-v4') as table_dest_path_v4;
+
+      "} on-condition if "true"=="true"
+
+
+       tableExtraction as "table extraction macro version-1"
+       extraction-url "${copro.table-extraction.url.v1}"
+       outputDir "${gen_directory.table_dest_path_v1}"
+       result-table "table_extraction.table_extraction_result"
+       processId "${init_process_id.process_id}"
+       resource-conn "intics_zio_db_conn"
+       using {"
+
+           ${tableExtractionQuerySet}
+
+       "} on-condition if "${table.extraction.activator.v1}"=="true"
+
+
+       tableExtractionVersion2 as "table extraction macro version-2"
+       extraction-url "${copro.table-extraction.url.v2}"
+       outputDir "${gen_directory.table_dest_path_v2}"
+       result-table "table_extraction.table_extraction_result"
+       processId "${init_process_id.process_id}"
+       resource-conn "intics_zio_db_conn"
+       using {"
+
+           SELECT tenant_id, root_pipeline_id, group_id, origin_id, paper_no, document_type, template_name, file_path, table_headers,'${ARGON_MODEL_NAME}' as model_name,truth_entity_id,sor_container_id,channel_id, batch_id
+           from ${temp_schema_name}.table_extraction_line_items_${process-id}
+
+       "} on-condition if "${table.extraction.activator.v2}"=="true"
+
+
+       tableExtractionVersion2 as "table extraction macro version-3"
+       extraction-url "${copro.table-extraction.url.v3}"
+       outputDir "${gen_directory.table_dest_path_v3}"
+       result-table "table_extraction.table_extraction_result"
+       processId "${init_process_id.process_id}"
+       resource-conn "intics_zio_db_conn"
+       using {"
+
+               SELECT tenant_id, root_pipeline_id, group_id, origin_id, paper_no, document_type, template_name, file_path, table_headers,'${XENON_MODEL_NAME}' as model_name,truth_entity_id,sor_container_id,channel_id, batch_id
+               from ${temp_schema_name}.table_extraction_line_items_${process-id}
+
+       "} on-condition if "${table.extraction.activator.v3}"=="true"
+
+      tableExtractionVersion2 as "table extraction macro version-4"
+      extraction-url "${copro.table-extraction.url.v4}"
+      outputDir "${gen_directory.table_dest_path_v4}"
+      result-table "table_extraction.table_extraction_result"
+      processId "${init_process_id.process_id}"
+      resource-conn "intics_zio_db_conn"
+      using {"
+
+              SELECT tenant_id, root_pipeline_id, group_id, origin_id, paper_no, document_type, template_name, file_path, table_headers,'${KRYPTON_MODEL_NAME}' as model_name,truth_entity_id,sor_container_id,channel_id, batch_id
+              from ${temp_schema_name}.table_extraction_line_items_${process-id}
+
+      "} on-condition if "${table.extraction.activator.v4}"=="true"
+
+
+    }
+    catch{
+    }
+
+    finally{
+
+     transform as "move to table extraction line item audit" on "intics_zio_db_conn"
+            using {"
+
+             INSERT INTO macro.table_extraction_line_items_audit
+             ( tenant_id, root_pipeline_id, group_id, origin_id, paper_no, document_type, template_name, file_path,table_headers,model_name,sor_container_id,truth_entity_id,channel_id, batch_id)
+             select  tenant_id, root_pipeline_id, group_id, origin_id, paper_no, document_type, template_name, file_path,table_headers,model_name,sor_container_id,truth_entity_id,channel_id, batch_id
+             from ${temp_schema_name}.table_extraction_line_items_${process-id};
+
+            drop table IF EXISTS ${temp_schema_name}.table_extraction_line_items_${process-id};
+            drop table IF EXISTS  ${temp_schema_name}.table_extraction_temp_table_${process-id};
+
+     "}on-condition if "true"=="true"
+
+      transform as "move to table extraction temp table audit" on "intics_zio_db_conn"
+                 using {"
+                INSERT INTO macro.table_extraction_temp_table_audit
+                (tenant_id, root_pipeline_id, group_id, origin_id, paper_no, document_type, template_name, truth_entity_name, synonym_array, file_path,model_name,sor_container_id,truth_entity_id,channel_id)
+                select tenant_id, root_pipeline_id, group_id, origin_id, paper_no, document_type, template_name, truth_entity_name, synonym_array, file_path,model_name,sor_container_id,truth_entity_id,channel_id
+                from  ${table_extraction_temp_table};
+
+                  drop table IF EXISTS  ${table_extraction_temp_table};
+
+          "}on-condition if "${table.extraction.activator.v1}"=="false"
+
+
+     }
+}

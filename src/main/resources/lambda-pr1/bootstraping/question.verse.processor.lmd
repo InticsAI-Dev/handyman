@@ -1,0 +1,294 @@
+process "question.verse.processor"
+{
+    try{
+
+        assign as "timestamp" source "intics_zio_db_conn" using
+        {"
+            select now() as question_verse_bootstraping;
+        "} on-condition if "true"=="true"
+
+
+        transform as "Update to In progress in sor meta master data migration queue" on "intics_zio_db_conn" using
+        {"
+
+            update sormeta_master_data_process.sormeta_master_data_process_payload_queue
+            set status= 'IN_PROGRESS' , consumed_on_ts = '${timestamp.question_verse_bootstraping}'
+            where migration_id = '${gen_id.migration_id}' and status = 'STAGED';
+
+            INSERT INTO sormeta_master_data_process.sormeta_master_data_process_pipeline_audit
+            (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id)
+            VALUES( ${gen_id.group_id_migration_seq}, now(),'${created_user_id}','${created_user_id}',${tenant_id}, 'STARTED', 'SORMETA_MAIN_CALLER', 'sor meta migration main caller started','${root-ref-id}');
+
+        "} on-condition if "true"=="true"
+
+         transform as "create a consolidated table for sor_meta truth entity placeholder" on "intics_zio_db_conn" using
+        {"
+
+            INSERT INTO ${temp_schema_name}.consolidated_meta_data_placeholder_${process-id}
+            (asset_name, document_type, container_name, truth_entity_name, truth_entity_placeholder_value,sip_type,model_registry_id)
+            select ai.asset_name as asset_name, dmd.document_type as document_type, cmd.container_name as container_name,
+            te.truth_entity_name as truth_entity_name,tep.truth_entity_placeholder_value as truth_entity_placeholder_value,
+            te.sip_type,
+            ai.model_registry_id
+            from sor_meta_master_data.document_master_data dmd
+            inner join sor_meta_master_data.asset_info_master_data ai on ai.document_type = dmd.document_type
+            inner join sor_meta_master_data.container_master_data cmd
+            on cmd.document_type = ai.document_type
+            inner join sor_meta_master_data.truth_entity_master_data te
+            on te.asset_master_id = ai.asset_master_id
+            and te.container_master_id = cmd.container_master_id
+            inner join sor_meta_master_data.truth_entity_placeholder_master_data tep
+            on tep.truth_entity_master_id =  te.truth_entity_master_id
+            and tep.container_master_id = cmd.container_master_id
+            where dmd.document_type in ('${document_type}') ;
+
+
+        "} on-condition if "true"=="true"
+
+
+        transform as "create a consolidated table for sor_meta questions" on "intics_zio_db_conn" using
+        {"
+
+            INSERT INTO ${temp_schema_name}.consolidated_meta_data_qn_${process-id}
+            (asset_name, document_type, container_name, sor_item_name, truth_entity_name, synonym, question,sip_type,model_registry_id)
+            select ai.asset_name as asset_name, dmd.document_type as document_type, cmd.container_name as container_name,si.sor_item_name as sor_item_name,
+            te.truth_entity_name as truth_entity_name,sm.synonym as synonym, qm.question as question,
+            te.sip_type,
+            ai.model_registry_id
+            from sor_meta_master_data.document_master_data dmd
+            inner join sor_meta_master_data.asset_info_master_data ai on ai.document_type = dmd.document_type
+            inner join sor_meta_master_data.container_master_data cmd
+            on cmd.document_type = ai.document_type
+            inner join sor_meta_master_data.sor_item_master_data si
+            on si.container_master_id = cmd.container_master_id
+            inner join sor_meta_master_data.truth_entity_master_data te
+            on te.asset_master_id = ai.asset_master_id
+            and te.container_master_id = cmd.container_master_id
+            inner join sor_meta_master_data.synonym_master_data sm
+            on sm.container_master_id = cmd.container_master_id
+            and sm.sor_item_master_id = si.sor_item_master_id
+            and sm.truth_entity_master_id = te.truth_entity_master_id
+            left join sor_meta_master_data.question_master_data qm
+            on qm.synonym_master_id = sm.synonym_master_id
+            where dmd.document_type in ('${document_type}');
+
+        "} on-condition if "true"=="true"
+
+
+        transform as "Insert into the asset info table" on "intics_zio_db_conn" using
+        {"
+            INSERT INTO sor_meta.asset_info
+            (template_name, created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, version, status, document_type,model_registry_id)
+            select  distinct hc.asset_name as template_name, cast('${timestamp.question_verse_bootstraping}' as timestamp) as created_on,${created_user_id} as created_user_id,
+             cast('${timestamp.question_verse_bootstraping}' as timestamp) as last_updated_on,
+            ${created_user_id} as last_updated_user_id, ${tenant_id} as tenant_id, 1 as version ,'ACTIVE' as status, '${document_type}' as document_type,hc.model_registry_id
+            from ${temp_schema_name}.consolidated_meta_data_qn_${process-id} hc
+            where hc.document_type='${document_type}';
+
+         "} on-condition if "true"=="true"
+
+            assign as "check.workspace" source "intics_zio_db_conn" using
+             {"
+                 select (case when count(a.workspace_name) = 0 then 'true'
+                            when count(a.workspace_name) > 0 then 'false' end)
+                    as workspace_count
+                 from info.workspace a
+                 join ${temp_schema_name}.consolidated_meta_data_qn_${process-id} hc
+                 on lower(a.workspace_name)=lower(hc.asset_name)
+                 where hc.document_type='${document_type}'
+                 and a.tenant_id='${tenant_id}'  ;
+             "} on-condition if "true"=="true"
+
+
+          transform as "Insert into the workspace table" on "intics_zio_db_conn" using
+            {"
+                INSERT INTO info.workspace
+                (created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, tenant_id, workspace_key, workspace_name)
+                select  distinct cast('${timestamp.question_verse_bootstraping}' as timestamp) as created_on,
+                ${created_user_id} as created_user_id,
+                cast('${timestamp.question_verse_bootstraping}' as timestamp) as last_updated_on,
+                ${created_user_id} as last_updated_user_id,
+                'ACTIVE' as status,
+                1 as version,
+                ${tenant_id} as tenant_id,
+                UPPER(LEFT(hc.asset_name, 3)) as  workspace_key,
+                hc.asset_name as  workspace_name
+                from ${temp_schema_name}.consolidated_meta_data_qn_${process-id} hc
+                where hc.document_type='${document_type}';
+
+            "} on-condition if "${check.workspace.workspace_count}"=="true"
+
+        transform as "Insert into the container table" on "intics_zio_db_conn" using
+        {"
+            INSERT INTO sor_meta.sor_container
+            (sor_container_name, status, created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, version,document_type)
+            select  distinct hc.container_name as sor_container_name ,'ACTIVE' as status, cast('${timestamp.question_verse_bootstraping}' as timestamp) as created_on,
+            ${created_user_id} as created_user_id,cast('${timestamp.question_verse_bootstraping}' as timestamp) as last_updated_on,
+            ${created_user_id} as last_updated_user_id,${tenant_id} as tenant_id,1 as version, hc.document_type as document_type
+            from ${temp_schema_name}.consolidated_meta_data_qn_${process-id} hc
+            where hc.document_type='${document_type}';
+        "} on-condition if "true"=="true"
+
+
+        transform as "Insert into the sor item table" on "intics_zio_db_conn" using
+        {"
+
+            INSERT INTO sor_meta.sor_item
+            (sor_item_name,sor_container_id, allowed_adapter, allowed_characters, char_limit, char_threshold,
+            comparable_characters, restricted_adapter, restricted_adapter_flag, validator_threshold, word_limit, word_threshold,
+            created_on, created_user_id, last_updated_on, last_updated_user_id, status, tenant_id, version)
+            select distinct cmd.sor_item_name as sor_item_name,cmd2.sor_container_id as sor_container_id, si.allowed_adapter as allowed_adapter,
+             si.allowed_characters as allowed_characters, si.char_limit as char_limit, si.char_threshold as char_threshold,
+            si.comparable_characters as comparable_characters, si.restricted_adapter as restricted_adapter, si.restricted_adapter_flag as restricted_adapter_flag,
+             si.validator_threshold as validator_threshold, si.word_limit as word_limit, si.word_threshold as word_threshold,
+            cast('${timestamp.question_verse_bootstraping}' as timestamp) as created_on,${created_user_id} as created_user_id,cast('${timestamp.question_verse_bootstraping}' as timestamp) as last_updated_on,
+            ${created_user_id} as created_user_id,'ACTIVE' as status , ${tenant_id} as tenant_id,1 as version
+            FROM ${temp_schema_name}.consolidated_meta_data_qn_${process-id} cmd
+            inner join sor_meta.sor_container cmd2 on cmd2.sor_container_name = cmd.container_name
+            inner join sor_meta_master_data.sor_item_master_data si
+            on si.sor_item_name = cmd.sor_item_name  and cmd2.tenant_id=${tenant_id} ;
+
+        "} on-condition if "true"=="true"
+
+        transform as "Insert into the truth entity table" on "intics_zio_db_conn" using
+        {"
+            INSERT INTO sor_meta.truth_entity
+            (truth_entity_name, asset_id, sor_container_id, created_on, created_user_id, last_updated_on, last_updated_user_id, status, tenant_id, version,sip_type)
+            select distinct
+            shsc.truth_entity_name as truth_entity_name ,ai.asset_id as asset_id, sc.sor_container_id as sor_container_id,cast('${timestamp.question_verse_bootstraping}' as timestamp) as created_on,
+            ${created_user_id} as created_user_id, cast('${timestamp.question_verse_bootstraping}' as timestamp) as last_updated_on, ${created_user_id} as last_updated_user_id,
+             'ACTIVE' as status,${tenant_id} as tenant_id,1 as version,shsc.sip_type
+            from ${temp_schema_name}.consolidated_meta_data_qn_${process-id} shsc
+            inner join sor_meta.sor_container sc on sc.sor_container_name   = shsc.container_name
+            inner join sor_meta.asset_info  ai on upper(ai.document_type) = upper(shsc.document_type) and upper(ai.template_name) = upper(shsc.asset_name)
+            where sc.tenant_id = ${tenant_id} and ai.tenant_id = ${tenant_id} ;
+
+        "} on-condition if "true"=="true"
+
+
+
+        transform as "Insert into the truth entity placeholder table" on "intics_zio_db_conn" using
+        {"
+            INSERT INTO sor_meta.truth_entity_placeholder
+            ( truth_entity_placeholder_value, truth_entity_id, sor_container_id,
+            created_on, created_user_id, last_updated_on, last_updated_user_id,
+            status, tenant_id, version)
+            select distinct shsp.truth_entity_placeholder_value as truth_entity_placeholder_value,te.truth_entity_id as truth_entity_id,
+            sc.sor_container_id as sor_container_id,
+            cast('${timestamp.question_verse_bootstraping}' as timestamp) as created_on, ${created_user_id} as created_user_id,cast('${timestamp.question_verse_bootstraping}' as timestamp) as last_updated_on,
+            ${created_user_id} as last_updated_user_id,'ACTIVE' as status,sc.tenant_id as tenant_id, 1 as version
+            from ${temp_schema_name}.consolidated_meta_data_placeholder_${process-id} shsp
+            inner join sor_meta.sor_container sc on shsp.container_name = sc.sor_container_name and shsp.document_type = sc.document_type
+             inner join sor_meta.asset_info  ai on upper(ai.document_type) = upper(shsp.document_type) and upper(ai.template_name) = upper(shsp.asset_name)
+            inner join sor_meta.truth_entity te on te.truth_entity_name= shsp.truth_entity_name
+            and te.asset_id = ai.asset_id
+            where sc.tenant_id = ${tenant_id} and sc.document_type = '${document_type}' and te.tenant_id=${tenant_id} and ai.tenant_id=${tenant_id};
+        "} on-condition if "true"=="true"
+
+
+        transform as "Insert into the sor synonym table" on "intics_zio_db_conn" using
+        {"
+            INSERT INTO sor_meta.sor_tsynonym
+            (synonym, sor_item_id, truth_entity_id, sor_container_id, weights, created_on, created_user_id, last_updated_on,
+            last_updated_user_id, status, feature, priority_idx, category, tenant_id, version)
+            select distinct shsc.synonym as synonym ,si.sor_item_id as sor_item_id
+            ,te.truth_entity_id as truth_entity_id,
+            sc.sor_container_id as sor_container_id, 150 as weights,
+            cast('${timestamp.question_verse_bootstraping}' as timestamp) as created_on,${created_user_id} as created_user_id,cast('${timestamp.question_verse_bootstraping}' as timestamp) as last_updated_on,
+             ${created_user_id} as last_updated_user_id, 'ACTIVE' as status,
+               (case when te.sip_type ='TABLE_SIP' then 'TABLE_EXTRACT'
+                when te.sip_type  ='KVP_SIP' then 'KIE'
+                else null end)
+              as feature,1 as priority_idx,'PRIMARY' as category,${tenant_id} as tenant_id,1 as version
+            from ${temp_schema_name}.consolidated_meta_data_qn_${process-id} shsc
+            inner join sor_meta.asset_info  ai on upper(ai.document_type) = upper(shsc.document_type) and upper(ai.template_name) = upper(shsc.asset_name)
+            inner join sor_meta.sor_container sc on sc.sor_container_name = shsc.container_name and sc.document_type=ai.document_type
+            inner join sor_meta.truth_entity te on te.truth_entity_name= shsc.truth_entity_name
+            and te.asset_id = ai.asset_id and te.sor_container_id = sc.sor_container_id
+            inner join sor_meta.sor_item si on si.sor_item_name = shsc.sor_item_name and te.sor_container_id = sc.sor_container_id
+            where sc.tenant_id = ${tenant_id} and si.tenant_id =${tenant_id} and sc.document_type = '${document_type}' and ai.tenant_id=${tenant_id} and te.tenant_id=${tenant_id};
+
+        "} on-condition if "true"=="true"
+
+
+        transform as "Insert into the sor question table" on "intics_zio_db_conn" using
+        {"
+            INSERT INTO sor_meta.sor_question
+            (synonym_id, question, weights, category, created_on, created_user_id, last_updated_on, last_updated_user_id, status, priority_idx, model_id,
+            tenant_id, version, model_registry_id)
+            select distinct st.synonym_id as synonym_id, shsc.question as question,150 as weights,'PRIMARY' as category,
+            cast('${timestamp.question_verse_bootstraping}' as timestamp) as created_on, ${created_user_id} as created_user_id, cast('${timestamp.question_verse_bootstraping}' as timestamp) as last_updated_on,
+            ${created_user_id} as last_updated_user_id ,'ACTIVE' as status,1 as priority_idx ,1 as model_id,
+            ${tenant_id} as tenant_id,1 as version,1 as model_registry_id
+            from ${temp_schema_name}.consolidated_meta_data_qn_${process-id} shsc
+            inner join sor_meta.asset_info  ai on upper(ai.document_type) = upper(shsc.document_type) and upper(ai.template_name) = upper(shsc.asset_name)
+            inner join sor_meta.sor_container sc on sc.sor_container_name = shsc.container_name  and sc.document_type=ai.document_type
+            inner join sor_meta.truth_entity te on te.truth_entity_name= shsc.truth_entity_name
+            and te.asset_id = ai.asset_id and te.sor_container_id = sc.sor_container_id
+            inner join sor_meta.sor_item si on si.sor_item_name = shsc.sor_item_name and si.sor_container_id = sc.sor_container_id
+            inner join sor_meta.sor_tsynonym st on st.synonym = shsc.synonym
+            and sc.sor_container_id = st.sor_container_id and te.truth_entity_id= st.truth_entity_id
+            and st.sor_item_id = si.sor_item_id
+            where st.tenant_id = ${tenant_id} and sc.tenant_id=${tenant_id} and ai.tenant_id=${tenant_id} and te.tenant_id=${tenant_id} and si.tenant_id=${tenant_id}
+            and shsc.question <> '';
+
+        "} on-condition if "true"=="true"
+
+        transform as "Update to Completed in sor meta master data migration queue" on "intics_zio_db_conn" using
+        {"
+
+          update sormeta_master_data_process.sormeta_master_data_process_payload_queue
+          set status= 'COMPLETED' , consumed_on_ts = '${timestamp.question_verse_bootstraping}'
+          where migration_id = '${gen_id.migration_id}' and status = 'IN_PROGRESS';
+
+        INSERT INTO sormeta_master_data_process.sormeta_master_data_process_pipeline_audit
+       (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id)
+       VALUES( ${gen_id.group_id_migration_seq}, now(),'${created_user_id}','${created_user_id}',${tenant_id}, 'COMPLETED', 'SORMETA_MAIN_CALLER', 'sor meta migration main caller completed','${root-ref-id}');
+
+        "} on-condition if "true"=="true"
+
+
+    }
+
+    catch{
+    transform as "Update to failed in sor meta master data migration queue" on "intics_zio_db_conn" using
+        {"
+
+          update sormeta_master_data_process.sormeta_master_data_process_payload_queue
+          set status= 'FAILED' , consumed_on_ts = '${timestamp.question_verse_bootstraping}'
+          where migration_id = '${gen_id.migration_id}' and status = 'IN_PROGRESS';
+
+        INSERT INTO sormeta_master_data_process.sormeta_master_data_process_pipeline_audit
+        (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id)
+        VALUES( ${gen_id.group_id_migration_seq}, now(),'${created_user_id}','${created_user_id}',${tenant_id}, 'FAILED', 'SORMETA_MAIN_CALLER', 'sor meta migration main caller failes','${root-ref-id}');
+
+        "} on-condition if "true"=="true"
+    }
+    finally{
+
+      transform as "move to archive after completed " on "intics_zio_db_conn" using
+         {"
+               INSERT INTO sormeta_master_data_process.sormeta_master_data_process_payload_queue_archive
+               (producer_process_id, consumer_process_id, group_id,migration_id, created_on, status, stage, consumed_on_ts,root_pipeline_id,tenant_id)
+               SELECT producer_process_id, consumer_process_id, ${gen_id.group_id_migration_seq} as group_id,migration_id, now() as created_on, status, stage, consumed_on_ts,root_pipeline_id,${tenant_id} as tenant_id
+               FROM sormeta_master_data_process.sormeta_master_data_process_payload_queue where status='COMPLETED' and group_id=${gen_id.group_id_migration_seq} and tenant_id = ${tenant_id};
+
+             DELETE FROM sormeta_master_data_process.sormeta_master_data_process_payload_queue WHERE status='COMPLETED' and group_id=${gen_id.group_id_migration_seq} and tenant_id = ${tenant_id};
+
+               INSERT INTO sormeta_master_data_process.sormeta_master_data_process_payload_error_queue
+               (producer_process_id, consumer_process_id,group_id, migration_id, created_on, status, stage, message, consumed_on_ts,root_pipeline_id,tenant_id)
+               SELECT  producer_process_id, consumer_process_id,${gen_id.group_id_migration_seq} as group_id,migration_id, now() as created_on,status,stage,'error in preprocess sot process' as message,consumed_on_ts,root_pipeline_id,${tenant_id} as tenant_id
+               FROM sormeta_master_data_process.sormeta_master_data_process_payload_queue where status = 'FAILED' and group_id=${gen_id.group_id_migration_seq} and tenant_id = ${tenant_id};
+
+               DELETE FROM sormeta_master_data_process.sormeta_master_data_process_payload_queue WHERE status='FAILED' and group_id=${gen_id.group_id_migration_seq} and tenant_id = ${tenant_id};
+
+               INSERT INTO sormeta_master_data_process.sormeta_master_data_process_pipeline_audit
+               (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id)
+                VALUES( ${gen_id.group_id_migration_seq}, now(),'${created_user_id}','${created_user_id}',${tenant_id}, 'COMPLETED', 'SORMETA_MAIN_CALLER', 'sor meta migration main caller COMPLETED','${root-ref-id}');
+
+
+         "} on-condition if "true"=="true"
+
+
+    }
+}

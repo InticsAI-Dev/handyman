@@ -1,0 +1,171 @@
+process "preprocess.template.detection"
+
+{
+try{
+
+        templateDetection as "Template detection macro for this group id ${group_id} and batch_id ${batch_id}"
+        copro-url "${copro.template.detection.url}"
+        resource-conn "intics_zio_db_conn"
+        input-table "${temp_schema_name}.auto_rotation_${init_process_id.process_id}"
+        process-id "${init_process_id.process_id}"
+        ouput-table "${temp_schema_name}.a_template_detection_response_${init_process_id.process_id}"
+        using  {"
+            select  ar.origin_id ,ar.paper_no ,ar.group_id ,ar.processed_file_path as file_path, ar.tenant_id
+            ,ar.template_id ,ar.process_id ,ar.root_pipeline_id , sq.model_registry_id,
+            (jsonb_agg(json_build_object('question', (sq.question), 'questionId', sq.question_id, 'synonymId', st.synonym_id, 'sorItemName', 'template_name')))::varchar as questions, b.batch_id, now() as created_on
+            from ${temp_schema_name}.auto_rotation_${init_process_id.process_id} ar
+            join sor_meta.sor_tsynonym st on 1=1
+            join sor_meta.sor_question sq on st.synonym_id  =sq.synonym_id
+            join preprocess.preprocess_payload_queue b on ar.origin_id=b.origin_id and b.tenant_id=ar.tenant_id and b.batch_id = ar.batch_id
+            where st.synonym ='Template Name' and ar.status ='COMPLETED' and ar.group_id='${group_id}' and sq.tenant_id=${tenant_id} and sq.weights=150 and b.batch_id='${batch_id}'
+            group by ar.origin_id ,ar.paper_no ,ar.group_id ,ar.processed_file_path , ar.tenant_id ,ar.template_id ,ar.process_id ,ar.root_pipeline_id,sq.model_registry_id,b.batch_id;
+
+        "} on-condition if "${template.detection.activator}"=="true"
+
+        coproStop as "Calling valuation copro stop action" for "TEMPLATE_DETECTION"
+        copro-server-url "${copro.template.detection.admin.stop.url}"
+        process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+        using
+        {"
+                gunicorn
+        "} on-condition if "${template.detection.stop.action}"=="true"
+
+        transform as "insert into audit table for template detection" on "intics_zio_db_conn" using
+        {"
+                insert into audit.process_audit_output
+                (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint,paper_no,batch_id)
+                select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint, ai.paper_no, '${batch_id}'
+                from ${temp_schema_name}.a_template_detection_response_${init_process_id.process_id} ai
+                where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}  and batch_id='${batch_id}'
+                group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage, ai.paper_no
+        "}  on-condition if "true"=="true"
+
+
+
+        transform as "Template detection module cummulative result" on "intics_zio_db_conn" using {"
+
+                INSERT INTO
+                ${temp_schema_name}.b_template_response_group_${init_process_id.process_id}
+                (origin_id,tenant_id, paper_no, template_name, occurance_count, batch_id, root_pipeline_id)
+                SELECT a.origin_id,${tenant_id},a.paper_no ,a.predictedattribution_value , count(*), a.batch_id, b.root_pipeline_id
+                FROM ${temp_schema_name}.a_template_detection_response_${init_process_id.process_id} a
+                join preprocess.preprocess_payload_queue b on a.origin_id=b.origin_id and a.tenant_id=b.tenant_id
+                where a.predictedattribution_value is not null and a.predictedattribution_value!='' and a.group_id='${group_id}' and a.tenant_id = ${tenant_id} and b.batch_id='${batch_id}'
+                group by a.origin_id, a.predictedattribution_value, a.paper_no, a.batch_id , b.root_pipeline_id ;
+
+                INSERT INTO
+                ${temp_schema_name}.c_template_max_occurance_${init_process_id.process_id}
+                (origin_id, template_name, tenant_id, paper_no, occurance_count, batch_id,root_pipeline_id )
+                select t.origin_id, t.template_name, ${tenant_id}, t.paper_no, max(t.occurance_count), t.batch_id, t.root_pipeline_id
+                from ${temp_schema_name}.b_template_response_group_${init_process_id.process_id} t
+                join preprocess.preprocess_payload_queue b on t.origin_id=b.origin_id
+                where LENGTH(t.template_name) > 5
+                group by t.origin_id, t.paper_no, t.template_name, t.batch_id, t.root_pipeline_id;
+
+                INSERT INTO
+                ${temp_schema_name}.d_template_name_match_${init_process_id.process_id}
+                (paper_no, tenant_id, origin_id, template_name, batch_id)
+                select s.paper_no, ${tenant_id}, s.origin_id,s.template_name, s.batch_id
+                from ${temp_schema_name}.b_template_response_group_${init_process_id.process_id} s
+                right join ${temp_schema_name}.c_template_max_occurance_${init_process_id.process_id} t
+                on s.origin_id=t.origin_id and s.occurance_count=t.occurance_count and s.paper_no=t.paper_no and s.template_name=t.template_name and s.batch_id=t.batch_id
+                join preprocess.preprocess_payload_queue b on s.origin_id=b.origin_id
+                where s.batch_id='${batch_id}';
+
+                INSERT INTO
+                ${temp_schema_name}.e_template_name_fuzzy_match_${init_process_id.process_id}
+                (origin_id, tenant_id, predicted_template_name, template_name, fuzzy_score, batch_id, root_pipeline_id, document_type)
+                select a.origin_id, ${tenant_id},UPPER(a.template_name),b.template_name,
+                round(SIMILARITY(UPPER(a.template_name),b.template_name)*100) as fuzzy_score, A.batch_id, c.root_pipeline_id, b.document_type
+                from ${temp_schema_name}.d_template_name_match_${init_process_id.process_id} A
+                join sor_meta.asset_info b on A.tenant_id=b.tenant_id
+                join preprocess.preprocess_payload_queue c on a.origin_id=c.origin_id
+                where b.tenant_id=${tenant_id} and a.batch_id='${batch_id}' and b.document_type='${document_type}'
+                order by fuzzy_score desc;
+
+                INSERT INTO
+                ${temp_schema_name}.f_template_name_max_fuzzy_match_${init_process_id.process_id}
+                (origin_id,tenant_id, max, batch_id)
+                select b.origin_id, ${tenant_id},max(a.fuzzy_score), a.batch_id
+                from ${temp_schema_name}.e_template_name_fuzzy_match_${init_process_id.process_id} a
+                right join preprocess.preprocess_payload_queue b on a.origin_id=b.origin_id and a.tenant_id=b.tenant_id
+                where a.fuzzy_score > '${template.fuzzy.threshold}' and b.tenant_id = ${tenant_id} and a.batch_id='${batch_id}'
+                group by b.origin_id ,a.batch_id ;
+
+                INSERT INTO
+                ${temp_schema_name}.g_final_template_match_${init_process_id.process_id}
+                (origin_id,tenant_id, template_name, fuzzy_score, batch_id)
+                select t.origin_id ,${tenant_id},t.template_name ,t.fuzzy_score, '${batch_id}'
+                from (select c.origin_id ,b.template_name ,b.fuzzy_score,
+                row_number() OVER ( partition  by b.origin_id,b.fuzzy_score
+                ORDER BY b.origin_id,b.fuzzy_score DESC ) AS rnk, a.batch_id
+                from ${temp_schema_name}.f_template_name_max_fuzzy_match_${init_process_id.process_id} a
+                join ${temp_schema_name}.e_template_name_fuzzy_match_${init_process_id.process_id} b
+                on a.origin_id =b.origin_id and a.max =b.fuzzy_score
+                right join preprocess.preprocess_payload_queue c on a.origin_id=c.origin_id and c.tenant_id=${tenant_id}
+                where a.batch_id='${batch_id}')t
+                where t.rnk=1 and t.batch_id='${batch_id}';
+
+                INSERT INTO info.template_detection
+                (process_id, origin_id, group_id, template_name,  score, tenant_id, template_id, created_on, root_pipeline_id, batch_id)
+                select '${init_process_id.process_id}',b.origin_id ,b.group_id ,case when a.template_name is null then '${channel.name.default.value}' when a.template_name = '' then '${channel.name.default.value}' else a.template_name end
+                ,case when a.fuzzy_score is null then 0 end ,b.tenant_id ,'${document_id}',now(),b.root_pipeline_id, b.batch_id
+                from preprocess.preprocess_payload_queue b
+                LEFT join ${temp_schema_name}.g_final_template_match_${init_process_id.process_id} a on a.origin_id=b.origin_id and a.tenant_id=b.tenant_id
+                where b.tenant_id=${tenant_id} and b.batch_id='${batch_id}';
+        "} on-condition if "${template.detection.activator}"=="true"
+
+        transform as "Template detection module falsed" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO info.template_detection
+                (process_id, origin_id, group_id, template_name,  score, tenant_id, template_id, created_on, root_pipeline_id, batch_id)
+                select '${init_process_id.process_id}',b.origin_id ,'${group_id}','${channel.name.placeholder.value}' ,0 ,${tenant_id},'${document_id}',now(),'${gen_id.root_pipeline_id}',batch_id
+                from preprocess.preprocess_payload_queue b
+                where b.tenant_id=${tenant_id} and b.group_id=${group_id} and b.batch_id='${batch_id}';
+        "}on-condition if "${template.detection.activator}"=="false"
+
+        transform as "cross channel mapping and updating the output table" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO ${temp_schema_name}.template_detection_result_${init_process_id.process_id}
+                (process_id, origin_id, group_id, template_name, score, tenant_id, template_id, created_on, root_pipeline_id, batch_id)
+                select td.process_id, td.origin_id, td.group_id,
+                case
+                		when cc.channel_name is null then td.template_name
+                		when cc.channel_name=td.template_name  then ai.template_name
+                		when cc.channel_name='' then td.template_name
+                		when cc.channel_name != '' then cc.channel_name
+                end as template_name,
+                td.score, td.tenant_id, td.template_id, td.created_on, td.root_pipeline_id, td.batch_id
+                FROM info.template_detection td
+                join preprocess.preprocess_payload_queue ppq on ppq.origin_id = td.origin_id
+                left JOIN sor_meta.asset_info ai on td.template_name = ai.template_name  and  td.tenant_id = ai.tenant_id
+                left join sor_meta.cross_channel_mapping cc on td.template_name =cc.channel_name and cc.asset_id = ai.asset_id
+                where td.tenant_id = ${tenant_id} and td.group_id=${group_id} and td.batch_id='${batch_id}' and ai.document_type='${document_type}';
+
+                INSERT INTO info.template_detection_result
+                (process_id, origin_id, group_id, template_name, score, tenant_id, template_id, created_on, root_pipeline_id,batch_id)
+                SELECT process_id, origin_id, group_id,template_name, score, tenant_id, template_id,created_on,root_pipeline_id,batch_id
+                FROM ${temp_schema_name}.template_detection_result_${init_process_id.process_id}
+                WHERE process_id = '${init_process_id.process_id}' and batch_id='${batch_id}';
+        "} on-condition if "true"=="true"
+
+}
+catch{
+                transform as "Update to FAILED in preprocess payload queue" on "intics_zio_db_conn" using
+                 {"
+                      UPDATE preprocess.preprocess_payload_queue
+                      SET status='FAILED', consumed_on_ts = '${time_stamp_preprocess.consumed_on_ts}', consumer_process_id = '${process-id}'
+                      WHERE group_id='${group_id}' AND status='IN_PROGRESS' and tenant_id = ${tenant_id};
+                 "}  on-condition if "true"=="true"
+}
+finally{
+        transform as "insert into audit table for template detection result table" on "intics_zio_db_conn" using {"
+
+                INSERT INTO template_detection.template_detection_result_audit
+                (process_id, origin_id, group_id, template_name, score, tenant_id, template_id, created_on, root_pipeline_id, batch_id)
+                SELECT process_id, origin_id, group_id,template_name, score, tenant_id, template_id,created_on,root_pipeline_id, batch_id
+                FROM info.template_detection_result
+                where batch_id='${batch_id}';
+        "} on-condition if "true"=="true"
+}
+}

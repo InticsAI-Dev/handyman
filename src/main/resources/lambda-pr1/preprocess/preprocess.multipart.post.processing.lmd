@@ -1,0 +1,342 @@
+process "preprocess.multipart.post.processing"
+{
+    try{
+        transform as "insert into audit in preprocess payload queue" on "intics_zio_db_conn" using
+        {"
+
+            INSERT INTO preprocess.preprocess_pipeline_audit
+            (process_id, origin_id,group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+            SELECT  a.producer_process_id,a.origin_id, a.group_id,now(), 'STARTED','PREPROCESS','preprocess multipart file upload for post processing ${group_id}','${gen_id.root_pipeline_id}', ${tenant_id}, a.batch_id
+            FROM preprocess.preprocess_payload_queue a
+            WHERE a.status='IN_PROGRESS' and a.group_id='${group_id}' and a.tenant_id = ${tenant_id} and a.batch_id='${batch_id}';
+
+        "}  on-condition if "true"=="true"
+
+        multipartUpload as "multipart file upload for template detection"
+        resource-conn "intics_zio_db_conn"
+        upload-url "${template.detection.multipart.upload.url}"
+        using {"
+            SELECT ar.processed_file_path as file_path, ar.template_id as template_id,
+            ar.origin_id as origin_id, ar.paper_no as paper_no, ar.group_id as group_id,
+            ar.tenant_id as tenant_id, ar.process_id as process_id,
+            ar.root_pipeline_id as root_pipeline_id, ar.batch_id
+            FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id} ar
+            WHERE ar.status ='COMPLETED' AND ar.group_id='${group_id}' AND ar.tenant_id=${tenant_id} and ar.batch_id='${batch_id}';
+        "} on-condition if "${multipart_activator.pipeline_transaction}"=="true"
+
+        multipartUpload as "multipart file upload for text extraction"
+        resource-conn "intics_zio_db_conn"
+        upload-url "${text.extraction.multipart.upload.url}"
+        using {"
+            SELECT ar.processed_file_path as file_path, ar.template_id as template_id,
+            ar.origin_id as origin_id, ar.paper_no as paper_no, ar.group_id as group_id,
+            ar.tenant_id as tenant_id, ar.process_id as process_id,
+            ar.root_pipeline_id as root_pipeline_id, ar.batch_id
+            FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id} ar
+            WHERE ar.status ='COMPLETED' AND ar.group_id='${group_id}' AND ar.tenant_id=${tenant_id} and ar.batch_id='${batch_id}';
+        "} on-condition if "${multipart_activator.pipeline_transaction}"=="true"
+
+        multipartUpload as "multipart file upload for paper classification"
+        resource-conn "intics_zio_db_conn"
+        upload-url "${paper.classification.multipart.upload.url}"
+        using {"
+            SELECT ar.processed_file_path as file_path, ar.template_id as template_id,
+            ar.origin_id as origin_id, ar.paper_no as paper_no, ar.group_id as group_id,
+            ar.tenant_id as tenant_id, ar.process_id as process_id,
+            ar.root_pipeline_id as root_pipeline_id, ar.batch_id
+            FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id} ar
+            WHERE ar.status ='COMPLETED' AND ar.group_id='${group_id}' AND ar.tenant_id=${tenant_id} and ar.batch_id='${batch_id}';
+        "} on-condition if "${multipart_activator.pipeline_transaction}"=="true"
+
+        multipartUpload as "multipart file upload for urgency triage"
+        resource-conn "intics_zio_db_conn"
+        upload-url "${urgency.triage.multipart.upload.url}"
+        using {"
+            SELECT ar.processed_file_path as file_path, ar.template_id as template_id,
+            ar.origin_id as origin_id, ar.paper_no as paper_no, ar.group_id as group_id,
+            ar.tenant_id as tenant_id, ar.process_id as process_id,
+            ar.root_pipeline_id as root_pipeline_id, ar.batch_id
+            FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id} ar
+            WHERE ar.status ='COMPLETED' AND ar.group_id='${group_id}' AND ar.tenant_id=${tenant_id} and ar.batch_id='${batch_id}';
+        "} on-condition if "${multipart_activator.pipeline_transaction}"=="true"
+
+        multipartUpload as "multipart file upload for qr extraction"
+        resource-conn "intics_zio_db_conn"
+        upload-url "${qr.extraction.multipart.upload.url}"
+        using {"
+            SELECT ar.processed_file_path as file_path, ar.template_id as template_id,
+            ar.origin_id as origin_id, ar.paper_no as paper_no, ar.group_id as group_id,
+            ar.tenant_id as tenant_id, ar.process_id as process_id,
+            ar.root_pipeline_id as root_pipeline_id, ar.batch_id
+            FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id} ar
+            WHERE ar.status ='COMPLETED' AND ar.group_id='${group_id}' AND ar.tenant_id=${tenant_id} and ar.batch_id='${batch_id}';
+        "} on-condition if "${multipart_activator.pipeline_transaction}"=="true"
+
+        multipartUpload as "multipart file upload for noise detection"
+        resource-conn "intics_zio_db_conn"
+        upload-url "${noise.detection.multipart.upload.url}"
+        using {"
+            SELECT ar.processed_file_path as file_path, ar.template_id as template_id,
+            ar.origin_id as origin_id, ar.paper_no as paper_no, ar.group_id as group_id,
+            ar.tenant_id as tenant_id, ar.process_id as process_id,
+            ar.root_pipeline_id as root_pipeline_id, ar.batch_id
+            FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id} ar
+            WHERE ar.status ='COMPLETED' AND ar.group_id='${group_id}' AND ar.tenant_id=${tenant_id} and ar.batch_id='${batch_id}';
+        "} on-condition if "${multipart_activator.pipeline_transaction}"=="true"
+
+        multipartUpload as "multipart file upload for argon"
+        resource-conn "intics_zio_db_conn"
+        upload-url "${argon.multipart.upload.url}"
+        using {"
+            SELECT ar.processed_file_path as file_path, ar.template_id as template_id,
+            ar.origin_id as origin_id, ar.paper_no as paper_no, ar.group_id as group_id,
+            ar.tenant_id as tenant_id, ar.process_id as process_id,
+            ar.root_pipeline_id as root_pipeline_id, ar.batch_id
+            FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id} ar
+            WHERE ar.status ='COMPLETED' AND ar.group_id='${group_id}' AND ar.tenant_id=${tenant_id} and ar.batch_id='${batch_id}';
+        "} on-condition if "${multipart_activator.pipeline_transaction}"=="true"
+
+        multipartUpload as "multipart file upload for xenon"
+        resource-conn "intics_zio_db_conn"
+        upload-url "${xenon.multipart.upload.url}"
+        using {"
+            SELECT ar.processed_file_path as file_path, ar.template_id as template_id,
+            ar.origin_id as origin_id, ar.paper_no as paper_no, ar.group_id as group_id,
+            ar.tenant_id as tenant_id, ar.process_id as process_id,
+            ar.root_pipeline_id as root_pipeline_id, ar.batch_id
+            FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id} ar
+            WHERE ar.status ='COMPLETED' AND ar.group_id='${group_id}' AND ar.tenant_id=${tenant_id} and ar.batch_id='${batch_id}';
+        "} on-condition if "${multipart_activator.pipeline_transaction}"=="true"
+
+        multipartUpload as "multipart file upload for radon kvp"
+        resource-conn "intics_zio_db_conn"
+        upload-url "${kvp.radon.multipart.upload.url}"
+        using {"
+            SELECT ar.processed_file_path as file_path, ar.template_id as template_id,
+            ar.origin_id as origin_id, ar.paper_no as paper_no, ar.group_id as group_id,
+            ar.tenant_id as tenant_id, ar.process_id as process_id,
+            ar.root_pipeline_id as root_pipeline_id, ar.batch_id
+            FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id} ar
+            WHERE ar.status ='COMPLETED' AND ar.group_id='${group_id}' AND ar.tenant_id=${tenant_id} and ar.batch_id='${batch_id}';
+        "} on-condition if "${multipart_activator.pipeline_transaction}"=="true"
+
+
+        multipartUpload as "multipart file upload for radon bbox kvp"
+        resource-conn "intics_zio_db_conn"
+        upload-url "${kvp.radon.bbox.multipart.upload.url}"
+        using {"
+            SELECT ar.processed_file_path as file_path, ar.template_id as template_id,
+            ar.origin_id as origin_id, ar.paper_no as paper_no, ar.group_id as group_id,
+            ar.tenant_id as tenant_id, ar.process_id as process_id,
+            ar.root_pipeline_id as root_pipeline_id, ar.batch_id
+            FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id} ar
+            WHERE ar.status ='COMPLETED' AND ar.group_id='${group_id}' AND ar.tenant_id=${tenant_id} and ar.batch_id='${batch_id}';
+        "} on-condition if "${multipart_activator.pipeline_transaction}"=="true"
+
+        multipartUpload as "multipart file upload for file merger"
+        resource-conn "intics_zio_db_conn"
+        upload-url "${file.merger.multipart.upload.url}"
+        using {"
+            SELECT ar.processed_file_path as file_path, ar.template_id as template_id,
+            ar.origin_id as origin_id, ar.paper_no as paper_no, ar.group_id as group_id,
+            ar.tenant_id as tenant_id, ar.process_id as process_id,
+            ar.root_pipeline_id as root_pipeline_id, ar.batch_id
+            FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id} ar
+            WHERE ar.status ='COMPLETED' AND ar.group_id='${group_id}' AND ar.tenant_id=${tenant_id} and ar.batch_id='${batch_id}';
+        "} on-condition if "${multipart_activator.pipeline_transaction}"=="true"
+
+        multipartUpload as "multipart file upload for UT model krypton changes"
+        resource-conn "intics_zio_db_conn"
+        upload-url "${ut.krypton.multipart.upload.url}"
+        using {"
+            SELECT ar.processed_file_path as file_path, ar.template_id as template_id,
+            ar.origin_id as origin_id, ar.paper_no as paper_no, ar.group_id as group_id,
+            ar.tenant_id as tenant_id, ar.process_id as process_id,
+            ar.root_pipeline_id as root_pipeline_id, ar.batch_id
+            FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id} ar
+            WHERE ar.status ='COMPLETED' AND ar.group_id='${group_id}' AND ar.tenant_id=${tenant_id} and ar.batch_id='${batch_id}';
+        "} on-condition if "${multipart_activator.pipeline_transaction}"=="none"
+
+
+        multitude as "multitude execution - multipart file upload for workspace"
+        on "PARALLEL" using
+        {
+            multipartUpload as "multipart file upload for text extraction"
+            resource-conn "intics_zio_db_conn"
+            upload-url "${text.extraction.multipart.upload.url}"
+            using {"
+                SELECT ar.processed_file_path as file_path, ar.template_id as template_id,
+                ar.origin_id as origin_id, ar.paper_no as paper_no, ar.group_id as group_id,
+                ar.tenant_id as tenant_id, ar.process_id as process_id,
+                ar.root_pipeline_id as root_pipeline_id, ar.batch_id
+                FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id} ar
+                WHERE ar.status ='COMPLETED' AND ar.group_id='${group_id}' AND ar.tenant_id=${tenant_id} and ar.batch_id='${batch_id}';
+            "} on-condition if "${multipart_activator.workspace}"=="true"
+
+            multipartUpload as "multipart file upload for argon"
+            resource-conn "intics_zio_db_conn"
+            upload-url "${argon.multipart.upload.url}"
+            using {"
+                SELECT ar.processed_file_path as file_path, ar.template_id as template_id,
+                ar.origin_id as origin_id, ar.paper_no as paper_no, ar.group_id as group_id,
+                ar.tenant_id as tenant_id, ar.process_id as process_id,
+                ar.root_pipeline_id as root_pipeline_id, ar.batch_id
+                FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id} ar
+                WHERE ar.status ='COMPLETED' AND ar.group_id='${group_id}' AND ar.tenant_id=${tenant_id} and ar.batch_id='${batch_id}';
+            "} on-condition if "${multipart_activator.workspace}"=="true"
+
+            multipartUpload as "multipart file upload for xenon"
+            resource-conn "intics_zio_db_conn"
+            upload-url "${xenon.multipart.upload.url}"
+            using {"
+                SELECT ar.processed_file_path as file_path, ar.template_id as template_id,
+                ar.origin_id as origin_id, ar.paper_no as paper_no, ar.group_id as group_id,
+                ar.tenant_id as tenant_id, ar.process_id as process_id,
+                ar.root_pipeline_id as root_pipeline_id, ar.batch_id
+                FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id} ar
+                WHERE ar.status ='COMPLETED' AND ar.group_id='${group_id}' AND ar.tenant_id=${tenant_id} and ar.batch_id='${batch_id}';
+            "} on-condition if "${multipart_activator.workspace}"=="true"
+
+            multipartUpload as "multipart file upload for checkbox detection"
+            resource-conn "intics_zio_db_conn"
+            upload-url "${checkbox.detection.multipart.upload.url}"
+            using {"
+                SELECT ar.processed_file_path as file_path, ar.template_id as template_id,
+                ar.origin_id as origin_id, ar.paper_no as paper_no, ar.group_id as group_id,
+                ar.tenant_id as tenant_id, ar.process_id as process_id,
+                ar.root_pipeline_id as root_pipeline_id, ar.batch_id
+                FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id} ar
+                WHERE ar.status ='COMPLETED' AND ar.group_id='${group_id}' AND ar.tenant_id=${tenant_id} and ar.batch_id='${batch_id}';
+            "} on-condition if "${multipart_activator.workspace}"=="true"
+
+            multipartUpload as "multipart file upload for autoq detection"
+            resource-conn "intics_zio_db_conn"
+            upload-url "${autoq.multipart.upload.url}"
+            using {"
+                SELECT ar.processed_file_path as file_path, ar.template_id as template_id,
+                ar.origin_id as origin_id, ar.paper_no as paper_no, ar.group_id as group_id,
+                ar.tenant_id as tenant_id, ar.process_id as process_id,
+                ar.root_pipeline_id as root_pipeline_id, ar.batch_id
+                FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id} ar
+                WHERE ar.status ='COMPLETED' AND ar.group_id='${group_id}' AND ar.tenant_id=${tenant_id} and ar.batch_id='${batch_id}';
+            "} on-condition if "${multipart_activator.workspace}"=="true"
+
+            multipartUpload as "multipart file upload for table extraction v1"
+            resource-conn "intics_zio_db_conn"
+            upload-url "${table.extraction.v1.multipart.upload.url}"
+            using {"
+                SELECT ar.processed_file_path as file_path, ar.template_id as template_id,
+                ar.origin_id as origin_id, ar.paper_no as paper_no, ar.group_id as group_id,
+                ar.tenant_id as tenant_id, ar.process_id as process_id,
+                ar.root_pipeline_id as root_pipeline_id, ar.batch_id
+                FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id} ar
+                WHERE ar.status ='COMPLETED' AND ar.group_id='${group_id}' AND ar.tenant_id=${tenant_id} and ar.batch_id='${batch_id}';
+            "} on-condition if "${multipart_activator.workspace}"=="true"
+
+            multipartUpload as "multipart file upload for table extraction v2"
+            resource-conn "intics_zio_db_conn"
+            upload-url "${table.extraction.v2.multipart.upload.url}"
+            using {"
+                SELECT ar.processed_file_path as file_path, ar.template_id as template_id,
+                ar.origin_id as origin_id, ar.paper_no as paper_no, ar.group_id as group_id,
+                ar.tenant_id as tenant_id, ar.process_id as process_id,
+                ar.root_pipeline_id as root_pipeline_id, ar.batch_id
+                FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id} ar
+                WHERE ar.status ='COMPLETED' AND ar.group_id='${group_id}' AND ar.tenant_id=${tenant_id} and ar.batch_id='${batch_id}';
+            "} on-condition if "${multipart_activator.workspace}"=="true"
+
+            multipartUpload as "multipart file upload for table extraction v3"
+            resource-conn "intics_zio_db_conn"
+            upload-url "${table.extraction.v3.multipart.upload.url}"
+            using {"
+                SELECT ar.processed_file_path as file_path, ar.template_id as template_id,
+                ar.origin_id as origin_id, ar.paper_no as paper_no, ar.group_id as group_id,
+                ar.tenant_id as tenant_id, ar.process_id as process_id,
+                ar.root_pipeline_id as root_pipeline_id, ar.batch_id
+                FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id} ar
+                WHERE ar.status ='COMPLETED' AND ar.group_id='${group_id}' AND ar.tenant_id=${tenant_id} and ar.batch_id='${batch_id}';
+            "} on-condition if "${multipart_activator.workspace}"=="true"
+
+            multipartUpload as "multipart file upload for face detection"
+            resource-conn "intics_zio_db_conn"
+            upload-url "${face.detection.multipart.upload.url}"
+            using {"
+                SELECT ar.processed_file_path as file_path, ar.template_id as template_id,
+                ar.origin_id as origin_id, ar.paper_no as paper_no, ar.group_id as group_id,
+                ar.tenant_id as tenant_id, ar.process_id as process_id,
+                ar.root_pipeline_id as root_pipeline_id, ar.batch_id
+                FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id} ar
+                WHERE ar.status ='COMPLETED' AND ar.group_id='${group_id}' AND ar.tenant_id=${tenant_id} and ar.batch_id='${batch_id}';
+            "} on-condition if "${multipart_activator.workspace}"=="true"
+
+            multipartUpload as "multipart file upload for figure detection"
+            resource-conn "intics_zio_db_conn"
+            upload-url "${figure.detection.multipart.upload.url}"
+            using {"
+                SELECT ar.processed_file_path as file_path, ar.template_id as template_id,
+                ar.origin_id as origin_id, ar.paper_no as paper_no, ar.group_id as group_id,
+                ar.tenant_id as tenant_id, ar.process_id as process_id,
+                ar.root_pipeline_id as root_pipeline_id, ar.batch_id
+                FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id} ar
+                WHERE ar.status ='COMPLETED' AND ar.group_id='${group_id}' AND ar.tenant_id=${tenant_id} and ar.batch_id='${batch_id}';
+            "} on-condition if "${multipart_activator.workspace}"=="true"
+
+            multipartUpload as "multipart file upload for radon kvp"
+            resource-conn "intics_zio_db_conn"
+            upload-url "${kvp.radon.multipart.upload.url}"
+            using {"
+                SELECT ar.processed_file_path as file_path, ar.template_id as template_id,
+                ar.origin_id as origin_id, ar.paper_no as paper_no, ar.group_id as group_id,
+                ar.tenant_id as tenant_id, ar.process_id as process_id,
+                ar.root_pipeline_id as root_pipeline_id, ar.batch_id
+                FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id} ar
+                WHERE ar.status ='COMPLETED' AND ar.group_id='${group_id}' AND ar.tenant_id=${tenant_id} and ar.batch_id='${batch_id}';
+            "} on-condition if "${multipart_activator.workspace}"=="true"
+
+
+            multipartUpload as "multipart file upload for radon bbox kvp"
+            resource-conn "intics_zio_db_conn"
+            upload-url "${kvp.radon.bbox.multipart.upload.url}"
+            using {"
+                SELECT ar.processed_file_path as file_path, ar.template_id as template_id,
+                ar.origin_id as origin_id, ar.paper_no as paper_no, ar.group_id as group_id,
+                ar.tenant_id as tenant_id, ar.process_id as process_id,
+                ar.root_pipeline_id as root_pipeline_id, ar.batch_id
+                FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id} ar
+                WHERE ar.status ='COMPLETED' AND ar.group_id='${group_id}' AND ar.tenant_id=${tenant_id} and ar.batch_id='${batch_id}';
+            "} on-condition if "${multipart_activator.workspace}"=="true"
+
+
+            multipartUpload as "multipart file upload for currency detection"
+            resource-conn "intics_zio_db_conn"
+            upload-url "${currency.detection.multipart.upload.url}"
+            using {"
+                SELECT ar.processed_file_path as file_path, ar.template_id as template_id,
+                ar.origin_id as origin_id, ar.paper_no as paper_no, ar.group_id as group_id,
+                ar.tenant_id as tenant_id, ar.process_id as process_id,
+                ar.root_pipeline_id as root_pipeline_id, ar.batch_id
+                FROM ${temp_schema_name}.auto_rotation_${init_process_id.process_id} ar
+                WHERE ar.status ='COMPLETED' AND ar.group_id='${group_id}' AND ar.tenant_id=${tenant_id} and ar.batch_id='${batch_id}';
+            "} on-condition if "${multipart_activator.workspace}"=="true"
+
+        } on-condition if "${multipart_activator.workspace}" == "true" fielding 5
+
+        transform as "insert into pipeline audit completed" on "intics_zio_db_conn" using
+        {"
+
+            INSERT INTO preprocess.preprocess_pipeline_audit
+            (process_id, origin_id,group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+            SELECT  a.producer_process_id,a.origin_id, a.group_id,now(), 'COMPLETED','PREPROCESS','preprocess multipart file upload for post processing ${group_id}','${gen_id.root_pipeline_id}', ${tenant_id}, a.batch_id
+            FROM preprocess.preprocess_payload_queue a
+            WHERE a.status='IN_PROGRESS' and a.group_id='${group_id}' and a.tenant_id = ${tenant_id} and a.batch_id='${batch_id}';
+
+        "}  on-condition if "true"=="true"
+        }
+        catch{
+
+    }
+    finally{
+
+    }
+
+}

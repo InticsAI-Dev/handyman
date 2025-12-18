@@ -1,0 +1,227 @@
+process "qr.extraction.processor"
+{
+try {
+
+        transform as "insert into qr extraction audit started" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO qr_extraction.qr_extraction_pipeline_audit
+                (origin_id, created_on, user_id, group_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+                SELECT  a.origin_id,now(),'${created_user_id}', a.group_id,${tenant_id} , 'STARTED','QR_EXTRACTION','qr extraction started for group_id ${group_id}','${gen_id.root_pipeline_id}', a.batch_id
+                FROM qr_extraction.qr_extraction_payload_queue a
+                WHERE a.group_id='${group_id}' AND a.status='STAGED' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                UPDATE qr_extraction.qr_extraction_payload_queue
+                SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts=now(),status='IN_PROGRESS'
+                WHERE group_id='${group_id}' and status='STAGED' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                UPDATE batching.sub_batching_process_payload_queue a
+                SET status='IN_PROGRESS',  stage='QR_EXTRACTION'
+                WHERE a.group_id='${group_id}'
+                and a.batch_id ='${batch_id}' and a.tenant_id = ${tenant_id};
+
+        "}  on-condition if "true"=="true"
+
+        assign as "pipeline_train_mode" source "intics_zio_db_conn" using
+        {"
+                select  (case when '${qr.extraction.start.action}'='true' AND '${pipeline.train.mode}'='true' then 'true' else 'false' end) as qr_extraction;
+        "}on-condition if "true"=="true"
+
+
+        coproStart as "Calling QR extraction copro start action" for "QR_EXTRACTION"
+        copro-server-url "${copro.qr.extraction.admin.start.url}"
+        export-command "${copro.qr.extraction.export}"
+        process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+        using
+        {"
+              ${qrExtractionStartCommand}
+
+        "}on-condition if "${pipeline_train_mode.qr_extraction}"=="true"
+
+
+        qr-extraction as "qr extraction macro"
+        on-resource-conn "intics_zio_db_conn"
+        copro-url "${copro.qr-attribution.url}"
+        process-id "${init_process_id.process_id}"
+        output-table "${temp_schema_name}.qr_extraction_result_${init_process_id.process_id}"
+        using {"
+                SELECT asset.file_path,sot.origin_id,asset.file_id,sot.paper_no,sot.group_id,'${gen_id.root_pipeline_id}' as root_pipeline_id,sot.tenant_id, sot.batch_id, now() as created_on
+                FROM info.source_of_truth sot
+                JOIN ${temp_schema_name}.asset_${init_process_id.process_id} asset
+                ON asset.file_id=sot.preprocessed_file_id
+                join qr_extraction.qr_extraction_payload_queue b on b.origin_id=sot.origin_id
+                WHERE sot.group_id='${group_id}' and sot.tenant_id = ${tenant_id} and sot.batch_id ='${batch_id}';
+        "} on-condition if "true"=="true"
+
+        coproStop as "Calling qr extraction copro stop action" for "QR_EXTRACTION".createdOn(Timestamp.valueOf(LocalDateTime.now()))
+        copro-server-url "${copro.qr.extraction.admin.stop.url}"
+        process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+        using
+        {"
+              gunicorn
+
+        "}on-condition if "${qr.extraction.stop.action}"=="true"
+
+
+        transform as "insert into audit table for QR Extraction" on "intics_zio_db_conn" using
+        {"
+                insert into audit.process_audit_output
+                (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint,paper_no, batch_id)
+                select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint, ai.paper_no, '${batch_id}'
+                from ${temp_schema_name}.qr_extraction_result_${init_process_id.process_id} ai
+                where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id} and batch_id='${batch_id}'
+                group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage, ai.paper_no
+        "}  on-condition if "true"=="true"
+
+        transform as "Qr code validation" on "intics_zio_db_conn" using {"
+                INSERT INTO ${temp_schema_name}.qr_candidate_result_${init_process_id.process_id}
+                (origin_id, group_id, paper_no, extracted_value, qr_count, root_pipeline_id, tenant_id, batch_id)
+                select qed.origin_id, qed.group_id ,qed.paper_no ,qed.extracted_value ,count(qed.extracted_value) as qr_count,'${gen_id.root_pipeline_id}', ${tenant_id} , b.batch_id
+                from ${temp_schema_name}.qr_extraction_result_${init_process_id.process_id}  qed
+                join qr_extraction.qr_extraction_payload_queue b on qed.origin_id=b.origin_id
+                group by qed.origin_id ,qed.group_id ,qed.paper_no ,qed.extracted_value, b.batch_id ;
+        "} on-condition if "true"=="true"
+
+        transform as "move from temporary table to main table qr extraction" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO qr_extraction.qr_extraction_details
+                (process_id, origin_id, group_id, paper_no, created_on, qr_format, qr_format_id, extracted_value, file_id, b_box, angle, confidence_score, status, stage,
+                message,is_candidate_qr, root_pipeline_id,decode_type, tenant_id,model_name,model_version, batch_id, last_updated_on)
+                SELECT '${init_process_id.process_id}', qer.origin_id, qer.group_id, qer.paper_no, qer.created_on, qer.qr_format,
+                qer.qr_format_id, qer.extracted_value, qer.file_id, qer.b_box, qer.angle,
+                qer.confidence_score, qer.status, qer.stage, qer.message,
+                case when qcr.qr_count >=2 then 'YES' when qcr.qr_count = 0 then 'NO' else 'NO' end, '${gen_id.root_pipeline_id}'
+                ,qer.decode_type, ${tenant_id}, qer.model_name,qer.model_version, qer.batch_id, qer.last_updated_on
+                FROM ${temp_schema_name}.qr_extraction_result_${init_process_id.process_id} qer
+                join ${temp_schema_name}.qr_candidate_result_${init_process_id.process_id} qcr on qer.origin_id =qcr.origin_id and qer.paper_no =qcr.paper_no and qcr.group_id =qer.group_id
+                join qr_extraction.qr_extraction_payload_queue b on qer.origin_id=b.origin_id
+                where qer.status IN ('COMPLETED','ABSENT') and  qer.tenant_id = ${tenant_id} and qer.batch_id = '${batch_id}' ;
+
+        "} on-condition if "true"=="true"
+
+        transform as "insert into qr extraction audit completed" on "intics_zio_db_conn" using
+        {"
+                UPDATE qr_extraction.qr_extraction_payload_queue a
+                SET status=b.status,stage=b.stage
+                from ${temp_schema_name}.qr_extraction_result_${init_process_id.process_id} b
+                WHERE  a.origin_id=b.origin_id and a.status='IN_PROGRESS' and b.status='FAILED'
+                and a.group_id='${group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                UPDATE qr_extraction.qr_extraction_payload_queue a
+                SET status='COMPLETED'
+                from ${temp_schema_name}.qr_extraction_result_${init_process_id.process_id} b
+                WHERE  a.origin_id=b.origin_id and a.status='IN_PROGRESS'
+                and b.status='COMPLETED' and a.group_id='${group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                UPDATE qr_extraction.qr_extraction_payload_queue a
+                SET status='COMPLETED'
+                from ${temp_schema_name}.qr_extraction_result_${init_process_id.process_id} b
+                WHERE  a.origin_id=b.origin_id and a.status='IN_PROGRESS'
+                and b.status='ABSENT' and a.group_id='${group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                INSERT INTO qr_extraction.qr_extraction_pipeline_audit
+                (origin_id, created_on, user_id, group_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+                SELECT  a.origin_id,now(),'${created_user_id}', a.group_id,${tenant_id}, a.status,'QR_EXTRACTION','qr extraction macro completed for group_id ${group_id}','${gen_id.root_pipeline_id}', a.batch_id
+                FROM qr_extraction.qr_extraction_payload_queue a
+                WHERE a.group_id='${group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+        "}  on-condition if "true"=="true"
+
+}
+catch{
+        transform as "insert into qr extraction audit failed" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO qr_extraction.qr_extraction_pipeline_audit
+                (origin_id, created_on, user_id, group_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+                SELECT  a.origin_id,now(),'${created_user_id}', a.group_id,${tenant_id}, 'FAILED', 'QR_EXTRACTION', 'qr extraction processor failed for group_id ${group_id}', '${gen_id.root_pipeline_id}', a.batch_id
+                FROM qr_extraction.qr_extraction_payload_queue a
+                WHERE a.group_id='${group_id}' AND a.status='IN_PROGRESS' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                UPDATE qr_extraction.qr_extraction_payload_queue
+                SET status='FAILED'
+                WHERE group_id='${group_id}' AND status='IN_PROGRESS' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+        "}  on-condition if "true"=="true"
+}
+finally{
+
+        transform as "insert into qr extraction audit failed" on "intics_zio_db_conn" using
+        {"
+
+        UPDATE qr_extraction.qr_extraction_payload_queue
+        SET status='FAILED'
+        WHERE group_id='${group_id}' AND status='IN_PROGRESS' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+        "}  on-condition if "true"=="true"
+
+        transform as "insert into pipeline summary audit qr extraction" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO ${temp_schema_name}.summary_audit_papers_${process-id}
+                (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken, root_pipeline_id, tenant_id, batch_id)
+                SELECT ${process-id} , 'QR_EXTRACTION' ,'QR_EXTRACTION',coalesce (count(DISTINCT CASE WHEN status='COMPLETED' THEN concat(origin_id,'_',paper_no) WHEN status='ABSENT' THEN concat(origin_id,'_',paper_no) END),0) ,coalesce (count(DISTINCT CASE WHEN status='FAILED' THEN concat(origin_id,'_',paper_no) END),0),min(created_on),max(last_updated_on), EXTRACT(epoch FROM (max(last_updated_on)-min(created_on))),'${gen_id.root_pipeline_id}', ${tenant_id} , '${batch_id}'
+                FROM qr_extraction.qr_extraction_details
+                WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                INSERT INTO ${temp_schema_name}.summary_audit_files_${process-id}
+                (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken, root_pipeline_id, tenant_id, batch_id)
+                SELECT ${process-id} , 'QR_EXTRACTION' ,'QR_EXTRACTION',coalesce (sum(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END),0) ,coalesce (sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END),0),min(created_on),max(created_on), EXTRACT(epoch FROM (max(created_on)-min(created_on))), '${gen_id.root_pipeline_id}', ${tenant_id} , '${batch_id}'
+                FROM qr_extraction.qr_extraction_payload_queue
+                WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                INSERT INTO audit.pipeline_summary_audit
+                (process_id, created_on, module_name, macro_process, files_processed_count,papers_processed_count,files_failed_count,papers_failed_count,start_time,end_time, time_taken, group_id, root_pipeline_id, created_user_id, template_id, tenant_id,average_time, batch_id)
+                SELECT msaf.process_id ,now(),msaf.module_name ,msaf.macro_process ,msaf.completed_count,msap.completed_count,msaf.failed_count,msap.failed_count,msap.min_created_on,msap.max_created_on, EXTRACT(epoch FROM (msap.max_created_on-msap.min_created_on)),
+                '${group_id}','${root-ref-id}','${created_user_id}','${document_id}',${tenant_id} ,(CASE WHEN (msaf.completed_count+msaf.failed_count)=0 THEN msaf.time_taken WHEN (msaf.time_taken/(msaf.completed_count+msaf.failed_count))=0 THEN msaf.time_taken ELSE (msaf.time_taken/(msaf.completed_count+msaf.failed_count)) END), msaf.batch_id
+                FROM ${temp_schema_name}.summary_audit_files_${process-id} msaf,
+                ${temp_schema_name}.summary_audit_papers_${process-id} msap
+                WHERE msaf.module_name=msap.module_name AND msaf.macro_process=msap.macro_process AND msaf.batch_id=msap.batch_id AND
+                msaf.module_name='QR_EXTRACTION' AND msaf.macro_process='QR_EXTRACTION' and msaf.tenant_id = ${tenant_id} and msaf.batch_id = '${batch_id}';
+        "} on-condition if "true"=="true"
+
+
+
+        transform as "delete from  temporary tables to main audit tables  in qr extraction" on "intics_zio_db_conn" using {"
+
+                INSERT INTO qr_extraction.qr_candidate_result_audit
+                (origin_id, group_id, paper_no, extracted_value, qr_count, root_pipeline_id, tenant_id, batch_id)
+                SELECT origin_id, group_id, paper_no, extracted_value, qr_count, root_pipeline_id, ${tenant_id}, '${batch_id}'
+                FROM ${temp_schema_name}.qr_candidate_result_${init_process_id.process_id}
+                where batch_id='${batch_id}';
+
+                INSERT INTO qr_extraction.qr_extraction_result_audit
+                (origin_id, group_id, paper_no, created_on, qr_format, qr_format_id, extracted_value, decode_type, file_id, b_box, angle, confidence_score, status, stage, message, root_pipeline_id, tenant_id, batch_id,last_updated_on)
+                SELECT origin_id, group_id, paper_no, created_on, qr_format, qr_format_id, extracted_value, decode_type, file_id, b_box, angle, confidence_score, status, stage, message, root_pipeline_id, ${tenant_id}, '${batch_id}',last_updated_on
+                FROM ${temp_schema_name}.qr_extraction_result_${init_process_id.process_id}
+                where batch_id='${batch_id}';
+
+        "} on-condition if "true"=="true"
+
+        transform as "Insert into qr extraction error queue as failed for group_id ${group_id}" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO qr_extraction.qr_extraction_payload_error_queue
+                (producer_process_id, consumer_process_id, group_id, origin_id , created_on, status, stage, message, consumed_on_ts, root_pipeline_id,tenant_id, batch_id)
+                SELECT producer_process_id, consumer_process_id, group_id, origin_id, created_on, status, stage, 'Error insert into qr extraction output table', consumed_on_ts, root_pipeline_id, ${tenant_id} , batch_id
+                FROM qr_extraction.qr_extraction_payload_queue
+                WHERE group_id='${group_id}' and status ='FAILED'
+                and stage ='QR_EXTRACTION' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                DELETE FROM qr_extraction.qr_extraction_payload_queue
+                WHERE group_id='${group_id}' and status ='FAILED'
+                and stage ='QR_EXTRACTION' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+        "} on-condition if "true"=="true"
+
+
+        transform as "Insert into qr extraction payload queue archive as completed for group_id ${group_id}" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO qr_extraction.qr_extraction_payload_queue_archive
+                (producer_process_id, consumer_process_id, origin_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, batch_id)
+                SELECT producer_process_id, consumer_process_id, origin_id, group_id, created_on, status, stage , consumed_on_ts, '${gen_id.root_pipeline_id}', ${tenant_id} ,batch_id
+                FROM qr_extraction.qr_extraction_payload_queue
+                WHERE group_id='${group_id}' and status ='COMPLETED'
+                and stage ='QR_EXTRACTION' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                DELETE FROM qr_extraction.qr_extraction_payload_queue
+                WHERE group_id='${group_id}' and status ='COMPLETED'
+                and stage ='QR_EXTRACTION' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+        "} on-condition if "true"=="true"
+
+
+}
+}

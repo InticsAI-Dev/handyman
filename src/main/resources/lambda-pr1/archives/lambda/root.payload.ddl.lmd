@@ -1,0 +1,59 @@
+process "root.payload.ddl"
+{
+try {
+
+		transform as "insert into temp table for preprocess status meta details " on "intics_zio_db_conn" using {"
+			create table if not exists ingestion.file_name_detection as
+			select b.file_name,a.origin_id,a.file_id, a.tenant_id from info.source_of_origin a
+			join ${temp_schema_name}.asset_${init_process_id.process_id} b on a.file_id=b.file_id
+		"} on-condition if "true"=="true"
+
+        transform as "Create pipeline execution" on "intics_zio_db_conn" using
+        {"
+			create view ingestion.pipeline_execution_view as
+            select a.file_name,a.origin_id ,
+            (case when c.status= null then 'OPEN' else c.status end)as preprocess_blankpage,
+            (case when d.status= null then 'OPEN' else d.status end)as preprocess_autorotation,
+            (case when e.status= null then 'OPEN' else e.status end)as preprocess_extraction,
+            (case when pre.status= null then 'OPEN' else pre.status end)as preprocess,
+            (case when f.status= null then 'OPEN' else f.status end)as filter_Ph_match,
+            (case when g.status= null then 'OPEN' else g.status end)as filter_zeroshot,
+            (case when paper.status= null then 'OPEN' else paper.status end)as paper_filter,
+            (case when pc.status= null then 'OPEN' else pc.status end)as paper_classification,
+            (case when i.status= null then 'OPEN' else i.status end)as ut_handwritten,
+            (case when j.status= null then 'OPEN' else j.status end)as ut_checkbox,
+            (case when uth.status= null then 'OPEN' else uth.status end)as urgency_triage_hw,
+            (case when utc.status= null then 'OPEN' else utc.status end)as urgency_triage_chk,
+            (case when k.status= null then 'OPEN' else k.status end)as qr_macro,
+            (case when qe.status= null then 'OPEN' else qe.status end)as qr_extraction,
+            (case when sot.status= null then 'OPEN' else sot.status end)as sot,
+            (case when n.status= null then 'OPEN' else n.status end)as sor_grouping
+            from ingestion.file_name_detection a
+            join ${temp_schema_name}.blank_page_removal_${init_process_id.process_id} c on a.origin_id =c.origin_id
+            join ${temp_schema_name}.auto_rotation_${init_process_id.process_id} d on a.origin_id =d.origin_id
+            join ${temp_schema_name}.data_extraction_${init_process_id.process_id} e on a.origin_id =e.origin_id
+            join ${temp_schema_name}.preprocess_payload_queue pre on a.origin_id =pre.origin_id
+            join ${temp_schema_name}.phrase_match_filtering_result_${init_process_id.process_id} f on a.origin_id=f.origin_id
+            join ${temp_schema_name}.zero_shot_classifier_filtering_result_${init_process_id.process_id} g on a.origin_id =g.origin_id
+            join ${temp_schema_name}.potential_feature_payload_queue paper on a.origin_id =paper.origin_id
+            join ${temp_schema_name}.paper_classification_payload_queue pc on a.origin_id=pc.origin_id
+            join ${temp_schema_name}.pixel_classifier_triage_transaction_${init_process_id.process_id} i on a.origin_id=i.origin_id
+            join ${temp_schema_name}.chk_triage_transaction_${init_process_id.process_id} j on a.origin_id =j.origin_id
+            join ${temp_schema_name}.pixel_classifier_urgency_triage_payload_queue uth on a.origin_id =uth.origin_id
+            join ${temp_schema_name}.chk_urgency_triage_payload_queue utc on a.origin_id=utc.origin_id
+            join ${temp_schema_name}.qr_extraction_result_${init_process_id.process_id} k on a.origin_id=k.origin_id
+            join ${temp_schema_name}.qr_extraction_payload_queue qe on a.origin_id =qe.origin_id
+            join ${temp_schema_name}.sor_transaction_payload_queue sot on a.origin_id=sot.origin_id
+            join ${temp_schema_name}.sor_grouping_payload_queue n on a.origin_id =n.origin_id
+
+
+        "} on-condition if "true"=="true"
+
+}
+catch{
+
+}
+finally{
+
+}
+}

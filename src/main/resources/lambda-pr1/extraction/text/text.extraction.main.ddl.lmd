@@ -1,0 +1,222 @@
+process "text.extraction.main.ddl"
+{
+try{
+        transform as "Create text_extraction audit, queue, archive, error queue " on "intics_zio_db_conn" using
+        {"
+                CREATE TABLE IF NOT EXISTS text_extraction.text_extraction_pipeline_audit (
+                        id bigserial NOT NULL,
+                        process_id bigint NULL,
+                        origin_id varchar NULL,
+                        group_id varchar NULL,
+                        batch_id varchar NULL,
+                        created_on varchar NULL,
+                        status varchar NULL,
+                        stage varchar NULL,
+                        message varchar NULL,
+                        root_pipeline_id int8 NULL,
+                        tenant_id int8 NULL,
+                        created_by int8 NULL,
+                        user_id int8 NULL
+                );
+
+
+                CREATE TABLE IF NOT EXISTS text_extraction.text_extraction_payload_queue (
+                        producer_process_id int8 NOT NULL,
+                        consumer_process_id int8 NULL,
+                        group_id int4 NOT NULL,
+                        batch_id varchar NOT NULL,
+                        origin_id varchar NOT NULL,
+                        created_on timestamp NOT NULL,
+                        status varchar NOT NULL,
+                        stage  varchar NOT NULL,
+                        consumed_on_ts timestamp NULL,
+                        root_pipeline_id int8 NULL,
+                        tenant_id int8 NULL,
+                        CONSTRAINT text_extraction_payload_queue_pk PRIMARY KEY (tenant_id, origin_id)
+                );
+
+
+                CREATE TABLE IF NOT EXISTS text_extraction.text_extraction_payload_queue_archive (
+                        producer_process_id int8 NOT NULL,
+                        consumer_process_id int8 NULL,
+                        group_id int4 NOT NULL,
+                        batch_id varchar NOT NULL,
+                        origin_id varchar NOT NULL,
+                        created_on timestamp NOT NULL,
+                        status varchar NOT NULL,
+                        stage  varchar NOT NULL,
+                        consumed_on_ts timestamp NULL,
+                        root_pipeline_id int8 NULL,
+                        tenant_id int8 NULL,
+                        CONSTRAINT text_extraction_payload_queue_archive_pk PRIMARY KEY (tenant_id, origin_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS text_extraction.text_extraction_payload_error_queue (
+                        producer_process_id int8 NOT NULL,
+                        consumer_process_id int8 NULL,
+                        group_id int4 NOT NULL,
+                        batch_id varchar NOT NULL,
+                        origin_id varchar NOT NULL,
+                        created_on timestamp NOT NULL,
+                        status varchar NOT NULL,
+                        stage  varchar NOT NULL,
+                        message varchar NULL,
+                        consumed_on_ts timestamp NULL,
+                        root_pipeline_id int8 NULL,
+                        tenant_id int8 NULL,
+                        CONSTRAINT text_extraction_payload_error_queue_pk PRIMARY KEY (tenant_id, origin_id)
+                );
+
+
+        "} on-condition if "true"=="true"
+
+
+        transform as "Create text_extraction input and output tables " on "intics_zio_db_conn" using
+        {"
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.text_extraction_input_${init_process_id.process_id} (
+                        id BIGSERIAL NOT NULL,
+                        input_file_path TEXT NULL,
+                        system_prompt TEXT NULL,
+                        user_prompt TEXT NULL,
+                        process varchar NULL,
+                        paper_no BIGINT NULL,
+                        origin_id varchar NULL,
+                        process_id BIGINT NULL,
+                        group_id BIGINT NULL,
+                        tenant_id BIGINT NULL,
+                        root_pipeline_id BIGINT NULL,
+                        batch_id varchar NULL,
+                        model_registry varchar NULL,
+                        category VARCHAR NULL,
+                        created_on TIMESTAMP NULL,
+                        document_type VARCHAR NULL,
+                        PRIMARY KEY (id)
+                );
+
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.text_extraction_output_${init_process_id.process_id} (
+                        id BIGSERIAL NOT NULL,
+                        created_on TIMESTAMP NULL,
+                        created_user_id varchar NULL,
+                        last_updated_on TIMESTAMP NULL,
+                        last_updated_user_id varchar NULL,
+                        input_file_path varchar NULL,
+                        total_response_json TEXT NULL,
+                        paper_no BIGINT NULL,
+                        origin_id varchar NULL,
+                        process_id BIGINT NULL,
+                        action_id BIGINT NULL,
+                        process varchar NULL,
+                        group_id BIGINT NULL,
+                        tenant_id BIGINT NULL,
+                        root_pipeline_id BIGINT NULL,
+                        batch_id varchar NULL,
+                        model_registry varchar NULL,
+                        status VARCHAR NULL,
+                        stage VARCHAR NULL,
+                        message VARCHAR NULL,
+                        category VARCHAR NULL,
+                        request VARCHAR NULL,
+                        response VARCHAR NULL,
+                        endpoint VARCHAR NULL,
+                        PRIMARY KEY (id)
+                );
+
+                 CREATE TABLE IF NOT EXISTS text_extraction.text_extraction_input_audit (
+                        id BIGSERIAL NOT NULL,
+                        input_file_path TEXT NULL,
+                        system_prompt TEXT NULL,
+                        user_prompt TEXT NULL,
+                        process varchar NULL,
+                        paper_no BIGINT NULL,
+                        origin_id varchar NULL,
+                        process_id BIGINT NULL,
+                        group_id BIGINT NULL,
+                        tenant_id BIGINT NULL,
+                        root_pipeline_id BIGINT NULL,
+                        batch_id varchar NULL,
+                        model_registry varchar NULL,
+                        category VARCHAR NULL,
+                        created_on TIMESTAMP NULL,
+                        document_type VARCHAR NULL,
+                        PRIMARY KEY (id)
+                );
+
+                CREATE TABLE IF NOT EXISTS text_extraction.text_extraction_output_audit (
+                        id BIGSERIAL NOT NULL,
+                        created_on TIMESTAMP NULL,
+                        created_user_id varchar NULL,
+                        last_updated_on TIMESTAMP NULL,
+                        last_updated_user_id varchar NULL,
+                        input_file_path varchar NULL,
+                        total_response_json TEXT NULL,
+                        paper_no BIGINT NULL,
+                        origin_id varchar NULL,
+                        process_id BIGINT NULL,
+                        action_id BIGINT NULL,
+                        process varchar NULL,
+                        group_id BIGINT NULL,
+                        tenant_id BIGINT NULL,
+                        root_pipeline_id BIGINT NULL,
+                        batch_id varchar NULL,
+                        model_registry varchar NULL,
+                        status VARCHAR NULL,
+                        stage VARCHAR NULL,
+                        message VARCHAR NULL,
+                        category VARCHAR NULL,
+                        request VARCHAR NULL,
+                        response VARCHAR NULL,
+                        endpoint VARCHAR NULL,
+                        PRIMARY KEY (id)
+                );
+
+                 CREATE TABLE IF NOT EXISTS ${temp_schema_name}.text_extraction_llm_json_parser_${init_process_id.process_id} (
+                        created_on TIMESTAMP NULL,
+                        created_user_id BIGINT NULL,
+                        last_updated_on TIMESTAMP NULL,
+                        last_updated_user_id BIGINT NULL,
+                        root_pipeline_id BIGINT NULL,
+                        tenant_id BIGINT NULL,
+                        group_id BIGINT NULL,
+                        batch_id VARCHAR NULL,
+                        origin_id VARCHAR NULL,
+                        paper_no BIGINT NULL,
+                        response JSONB NULL,
+                        model_registry VARCHAR NULL,
+                        extracted_image_unit BIGINT NULL,
+                        image_dpi BIGINT NULL,
+                        image_height BIGINT NULL,
+                        image_width BIGINT NULL
+                  );
+
+                  CREATE TABLE IF NOT EXISTS text_extraction.text_extraction_llm_json_parser_audit (
+                          created_on TIMESTAMP NULL,
+                          created_user_id BIGINT NULL,
+                          last_updated_on TIMESTAMP NULL,
+                          last_updated_user_id BIGINT NULL,
+                          root_pipeline_id BIGINT NULL,
+                          tenant_id BIGINT NULL,
+                          group_id BIGINT NULL,
+                          batch_id VARCHAR NULL,
+                          origin_id VARCHAR NULL,
+                          paper_no BIGINT NULL,
+                          response JSONB NULL,
+                          model_registry VARCHAR NULL,
+                          extracted_image_unit BIGINT NULL,
+                          image_dpi BIGINT NULL,
+                          image_height BIGINT NULL,
+                          image_width BIGINT NULL
+
+                    );
+
+        "} on-condition if "true"=="true"
+
+
+
+}
+catch{
+
+}
+finally{
+
+}
+}

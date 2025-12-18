@@ -1,0 +1,297 @@
+process "batch.process.ddl"
+{
+try {
+
+        transform as "Batch processing ddl " on "intics_zio_db_conn" using {"
+
+                CREATE TABLE IF NOT EXISTS  batching.batching_process_payload_error_queue (
+                producer_process_id int8 NOT NULL,
+                consumer_process_id int8 NULL,
+                batch_id varchar not null,
+                group_id int4 NOT NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NOT NULL,
+                status varchar NOT NULL,
+                stage varchar NOT NULL,
+                message varchar NULL,
+                consumed_on_ts timestamp NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                CONSTRAINT batching_process_payload_error_queue_pk PRIMARY KEY (origin_id,tenant_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS  batching.batching_process_payload_queue_archive (
+                producer_process_id int8 NOT NULL,
+                consumer_process_id int8 NULL,
+                batch_id varchar not null,
+                group_id int4 NOT NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NOT NULL,
+                status varchar NOT NULL,
+                stage varchar NOT NULL,
+                consumed_on_ts timestamp NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                CONSTRAINT batching_process_payload_queue_archive_pk PRIMARY KEY (origin_id,tenant_id)
+                );
+
+
+                CREATE TABLE IF NOT EXISTS  batching.batching_process_pipeline_audit (
+                id bigserial NOT NULL,
+                process_id int8 NULL,
+                origin_id varchar NULL,
+                batch_id varchar not null,
+                group_id varchar NULL,
+                created_on varchar NULL,
+                status varchar NULL,
+                stage varchar NULL,
+                message varchar NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL
+                );
+
+                CREATE SCHEMA IF NOT EXISTS outbound;
+                CREATE TABLE IF NOT EXISTS outbound.outbound_payload_queue (
+                producer_process_id int8 NOT NULL,
+                consumer_process_id int8 NULL,
+                origin_id varchar NOT NULL,
+                group_id int4 NULL,
+                created_on timestamp NULL,
+                consumed_on_ts timestamp NULL,
+                status varchar NULL,
+                stage varchar NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar not null,
+                CONSTRAINT outbound_payload_queue_pk PRIMARY KEY (producer_process_id, origin_id,tenant_id)
+                );
+
+                CREATE SCHEMA IF NOT EXISTS product_outbound;
+                CREATE TABLE IF NOT EXISTS product_outbound.product_outbound_payload_queue_archive (
+                        producer_process_id int8 NOT NULL,
+                        consumer_process_id int8 NULL,
+                        origin_id varchar NOT NULL,
+                        batch_id varchar NULL,
+                        group_id int4 NULL,
+                        created_on timestamp NULL,
+                        consumed_on_ts varchar NULL,
+                        status varchar NULL,
+                        stage varchar NULL,
+                        tenant_id int8 NULL,
+                        root_pipeline_id int8 NULL,
+                        CONSTRAINT outbound_payload_queue_archive_pk PRIMARY KEY (producer_process_id, origin_id,tenant_id)
+                );
+
+                CREATE SCHEMA IF NOT EXISTS currency_detection;
+                CREATE TABLE IF NOT EXISTS currency_detection.currency_detection_payload_queue (
+                	producer_process_id int8 NOT NULL,
+                	consumer_process_id int8 NULL,
+                	group_id int4 NOT NULL,
+                	origin_id varchar NOT NULL,
+                	created_on timestamp NULL,
+                	last_updated_on timestamp NULL,
+                	status varchar NULL,
+                	stage varchar NULL,
+                	consumed_on_ts timestamp NULL,
+                	root_pipeline_id int8 NULL,
+                	tenant_id int8 NOT NULL,
+                	batch_id varchar NOT NULL,
+                	CONSTRAINT currency_detection_payload_queue_pk PRIMARY KEY (origin_id, group_id, tenant_id)
+                );
+
+                CREATE SCHEMA IF NOT EXISTS paragraph_extraction;
+                CREATE TABLE IF NOT EXISTS paragraph_extraction.paragraph_extraction_payload_queue (
+                	producer_process_id int8 NOT NULL,
+                	consumer_process_id int8 NULL,
+                	origin_id varchar NOT NULL,
+                	group_id int4 NULL,
+                	created_on timestamp NULL,
+                	consumed_on_ts timestamp NULL,
+                	root_pipeline_id int8 NULL,
+                	tenant_id int8 NOT NULL,
+                	status varchar NULL,
+                	stage varchar NULL,
+                	batch_id varchar NOT NULL,
+                	CONSTRAINT paragraph_extraction_payload_queue_pk PRIMARY KEY (producer_process_id, origin_id, tenant_id)
+                );
+
+                CREATE SCHEMA if not exists table_extraction;
+
+                CREATE TABLE IF NOT EXISTS table_extraction.table_extraction_payload_queue(
+                    producer_process_id int8 NULL,
+                    consumer_process_id int8 NULL,
+                    origin_id varchar NOT NULL,
+                    group_id int4 NULL,
+                    batch_id varchar NULL,
+                    created_on timestamp NULL,
+                    consumed_on_ts timestamp NULL,
+                    root_pipeline_id int8 NULL,
+                    status varchar NULL,
+                    stage varchar NULL,
+                    tenant_id int8 NULL,
+                    CONSTRAINT table_extraction_payload_queue_pk PRIMARY KEY (producer_process_id, origin_id,tenant_id)
+                );
+
+                CREATE SCHEMA if not exists bulletin_extraction;
+
+                CREATE TABLE IF NOT EXISTS bulletin_extraction.bulletin_extraction_payload_queue (
+                	producer_process_id int8 NOT NULL,
+                	consumer_process_id int8 NULL,
+                	origin_id varchar NOT NULL,
+                	group_id int4 NULL,
+                	created_on timestamp NULL,
+                	consumed_on_ts timestamp NULL,
+                	root_pipeline_id int8 NULL,
+                	tenant_id int8 NOT NULL,
+                	status varchar NULL,
+                	stage varchar NULL,
+                	batch_id varchar NOT NULL,
+                	CONSTRAINT bulletin_extraction_payload_queue_pk PRIMARY KEY (producer_process_id, origin_id, tenant_id)
+                );
+
+                CREATE SCHEMA IF NOT EXISTS face_detection;
+                CREATE TABLE IF NOT EXISTS face_detection.face_detection_payload_queue (
+                	producer_process_id int8 NOT NULL,
+                	consumer_process_id int8 NULL,
+                	origin_id varchar NOT NULL,
+                	group_id int4 NULL,
+                	batch_id varchar NULL,
+                	created_on timestamp NULL,
+                	consumed_on_ts timestamp NULL,
+                	root_pipeline_id int8 NULL,
+                	tenant_id int8 NOT NULL,
+                	status varchar NULL,
+                	stage varchar NULL,
+                	CONSTRAINT paragraph_extraction_payload_queue_pk PRIMARY KEY (producer_process_id, origin_id, tenant_id)
+                );
+
+                CREATE SCHEMA IF NOT EXISTS figure_detection;
+                CREATE TABLE IF NOT EXISTS figure_detection.figure_detection_payload_queue (
+                	producer_process_id int8 NOT NULL,
+                	consumer_process_id int8 NULL,
+                	origin_id varchar NOT NULL,
+                	group_id int4 NULL,
+                	batch_id varchar NULL,
+                	created_on timestamp NULL,
+                	consumed_on_ts timestamp NULL,
+                	root_pipeline_id int8 NULL,
+                	tenant_id int8 NOT NULL,
+                	status varchar NULL,
+                	stage varchar NULL,
+                	CONSTRAINT paragraph_extraction_payload_queue_pk PRIMARY KEY (producer_process_id, origin_id, tenant_id)
+                );
+
+                CREATE SCHEMA if not exists sor_transaction;
+                CREATE TABLE IF NOT EXISTS sor_transaction.sor_transaction_payload_queue (
+                producer_process_id int8 NULL,
+                consumer_process_id int8 NULL,
+                origin_id varchar NOT NULL,
+                group_id int4 NULL,
+                created_on timestamp NULL,
+                consumed_on_ts timestamp NULL,
+                root_pipeline_id int8 NULL,
+                status varchar NULL,
+                stage varchar NULL,
+                tenant_id int8 NULL,
+                batch_id varchar not null,
+                CONSTRAINT sor_transaction_payload_queue_pk PRIMARY KEY (producer_process_id, origin_id,tenant_id)
+                );
+
+
+                CREATE SCHEMA if not exists sor_validation;
+                CREATE TABLE IF NOT EXISTS sor_validation.sor_validation_payload_queue (
+                producer_process_id int8 NULL,
+                consumer_process_id int8 NULL,
+                origin_id varchar NOT NULL,
+                group_id int4 NULL,
+                created_on timestamp NULL,
+                consumed_on_ts timestamp NULL,
+                root_pipeline_id int8 NULL,
+                status varchar NULL,
+                stage varchar NULL,
+                tenant_id int8 NULL,
+                batch_id varchar not null,
+                CONSTRAINT sor_validation_payload_queue_pk PRIMARY KEY (producer_process_id, origin_id,tenant_id)
+                );
+
+                CREATE SCHEMA if not exists alchemy_migration;
+
+                CREATE TABLE IF NOT EXISTS alchemy_migration.alchemy_migration_payload_queue (
+                producer_process_id int8 NULL,
+                consumer_process_id int8 NULL,
+                origin_id varchar NOT NULL,
+                group_id int4 NULL,
+                created_on timestamp NULL,
+                consumed_on_ts timestamp NULL,
+                root_pipeline_id int8 NULL,
+                status varchar NULL,
+                stage varchar NULL,
+                tenant_id int8 NULL,
+                batch_id varchar not null,
+                CONSTRAINT alchemy_migration_payload_queue_pk PRIMARY KEY (producer_process_id, origin_id,tenant_id)
+                );
+                CREATE INDEX if not exists idx_popq_status_group_origin ON alchemy_migration.alchemy_migration_payload_queue (group_id,status, tenant_id, batch_id);
+
+
+
+                CREATE SCHEMA IF NOT EXISTS control_data;
+                CREATE TABLE IF NOT EXISTS control_data.control_data_payload_queue (
+                producer_process_id int8 NOT NULL,
+                consumer_process_id int8 NULL,
+                origin_id varchar NOT NULL,
+                group_id int4 NULL,
+                created_on timestamp NULL,
+                consumed_on_ts timestamp NULL,
+                status varchar NULL,
+                stage varchar NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar not null,
+                CONSTRAINT control_data_payload_queue_pk PRIMARY KEY (producer_process_id, origin_id)
+                );
+
+                CREATE SCHEMA IF NOT EXISTS outbound_transform_asis;
+                CREATE TABLE IF NOT EXISTS outbound_transform_asis.outbound_transform_asis_payload_queue (
+                producer_process_id int8 NULL,
+                batch_id varchar NOT NULL,
+                consumer_process_id int8 NULL,
+                group_id int4 NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NULL,
+                status varchar NULL,
+                stage varchar NULL,
+                consumed_on_ts timestamp NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                CONSTRAINT outbound_transform_asis_payload_queue_pk PRIMARY KEY (origin_id, group_id,tenant_id)
+                );
+
+                CREATE SCHEMA IF NOT EXISTS outbound_asis;
+                CREATE TABLE IF NOT EXISTS outbound_asis.outbound_asis_payload_queue (
+                producer_process_id int8 NULL,
+                batch_id varchar NOT NULL,
+                consumer_process_id int8 NULL,
+                group_id int4 NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NULL,
+                status varchar NULL,
+                stage varchar NULL,
+                consumed_on_ts timestamp NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                CONSTRAINT outbound_asis_payload_queue_pk PRIMARY KEY (origin_id, group_id,tenant_id)
+                );
+
+
+        "} on-condition if "true"=="true"
+
+}
+catch{
+
+}
+
+finally{
+
+}
+
+}

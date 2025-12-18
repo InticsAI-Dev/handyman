@@ -1,0 +1,314 @@
+process "sor.transaction.vqa.section.alias"
+{
+try{
+
+                    transform as "section alias priority insert into temp section_alias_priority"
+                    on "intics_zio_db_conn"
+                    using
+                    {"
+                        INSERT INTO ${temp_schema_name}.section_alias_priority_${init_process_id.process_id} (
+                        id, created_on, created_user_id, last_updated_on, last_updated_user_id,
+                        sor_container_name, sor_item_name, answer, paper_no, origin_id, group_id,
+                        tenant_id, root_pipeline_id, model_registry, extracted_image_unit,
+                        image_dpi, image_width, image_height, batch_id, confidence, bbox,
+                        sor_container_id, sor_item_label, section_alias, priority_level
+                        )
+                        SELECT
+                        l.id, l.created_on, l.created_user_id, l.last_updated_on, l.last_updated_user_id,
+                        l.sor_container_name, l.sor_item_name, l.answer, l.paper_no, l.origin_id, l.group_id,
+                        l.tenant_id, l.root_pipeline_id, l.model_registry, l.extracted_image_unit,
+                        l.image_dpi, l.image_width, l.image_height, l.batch_id, l.confidence, l.bbox,
+                        l.sor_container_id, l.sor_item_label, l.section_alias, tep.priority_level
+                        FROM ${temp_schema_name}.llm_json_parser_output_${init_process_id.process_id} l
+                        JOIN sor_meta.truth_entity_priority tep
+                        ON l.sor_container_id = tep.sor_container_id
+                        AND UPPER(l.section_alias) ILIKE '%' || TRIM(UPPER(tep.truth_entity)) || '%'
+                        WHERE l.tenant_id = ${tenant_id}
+                      AND  l.is_label_matching='true'
+                        AND l.group_id = '${group_id}'
+                         AND l.batch_id = '${batch_id}' and l.is_label_matching='true'
+                        ORDER BY l.origin_id, l.tenant_id, l.paper_no, tep.priority_level ASC;
+                    "}
+                    on-condition if "${section.alias.priority.activator}" == "true"
+
+
+                    transform as "section alias priority insert into temp highest_priority_section_alias"
+                    on "intics_zio_db_conn"
+                    using
+                    {"
+                        INSERT INTO ${temp_schema_name}.highest_priority_section_alias_${init_process_id.process_id} (
+                         id, created_on, created_user_id, last_updated_on, last_updated_user_id,
+                         sor_container_name, sor_item_name, answer, paper_no, origin_id, group_id,
+                         tenant_id, root_pipeline_id, model_registry, extracted_image_unit,
+                         image_dpi, image_width, image_height, batch_id, confidence, bbox,
+                         sor_container_id, sor_item_label, section_alias, priority_level
+                        )
+                        SELECT
+                         l.id, l.created_on, l.created_user_id, l.last_updated_on, l.last_updated_user_id,
+                         l.sor_container_name, l.sor_item_name, l.answer, l.paper_no, l.origin_id, l.group_id,
+                         l.tenant_id, l.root_pipeline_id, l.model_registry, l.extracted_image_unit,
+                         l.image_dpi, l.image_width, l.image_height, l.batch_id, l.confidence, l.bbox,
+                         l.sor_container_id, l.sor_item_label, l.section_alias, l.priority_level
+                        FROM ${temp_schema_name}.section_alias_priority_${init_process_id.process_id} l
+                        WHERE l.priority_level = (
+                         SELECT MIN(l2.priority_level)
+                         FROM ${temp_schema_name}.section_alias_priority_${init_process_id.process_id} l2
+                         WHERE l2.origin_id = l.origin_id
+                           AND l2.tenant_id = l.tenant_id
+                        )
+                        ORDER BY l.origin_id, l.tenant_id, l.paper_no;
+                    "}
+                    on-condition if "${section.alias.priority.activator}" == "true"
+
+
+                    transform as "section alias priority insert into temp removed_section_alias_priority_section_alias"
+                    on "intics_zio_db_conn"
+                    using
+                    {"
+                        INSERT INTO ${temp_schema_name}.removed_section_alias_priority_${init_process_id.process_id} (
+                            id, created_on, created_user_id, last_updated_on, last_updated_user_id,
+                            sor_container_name, sor_item_name, answer, paper_no, origin_id, group_id,
+                            tenant_id, root_pipeline_id, model_registry, extracted_image_unit,
+                            image_dpi, image_width, image_height, batch_id, confidence, bbox,
+                            sor_container_id, sor_item_label, section_alias, priority_level
+                        )
+                        SELECT
+                            l.id, l.created_on, l.created_user_id, l.last_updated_on, l.last_updated_user_id,
+                            l.sor_container_name, l.sor_item_name, l.answer, l.paper_no, l.origin_id, l.group_id,
+                            l.tenant_id, l.root_pipeline_id, l.model_registry, l.extracted_image_unit,
+                            l.image_dpi, l.image_width, l.image_height, l.batch_id, l.confidence, l.bbox,
+                            l.sor_container_id, l.sor_item_label, l.section_alias, l.priority_level
+                        FROM ${temp_schema_name}.section_alias_priority_${init_process_id.process_id} l
+                        WHERE l.priority_level > (
+                            SELECT MIN(l2.priority_level)
+                            FROM ${temp_schema_name}.section_alias_priority_${init_process_id.process_id} l2
+                            WHERE l2.origin_id = l.origin_id
+                              AND l2.tenant_id = l.tenant_id
+                        )
+                        ORDER BY l.origin_id, l.tenant_id, l.paper_no, l.priority_level;
+                    "}
+                    on-condition if "${section.alias.priority.activator}" == "true"
+
+                    transform as "section alias priority insert to temp highest_priority_alias"
+                    on "intics_zio_db_conn"
+                    using
+                    {"
+                            INSERT INTO ${temp_schema_name}.highest_priority_section_alias_${init_process_id.process_id} (
+                            id, created_on, created_user_id, last_updated_on, last_updated_user_id,
+                            sor_container_name, sor_item_name, answer, paper_no, origin_id, group_id,
+                            tenant_id, root_pipeline_id, model_registry, extracted_image_unit,
+                            image_dpi, image_width, image_height, batch_id, confidence, bbox,
+                            sor_container_id, sor_item_label, section_alias, priority_level
+                            )
+                            SELECT
+                            l.id, l.created_on, l.created_user_id, l.last_updated_on, l.last_updated_user_id,
+                            l.sor_container_name, l.sor_item_name, l.answer, l.paper_no, l.origin_id, l.group_id,
+                            l.tenant_id, l.root_pipeline_id, l.model_registry, l.extracted_image_unit,
+                            l.image_dpi, l.image_width, l.image_height, l.batch_id, l.confidence, l.bbox,
+                            l.sor_container_id, l.sor_item_label, l.section_alias, 0 AS priority_level
+                            FROM ${temp_schema_name}.llm_json_parser_output_${init_process_id.process_id} l
+                            WHERE NOT EXISTS (
+                            SELECT 1
+                            FROM sor_meta.truth_entity_priority tep
+                            WHERE tep.sor_container_id = l.sor_container_id
+                              AND TRIM(UPPER(l.section_alias)) ILIKE '%' || TRIM(UPPER(tep.truth_entity)) || '%'
+                            )
+                          AND  l.is_label_matching='true'
+                            AND l.tenant_id = ${tenant_id}
+                            AND l.group_id = '${group_id}'
+                            AND l.batch_id = '${batch_id}';
+                    "}
+                    on-condition if "${section.alias.priority.activator}" == "true"
+
+
+                    transform as "section alias priority insert into temp non_section_priority_alias"
+                    on "intics_zio_db_conn"
+                    using
+                    {"
+                        INSERT INTO ${temp_schema_name}.non_section_alias_priority_${init_process_id.process_id} (
+                            id, created_on, created_user_id, last_updated_on, last_updated_user_id,
+                            sor_container_name, sor_item_name, answer, paper_no, origin_id, group_id,
+                            tenant_id, root_pipeline_id, model_registry, extracted_image_unit,
+                            image_dpi, image_width, image_height, batch_id, confidence, bbox,
+                            sor_container_id, sor_item_label, priority_level
+                        )
+                        SELECT
+                            l.id, l.created_on, l.created_user_id, l.last_updated_on, l.last_updated_user_id,
+                            l.sor_container_name, l.sor_item_name, l.answer, l.paper_no, l.origin_id, l.group_id,
+                            l.tenant_id, l.root_pipeline_id, l.model_registry, l.extracted_image_unit,
+                            l.image_dpi, l.image_width, l.image_height, l.batch_id, l.confidence, l.bbox,
+                            l.sor_container_id, l.sor_item_label, 0 AS priority_level
+                        FROM ${temp_schema_name}.llm_json_parser_output_${init_process_id.process_id} l
+                        LEFT JOIN ${temp_schema_name}.section_alias_priority_${init_process_id.process_id} s
+                          ON  l.origin_id = s.origin_id
+                          AND l.sor_container_name = s.sor_container_name
+                          AND l.sor_item_name = s.sor_item_name
+                          AND l.batch_id = s.batch_id
+                          AND l.group_id = s.group_id
+                          AND l.tenant_id = s.tenant_id
+                        WHERE l.tenant_id = ${tenant_id}
+                          AND  l.is_label_matching='true'
+                          AND l.group_id = '${group_id}'
+                          AND l.batch_id = '${batch_id}'
+                          AND s.origin_id IS NULL;
+                    "}
+                    on-condition if "${section.alias.priority.activator}" == "true"
+
+                    transform as "section alias priority insert into section_alias_priority_filter"
+                    on "intics_zio_db_conn"
+                    using
+                    {"
+                        INSERT INTO ${temp_schema_name}.section_alias_priority_filter_${init_process_id.process_id} (
+                        id, created_on, created_user_id, last_updated_on, last_updated_user_id,
+                        sor_container_name, sor_item_name, answer, paper_no, origin_id, group_id,
+                        tenant_id, root_pipeline_id, model_registry, extracted_image_unit,
+                        image_dpi, image_width, image_height, batch_id, confidence, bbox,
+                        sor_container_id, sor_item_label, section_alias, priority_level
+                        )
+                        SELECT
+                        h.id, h.created_on, h.created_user_id, h.last_updated_on, h.last_updated_user_id,
+                        h.sor_container_name, h.sor_item_name, h.answer, h.paper_no, h.origin_id, h.group_id,
+                        h.tenant_id, h.root_pipeline_id, h.model_registry, h.extracted_image_unit,
+                        h.image_dpi, h.image_width, h.image_height, h.batch_id, h.confidence, h.bbox,
+                        h.sor_container_id, h.sor_item_label, h.section_alias, h.priority_level
+                        FROM ${temp_schema_name}.highest_priority_section_alias_${init_process_id.process_id} h;
+                    "}
+                    on-condition if "${section.alias.priority.activator}" == "true"
+
+                    transform as "insert section alias into filtered audit"
+                    on "intics_zio_db_conn"
+                    using
+                    {"
+                        INSERT INTO ${temp_schema_name}.filtered_llm_json_parser_output_${init_process_id.process_id} (
+                        id,
+                        created_on,
+                        created_user_id,
+                        last_updated_on,
+                        last_updated_user_id,
+                        sor_container_name,
+                        sor_item_name,
+                        answer,
+                        paper_no,
+                        origin_id,
+                        group_id,
+                        tenant_id,
+                        root_pipeline_id,
+                        model_registry,
+                        extracted_image_unit,
+                        image_dpi,
+                        image_width,
+                        image_height,
+                        batch_id,
+                        confidence,
+                        bbox,
+                        sor_container_id,
+                        sor_item_label
+                        )
+                        SELECT
+                        f.id,
+                        f.created_on,
+                        f.created_user_id,
+                        f.last_updated_on,
+                        f.last_updated_user_id,
+                        f.sor_container_name,
+                        f.sor_item_name,
+                        f.answer,
+                        f.paper_no,
+                        f.origin_id,
+                        f.group_id,
+                        f.tenant_id,
+                        f.root_pipeline_id,
+                        f.model_registry,
+                        f.extracted_image_unit,
+                        f.image_dpi,
+                        f.image_width,
+                        f.image_height,
+                        f.batch_id,
+                        f.confidence,
+                        f.bbox,
+                        f.sor_container_id,
+                        f.sor_item_label
+                        FROM ${temp_schema_name}.section_alias_priority_filter_${init_process_id.process_id} f
+                        WHERE f.tenant_id = ${tenant_id}
+                        AND f.group_id = '${group_id}'
+                        AND f.batch_id = '${batch_id}'
+                        AND f.root_pipeline_id = ${init_process_id.process_id};
+                    "}
+                    on-condition if "${section.alias.priority.activator}" == "true"
+
+                    transform as "insert llm_json_parser_output directly into filtered audit (no section alias priority)"
+                    on "intics_zio_db_conn"
+                    using
+                    {"
+                        INSERT INTO ${temp_schema_name}.filtered_llm_json_parser_output_${init_process_id.process_id} (
+                            id,
+                            created_on,
+                            created_user_id,
+                            last_updated_on,
+                            last_updated_user_id,
+                            sor_container_name,
+                            sor_item_name,
+                            answer,
+                            paper_no,
+                            origin_id,
+                            group_id,
+                            tenant_id,
+                            root_pipeline_id,
+                            model_registry,
+                            extracted_image_unit,
+                            image_dpi,
+                            image_width,
+                            image_height,
+                            batch_id,
+                            confidence,
+                            bbox,
+                            sor_container_id,
+                            sor_item_label
+                        )
+                        SELECT
+                            id,
+                            created_on,
+                            created_user_id,
+                            last_updated_on,
+                            last_updated_user_id,
+                            sor_container_name,
+                            sor_item_name,
+                            answer,
+                            paper_no,
+                            origin_id,
+                            group_id,
+                            tenant_id,
+                            root_pipeline_id,
+                            model_registry,
+                            extracted_image_unit,
+                            image_dpi,
+                            image_width,
+                            image_height,
+                            batch_id,
+                            confidence,
+                            bbox,
+                            sor_container_id,
+                            sor_item_label
+                        FROM ${temp_schema_name}.llm_json_parser_output_${init_process_id.process_id}
+                        WHERE tenant_id = ${tenant_id}
+                          AND group_id = '${group_id}'
+                          AND batch_id = '${batch_id}'
+                          AND is_label_matching='true'
+                          AND root_pipeline_id = ${init_process_id.process_id};
+                    "}
+                    on-condition if "${section.alias.priority.activator}" == "false"
+
+
+
+
+}
+catch{
+
+
+}
+finally{
+
+
+}
+
+}

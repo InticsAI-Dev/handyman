@@ -1,0 +1,237 @@
+process "paper.range.filter.splitting.main"
+{
+	try{
+
+	transform as "Insert into agentic paper filter sub batch input table" on "intics_zio_db_conn" using
+            {"
+                    INSERT INTO paper_filter.sub_batch_split_agentic_paper_filter
+                    (producer_process_id, consumer_process_id, group_id, batch_id, origin_id, created_on, status,
+                                     stage, paper_no, root_pipeline_id, tenant_id, sub_batch_split_id)
+                    SELECT a.producer_process_id, a.consumer_process_id, a.group_id, a.batch_id, a.origin_id, now() as created_on, a.status,
+                    a.stage, sot.paper_no, a.root_pipeline_id, a.tenant_id,
+                    ((row_number() OVER (PARTITION BY a.origin_id ORDER BY sot.paper_no) - 1)
+                            / (${extraction.processing.split.paper.count}::int8)
+                        ) AS sub_batch_split_id
+                    FROM paper_filter.agentic_paper_filter_payload_queue a
+                    JOIN  ${temp_schema_name}.source_of_truth_${init_process_id.process_id} sot on a.origin_id=sot.origin_id and a.group_id=sot.group_id
+                    where a.batch_id ='${batch_id}' and a.group_id='${group_id}' and a.tenant_id = ${tenant_id} and sot.paper_no between ${extraction.processing.minimum.paper.count}::int8 AND ${extraction.processing.maximum.paper.count}::int8;
+
+                    INSERT INTO paper_filter.sub_batch_agentic_paper_filter_payload_queue
+                    (producer_process_id, consumer_process_id, group_id, batch_id, origin_id, created_on,
+                    status, stage, root_pipeline_id, tenant_id, sub_batch_id, sub_batch_split_id, lower_bound_paper_no, upper_bound_paper_no)
+                    SELECT sbs.producer_process_id, sbs.consumer_process_id, sbs.group_id, sbs.batch_id, sbs.origin_id, sbs.created_on, sbs.status,
+                    sbs.stage, sbs.root_pipeline_id, sbs.tenant_id,CONCAT('SUB-BATCH-',sbs.group_id,'-',sbs.sub_batch_split_id),sbs.sub_batch_split_id,
+                    min(sbs.paper_no) as lower_bound_paper_no,
+                    max(sbs.paper_no) as upper_bound_paper_no
+                    FROM paper_filter.sub_batch_split_agentic_paper_filter sbs
+                    where sbs.batch_id ='${batch_id}' and sbs.group_id='${group_id}' and sbs.tenant_id = ${tenant_id}
+                    group by sbs.producer_process_id, sbs.consumer_process_id, sbs.group_id, sbs.batch_id, sbs.origin_id, sbs.created_on, sbs.status,
+                    sbs.stage , sbs.root_pipeline_id, sbs.tenant_id,sbs.sub_batch_split_id;
+
+           "} on-condition if "true"=="true"
+
+
+
+       transform as "Insert into paperWiseAgenticFilter agentic paper filter sub batch input table" on "intics_zio_db_conn" using
+        {"
+        INSERT INTO paper_filter.paper_wise_filter_sub_batch_payload_queue
+         (producer_process_id, consumer_process_id, group_id, batch_id, origin_id, created_on, status,
+          stage, paper_no, root_pipeline_id, tenant_id,model_name)
+           SELECT a.producer_process_id, a.consumer_process_id, a.group_id, a.batch_id, a.origin_id, now() as created_on, a.status,
+           a.stage, sot.paper_no, a.root_pipeline_id, a.tenant_id,mr.model_name AS model_name
+           FROM paper_filter.agentic_paper_filter_payload_queue a
+           JOIN  ${temp_schema_name}.source_of_truth_${init_process_id.process_id} sot on a.origin_id=sot.origin_id and a.group_id=sot.group_id
+           LEFT JOIN paper_filter.paper_wise_filter_config m
+           ON sot.paper_no BETWEEN m.min_page AND m.max_page
+           LEFT JOIN sor_meta.model_registry mr ON m.model_id = mr.model_id
+           where a.batch_id ='${batch_id}' and a.group_id='${group_id}' and a.tenant_id = ${tenant_id};
+           "} on-condition if "true"=="true"
+
+      transform as "Insert into agentic paper filter paperWiseAgenticFilter sub batch input table" on "intics_zio_db_conn" using
+              {"
+                      INSERT INTO paper_filter.paper_wise_filter_sub_batch_queue
+                      (producer_process_id, consumer_process_id, group_id, batch_id, origin_id, created_on,
+                      status, stage, root_pipeline_id, tenant_id, lower_bound_paper_no, upper_bound_paper_no,model_name)
+                      SELECT sbs.producer_process_id, sbs.consumer_process_id, sbs.group_id, sbs.batch_id, sbs.origin_id, sbs.created_on, sbs.status,
+                      sbs.stage, sbs.root_pipeline_id, sbs.tenant_id,
+                      min(sbs.paper_no) as lower_bound_paper_no,
+                      max(sbs.paper_no) as upper_bound_paper_no,
+                      sbs.model_name
+                      FROM paper_filter.paper_wise_filter_sub_batch_payload_queue sbs
+                      where sbs.batch_id ='${batch_id}' and sbs.group_id='${group_id}' and sbs.tenant_id = ${tenant_id}
+                      group by sbs.producer_process_id, sbs.consumer_process_id, sbs.group_id, sbs.batch_id, sbs.origin_id, sbs.created_on, sbs.status,
+                      sbs.stage , sbs.root_pipeline_id, sbs.tenant_id,sbs.model_name;
+             "} on-condition if "true"=="true"
+
+                            callprocess as "calling paper.range.filter..main"
+                            with-target "paper.range.filter.main"
+                            from-file "${basepath}/agenticPaperFilter/paperRangeFilter/paper.range.filter.main.lmd"
+                            using "intics_zio_db_conn"
+                            for-every
+                                {"
+                               SELECT 1;
+                                "} on-condition if "true"=="true"
+
+            transform as "Update to COMPLETED in agentic paper filter payload queue" on "intics_zio_db_conn" using
+                             {"
+                                    UPDATE paper_filter.agentic_paper_filter_payload_queue a
+                                    SET status='COMPLETED',  stage='AGENTIC_PAPER_FILTER'
+                                    WHERE a.group_id='${group_id}'  and a.tenant_id='${tenant_id}'
+                                    and a.batch_id ='${batch_id}' and a.status='IN_PROGRESS';
+
+                                    update ingestion.pipeline_queue_status_audit as a
+                                    set status = 'COMPLETED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                                    where  a.group_id=${group_id}
+                                    and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='AGENTIC_PAPER_FILTER' and status='IN_PROGRESS';
+
+                                    UPDATE batching.sub_batching_process_payload_queue a
+                                    SET status='COMPLETED',  stage='AGENTIC_PAPER_FILTER'
+                                    WHERE a.group_id='${group_id}'  and a.tenant_id='${tenant_id}'
+                                    and a.batch_id ='${batch_id}' and a.status='IN_PROGRESS';
+
+                             "}  on-condition if "true"=="true"
+
+
+                transform as "Update to COMPLETED in paperWiseAgenticFilter agentic paper filter payload queue" on "intics_zio_db_conn" using
+                {"
+                    UPDATE paper_filter.paper_wise_filter_sub_batch_payload_queue a
+                    SET status='COMPLETED',  stage='AGENTIC_PAPER_FILTER'
+                    WHERE a.group_id='${group_id}'  and a.tenant_id='${tenant_id}'
+                    and a.batch_id ='${batch_id}' and a.status='IN_PROGRESS';
+                "} on-condition if "true"=="true"
+
+
+        }
+    	catch{
+
+                 transform as "Update to FAILED in paperWiseAgenticFilter agentic paper filter payload queue" on "intics_zio_db_conn" using
+                  {"
+                     UPDATE paper_filter.paper_wise_filter_sub_batch_payload_queue a
+                     SET status='FAILED',  stage='AGENTIC_PAPER_FILTER'
+                     WHERE a.group_id='${group_id}'  and a.tenant_id='${tenant_id}'
+                     and a.batch_id ='${batch_id}' ;
+                  "}  on-condition if "true"=="true"
+
+                  transform as "Update to FAILED in agentic paper filter payload queue" on "intics_zio_db_conn" using
+                                   {"
+                                          UPDATE paper_filter.agentic_paper_filter_payload_queue a
+                                          SET status='FAILED',  stage='AGENTIC_PAPER_FILTER'
+                                          WHERE a.group_id='${group_id}'  and a.tenant_id='${tenant_id}'
+                                          and a.batch_id ='${batch_id}' ;
+
+                                          update ingestion.pipeline_queue_status_audit as a
+                                          set status = 'FAILED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                                          where  a.group_id=${group_id}
+                                          and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='AGENTIC_PAPER_FILTER';
+
+                                   "}  on-condition if "true"=="true"
+	}
+	finally{
+	        transform as "insert into sor transaction payload queue after preprocess completed" on "intics_zio_db_conn" using
+                        {"
+
+                            INSERT INTO sor_transaction.sor_transaction_payload_queue (
+                                producer_process_id, origin_id, group_id, created_on, status, stage,
+                                root_pipeline_id, tenant_id, batch_id
+                            )
+                            SELECT
+                                a.producer_process_id,
+                                a.origin_id,
+                                a.group_id,
+                                NOW(),
+                                'STAGED',
+                                'SOR_TRANSACTION',
+                                a.root_pipeline_id,
+                                a.tenant_id,
+                                a.batch_id
+                            FROM paper_filter.agentic_paper_filter_payload_queue a
+                            WHERE
+                                a.status = 'COMPLETED'
+                                AND a.tenant_id = ${tenant_id}
+                                AND a.group_id = '${gen_group_id.group_id}'
+                                AND a.batch_id = '${batch_id}'
+                                AND '${sor.transaction.nextgen.activator}' = 'true';
+
+                                INSERT INTO ingestion.pipeline_queue_status_audit
+                                (producer_process_id, consumer_process_id, origin_id,batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, origin_type)
+                                select producer_process_id, consumer_process_id, origin_id, batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, '${origin_type}'
+                                from sor_transaction.sor_transaction_payload_queue
+                                where group_id =${group_id} and batch_id='${batch_id}' and tenant_id =${tenant_id};
+
+                        "}on-condition if "true"=="true"
+
+                         transform as "insert into pipeline summary audit agentic paper filter" on "intics_zio_db_conn" using {"
+                              INSERT INTO ${temp_schema_name}.summary_audit_papers_${process-id}
+                              (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken,root_pipeline_id, tenant_id, batch_id)
+                              SELECT ${process-id} , 'AGENTIC PAPER FILTER' ,'AGENTIC PAPER FILTER',coalesce (sum(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END),0) ,coalesce (sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END),0),min(created_on),max(created_on), EXTRACT(epoch FROM (max(created_on)-min(created_on))),root_pipeline_id, tenant_id, batch_id
+                              FROM paper_filter.paper_wise_filter_output_audit WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id ='${batch_id}'
+                              group by batch_id,root_pipeline_id,tenant_id;
+
+                              INSERT INTO ${temp_schema_name}.summary_audit_files_${process-id}
+                              (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken,root_pipeline_id, tenant_id, batch_id)
+                              SELECT ${process-id} ,'AGENTIC PAPER FILTER'  ,'AGENTIC PAPER FILTER',sum(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END) ,sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END),min(created_on),max(created_on), EXTRACT(epoch FROM (max(created_on)-min(created_on))),root_pipeline_id, tenant_id, batch_id
+                              FROM paper_filter.agentic_paper_filter_payload_queue WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id ='${batch_id}'
+                              group by batch_id,root_pipeline_id,tenant_id;
+
+                              INSERT INTO audit.pipeline_summary_audit
+                              (process_id, created_on, module_name, macro_process, files_processed_count,papers_processed_count,files_failed_count,papers_failed_count,start_time,end_time, time_taken, group_id, root_pipeline_id, created_user_id, template_id, tenant_id,average_time, batch_id)
+                              SELECT msaf.process_id ,now(),msaf.module_name ,msaf.macro_process ,msaf.completed_count,msap.completed_count,msaf.failed_count,msap.failed_count,msap.min_created_on,msap.max_created_on, EXTRACT(epoch FROM (msap.max_created_on-msap.min_created_on)),
+                              '${group_id}','${root-ref-id}','${created_user_id}','${document_id}',${tenant_id},(CASE WHEN (msaf.completed_count+msaf.failed_count)=0 THEN msaf.time_taken WHEN (msaf.time_taken/(msaf.completed_count+msaf.failed_count))=0 THEN msaf.time_taken ELSE (msaf.time_taken/(msaf.completed_count+msaf.failed_count)) END), msaf.batch_id
+                              FROM ${temp_schema_name}.summary_audit_files_${process-id} msaf,
+                              ${temp_schema_name}.summary_audit_papers_${process-id} msap
+                              WHERE msaf.module_name=msap.module_name AND msaf.macro_process=msap.macro_process AND
+                              msaf.module_name='AGENTIC PAPER FILTER' AND msaf.macro_process= 'AGENTIC PAPER FILTER' AND msaf.tenant_id = ${tenant_id} and msaf.batch_id ='${batch_id}';
+
+                         "} on-condition if "true"=="true"
+
+
+                         transform as "move to agentic paper filter to archive after completed " on "intics_zio_db_conn" using
+                          {"
+                                update ingestion.pipeline_queue_status_audit as a
+                                set status = 'COMPLETED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                                where  a.group_id=${group_id}
+                                and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='AGENTIC_PAPER_FILTER' and a.status='IN_PROGRESS' ;
+
+                                INSERT INTO paper_filter.agentic_paper_filter_payload_queue_archive
+                                (producer_process_id, consumer_process_id, group_id,origin_id, created_on, status, stage, consumed_on_ts,root_pipeline_id,tenant_id, batch_id)
+                                SELECT producer_process_id, consumer_process_id, '${group_id}',origin_id, now(), status, stage,  now(),root_pipeline_id,${tenant_id}, batch_id
+                                FROM paper_filter.agentic_paper_filter_payload_queue where status='COMPLETED' and group_id=${group_id} and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+            					 DELETE FROM paper_filter.agentic_paper_filter_payload_queue WHERE status='COMPLETED' and group_id=${group_id} and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                                INSERT INTO paper_filter.agentic_paper_filter_payload_error_queue
+                                (producer_process_id, consumer_process_id,group_id, origin_id, created_on, status, stage, message, consumed_on_ts,root_pipeline_id,tenant_id, batch_id)
+                                SELECT  producer_process_id, consumer_process_id,'${group_id}',origin_id, now(),status,stage,'error in agentic paper filter process', now(),root_pipeline_id,${tenant_id}, batch_id
+                                FROM paper_filter.agentic_paper_filter_payload_queue where status = 'FAILED' and group_id=${group_id} and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                                DELETE FROM paper_filter.agentic_paper_filter_payload_queue  WHERE status='FAILED' and group_id=${group_id} and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                          "} on-condition if "true"=="true"
+
+              transform as "move to paperWiseAgenticFilter agentic paper filter to archive after completed " on "intics_zio_db_conn" using
+                {"
+                    INSERT INTO paper_filter.paper_wise_filter_payload_queue_archive
+                    (producer_process_id, consumer_process_id, group_id,origin_id, created_on, status, stage, consumed_on_ts,root_pipeline_id,tenant_id, batch_id,paper_no,model_name)
+                    SELECT producer_process_id, consumer_process_id, '${group_id}',origin_id, now(), status, stage,  now(),root_pipeline_id,${tenant_id}, batch_id,paper_no,model_name
+                    FROM paper_filter.paper_wise_filter_sub_batch_payload_queue  where status='COMPLETED' and group_id=${group_id} and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                    DELETE FROM paper_filter.paper_wise_filter_sub_batch_payload_queue  WHERE status='COMPLETED' and group_id=${group_id} and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                    INSERT INTO paper_filter.paper_wise_filter_payload_error_queue
+                    (producer_process_id, consumer_process_id,group_id, origin_id, created_on, status, stage, message, consumed_on_ts,root_pipeline_id,tenant_id, batch_id,paper_no,model_name)
+                    SELECT  producer_process_id, consumer_process_id,'${group_id}',origin_id, now(),status,stage,'error in agentic paper filter process', now(),root_pipeline_id,${tenant_id}, batch_id,paper_no,model_name
+                    FROM paper_filter.paper_wise_filter_sub_batch_payload_queue  where status = 'FAILED' and group_id=${group_id} and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                    DELETE FROM paper_filter.paper_wise_filter_sub_batch_payload_queue   WHERE status='FAILED' and group_id=${group_id} and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                    INSERT INTO paper_filter.paper_wise_filter_payload_error_queue
+                    (producer_process_id, consumer_process_id,group_id, origin_id, created_on, status, stage, message, consumed_on_ts,root_pipeline_id,tenant_id, batch_id,paper_no,model_name)
+                    SELECT  producer_process_id, consumer_process_id,'${group_id}',origin_id, now(),status,stage,'agentic_paper_range_filter stage aborted batch_id=${batch_id} | root_pipeline_id=${root_pipeline_id} | group_id=${group_id} | transaction_id=${transaction_id} | reason=execution time exceeded the threshold limit', now(),root_pipeline_id,${tenant_id}, batch_id,paper_no,model_name
+                    FROM paper_filter.paper_wise_filter_sub_batch_payload_queue  where status = 'ABORTED' and group_id=${group_id} and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                    DELETE FROM paper_filter.paper_wise_filter_sub_batch_payload_queue   WHERE status='ABORTED' and group_id=${group_id} and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                "} on-condition if "true"=="true"
+
+	}
+}

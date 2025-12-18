@@ -1,0 +1,1293 @@
+process "root.processor.ddl"
+ {
+    try{
+        transform as "Create schema for all the tables" on "intics_zio_db_conn" using
+        {"
+
+                CREATE SCHEMA IF NOT EXISTS macro;
+                CREATE SCHEMA IF NOT EXISTS info;
+                CREATE SCHEMA IF NOT EXISTS preprocess;
+                CREATE SCHEMA IF NOT EXISTS ingestion;
+                CREATE SCHEMA IF NOT EXISTS doc_eyecue;
+                CREATE SCHEMA IF NOT EXISTS sor_transaction;
+                CREATE SCHEMA IF NOT EXISTS urgency_triage;
+                CREATE SCHEMA IF NOT EXISTS voting;
+                CREATE SCHEMA IF NOT EXISTS score;
+                CREATE SCHEMA IF NOT exists paper_classification;
+                CREATE SCHEMA IF NOT EXISTS sor_grouping;
+                CREATE SCHEMA IF NOT EXISTS paper;
+                CREATE SCHEMA IF NOT EXISTS response;
+                CREATE SCHEMA IF NOT EXISTS outbound;
+                CREATE SCHEMA IF NOT EXISTS eoc_response;
+                CREATE SCHEMA IF NOT EXISTS eoc_transformer;
+                CREATE SCHEMA IF NOT EXISTS qr_extraction;
+                CREATE SCHEMA IF NOT EXISTS md_lookup_systemKey;
+                CREATE SCHEMA IF NOT EXISTS template_detection;
+                CREATE SCHEMA IF NOT EXISTS control_data;
+                CREATE SCHEMA IF NOT EXISTS batching;
+                CREATE SCHEMA IF NOT EXISTS product_outbound;
+                CREATE SCHEMA IF NOT EXISTS alchemy_response;
+                CREATE SCHEMA if not exists alchemy_migration;
+                CREATE SCHEMA IF NOT EXISTS control_data_macro;
+                CREATE SCHEMA IF NOT EXISTS multipart_info;
+                CREATE SCHEMA IF NOT EXISTS urgency_triage_beta;
+                create schema if not exists sanitary_hub;
+                create schema if not exists text_extraction;
+                create schema if not exists kvp_extraction;
+                create schema if not exists table_extraction;
+                create schema if not exists checkbox_extraction;
+                create schema if not exists table_extraction_info;
+                CREATE SCHEMA IF NOT EXISTS outbound_asis;
+                CREATE SCHEMA IF NOT EXISTS outbound_transform_asis;
+                CREATE SCHEMA IF NOT EXISTS ${temp_schema_name};
+                CREATE SCHEMA IF NOT EXISTS control_data_org;
+                CREATE SCHEMA IF NOT EXISTS paper_filter;
+                CREATE SCHEMA IF NOT EXISTS error_queue;
+                CREATE SCHEMA IF NOT EXISTS deep_sift;
+                CREATE SCHEMA if not exists sor_validation;
+                CREATE SCHEMA IF NOT EXISTS chrono_clash;
+                CREATE SCHEMA IF NOT EXISTS entity_voting;
+
+        "} on-condition if "true"=="true"
+
+
+
+        transform as "Create extensions for the coverage report preparation" on "intics_zio_db_conn" using
+        {"
+                CREATE EXTENSION IF NOT EXISTS pg_trgm;
+                CREATE EXTENSION IF NOT EXISTS fuzzystrmatch;
+        "} on-condition if "false"=="true"
+
+        transform as "Create audit tables for timing log" on "intics_zio_db_conn" using
+        {"
+
+                CREATE TABLE IF NOT EXISTS audit.protegrity_api_audit (
+                    id BIGSERIAL PRIMARY KEY,
+                    key VARCHAR NULL,
+                    encryption_type VARCHAR NULL,
+                    endpoint TEXT NULL,
+                    started_on TIMESTAMP NULL,
+                    completed_on TIMESTAMP,
+                    status VARCHAR,
+                    message TEXT,
+                    root_pipeline_id BIGINT,
+                    action_id BIGINT,
+                    thread_name VARCHAR,
+                    uuid VARCHAR
+                );
+
+                CREATE SEQUENCE IF NOT EXISTS ingestion.pipeline_audit_num
+                AS INT8
+                START WITH 1
+                INCREMENT BY 1;
+
+                CREATE TABLE IF NOT EXISTS ingestion.pipeline_level_audit (
+                id int8 NULL,
+                batch_id varchar null,
+                root_pipeline_id int8 NULL,
+                pipeline_id int8 NULL,
+                pipeline_name varchar NULL,
+                time_diff interval NULL,
+                tenant_id int8 NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS ingestion.pipeline_queue_status_audit(
+                id bigserial NOT NULL,
+                producer_process_id int8 NOT NULL,
+                consumer_process_id int8 NULL,
+                origin_id varchar NOT NULL,
+                group_id int4 NOT NULL,
+                batch_id varchar not null,
+                created_on timestamp NOT NULL,
+                status varchar NOT NULL,
+                stage  varchar NOT NULL,
+                consumed_on_ts timestamp NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                origin_type varchar NULL,
+                CONSTRAINT pipeline_queue_status_audit_pk PRIMARY KEY (id)
+                );
+
+                CREATE TABLE IF NOT EXISTS macro.copro_retry_error_audit (
+                id serial4 NOT NULL,
+                process_id int8 NULL,
+                tenant_id int8 NULL,
+                attempt int4 NULL,
+                group_id int4 NULL,
+                batch_id varchar NOT NULL,
+                origin_id varchar NULL,
+                paper_no int4 NULL,
+                file_path varchar NULL,
+                status varchar NULL,
+                stage varchar NULL,
+                message varchar NULL,
+                created_on timestamp NULL,
+                last_updated_on timestamp NULL,
+                root_pipeline_id int8 NULL,
+                request text NULL,
+                response text NULL,
+                endpoint varchar NULL,
+                copro_service_id varchar null
+                );
+
+        "} on-condition if "true"=="true"
+
+
+        transform as "Create resource utilization details table" on "intics_zio_db_conn" using
+        {"
+
+                CREATE TABLE IF NOT EXISTS  info.resource_utilization_details(
+                id bigserial NOT NULL,
+                tenant_id int8 NULL,
+                batch_id varchar not null,
+                process_id int8 NULL,
+                action_id  int8 NULL,
+                root_pipeline_id  int8 NULL,
+                copro_action_name varchar NULL,
+                copro_pid varchar NULL,
+                created_on varchar NULL,
+                command_exec varchar NULL,
+                cpu varchar NULL,
+                gpu varchar NULL,
+                ram varchar NULL,
+                gpu_ram varchar NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS  ${temp_schema_name}.summary_audit_files_${process-id} (
+                module_name text NULL,
+                batch_id varchar null,
+                macro_process text NULL,
+                completed_count int8 NULL,
+                failed_count int8 NULL,
+                min_created_on timestamp NULL,
+                max_created_on timestamp NULL,
+                time_taken int8 NULL,
+                process_id int8 NOT NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.process_failed_status_${init_process_id.process_id}(
+                    origin_id varchar null,
+                    failed_on_stage varchar null,
+                    process_failes_on timestamp null,
+                    total_no_of_pages int8 NULL,
+                    message varchar null,
+                    root_pipeline_id int8 NULL,
+                    batch_id varchar NOT NULL,
+                    tenant_id int8 NULL
+                );
+
+
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.temp_error_document_detail_${init_process_id.process_id}(
+                    origin_id varchar null,
+                    group_id varchar null,
+                    batch_id varchar NULL,
+                    process_failed_on timestamp null,
+                    status varchar null,
+                    stage varchar null,
+                    message varchar null,
+                    tenant_id int8 NULL,
+                    root_pipeline_id int8 NULL
+                );
+
+
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.summary_audit_papers_${process-id} (
+                module_name text NULL,
+                macro_process text NULL,
+                completed_count int8 NULL,
+                failed_count int8 NULL,
+                min_created_on timestamp NULL,
+                max_created_on timestamp NULL,
+                time_taken int8 NULL,
+                process_id int8 NOT NULL,
+                root_pipeline_id int8 NULL,
+                batch_id varchar not null,
+                tenant_id int8 NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS  macro.process_failed_status_audit (
+                origin_id varchar NULL,
+                batch_id varchar not null,
+                failed_on_stage varchar NULL,
+                process_failes_on timestamp NULL,
+                total_no_of_pages int8 NULL,
+                message varchar NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS  macro.summary_audit_files_archive (
+                module_name text NULL,
+                macro_process text NULL,
+                completed_count int8 NULL,
+                failed_count int8 NULL,
+                min_created_on timestamp NULL,
+                max_created_on timestamp NULL,
+                time_taken int8 NULL,
+                process_id int8 NOT NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar null
+                );
+
+
+                CREATE TABLE IF NOT EXISTS macro.summary_audit_papers_archive (
+                module_name text NULL,
+                macro_process text NULL,
+                completed_count int8 NULL,
+                failed_count int8 NULL,
+                min_created_on timestamp NULL,
+                max_created_on timestamp NULL,
+                time_taken int8 NULL,
+                process_id int8 NOT NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar not null
+                );
+
+
+                CREATE TABLE IF NOT EXISTS macro.temp_error_document_detail_audit (
+                origin_id varchar NULL,
+                group_id varchar NULL,
+                process_failed_on timestamp NULL,
+                status varchar NULL,
+                stage varchar NULL,
+                message varchar NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar not null
+                );
+
+                CREATE TABLE IF NOT EXISTS outbound.load_balancer_queue_update_info (
+                id bigserial NOT NULL,
+                batch_id varchar not null,
+                tenant_id int8 NULL,
+                root_pipeline_id int8 NULL,
+                transaction_id varchar NULL,
+                load_balancer_batch_id int8 NULL,
+                endpoint_id int8 NULL,
+                completed_files varchar[] NULL,
+                failed_files varchar[] NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS ingestion.pipeline_directory_info(
+                id bigserial not null,
+                target_directory_path varchar null,
+                tenant_id int8 null,
+                group_id int8 null,
+                root_pipeline_id int8 null,
+                created_on timestamp null,
+                updated_on timestamp null,
+                created_user_id int8 null,
+                last_updated_user_id int8 null,
+                transaction_id varchar null,
+                formatted_date varchar null,
+                process_name varchar null,
+                current_directory varchar null,
+                zip_directory varchar null,
+                status varchar null
+                );
+
+                 CREATE TABLE IF NOT EXISTS sanitary_hub.sanitary_hub_payload_queue (
+                    producer_process_id int8 NULL,
+                    consumer_process_id int8 NULL,
+                    task_id varchar NOT NULL,
+                    group_id int4 NULL,
+                    created_on timestamp NULL,
+                    consumed_on_ts timestamp NULL,
+                    root_pipeline_id int8 NULL,
+                    status varchar NULL,
+                    stage varchar NULL,
+                    tenant_id int8 NULL,
+                    CONSTRAINT sanitary_hub_payload_queue_pk PRIMARY KEY (producer_process_id, task_id,tenant_id)
+                );
+
+
+                CREATE TABLE if not exists ${temp_schema_name}.sor_meta_consolidated_${init_process_id.process_id} (
+                    root_pipeline_id int8 NULL,
+                    group_id int8 NULL,
+                    batch_id text NULL,
+                    tenant_id int4 NULL,
+                    document_type varchar NULL,
+                    template_name varchar NULL,
+                    sor_container_id int8 NULL,
+                    sor_container_name varchar NULL,
+                    container_post_process_enable bool null,
+                    container_post_process_class varchar null,
+                    container_priority varchar null,
+                    sor_item_id int8 NULL,
+                    sor_item_name varchar NULL,
+                    is_ocr_field_comparable bool null,
+                    allowed_adapter varchar null,
+                    truth_entity_id int8 NULL,
+                    truth_entity_name varchar NULL,
+                    synonym_id int8 NULL,
+                    synonym varchar NULL,
+                    question_id int8 NULL,
+                    question varchar NULL,
+                    is_encrypted bool NULL,
+                    encryption_policy_id int8 NULL,
+                    encryption_policy varchar NULL,
+                    is_multi_entity_enabled boolean null,
+                    line_item_type varchar NULL,
+                    model_id int8 NULL,
+                    model_name varchar NULL,
+                    sor_item_attribution_id int4 NULL
+                );
+
+
+                CREATE TABLE if not exists macro.sor_meta_consolidated_audit (
+                    root_pipeline_id int8 NULL,
+                    group_id int8 NULL,
+                    batch_id text NULL,
+                    tenant_id int4 NULL,
+                    document_type varchar NULL,
+                    template_name varchar NULL,
+                    sor_container_id int8 NULL,
+                    sor_container_name varchar NULL,
+                    sor_item_id int8 NULL,
+                    sor_item_name varchar NULL,
+                    truth_entity_id int8 NULL,
+                    truth_entity_name varchar NULL,
+                    synonym_id int8 NULL,
+                    synonym varchar NULL,
+                    question_id int8 NULL,
+                    question varchar NULL,
+                    is_encrypted bool NULL,
+                    encryption_policy_id int8 NULL,
+                    line_item_type varchar NULL,
+                    model_id int8 NULL,
+                    model_name varchar NULL,
+                    sor_item_attribution_id int4 NULL,
+                    encryption_policy varchar null
+                    );
+
+        "} on-condition if "true"=="true"
+
+
+           transform as "Input table for the ocr text comparison" on "intics_zio_db_conn" using
+           {"
+
+
+                    CREATE TABLE IF NOT EXISTS ${temp_schema_name}.vqa_transaction_${init_process_id.process_id} (
+                            transaction_id bigserial NOT NULL,
+                            created_on timestamp NULL,
+                            created_user_id int8 NULL,
+                            last_updated_on timestamp NULL,
+                            last_updated_user_id int8 NULL,
+                            status varchar NULL,
+                            version int4 NULL,
+                            answer varchar NULL,
+                            b_box varchar NULL,
+                            document_id varchar NOT NULL,
+                            extracted_image_unit varchar NULL,
+                            group_id int4 NULL,
+                            image_dpi int8 NULL,
+                            image_height int8 NULL,
+                            image_width int8 NULL,
+                            model_id int8 NULL,
+                            model_info varchar NULL,
+                            origin_id varchar NOT NULL,
+                            paper_no int4 NOT NULL,
+                            question_id int8 NULL,
+                            root_pipeline_id int8 NULL,
+                            score int8 NULL,
+                            sor_item_attribution_id int4 NULL,
+                            sor_item_name varchar NOT NULL,
+                            sor_question varchar NOT NULL,
+                            synonym_id int8 NULL,
+                            tenant_id int8 NOT NULL,
+                            vqa_score float8 NULL,
+                            weight int4 NULL,
+                            model_registry varchar NULL,
+                            category text NULL,
+                            model_registry_id int8 NULL,
+                            stage varchar NULL,
+                            batch_id varchar NOT NULL,
+                            sor_container_name varchar NULL,
+                            sor_container_id int8 NULL,
+                            section_alias varchar NULL,
+                            sor_item_label varchar NULL,
+                            sor_container_instance varchar null
+                    );
+
+                CREATE TABLE IF NOT EXISTS  ${temp_schema_name}.ocr_text_comparison_input_${init_process_id.process_id}(
+                created_on timestamp NULL,
+                created_user_id int4 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int4 NULL,
+                tenant_id int8 NULL,
+                origin_id varchar NULL,
+                group_id int4 NULL,
+                paper_no int4 NULL,
+                sor_question varchar NULL,
+                answer text NULL,
+                vqa_score float8 NULL,
+                score float8 NULL,
+                weight int4 NULL,
+                sor_item_attribution_id int4 NULL,
+                sor_item_name varchar NULL,
+                document_id varchar NULL,
+                b_box varchar NULL,
+                root_pipeline_id int8 NULL,
+                question_id int8 NULL,
+                synonym_id int8 NULL,
+                model_registry varchar NULL,
+                category text NULL,
+                batch_id varchar NULL,
+                is_ocr_field_comparable boolean NULL,
+                extracted_text text NULL,
+                allowed_adapter varchar NULL,
+                is_encrypted boolean NULL,
+                encryption_policy varchar NULL,
+                sor_container_instance varchar null
+                );
+
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.ocr_text_comparison_result_${init_process_id.process_id} (
+                created_on timestamp NOT NULL,
+                created_user_id int4 NOT NULL,
+                last_updated_on timestamp NOT NULL,
+                last_updated_user_id int4 NOT NULL,
+                tenant_id int8 NOT NULL,
+                origin_id varchar NULL,
+                group_id int4 NOT NULL,
+                paper_no int4 NOT NULL,
+                sor_question varchar NULL,
+                answer text NULL,
+                vqa_score float8 NULL,
+                score float8 NULL,
+                weight int4 NULL,
+                sor_item_attribution_id int4 NULL,
+                sor_item_name varchar NOT NULL,
+                document_id varchar NULL,
+                b_box varchar NULL,
+                root_pipeline_id int8 NULL,
+                question_id int8 NULL,
+                synonym_id int8 NULL,
+                model_registry varchar NULL,
+                category text NULL,
+                batch_id varchar NOT NULL,
+                is_ocr_field_comparable boolean NULL,
+                extracted_text text NULL,
+                threshold int8 NULL,
+                best_score int8 NULL,
+                regex_pattern text NULL,
+                candidates text NULL,
+                message varchar null,
+                is_encrypted bool null,
+                encryption_policy varchar null,
+                sor_container_instance varchar null
+                );
+
+                CREATE TABLE if not exists ${temp_schema_name}.multi_value_sor_item_${init_process_id.process_id} (
+                origin_id varchar NULL,
+                sor_item_name varchar NULL,
+                question text NULL,
+                voting_out float4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NULL,
+                predicted_value text NULL,
+                group_id int4 NULL,
+                paper_no int4 NULL,
+                vqa_score float8 NULL,
+                question_id int8 NULL,
+                synonym_id int8 NULL,
+                model_registry varchar NULL,
+                weight int4 NULL,
+                score float8 NULL,
+                document_id varchar NULL,
+                validation_name varchar NULL,
+                b_box varchar NULL,
+                root_pipeline_id int8 null,
+                aggregated_score int8 null,
+                masked_score int8 null,
+                rank int8 null,
+                sor_item_attribution_id int8 null,
+                frequency int8 null,
+                is_encrypted bool null,
+                encryption_policy varchar null,
+                sor_container_instance varchar null
+                );
+
+
+
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.aggregate_cleaned_result_${init_process_id.process_id} (
+                validation_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int4 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int4 NULL,
+                tenant_id int8 NULL,
+                aggregated_score float8 NULL,
+                masked_score float8 NULL,
+                origin_id varchar NULL,
+                paper_no int8 NULL,
+                predicted_value text NULL,
+                rank int4 NULL,
+                sor_item_attribution_id varchar NULL,
+                sor_item_name varchar NULL,
+                document_id varchar NULL,
+                b_box varchar NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                vqa_score float8 NULL,
+                question_id int8 NULL,
+                synonym_id int8 NULL,
+                model_registry varchar NULL,
+                batch_id varchar NULL,
+                frequency int4 NULL,
+                sor_container_instance varchar null
+                );
+
+
+
+                CREATE TABLE if not exists ${temp_schema_name}.aggregation_evaluator_${init_process_id.process_id} (
+                aggregation_evaluator_id bigserial NOT NULL,
+                created_on timestamp NOT NULL,
+                created_user_id varchar NOT NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id varchar NULL,
+                tenant_id int8 NULL,
+                aggregated_score float8 NULL,
+                masked_score float8 NULL,
+                group_id int8 NULL,
+                origin_id varchar NOT NULL,
+                paper_no int4 NOT NULL,
+                predicted_value text NULL,
+                vqa_score float8 NULL,
+                rank int4 NULL,
+                sor_item_attribution_id int4 NOT NULL,
+                sor_item_name varchar NOT NULL,
+                document_id varchar NOT NULL,
+                acc_transaction_id int8 NULL,
+                b_box varchar NULL,
+                root_pipeline_id int8 NULL,
+                frequency int8 NULL,
+                question_id int8 NULL,
+                synonym_id int8 NULL,
+                model_registry varchar NULL,
+                status varchar NULL,
+                version int4 NULL,
+                acc_transcation_id int8 NULL,
+                model_registry_id varchar NULL,
+                batch_id varchar NULL,
+                category text NULL,
+                sor_container_instance varchar null
+                );
+
+
+                 CREATE TABLE IF NOT EXISTS ${temp_schema_name}.cummulative_result_${init_process_id.process_id} (
+                    cummulative_id bigserial NOT NULL,
+                    created_on timestamp NULL,
+                    created_user_id int8 NULL,
+                    last_updated_on timestamp NULL,
+                    last_updated_user_id int8 NULL,
+                    status varchar NULL,
+                    version int4 NULL,
+                    frequency int8 NULL,
+                    b_box varchar NULL,
+                    confidence_score numeric(10, 2) NULL,
+                    extracted_value varchar NULL,
+                    filter_score numeric(10, 2) NULL,
+                    group_id int8 NULL,
+                    maximum_score numeric(10, 2) NULL,
+                    origin_id varchar NULL,
+                    paper_no int8 NULL,
+                    question_id int8 NULL,
+                    root_pipeline_id int8 NULL,
+                    sor_item_name varchar NOT NULL,
+                    synonym_id int8 NULL,
+                    tenant_id int8 NULL,
+                    model_registry varchar NULL,
+                    batch_id varchar not null,
+                    sor_container_instance varchar null
+                );
+
+
+            CREATE TABLE IF NOT EXISTS ${temp_schema_name}.deep_sift_output_${init_process_id.process_id} (
+                id bigserial PRIMARY KEY,
+                origin_id varchar NOT NULL,
+                group_id varchar NOT NULL,
+                input_file_path text NULL,
+                created_on timestamp NOT NULL,
+                created_by varchar NOT NULL,
+                root_pipeline_id int8 NOT NULL,
+                tenant_id int4 NOT NULL,
+                batch_id varchar NOT NULL,
+                extracted_text text NULL,
+                paper_no int4 NOT NULL,
+                source_document_type varchar NOT NULL,
+                model_id int4 NULL,
+                model_name varchar NULL,
+                timetaken_ms BIGINT NULL,
+                status varchar NULL,
+                request TEXT NULL,
+                response TEXT NULL,
+                endpoint TEXT NULL
+            );
+
+
+          "} on-condition if "true"=="true"
+
+
+
+        transform as "Insert into sor_item_multivalue_filtering audits" on "intics_zio_db_conn" using
+        {"
+
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.sor_item_multivalue_filtering_input_${init_process_id.process_id} (
+                transaction_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                answer varchar NULL,
+                b_box varchar NULL,
+                document_id varchar NOT NULL,
+                extracted_image_unit varchar NULL,
+                group_id int4 NULL,
+                image_dpi int8 NULL,
+                image_height int8 NULL,
+                image_width int8 NULL,
+                model_id int8 NULL,
+                model_info varchar NULL,
+                origin_id varchar NOT NULL,
+                paper_no int4 NOT NULL,
+                question_id int8 NULL,
+                root_pipeline_id int8 NULL,
+                score int8 NULL,
+                sor_item_attribution_id int4 NULL,
+                sor_item_name varchar NOT NULL,
+                sor_question varchar NOT NULL,
+                synonym_id int8 NULL,
+                tenant_id int8 NOT NULL,
+                vqa_score float8 NULL,
+                weight int4 NULL,
+                model_registry varchar NULL,
+                category text NULL,
+                model_registry_id int8 NULL,
+                stage varchar NULL,
+                batch_id varchar NOT NULL,
+                line_item_type varchar null,
+                is_encrypted bool NULL,
+                encryption_policy_id int8 NULL,
+                encryption_policy varchar null
+                );
+
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.sor_single_value_filtering_input_${init_process_id.process_id} (
+                transaction_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                answer varchar NULL,
+                b_box varchar NULL,
+                document_id varchar NOT NULL,
+                extracted_image_unit varchar NULL,
+                group_id int4 NULL,
+                image_dpi int8 NULL,
+                image_height int8 NULL,
+                image_width int8 NULL,
+                model_id int8 NULL,
+                model_info varchar NULL,
+                origin_id varchar NOT NULL,
+                paper_no int4 NOT NULL,
+                question_id int8 NULL,
+                root_pipeline_id int8 NULL,
+                score int8 NULL,
+                sor_item_attribution_id int4 NULL,
+                sor_item_name varchar NOT NULL,
+                sor_question varchar NOT NULL,
+                synonym_id int8 NULL,
+                tenant_id int8 NOT NULL,
+                vqa_score float8 NULL,
+                weight int4 NULL,
+                model_registry varchar NULL,
+                category text NULL,
+                model_registry_id int8 NULL,
+                stage varchar NULL,
+                batch_id varchar NOT NULL,
+                line_item_type varchar null,
+                is_encrypted bool NULL,
+                encryption_policy_id int8 NULL,
+                encryption_policy varchar null
+                );
+
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.sor_item_multivalue_filtering_output_${init_process_id.process_id} (
+                    id bigserial not null,
+                    sor_item_attribution_id int8,
+                    root_pipeline_id VARCHAR,
+                    document_id VARCHAR,
+                    group_id int8,
+                    batch_id VARCHAR,
+                    tenant_id int8,
+                    origin_id VARCHAR,
+                    sor_item_name VARCHAR,
+                    answer TEXT,
+                    sor_question TEXT,
+                    line_item_type VARCHAR,
+                    synonym_id int8,
+                    score int8,
+                    vqa_score int8,
+                    category VARCHAR,
+                    stage VARCHAR,
+                    status VARCHAR,
+                    paper_no int8,
+                    question_id int8,
+                    sor_container_instance TEXT,
+                    b_box TEXT,
+                    model_id int8,
+                    model_info TEXT,
+                    model_registry VARCHAR,
+                    is_encrypted BOOLEAN,
+                    encryption_policy_id int8,
+                    encryption_policy TEXT,
+                    is_removed_after_filtering BOOLEAN,
+                    message TEXT,
+                    section_priority_after_filter VARCHAR,
+                    created_on TIMESTAMP ,
+                    last_updated_on TIMESTAMP
+                );
+
+
+                CREATE TABLE IF NOT EXISTS entity_voting.sor_item_multivalue_filtering_input (
+                transaction_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                answer varchar NULL,
+                b_box varchar NULL,
+                document_id varchar NOT NULL,
+                extracted_image_unit varchar NULL,
+                group_id int4 NULL,
+                image_dpi int8 NULL,
+                image_height int8 NULL,
+                image_width int8 NULL,
+                model_id int8 NULL,
+                model_info varchar NULL,
+                origin_id varchar NOT NULL,
+                paper_no int4 NOT NULL,
+                question_id int8 NULL,
+                root_pipeline_id int8 NULL,
+                score int8 NULL,
+                sor_item_attribution_id int4 NULL,
+                sor_item_name varchar NOT NULL,
+                sor_question varchar NOT NULL,
+                synonym_id int8 NULL,
+                tenant_id int8 NOT NULL,
+                vqa_score float8 NULL,
+                weight int4 NULL,
+                model_registry varchar NULL,
+                category text NULL,
+                model_registry_id int8 NULL,
+                stage varchar NULL,
+                batch_id varchar NOT NULL,
+                line_item_type varchar null,
+                is_encrypted bool NULL,
+                encryption_policy_id int8 NULL,
+                encryption_policy varchar null,
+                CONSTRAINT vqa_transaction_multival_pkey PRIMARY KEY (transaction_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS entity_voting.sor_single_value_filtering_input_audit (
+                transaction_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                answer varchar NULL,
+                b_box varchar NULL,
+                document_id varchar NOT NULL,
+                extracted_image_unit varchar NULL,
+                group_id int4 NULL,
+                image_dpi int8 NULL,
+                image_height int8 NULL,
+                image_width int8 NULL,
+                model_id int8 NULL,
+                model_info varchar NULL,
+                origin_id varchar NOT NULL,
+                paper_no int4 NOT NULL,
+                question_id int8 NULL,
+                root_pipeline_id int8 NULL,
+                score int8 NULL,
+                sor_item_attribution_id int4 NULL,
+                sor_item_name varchar NOT NULL,
+                sor_question varchar NOT NULL,
+                synonym_id int8 NULL,
+                tenant_id int8 NOT NULL,
+                vqa_score float8 NULL,
+                weight int4 NULL,
+                model_registry varchar NULL,
+                category text NULL,
+                model_registry_id int8 NULL,
+                stage varchar NULL,
+                batch_id varchar NOT NULL,
+                line_item_type varchar null,
+                is_encrypted bool NULL,
+                encryption_policy_id int8 NULL,
+                encryption_policy varchar null,
+                CONSTRAINT vqa_transaction_single_input_pkey PRIMARY KEY (transaction_id)
+                );
+
+
+
+                CREATE TABLE IF NOT EXISTS entity_voting.sor_item_multivalue_filtering_output_audit (
+                transaction_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int8 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int8 NULL,
+                status varchar NULL,
+                version int4 NULL,
+                answer varchar NULL,
+                b_box varchar NULL,
+                document_id varchar NOT NULL,
+                extracted_image_unit varchar NULL,
+                group_id int4 NULL,
+                image_dpi int8 NULL,
+                image_height int8 NULL,
+                image_width int8 NULL,
+                model_id int8 NULL,
+                model_info varchar NULL,
+                origin_id varchar NOT NULL,
+                paper_no int4 NOT NULL,
+                question_id int8 NULL,
+                root_pipeline_id int8 NULL,
+                score int8 NULL,
+                sor_item_attribution_id int4 NULL,
+                sor_item_name varchar NOT NULL,
+                sor_question varchar NOT NULL,
+                synonym_id int8 NULL,
+                tenant_id int8 NOT NULL,
+                vqa_score float8 NULL,
+                weight int4 NULL,
+                model_registry varchar NULL,
+                category text NULL,
+                model_registry_id int8 NULL,
+                stage varchar NULL,
+                batch_id varchar NOT NULL,
+                line_item_type varchar null,
+                is_encrypted bool NULL,
+                encryption_policy_id int8 NULL,
+                encryption_policy varchar null,
+                CONSTRAINT multivalue_filtering_output_pkey PRIMARY KEY (transaction_id)
+                );
+
+        "} on-condition if "true"=="true"
+
+
+        transform as "creating sequence for inbound_id and group id" on "intics_zio_db_conn" using
+        {"
+                CREATE SEQUENCE IF NOT EXISTS ingestion.ingestion_num
+                AS INT8
+                START WITH 1
+                INCREMENT BY 1;
+
+                CREATE SEQUENCE IF NOT EXISTS ingestion.group_number
+                AS INT8
+                START WITH 1
+                INCREMENT BY 1;
+
+                CREATE SEQUENCE IF NOT EXISTS ingestion.batch_id
+                AS INT8
+                START WITH 1
+                INCREMENT BY 1;
+
+                CREATE SEQUENCE IF NOT EXISTS ingestion.origin_num
+                AS INT8
+                START WITH 1
+                INCREMENT BY 1;
+        "} on-condition if "true"=="true"
+
+        assign as "gen_group_id" source "intics_zio_db_conn" using {"
+                SELECT nextval('ingestion.ingestion_num') AS inbound_id;
+                SELECT nextval('ingestion.group_number') AS group_id;
+        "} on-condition if "${ingestion.main.caller.activator}"=="true"
+
+        assign as "gen_id" source "intics_zio_db_conn" using {"
+                SELECT '${root-ref-id}' AS root_pipeline_id,TO_CHAR(NOW(), '${current.date.directory.format}') AS formatted_date;
+        "} on-condition if "true"=="true"
+
+
+        assign as "gen_directory" source "intics_zio_db_conn" using {"
+                SELECT replace(concat('${target_directory_path}','/processed_images/','${gen_id.formatted_date}/','tenant_${tenant_id}/','group_${gen_group_id.group_id}'),'//' ,'/') AS current_directory,
+                replace(concat('${target_directory_path}','/outbound_zip/','${gen_id.formatted_date}/','tenant_${tenant_id}/','group_${gen_group_id.group_id}'),'//' ,'/') AS zip_directory;
+        "} on-condition if "true"=="true"
+
+        createDirectory as "creating time based directory for current pipeline" using
+        {
+            "${gen_directory.current_directory}"
+        } on-condition if "true"=="true"
+
+        createDirectory as "creating time based directory for outbound pipeline" using
+        {
+            "${gen_directory.zip_directory}"
+        } on-condition if "true"=="true"
+
+        transform as "Insert into pipeline directory info origin" on "intics_zio_db_conn" using
+        {"
+        INSERT INTO ingestion.pipeline_directory_info
+        (target_directory_path, tenant_id, group_id, root_pipeline_id, created_on, updated_on, created_user_id, last_updated_user_id,
+         transaction_id, formatted_date, current_directory, zip_directory, process_name, status)
+        select '${target_directory_path}',${tenant_id},${gen_group_id.group_id},${root-ref-id},now(),now(),'${created_user_id}','${last_updated_user_id}',
+        '${transaction_id}','${gen_id.formatted_date}','${gen_directory.current_directory}','${gen_directory.zip_directory}','FILE_PROCESS','STAGED';
+
+        "} on-condition if "true"=="true"
+
+
+        transform as "Insert into sor meta consolidated table" on "intics_zio_db_conn" using
+        {"
+
+            INSERT INTO ${temp_schema_name}.sor_meta_consolidated_${init_process_id.process_id} (
+              root_pipeline_id, group_id,
+              tenant_id, document_type, template_name,
+              sor_container_id, sor_container_name,
+              container_post_process_enable,container_post_process_class,container_priority,
+              sor_item_id, sor_item_name,
+              is_ocr_field_comparable,allowed_adapter,
+              truth_entity_id,
+              truth_entity_name, synonym_id, synonym,
+              question_id, question, is_encrypted,
+              encryption_policy_id,encryption_policy, line_item_type,
+              model_id, model_name, sor_item_attribution_id, is_multi_entity_enabled
+            )
+            SELECT
+              '${init_process_id.process_id}' as root_pipeline_id,
+              '${gen_group_id.group_id}' as group_id,
+              ai.tenant_id,
+              ai.document_type,
+              ai.template_name,
+              sc.sor_container_id,
+              sc.sor_container_name,
+              sc.post_processing,
+              sc.post_process_class_name,
+              sc.container_priority,
+              si.sor_item_id,
+              si.sor_item_name,
+              is_ocr_field_comparable,
+              allowed_adapter,
+              te.truth_entity_id,
+              te.truth_entity_name,
+              st.synonym_id,
+              st.synonym,
+              sq.question_id,
+              sq.question,
+              si.is_encrypted,
+              si.encryption_policy_id,
+              ep.encryption_policy,
+              si.line_item_type,
+              mr.model_id,
+              mr.model_name,
+              mr.sor_item_attribution_id,
+              sc.is_multi_entity_enabled
+            FROM
+              sor_meta.sor_container sc
+              LEFT JOIN sor_meta.sor_item si on sc.sor_container_id = si.sor_container_id
+              AND sc.tenant_id = si.tenant_id
+              LEFT JOIN sor_meta.asset_info ai on ai.document_type = sc.document_type
+              AND ai.tenant_id = sc.tenant_id
+              AND sc.document_type = ai.document_type
+              LEFT JOIN sor_meta.truth_entity te on te.asset_id = ai.asset_id
+              AND te.tenant_id = ai.tenant_id
+              LEFT JOIN sor_meta.sor_tsynonym st on st.truth_entity_id = te.truth_entity_id
+              AND st.tenant_id = te.tenant_id
+              AND si.sor_item_id = st.sor_item_id
+              AND st.sor_container_id = sc.sor_container_id
+              LEFT JOIN sor_meta.sor_question sq on sq.synonym_id = st.synonym_id
+              AND sq.tenant_id = st.tenant_id
+              LEFT JOIN sor_meta.model_registry mr on mr.model_id = sq.model_registry_id
+              LEFT JOIN sor_meta.encryption_policies ep on si.encryption_policy_id = ep.encryption_policy_id
+            where
+              sc.status = 'ACTIVE'
+              and si.status = 'ACTIVE'
+              and ai.status = 'ACTIVE'
+              AND te.status = 'ACTIVE'
+              and st.status = 'ACTIVE'
+              and sq.status = 'ACTIVE'
+              and ai.template_name = 'UNIVERSE'
+              and ai.document_type = '${document_type}';
+
+        "} on-condition if "true"=="true"
+
+
+        callprocess as "calling gatekeeper ddl lambda"
+        with-target "root.gatekeeper.ddl"
+        from-file "${basepath}/root.gatekeeper.ddl.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "true"=="true"
+
+        callprocess as "calling ingestion main ddl lambda"
+        with-target "ingestion.main.ddl"
+        from-file "${basepath}/ingestion/ingestion.main.ddl.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${ingestion.main.caller.activator}"=="true"
+
+        callprocess as "calling preprocess ddl "
+        with-target "preprocess.main.ddl"
+        from-file "${basepath}/preprocess/preprocess.main.ddl.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${preprocess.main.caller.activator}"=="true"
+
+        callprocess as "calling ddl lambda deep sift extraction table"
+        with-target "deep.sift.ddl"
+        from-file "${basepath}/deepSiftExtraction/deep.sift.ddl.lmd"
+        using "intics_zio_db_conn"
+        for-every
+        {"
+            SELECT 1;
+        "} on-condition if "${deep.sift.extraction.activator}" == "true"
+
+        callprocess as "calling table extraction ddl lambda"
+        with-target "table.extraction.ddl"
+        from-file "${basepath}/tableExtraction/table.extraction.ddl.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                    SELECT 1;
+        "} on-condition if "${table.extraction.activator}"=="true"
+
+        callprocess as "calling invoice validator ddl lambda"
+        with-target "invoice.validator.ddl"
+        from-file "${basepath}/invoiceValidator/invoice.validator.ddl.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                    SELECT 1;
+        "} on-condition if "${invoice.validator.activator}"=="true"
+
+
+        callprocess as "calling filtering ddl lambda"
+        with-target "potential.filtering.ddl"
+        from-file "${basepath}/filter/potential.filtering.ddl.lmd"
+        using "intics_zio_db_conn"
+        for-every
+        {"
+             SELECT ${init_process_id.process_id} as process_id;
+        "} on-condition if "${root.filter.activator}"=="true"
+
+
+        callprocess as "calling Agentic paper filter ddl lamba"
+        with-target "agentic.paper.filter.ddl"
+        from-file "${basepath}/agenticPaperFilter/agentic.paper.filter.ddl.lmd"
+        using "intics_zio_db_conn"
+        for-every
+            {"
+            SELECT 1;
+            "} on-condition if "${agentic.paper.filter.activator}"=="true"
+
+        callprocess as "calling paperWiseAgenticFilter Agentic paper filter ddl lambda"
+        with-target "paperWiseAgenticFilter.agentic.paper.filter.ddl"
+        from-file "${basepath}/agenticPaperFilter/paperRangeFilter/paper.range.filter.ddl.lmd"
+        using "intics_zio_db_conn"
+        for-every
+            {"
+            SELECT 1;
+            "} on-condition if "${paper.range.filter.activator}"=="true"
+
+
+        callprocess as "calling paper classification ddl lambda"
+        with-target "paper.classification.ddl"
+        from-file "${basepath}/paperClassification/paper.classification.ddl.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${paper.classification.activator}"=="true"
+
+        callprocess as "calling noise model ddl"
+        with-target "noise.detection.ddl"
+        from-file "${basepath}/noiseDetection/noise.detection.ddl.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${noise.model.caller.activator}"=="true"
+
+        callprocess as "calling doc_eyecue ddl"
+            with-target "doc.eyecue.ddl"
+            from-file "${basepath}/docEyeCue/doc.eyecue.ddl.lmd"
+            using "intics_zio_db_conn"
+            for-every {"
+                SELECT 1;
+            "}
+            on-condition if "${doc.eyecue.activator}" == "true"
+
+        callprocess as "calling qr extraction ddl lambda"
+        with-target "qr.extraction.ddl"
+        from-file "${basepath}/sorGrouping/qrExtraction/qr.extraction.ddl.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${qr.extraction.processor.activator}"=="true"
+
+        callprocess as "calling urgency triage model ddl"
+        with-target "ut.model.ddl"
+        from-file "${basepath}/utModel/ut.model.ddl.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${ut.model.activator}"=="true"
+
+         callprocess as "calling urgency triage beta model ddl"
+          with-target "urgency.triage.beta.ddl"
+          from-file "${basepath}/urgencyTriageBeta/urgency.triage.beta.ddl.lmd"
+          using "intics_zio_db_conn"
+          for-every {"
+              SELECT 1;
+          "} on-condition if "${ut.model.beta.activator}"=="true"
+
+		 callprocess as "calling urgency triage ddl"
+         with-target "urgency.triage.ddl"
+         from-file "${basepath}/urgencyTriage/urgency.triage.ddl.lmd"
+         using "intics_zio_db_conn"
+         for-every {"
+             SELECT 1;
+         "} on-condition if "${urgency.triage.activator}"=="true"
+
+        callprocess as "calling sor_transaction ddl "
+        with-target "sor.transaction.ddl"
+        from-file "${basepath}/sorTransaction/legacy/sor.transaction.ddl.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${sor.transaction.activator}"=="true"
+
+        callprocess as "calling sor_transaction nextgen ddl "
+        with-target "sor.transaction.ddl"
+        from-file "${basepath}/sorTransaction/nextgen/sor.transaction.ddl.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${sor.transaction.nextgen.activator}"=="true"
+
+     callprocess as "calling sor_validation ddl "
+        with-target "sor.validation.ddl"
+        from-file "${basepath}/sorValidation/legacy/sor.validation.ddl.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${sor.validation.main.activator}"=="true"
+
+
+
+        callprocess as "calling sor grouping ddl lambda"
+        with-target "sor.grouping.ddl"
+        from-file "${basepath}/sorGrouping/sor.grouping.ddl.lmd"
+        using "intics_zio_db_conn"
+        for-every
+        {"
+                SELECT 1;
+        "} on-condition if "${eoc.splitting.main.activator}"=="true"
+
+
+        callprocess as "Init response ddl caller"
+        with-target "response.ddl"
+        from-file "${basepath}/responsebuilder/response.ddl.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${response.builder.activator}"=="true"
+
+        callprocess as "calling eoc doc detail ddl"
+        with-target "eocdoc.detail.ddl"
+        from-file "${basepath}/responsebuilder/outboundTransformer/eocdoc.detail.ddl.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${eoc.transform.activator}"=="true"
+
+
+        callprocess as "calling ddl"
+        with-target "voting.score.ddl"
+        from-file "${basepath}/voting/voting.score.ddl.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${eoc.splitting.main.activator}"=="true"
+
+        callprocess as "calling masterdata ddl"
+        with-target "master.data.ddl"
+        from-file "${basepath}/masterDataLookup/master.data.ddl.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${masterdata.processor.activator}"=="true"
+
+        callprocess as "calling control_data ddl"
+        with-target "control.data.ddl"
+        from-file "${basepath}/coverageReport/control.data.ddl.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${coveragereport.processor.activator}"=="none"
+
+
+        callprocess as "calling alchemy migration ddl"
+        with-target "alchemy.migration.ddl"
+        from-file "${basepath}/alchemy_migration/alchemy.migration.ddl.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${alchemy.migration.activator}"=="true"
+
+
+        callprocess as "calling product outbound ddl"
+        with-target "product.outbound.ddl"
+        from-file "${basepath}/productOutbound/product.outbound.ddl.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${product.response.builder.activator}"=="true"
+
+
+        callprocess as "calling text extraction ddl"
+        with-target "text.extraction.main.ddl.lmd"
+        from-file "${basepath}/extraction/text/text.extraction.main.ddl.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${text.extraction.asis.activator}"=="true"
+
+        callprocess as "calling kvp extraction ddl"
+        with-target "kvp.extraction.ddl"
+        from-file "${basepath}/extraction/kvp/kvp.extraction.main.ddl.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${kvp.extraction.asis.activator}"=="true"
+
+        callprocess as "calling table extraction info ddl"
+        with-target "table.extraction.main.ddl"
+        from-file "${basepath}/extraction/table/table.extraction.main.ddl.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${table.extraction.asis.krypton.activator}"=="true"
+
+        callprocess as "calling checkbox extraction ddl"
+        with-target "checkbox.extraction.ddl"
+        from-file "${basepath}/extraction/checkbox/checkbox.extraction.main.ddl.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${checkbox.extraction.asis.activator}"=="true"
+
+    }
+    catch{
+
+        }
+    finally{
+    }
+
+}

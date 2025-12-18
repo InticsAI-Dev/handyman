@@ -1,0 +1,226 @@
+process "doc.impira.processor"
+{
+    try{
+
+            transform as "update to in-progress impira transaction payload queue" on "intics_zio_db_conn" using
+            {"
+                UPDATE doc_impira.doc_impira_payload_queue
+                SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts='${time_stamp_impira_transaction.consumed_on_ts}', status='IN_PROGRESS'
+                WHERE group_id ='${group_id}' AND status ='STAGED' AND stage ='IMPIRA_TRANSACTION' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                INSERT INTO doc_impira.doc_impira_pipeline_audit
+                (group_id, created_on, created_by, user_id, tenant_id, status, stage, message)
+                VALUES('${group_id}', now(), '${created_user_id}', '${created_user_id}', ${tenant_id}, 'STARTED', 'IMPIRA_TRANSACTION', 'Impira transaction process started for group_id ${group_id}', '${batch_id}');
+            "} on-condition if "true"=="true"
+
+            assign as "impira_target_directory" source "intics_zio_db_conn" using
+            {"
+                SELECT concat('${gen_directory.current_directory}','/',${tenant_id},'/','${group_id}') as target_directory_path;
+            "} on-condition if "true"=="true"
+
+            assign as "impira_gen_table_name" source "intics_zio_db_conn" using
+            {"
+                 SELECT lower(replace('impira_transaction_temp_tqa_synonym_${init_process_id.process_id}_${tenant_id}_${group_id}','-','_')) as tqa_x_synonym_table_name;
+                 SELECT lower(replace('impira_attribution_response_${init_process_id.process_id}','-','_')) as impira_attribution_response;
+            "} on-condition if "true"=="true"
+
+            transform as "Sor transaction Impira TQA X only SOR-QA Synonym table for ${group_id}" on "intics_zio_db_conn" using
+             {"
+                CREATE TABLE IF NOT EXISTS macro.${impira_gen_table_name.tqa_x_synonym_table_name} as
+                 SELECT
+                row_number() over(order by elsa.truth_entity) as tqa_id,
+                ai.template_name,
+                elsa.truth_entity ,
+                si.sor_item_name,
+                 dipq.group_id,
+                st.synonym,
+                sq.question,
+                sq.weights as weight,
+                st.synonym_id ,
+                frs.origin_id,
+                frs.paper_no,
+                asset.file_path,
+                frs.tenant_id,
+                '${batch_id}' as batch_id
+                FROM paper.paper_level_score_audit frs
+                JOIN paper.entity_level_score_audit elsa ON frs.origin_id =elsa.origin_id and frs.is_candidate_paper='yes'
+                JOIN doc_impira.doc_impira_payload_queue dipq ON dipq.origin_id=frs.origin_id
+                JOIN info.source_of_truth sot ON sot.origin_id =frs.origin_id  AND frs.paper_no  =sot.paper_no
+                JOIN paper_classification.paper_classification_result pcr ON pcr.origin_id =frs.origin_id  AND frs.paper_no  = pcr.paper_no and pcr.document_type = 'Printed'
+                JOIN info.asset asset ON asset.file_id=sot.preprocessed_file_id
+                join sor_meta.asset_info ai on ai.template_name = sot.template_name
+                join sor_meta.truth_entity te on te.truth_entity_name  =elsa.truth_entity
+                join sor_meta.sor_tsynonym st on st.truth_entity_id = te.truth_entity_id
+                join sor_meta.sor_question sq on sq.synonym_id = st.synonym_id
+                join sor_meta.sor_item si on si.sor_item_id =st.sor_item_id ;
+
+            "} on-condition if "true"=="true"
+
+
+            donut-impira-qa as "Impira API ${group_id}"
+            in-output-dir "${impira_target_directory.target_directory_path}"
+            on-resource-conn  "intics_zio_db_conn"
+            save-response-as "${impira_gen_table_name.impira_attribution_response}"
+            using {"
+                SELECT question,file_path,tqa_id FROM
+                macro.${impira_gen_table_name.tqa_x_synonym_table_name} ;
+            "} on-condition if "true"=="true"
+
+            raise exception as "${group_id} Check if response failed" using
+            {"
+                ${docnet_attribution_response.response}
+            "}  on-condition if "${gen_table_name.docnet_attribution_response}"=="true"
+
+            transform as "max confidence score evaluator from impira" on "intics_zio_db_conn" using {"
+                INSERT into ${temp_schema_name}.aggregation_evaluator_max_confidence_score_${init_process_id.process_id}
+                (max_confidence_score,origin_id,paper_no,sor_item_name)
+                select max(b.confidence_score) ,a.origin_id,a.paper_no ,a.sor_item_name
+                FROM macro.${impira_gen_table_name.tqa_x_synonym_table_name}  A
+                JOIN macro.${impira_gen_table_name.impira_attribution_response}  B
+                ON A.question=B.question AND A.file_path=B.file_path AND b.predicted_attribution_value is not null
+                WHERE a.group_id  = '${group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+                group by a.origin_id,a.paper_no ,a.sor_item_name ;
+            "} on-condition if "true"=="true"
+
+            transform as "cumulative rank result temp from impira" on "intics_zio_db_conn" using {"
+                CREATE TABLE macro.aggregation_result_rank_${init_process_id.process_id} AS
+                SELECT b.id, a.origin_id, a.paper_no, a.sor_item_name, b.confidence_score as maximum_score, b.confidence_score as confidence_score, A.tenant_id, a.batch_id
+                b.predicted_attribution_value as answer, to_jsonb(b.b_box) as b_box, b.question, b.image_dpi, b.image_width, b.image_height, b.extracted_image_unit
+                FROM macro.${impira_gen_table_name.tqa_x_synonym_table_name} A
+                JOIN macro.${impira_gen_table_name.impira_attribution_response} B
+                ON A.question=B.question AND A.file_path=B.file_path AND b.predicted_attribution_value is not null
+                JOIN ${temp_schema_name}.aggregation_evaluator_max_confidence_score_${init_process_id.process_id} c on c.max_confidence_score=b.confidence_score and c.origin_id=a.origin_id
+                and c.paper_no=a.paper_no and c.sor_item_name=a.sor_item_name
+                WHERE a.group_id  = '${group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+            "} on-condition if "true"=="true"
+
+            transform as "cumulative rank result with null values from impira" on "intics_zio_db_conn" using {"
+                CREATE TABLE macro.cummulative_result_rank_null_${init_process_id.process_id} AS
+                SELECT t.id, t.origin_id, t.paper_no, t.sor_item_name, t.maximum_score, t.confidence_score, t.answer, t.b_box, t.question, t.image_dpi, t.image_width, t.image_height, t.extracted_image_unit, t.rnk , t.batch_id from
+                (SELECT c.id, c.origin_id, c.paper_no, c.sor_item_name, c.maximum_score, c.confidence_score,c.answer, c.tenant_id,
+                c.b_box, c.question, c.image_dpi, c.image_width, c.image_height, c.extracted_image_unit, row_number() OVER ( partition  by c.sor_item_name,c.maximum_score, c.origin_id  ORDER BY c.sor_item_name, c.maximum_score  DESC ) AS rnk, '${batch_id}'
+                from macro.aggregation_result_rank_${init_process_id.process_id} c) t
+                where t.rnk=1  and t.tenant_id = ${tenant_id} and t.batch_id = '${batch_id}';
+            "} on-condition if "true"=="true"
+
+            transform as "Insert into ranking table from impira" on "intics_zio_db_conn" using
+            {"
+                INSERT INTO ${temp_schema_name}.ranking_table_${init_process_id.process_id}
+                (validation_id, group_id, origin_id, paper_no, sor_item_name, extracted_value, created_on, freq, weight_score, weight_rank, root_pipeline_id, batch_id)
+                SELECT a.id, '${group_id}', a.origin_id, a.paper_no, a.sor_item_name, a.answer, now(), 1 as freq, a.confidence_score, 1 as weight_rank, ${gen_id.root_pipeline_id}, '${batch_id}'
+                FROM macro.cummulative_result_rank_null_${init_process_id.process_id} a
+                where a.answer != ''  and a.answer is not null and a.tenant_id = ${tenant_id}  and a.batch_id = '${batch_id}';
+            "} on-condition if "true"=="true"
+
+
+            transform as "Insert into vqa transaction from impira" on "intics_zio_db_conn" using
+             {"
+                INSERT INTO sor_transaction.vqa_transaction
+                (created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, model_score, origin_id, paper_no, group_id, sor_item_attribution_id,
+                sor_item_name, document_id, model_id, answer, weight, sor_question,
+                b_box, image_dpi, image_width, image_height, extracted_image_unit, root_pipeline_id, model_info, batch_id)
+                SELECT now(), '${created_user_id}', now(), '${created_user_id}', ${tenant_id}, a.maximum_score, a.origin_id, a.paper_no, '${group_id}', 1,
+                a.sor_item_name, '${document_id}', 1 as model_id, a.answer, a.confidence_score, a.question,
+                a.b_box, a.image_dpi, a.image_width, a.image_height, a.extracted_image_unit, ${gen_id.root_pipeline_id}, '${argon}', '${batch_id}'
+                FROM macro.cummulative_result_rank_null_${init_process_id.process_id} a
+                where a.answer != ''  and a.answer is not null and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+             "} on-condition if "true"=="true"
+
+             transform as "Insert into aggregation evaluation for sor grouping from impira" on "intics_zio_db_conn" using
+             {"
+                INSERT INTO score.aggregation_evaluator
+                (created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, aggregated_score, masked_score,
+                group_id, origin_id, paper_no, predicted_value, rank, sor_item_attribution_id, sor_item_name, document_id, b_box, root_pipeline_id, batch_id)
+                SELECT now(), '${created_user_id}', now(), '${created_user_id}', ${tenant_id}, a.maximum_score as aggregated_score, a.maximum_score as masked_score,
+                '${group_id}', a.origin_id, a.paper_no, a.answer, 1, 0, a.sor_item_name, '${document_id}', a.b_box, ${gen_id.root_pipeline_id}, '${batch_id}'
+                FROM macro.cummulative_result_rank_null_${init_process_id.process_id} a
+                where a.answer != ''  and a.answer is not null and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+             "} on-condition if "true"=="true"
+
+            transform as "insert audit for impira_transaction" on "intics_zio_db_conn" using
+            {"
+                INSERT INTO doc_impira.doc_impira_pipeline_audit
+                (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, batch_id)
+                VALUES('${group_id}', now(), '${created_user_id}', '${created_user_id}', ${tenant_id}, 'COMPLETED', 'IMPIRA_TRANSACTION', 'Impira transaction finished ${group_id}', '${batch_id}');
+            "} on-condition if "true"=="true"
+
+
+            transform as "update to completed impira transaction payload queue" on "intics_zio_db_conn" using
+            {"
+                UPDATE doc_impira.doc_impira_payload_queue
+                SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts='${time_stamp_sor_transaction.consumed_on_ts}', status='COMPLETED'
+                WHERE group_id ='${group_id}' AND status ='IN_PROGRESS' AND stage ='IMPIRA_TRANSACTION' AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+            "} on-condition if "true"=="true"
+
+
+    }
+    catch{
+
+            transform as "Insert to failed impira transaction audit" on "intics_zio_db_conn" using
+            {"
+                INSERT INTO doc_impira.doc_impira_pipeline_audit
+                (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, batch_id)
+                VALUES('${group_id}', now(), '${created_user_id}', '${created_user_id}', ${tenant_id}, 'COMPLETED', 'IMPIRA_TRANSACTION', 'Impira transaction failed in impira sor processor with group_id ${group_id}', '${batch_id}');
+            "} on-condition if "true"=="true"
+
+            transform as "Insert to failed impira transaction queue" on "intics_zio_db_conn" using
+            {"
+                UPDATE doc_impira.doc_impira_payload_queue
+                SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts='${time_stamp_sor_transaction.consumed_on_ts}', status='FAILED'
+                WHERE group_id ='${group_id}' AND status ='IN_PROGRESS' AND stage ='IMPIRA_TRANSACTION' AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+            "} on-condition if "true"=="true"
+    }
+    finally{
+            transform as "insert into pipeline summary audit sor transaction" on "intics_zio_db_conn" using {"
+                 INSERT INTO ${temp_schema_name}.summary_audit_papers_${process-id}
+                 (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken, root_pipeline_id, batch_id)
+                 SELECT ${process-id} , 'VQA_TRANSACTION' ,'ARGON_TRANSACTION',coalesce (count(DISTINCT CASE WHEN B.status='COMPLETED' THEN concat(A.origin_id,'_',A.paper_no) WHEN B.status='ABSENT' THEN concat(origin_id,'_',paper_no) END),0) ,coalesce (count(DISTINCT CASE WHEN B.status='FAILED' THEN concat(A.origin_id,'_',A.paper_no) END),0),min(B.created_on),max(B.created_on), EXTRACT(epoch FROM (max(B.created_on)-min(B.created_on))),'${gen_id.root_pipeline_id}', '${batch_id}'
+                 FROM macro.${impira_gen_table_name.tqa_x_synonym_table_name} A
+                 JOIN macro.${impira_gen_table_name.impira_attribution_response} B
+                 ON A.question=B.question AND A.file_path=B.file_path AND b.predicted_attribution_value is not null;
+
+                  INSERT INTO ${temp_schema_name}.summary_audit_files_${process-id}
+                  (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken, root_pipeline_id, batch_id)
+                  SELECT ${process-id} , 'VQA_TRANSACTION' ,'ARGON_TRANSACTION',coalesce (sum(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END),0) ,coalesce (sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END),0),min(created_on),max(created_on), EXTRACT(epoch FROM (max(created_on)-min(created_on))),'${gen_id.root_pipeline_id}', '${batch_id}'
+                  FROM doc_impira.doc_impira_payload_queue
+                  WHERE group_id='${group_id}' AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                  INSERT INTO audit.pipeline_summary_audit
+                  (process_id, created_on, module_name, macro_process, files_processed_count,papers_processed_count,files_failed_count,papers_failed_count,start_time,end_time, time_taken, group_id, root_pipeline_id, created_user_id, template_id, tenant_id,average_time)
+                  SELECT msaf.process_id ,now(),msaf.module_name ,msaf.macro_process ,msaf.completed_count,msap.completed_count,msaf.failed_count,msap.failed_count,msap.min_created_on,msap.max_created_on, EXTRACT(epoch FROM (msap.max_created_on-msap.min_created_on)),
+                  '${group_id}','${gen_id.root_pipeline_id}','${created_user_id}','${document_id}',${tenant_id},(CASE WHEN (msaf.completed_count+msaf.failed_count)=0 THEN msaf.time_taken WHEN (msaf.time_taken/(msaf.completed_count+msaf.failed_count))=0 THEN msaf.time_taken ELSE (msaf.time_taken/(msaf.completed_count+msaf.failed_count)) END)
+                  FROM ${temp_schema_name}.summary_audit_files_${process-id} msaf,
+                  ${temp_schema_name}.summary_audit_papers_${process-id} msap
+                  WHERE msaf.module_name=msap.module_name AND msaf.macro_process=msap.macro_process AND
+                  msaf.module_name='VQA_TRANSACTION' AND msaf.macro_process='ARGON_TRANSACTION' AND msaf.tenant_id = ${tenant_id} and msaf.batch_id='${batch_id}';
+            "} on-condition if "true"=="true"
+
+            transform as "insert into sor grouping temp table payload queue from impira after completed" on "intics_zio_db_conn" using {"
+                INSERT INTO sor_grouping.sor_grouping_payload_queue
+                (origin_id, producer_process_id, group_id, created_on, status, stage, root_pipeline_id,tenant_id, batch_id)
+                SELECT origin_id, producer_process_id, group_id, cast(created_on as TIMESTAMP), 'STAGED', 'SOR_GROUPING', ${gen_id.root_pipeline_id},'${tenant_id}', '${batch_id}'
+                FROM doc_impira.doc_impira_payload_queue
+                where status='COMPLETED' and stage='IMPIRA_TRANSACTION' AND group_id='${group_id}' and
+                origin_id not in (select origin_id from sor_grouping.sor_grouping_payload_queue) and doc_impira_payload_queue.tenant_id = ${tenant_id} and doc_impira.doc_impira_payload_queu.batch_id = '${batch_id}';
+            "} on-condition if "true"=="true"
+
+            transform as "Move to doc_impira_payload_queue_archive after completed" on "intics_zio_db_conn" using {"
+                INSERT INTO doc_impira.doc_impira_payload_queue_archive
+                (producer_process_id, consumer_process_id, origin_id,group_id, created_on, status, stage, consumed_on_ts, batch_id)
+                SELECT producer_process_id, consumer_process_id, origin_id, group_id, created_on, status, stage, consumed_on_ts, '${batch_id}'
+                FROM doc_impira.doc_impira_payload_queue where status='COMPLETED' and stage='IMPIRA_TRANSACTION' AND group_id='${group_id}' AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                Delete from doc_impira.doc_impira_payload_queue where status='COMPLETED' and stage='IMPIRA_TRANSACTION' AND group_id='${group_id}' AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+            "} on-condition if "true"=="true"
+
+            transform as "Move to doc_impira_payload_error_queue after failed" on "intics_zio_db_conn" using {"
+                INSERT INTO doc_impira.doc_impira_payload_error_queue
+                (producer_process_id, consumer_process_id, origin_id,group_id, created_on, status, stage, message, consumed_on_ts, batch_id)
+                SELECT producer_process_id, consumer_process_id,origin_id, group_id, created_on, status, stage, 'sor_transaction Processor failed for group_id ${group_id}',consumed_on_ts, '${batch_id}'
+                FROM doc_impira.doc_impira_payload_queue where status='FAILED' AND group_id='${group_id}' AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                Delete from doc_impira.doc_impira_payload_queue where status='FAILED' and stage='IMPIRA_TRANSACTION' AND group_id='${group_id}' AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+            "} on-condition if "true"=="true"
+
+    }
+}

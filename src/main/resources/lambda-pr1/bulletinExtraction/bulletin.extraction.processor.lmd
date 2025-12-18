@@ -1,0 +1,213 @@
+process "bulletin.extraction.processor"
+{
+	try{
+
+	        assign as "bulletin_timesStamp" source "intics_zio_db_conn"
+	        using{"
+	                SELECT now() as consumed_on_ts;
+	        "} on-condition if "true"=="true"
+
+	        assign as "pipeline_train_mode" source "intics_zio_db_conn" using
+            {"
+                    select  (case when '${bulletin.extraction.start.action}'='true' AND '${pipeline.train.mode}'='true' then 'true' else 'false' end) as bulletin_extraction;
+            "}on-condition if "true"=="true"
+
+	         transform as "Update to inprogress in payload queue" on "intics_zio_db_conn"
+            using {"
+
+                UPDATE bulletin_extraction.bulletin_extraction_payload_queue
+                SET status='IN_PROGRESS', consumed_on_ts = '${bulletin_timesStamp.consumed_on_ts}', consumer_process_id = '${process-id}'
+                WHERE group_id='${group_id}' AND status='STAGED' AND stage='BULLETIN_EXTRACTION' AND tenant_id = ${tenant_id} and batch_id ='${batch_id}' ;
+
+
+                update ingestion.pipeline_queue_status_audit as a
+                set status = 'IN_PROGRESS' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                where  a.group_id=${group_id}
+                and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='BULLETIN_EXTRACTION' ;
+
+                  UPDATE batching.sub_batching_process_payload_queue a
+                 SET status='IN_PROGRESS',  stage='BULLETIN_EXTRACTION'
+                 WHERE a.group_id='${group_id}' and a.batch_id ='${batch_id}'
+                 and a.tenant_id = ${tenant_id};
+
+                INSERT INTO bulletin_extraction.bulletin_extraction_pipeline_audit
+                (process_id, origin_id, group_id, created_on, status, stage, message,root_pipeline_id,tenant_id, batch_id)
+                select producer_process_id,origin_id,group_id, now(),
+                'STARTED', 'BULLETIN_EXTRACTION','BULLETIN EXTRACTION process STARTED for group_id ${group_id}','${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM bulletin_extraction.bulletin_extraction_payload_queue
+                WHERE group_id='${group_id}' AND status='IN_PROGRESS' AND stage='BULLETIN_EXTRACTION' AND tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+            "}on-condition if "true"=="true"
+
+
+            coproStart as "Calling bulletin_extraction copro start action" for "BULLETIN_EXTRACTION"
+            copro-server-url "${copro.bulletin.extraction.admin.start.url}"
+            export-command "${copro.bulletin.extraction.export}"
+            process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+            using
+            {"
+                ${bulletinExtractionStartCommand}
+
+            "}on-condition if "${pipeline_train_mode.bulletin_extraction}"=="true"
+
+            assign as "gen_directory" source "intics_zio_db_conn" using
+            {"
+                SELECT concat ('${target_directory_path}','/','${group_id}','/bulletin_extraction/') as bulletin_extraction_dest_path;
+
+            "} on-condition if "true"=="true"
+
+            createDirectory as "creating_directory" using
+            {"
+                ${gen_directory.bulletin_extraction_dest_path}
+            "} on-condition if "true"=="true"
+
+
+            transform as "insert into temporary table for the bulletin extraction" on "intics_zio_db_conn"
+            using {"
+
+                    INSERT INTO ${temp_schema_name}.bulletin_extraction_input_table_${process-id}
+                    (origin_id, paper_no, group_id, file_path, tenant_id, output_dir, root_pipeline_id, process, synonym_id,prompt,section_header, batch_id)
+                    select a.origin_id, b.paper_no, b.group_id, c.file_path, b.tenant_id, '${gen_directory.bulletin_extraction_dest_path}' as output_dir, a.root_pipeline_id, 'BULLETIN_EXTRACTION' as process,st.synonym_id ,sq.question,st.synonym, a.batch_id
+                    from bulletin_extraction.bulletin_extraction_payload_queue a
+                    join ${temp_schema_name}.source_of_truth_${init_process_id.process_id} b on a.origin_id=b.origin_id
+                    join ${temp_schema_name}.asset_${init_process_id.process_id} c on b.asset_id  =c.asset_id
+                    join sor_meta.asset_info ai on b.document_type =ai.document_type and b.template_name =ai.template_name and b.tenant_id =ai.tenant_id
+                    join sor_meta.truth_entity te on ai.asset_id =te.asset_id and te.sip_type ='BULLETIN_SIP'
+                    join sor_meta.sor_tsynonym st on te.truth_entity_id =st.truth_entity_id
+                    join sor_meta.sor_question sq on sq.synonym_id = st.synonym_id
+                    where a.tenant_id=${tenant_id} and a.group_id=${group_id} and a.batch_id = '${batch_id}' and ai.document_type='${document_type}';
+
+            "} on-condition if "true"=="true"
+
+            bulletin-extraction as "bulletin extraction macro"
+            on-resource-conn "intics_zio_db_conn"
+            outputDir "${gen_directory.bulletin_extraction_dest_path}"
+            copro-url "${copro.bulletin-extraction.url}"
+            output-table "bulletin_extraction.bulletin_extraction_result_${process-id}"
+            using {"
+                    SELECT origin_id, paper_no, group_id, file_path, tenant_id, process_id, output_dir, root_pipeline_id, process, synonym_id, prompt, section_header, batch_id
+                    FROM ${temp_schema_name}.bulletin_extraction_input_table_${process-id}
+                    where batch_id='${batch_id}';
+            "} on-condition if "true"=="true"
+
+
+
+            transform as "insert into audit table for bulletin extraction" on "intics_zio_db_conn" using
+            {"
+                    insert into audit.process_audit_output
+                    (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint,paper_no, batch_id)
+                    select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint, ai.paper_no, '${batch_id}'
+                    from bulletin_extraction.bulletin_extraction_result ai
+                    where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id}  and batch_id='${batch_id}'
+                    group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage, ai.paper_no
+            "}  on-condition if "true"=="true"
+
+
+				coproStop as "Calling bulletin_extraction copro stop action" for "BULLETIN_EXTRACTION"
+				copro-server-url "${copro.bulletin.extraction.admin.stop.url}"
+				process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+				using
+				{"
+						gunicorn
+
+				"}on-condition if "${bulletin.extraction.stop.action}"=="true"
+
+            transform as "Update to completed in payload queue" on "intics_zio_db_conn"
+            using {"
+
+                UPDATE bulletin_extraction.bulletin_extraction_payload_queue a
+                SET status=b.status,stage=b.stage, consumed_on_ts = '${bulletin_timesStamp.consumed_on_ts}', consumer_process_id = '${init_process_id.process_id}'
+                from bulletin_extraction.bulletin_extraction_result b
+                WHERE  a.origin_id=b.origin_id and a.status='IN_PROGRESS' and b.status='FAILED' and b.tenant_id = ${tenant_id} and b.batch_id ='${batch_id}';
+
+                UPDATE bulletin_extraction.bulletin_extraction_payload_queue a
+	                SET status=b.status, consumed_on_ts = '${bulletin_timesStamp.consumed_on_ts}', consumer_process_id = '${init_process_id.process_id}'
+                from bulletin_extraction.bulletin_extraction_result b
+                WHERE  a.origin_id=b.origin_id and a.status='IN_PROGRESS' and b.status='COMPLETED' and b.tenant_id = ${tenant_id} and b.batch_id ='${batch_id}';
+
+
+                  UPDATE batching.sub_batching_process_payload_queue a
+                 SET status='FAILED',  stage='BULLETIN_SIP'
+                 WHERE a.group_id='${group_id}'
+                 and a.batch_id ='${batch_id}' and a.tenant_id = ${tenant_id};
+
+                INSERT INTO bulletin_extraction.bulletin_extraction_pipeline_audit
+                (process_id, origin_id, group_id, created_on, status, stage, message, root_pipeline_id, tenant_id, batch_id)
+                select producer_process_id,origin_id,group_id, now(),
+                'COMPLETED', 'BULLETIN_EXTRACTION','hw classification process COMPLETED for group_id ${group_id}','${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                 FROM bulletin_extraction.bulletin_extraction_payload_queue
+                 WHERE group_id='${group_id}' AND status='COMPLETED' AND stage='BULLETIN_EXTRACTION' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+            "}on-condition if "true"=="true"
+	}
+	catch{
+	            transform as "Update to failed in payload queue" on "intics_zio_db_conn"
+                using {"
+
+
+                    UPDATE bulletin_extraction.bulletin_extraction_payload_queue
+                    SET status='FAILED', consumed_on_ts = '${time_stamp_preprocess.consumed_on_ts}', consumer_process_id = '${init_process_id.process_id}'
+                    WHERE group_id='${group_id}' AND status='IN_PROGRESS' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                    INSERT INTO bulletin_extraction.bulletin_extraction_pipeline_audit
+                    (process_id, origin_id, group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+                    select producer_process_id,origin_id,group_id, now(),
+                    'FAILED', 'BULLETIN_EXTRACTION','bulletin_extraction FAILED for group_id ${group_id}','${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}';
+
+                "}on-condition if "true"=="true"
+	}
+	finally{
+	            transform as "insert into pipeline summary audit bulletin_extraction" on "intics_zio_db_conn" using {"
+					INSERT INTO ${temp_schema_name}.summary_audit_papers_${process-id}
+                    (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken,root_pipeline_id, tenant_id, batch_id)
+                    SELECT ${process-id} , 'BULLETIN_EXTRACTION' ,'HW_DETECTION',coalesce (sum(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END),0) ,coalesce (sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END),0),min(created_on),max(created_on), EXTRACT(epoch FROM (max(created_on)-min(created_on))),'${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                    FROM bulletin_extraction.bulletin_extraction_result WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id ='${batch_id}'
+                    group by batch_id;
+
+					INSERT INTO ${temp_schema_name}.summary_audit_files_${process-id}
+                    (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken,root_pipeline_id, tenant_id, batch_id)
+                    SELECT ${process-id} , 'BULLETIN_EXTRACTION' ,'HW_DETECTION',sum(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END) ,sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END),min(created_on),max(created_on), EXTRACT(epoch FROM (max(created_on)-min(created_on))),'${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                    FROM bulletin_extraction.bulletin_extraction_payload_queue WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id ='${batch_id}'
+                    group by batch_id;
+
+					INSERT INTO audit.pipeline_summary_audit
+                    (process_id, created_on, module_name, macro_process, files_processed_count,papers_processed_count,files_failed_count,papers_failed_count,start_time,end_time, time_taken, group_id, root_pipeline_id, created_user_id, template_id, tenant_id,average_time)
+                    SELECT msaf.process_id ,now(),msaf.module_name ,msaf.macro_process ,msaf.completed_count,msap.completed_count,msaf.failed_count,msap.failed_count,msap.min_created_on,msap.max_created_on, EXTRACT(epoch FROM (msap.max_created_on-msap.min_created_on)),
+                    '${group_id}','${root-ref-id}','${created_user_id}','${document_id}',${tenant_id},(CASE WHEN (msaf.completed_count+msaf.failed_count)=0 THEN msaf.time_taken WHEN (msaf.time_taken/(msaf.completed_count+msaf.failed_count))=0 THEN msaf.time_taken ELSE (msaf.time_taken/(msaf.completed_count+msaf.failed_count)) END)
+                    FROM ${temp_schema_name}.summary_audit_files_${process-id} msaf,
+                    ${temp_schema_name}.summary_audit_papers_${process-id} msap
+                    WHERE msaf.module_name=msap.module_name AND msaf.macro_process=msap.macro_process AND
+                    msaf.module_name='BULLETIN_EXTRACTION' AND msaf.macro_process='HW_DETECTION' AND msaf.tenant_id = ${tenant_id} and msaf.batch_id ='${batch_id}';
+
+	             "} on-condition if "true"=="true"
+
+	            transform as "moving to payload queue archive" on "intics_zio_db_conn"
+                using {"
+                        update ingestion.pipeline_queue_status_audit as a
+                        set status = 'COMPLETED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                        where  a.group_id=${group_id}
+                        and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='BULLETIN_EXTRACTION' ;
+
+                        INSERT into bulletin_extraction.bulletin_extraction_payload_queue_archive(producer_process_id, consumer_process_id, origin_id,group_id, created_on,status, stage, consumed_on_ts, root_pipeline_id, tenant_id, batch_id)
+                        SELECT producer_process_id, consumer_process_id, origin_id, group_id,created_on, status, stage,consumed_on_ts, root_pipeline_id, ${tenant_id}, batch_id
+                        FROM bulletin_extraction.bulletin_extraction_payload_queue
+                        where status='COMPLETED' and stage='BULLETIN_EXTRACTION' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                    Delete from bulletin_extraction.bulletin_extraction_payload_queue
+                    where status='COMPLETED' and stage='BULLETIN_EXTRACTION' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+                "}on-condition if "true"=="true"
+
+
+                transform as "moving to payload error" on "intics_zio_db_conn"
+                using {"
+                        INSERT into bulletin_extraction.bulletin_extraction_payload_error_queue(producer_process_id, consumer_process_id, origin_id,group_id, created_on,status, stage, consumed_on_ts, root_pipeline_id, tenant_id, batch_id)
+                        SELECT producer_process_id, consumer_process_id, origin_id, group_id,created_on, status, stage,consumed_on_ts, root_pipeline_id, ${tenant_id}, batch_id
+                        FROM bulletin_extraction.bulletin_extraction_payload_queue
+                        where status='FAILED' and stage='BULLETIN_EXTRACTION' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+                        Delete from bulletin_extraction.bulletin_extraction_payload_queue
+                        where status='FAILED' and stage='BULLETIN_EXTRACTION' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+                "}on-condition if "true"=="true"
+
+	}
+}

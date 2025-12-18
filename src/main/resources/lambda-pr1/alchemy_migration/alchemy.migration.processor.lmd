@@ -1,0 +1,479 @@
+process "alchemy.migration.processor"
+{
+try{
+
+        transform as "update to in-progress alchemy migration payload queue" on "intics_zio_db_conn" using
+        {"
+                UPDATE alchemy_migration.alchemy_migration_payload_queue
+                SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts=now(), status='IN_PROGRESS'
+                WHERE group_id =${group_id} AND status ='STAGED' AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                update ingestion.pipeline_queue_status_audit as a
+                set status = 'IN_PROGRESS' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                where  a.group_id=${group_id}
+                and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='ALCHEMY_MIGRATION' ;
+
+                INSERT INTO alchemy_migration.alchemy_migration_pipeline_audit
+                (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+                VALUES('${group_id}', now(), '${created_user_id}', '${created_user_id}', ${tenant_id}, 'STARTED', 'ALCHEMY_MIGRATION', 'Alchemy migration process started for group_id ${group_id}','${gen_id.root_pipeline_id}', '${batch_id}');
+        "} on-condition if "true"=="true"
+
+
+        assign as "gen_directory" source "intics_zio_db_conn" using
+        {"
+            SELECT concat ('${gen_directory.current_directory}','/file-merger-pdf/output') as file_merger_pdf_dest;
+        "} on-condition if "true"=="true"
+
+
+        alchemyAuthToken as "alchemy auth token"
+        on-resource-conn "intics_zio_db_conn"
+        using {
+        } on-condition if "true"=="true"
+
+        assign  as "transaction" source "intics_zio_db_conn" using
+        {"
+                SELECT transaction_id from info.pipeline_info
+                where root_pipeline_id = ${gen_id.root_pipeline_id} and tenant_id = ${tenant_id};
+        "} on-condition if "true"=="true"
+
+
+        alchemyInfo as "alchemy info action"
+        tenantId "${alchemyAuth.tenantId}"
+        auth-token ""
+        on-resource-conn "intics_zio_db_conn"
+        using  {"
+                SELECT so.origin_id, ampq.root_pipeline_id, so.group_id, at.file_path
+                from ${temp_schema_name}.source_of_origin_${init_process_id.process_id} so
+                join ${temp_schema_name}.asset_${init_process_id.process_id} at on so.file_id = at.file_id
+                join alchemy_migration.alchemy_migration_payload_queue ampq on ampq.origin_id = so.origin_id and ampq.batch_id = so.batch_id
+                where ampq.group_id = ${group_id} and ampq.status = 'IN_PROGRESS' and ampq.tenant_id = ${tenant_id} and ampq.batch_id = '${batch_id}';
+        "}  on-condition if "true"=="none"
+
+        transform as "insert into alchemy response table" on "intics_zio_db_conn"
+        using{"
+                INSERT INTO alchemy_migration.alchemy_response
+                (bbox, alchemy_origin_id, pipeline_origin_id, paper_no, tenant_id, group_id, root_pipeline_id, confidence_score, extracted_value, sor_item_name, synonym_id, question_id, batch_id)
+                SELECT cr.b_box::json bbox, ap.alchemy_origin_id, ap.pipeline_origin_id, ap.paper_no, ap.tenant_id, ap.group_id, ap.root_pipeline_id, cr.vqa_score , cr.predicted_value , cr.sor_item_name, cr.synonym_id, cr.question_id, ampq.batch_id
+                FROM ${temp_schema_name}.aggregation_evaluator_${init_process_id.process_id} cr JOIN alchemy_migration.alchemy_papers ap on cr.origin_id = ap.pipeline_origin_id and cr.paper_no = ap.paper_no
+                join alchemy_migration.alchemy_migration_payload_queue ampq on ampq.origin_id = cr.origin_id and ampq.batch_id = cr.batch_id
+                where ampq.group_id = ${group_id} and ampq.status='IN_PROGRESS' and ampq.tenant_id = ${tenant_id} and ampq.batch_id = '${batch_id}';
+        "} on-condition if "true"=="none"
+
+
+        transform as "insert into alchemy response table" on "intics_zio_db_conn"
+        using{"
+
+                INSERT INTO valuation.prediction
+                (created_on, created_user_id, last_updated_on, last_updated_user_id, status, version,
+                encode, feature, label, left_pos, lower_pos, origin_id, precision, predicted_value,
+                question_id, right_pos, root_pipeline_id, state, synonym_id,
+                tenant_id, transaction_id, upper_pos, truth_id, channel_id,
+                csv_file_path, sor_container_id, truth_entity_id, currency_ascii_value,
+                currency_value,
+                paragraph_section, sor_item_id, sor_container_instance)
+                select cr.created_on ,cr.created_user_id  ,cr.last_updated_on ,cr.last_updated_user_id,cr.status ,cr.version,
+                sot.encode,'KIE','',0,0,cr.origin_id ,cr.confidence_score ,cr.extracted_value as predicted_value,
+                cr.question_id ,0,cr.root_pipeline_id ,'',cr.synonym_id ,
+                cr.tenant_id ,sot.transaction_id ,0,sot.truth_id ,sot.channel_id ,
+                '',smca.sor_container_id ,smca.truth_entity_id ,'',
+                '',
+                '',smca.sor_item_id ,cr.sor_container_instance
+                from ${temp_schema_name}.cummulative_result_${init_process_id.process_id} cr
+                join ${temp_schema_name}.source_of_truth_${init_process_id.process_id} sot on cr.origin_id =sot.origin_id
+                                              and cr.paper_no =sot.paper_no
+                                              and cr.batch_id =sot.batch_id
+                                              and cr.tenant_id=sot.tenant_id
+                join ${temp_schema_name}.sor_meta_consolidated_${init_process_id.process_id} smca on smca.group_id =cr.group_id
+                                                            and smca.synonym_id =cr.synonym_id
+                                                            and smca.sor_item_name =cr.sor_item_name
+                where cr.group_id = ${group_id} and cr.tenant_id = ${tenant_id} and cr.batch_id = '${batch_id}';
+        "} on-condition if "true"=="true"
+
+
+
+        alchemyResponse as "alchemy response insert kvp results in prediction"
+        tenantId "${alchemyAuth.tenantId}"
+        auth-token ""
+        on-resource-conn "intics_zio_db_conn"
+        using  {"
+                select cr.b_box ,cr.origin_id ,cr.paper_no ,cr.tenant_id ,cr.root_pipeline_id , cr.confidence_score as confidence_score,cr.extracted_value as extracted_value,
+                cr.sor_item_name,cr.synonym_id,cr.question_id ,'KIE' as feature,null as state ,null as table_data, ampq.batch_id , cr.sor_container_instance
+                FROM ${temp_schema_name}.cummulative_result_${init_process_id.process_id} cr
+                join alchemy_migration.alchemy_migration_payload_queue ampq on ampq.origin_id = cr.origin_id and ampq.batch_id = cr.batch_id
+                where ampq.group_id =${group_id} and ampq.status='IN_PROGRESS' and ampq.tenant_id = ${tenant_id} and ampq.batch_id = '${batch_id}';
+        "}  on-condition if "false"=="true"
+
+        alchemyResponse as "alchemy response insert table results in prediction"
+        tenantId "${alchemyAuth.tenantId}"
+        auth-token ""
+        on-resource-conn "intics_zio_db_conn"
+        using  {"
+                SELECT ampq.origin_id as origin_id, ter.paper_no, ter.tenant_id, ampq.root_pipeline_id,
+                'TABLE_EXTRACT' as feature, table_response as table_data, processed_file_path as csv_file_path, truth_entity_id, ampq.batch_id
+                FROM table_extraction.table_extraction_result ter
+                join alchemy_migration.alchemy_migration_payload_queue ampq on ampq.origin_id = ter.origin_id
+                where ampq.group_id =${group_id} and ampq.status='IN_PROGRESS' and ter.status = 'COMPLETED' and ampq.tenant_id = ${tenant_id} and ampq.batch_id = '${batch_id}';
+        "}  on-condition if "${table.extraction.activator}"=="true"
+
+        alchemyResponse as "alchemy response insert table outbound aggregate results in prediction"
+        tenantId "${alchemyAuth.tenantId}"
+        auth-token ""
+        on-resource-conn "intics_zio_db_conn"
+        using  {"
+                select teooa.bboxes as b_box ,teooa.origin_id ,teooa.paper_no ,teooa.tenant_id ,teooa.root_pipeline_id , null as confidence_score,null as extracted_value,
+                si.sor_item_name,'TABLE_EXTRACT_AGGREGATE' as feature,null as state , teooa.aggregated_json as table_aggregate_node,teooa.sor_item_id as sor_item_id,teooa.table_response as table_data, ampq.batch_id
+                FROM table_extraction.table_extraction_outbound_output_audit teooa
+                join alchemy_migration.alchemy_migration_payload_queue ampq on ampq.origin_id = teooa.origin_id
+                join sor_meta.sor_item si on si.sor_item_id=teooa.sor_item_id
+                where ampq.group_id =${group_id} and ampq.status='IN_PROGRESS' and ampq.tenant_id = ${tenant_id} and ampq.batch_id = '${batch_id}';
+        "}  on-condition if "${table.extraction.activator}"=="true"
+
+        alchemyResponse as "alchemy response insert currency detection in prediction"
+        tenantId "${alchemyAuth.tenantId}"
+        auth-token ""
+        on-resource-conn "intics_zio_db_conn"
+        using  {"
+                SELECT ampq.origin_id as origin_id,
+                ter.paper_no,
+                ter.tenant_id,
+                ampq.root_pipeline_id,
+                'CURRENCY_DETECTION' as feature,
+                ter.detected_value ,
+                ter.detected_ascii_value ,
+                ter.confidence_score ,
+                ampq.batch_id
+                FROM currency_detection.currency_detection_result ter
+                join alchemy_migration.alchemy_migration_payload_queue ampq on ampq.origin_id = ter.origin_id
+                where ampq.group_id =${group_id}
+                and ampq.status='IN_PROGRESS'
+                and ter.status = 'COMPLETED'
+                and ampq.tenant_id = ${tenant_id} and ampq.batch_id = '${batch_id}' and ter.detected_value<>'' and ter.detected_value is not null;
+        "}  on-condition if "${currency.detection.processor.activator}"=="true"
+
+        alchemyResponse as "alchemy response insert bulletin result in prediction"
+        tenantId "${alchemyAuth.tenantId}"
+        auth-token ""
+        on-resource-conn "intics_zio_db_conn"
+        using  {"
+                SELECT ampq.origin_id as origin_id,
+                        ter.paper_no,
+                        ter.tenant_id,
+                        ampq.root_pipeline_id,
+                        'BULLETIN_EXTRACTION' as feature,
+                        ter.bulletin_section,
+                        ter.bulletin_points,
+                        ter.synonym_id,
+                        ampq.batch_id
+                FROM bulletin_extraction.bulletin_extraction_result ter
+                join alchemy_migration.alchemy_migration_payload_queue ampq on ampq.origin_id = ter.origin_id
+                where ampq.group_id =${group_id}
+                and ampq.status='IN_PROGRESS'
+                and ter.status = 'COMPLETED'
+                and ampq.tenant_id = ${tenant_id} and ampq.batch_id = '${batch_id}' and ter.bulletin_section<>'' and ter.bulletin_section is not null;
+
+        "}  on-condition if "${bulletin.extraction.processor.activator}"=="true"
+
+        alchemyResponse as "alchemy response insert paragraph result in prediction"
+        tenantId "${alchemyAuth.tenantId}"
+        auth-token ""
+        on-resource-conn "intics_zio_db_conn"
+        using  {"
+                SELECT ampq.origin_id as origin_id,
+                ter.paper_no,
+                ter.tenant_id,
+                ampq.root_pipeline_id,
+                'PARAGRAPH_EXTRACTION' as feature,
+                ter.paragraph_section,
+                ter.paragraph_points,
+                ter.synonym_id,
+                ampq.batch_id
+                FROM paragraph_extraction.paragraph_extraction_result ter
+                join alchemy_migration.alchemy_migration_payload_queue ampq on ampq.origin_id = ter.origin_id
+                where ampq.group_id =${group_id}
+                and ampq.status='IN_PROGRESS'
+                and ter.status = 'COMPLETED' and '${paragraph.extraction.paper.mode.input}' = 'true'
+                and ampq.tenant_id = ${tenant_id} and ter.paragraph_section<>'' and ter.paragraph_section is not null and ampq.batch_id = '${batch_id}';
+
+        "}  on-condition if "${paragraph.extraction.processor.activator}"=="true"
+
+           alchemyResponse as "alchemy response insert paragraph result in prediction"
+                tenantId "${alchemyAuth.tenantId}"
+                auth-token ""
+                on-resource-conn "intics_zio_db_conn"
+                using  {"
+                    SELECT ampq.origin_id as origin_id,
+                               b.paper_no,
+                               ter.tenant_id,
+                               ampq.root_pipeline_id,
+                               'PARAGRAPH_EXTRACTION' as feature,
+                               ter.paragraph_section,
+                               ter.paragraph_points,
+                               ter.synonym_id,
+                               ampq.batch_id
+                        FROM paragraph_extraction.paragraph_extraction_result ter
+                        join alchemy_migration.alchemy_migration_payload_queue ampq on ampq.origin_id = ter.origin_id
+                        join ${temp_schema_name}.source_of_truth_${init_process_id.process_id} b on ter.origin_id=b.origin_id and ter.tenant_id=b.tenant_id
+                        where ampq.group_id =${group_id}
+                          and ampq.status='IN_PROGRESS'
+                          and ter.status = 'COMPLETED' and '${paragraph.extraction.paper.mode.input}' = 'false'
+                          and ampq.tenant_id = ${tenant_id} and ter.paragraph_section<>'' and ter.paragraph_section is not null and ampq.batch_id = '${batch_id}';
+
+                "}  on-condition if "${paragraph.extraction.processor.activator}"=="true"
+
+                 alchemyResponse as "alchemy response insert face detection result in prediction"
+                tenantId "${alchemyAuth.tenantId}"
+                auth-token ""
+                on-resource-conn "intics_zio_db_conn"
+                using  {"
+                        SELECT ampq.origin_id as origin_id,
+                                ter.paper_no,
+                                ter.tenant_id,
+                                ampq.root_pipeline_id,
+                                'FACE_DETECTION' as feature,
+                                ter.predicted_value ,
+                                ter.precision as confidence_score,
+                                ter.encode,
+                                ter.left_pos,
+                                ter.upper_pos,
+                                ter.right_pos,
+                                ter.lower_pos,
+                                ampq.batch_id
+                        FROM face_detection.face_detection_result ter
+                        join alchemy_migration.alchemy_migration_payload_queue ampq on ampq.origin_id = ter.origin_id
+                        where ampq.group_id =${group_id}
+                        and ampq.status='IN_PROGRESS'
+                        and ampq.batch_id='${batch_id}'
+                        and ter.status = 'COMPLETED'
+                        and ampq.tenant_id = ${tenant_id} and ter.batch_id ='${batch_id}'
+
+                "}  on-condition if "${face.detection.activator}"=="true"
+
+                alchemyResponse as "alchemy response insert figure detection result in prediction"
+                tenantId "${alchemyAuth.tenantId}"
+                auth-token ""
+                on-resource-conn "intics_zio_db_conn"
+                using  {"
+                        SELECT ampq.origin_id as origin_id,
+                                ter.paper_no,
+                                ter.tenant_id,
+                                ampq.root_pipeline_id,
+                                'FIGURE_DETECTION' as feature,
+                                ter.encode,
+                                ampq.batch_id ='${batch_id}'
+                        FROM figure_detection.figure_detection_result ter
+                        join alchemy_migration.alchemy_migration_payload_queue ampq on ampq.origin_id = ter.origin_id
+                        where ampq.group_id = ${group_id}
+                        and ampq.status='IN_PROGRESS'
+                        AND ampq.batch_id ='${batch_id}'
+                        and ter.status = 'COMPLETED'
+                        and ampq.tenant_id = ${tenant_id} and  ter.batch_id ='${batch_id}';
+
+                "}  on-condition if "${figure.detection.activator}"=="true"
+
+
+             transform as "merger input table for group id  ${group_id}" on "intics_zio_db_conn" using
+             {"
+
+                INSERT INTO macro.cleaned_pdf_input
+                (origin_id, output_file_name, group_id, filepaths, tenant_id, root_pipeline_id, process_id, batch_id)
+                select popq.origin_id ,replace(concat(min(a.file_name),'_cleaned_pdf','.pdf'),'-','_') as  output_file_name,popq.group_id ,array_agg(a.file_path)  as filePaths ,popq.tenant_id,popq.root_pipeline_id,popq.producer_process_id as process_id,popq.batch_id
+                from alchemy_migration.alchemy_migration_payload_queue popq
+                inner join ${temp_schema_name}.source_of_truth_${init_process_id.process_id} sot on sot.origin_id = popq.origin_id
+                inner join ${temp_schema_name}.asset_${init_process_id.process_id} a on a.asset_id =sot.asset_id
+                where popq.group_id=${group_id} and popq.status='IN_PROGRESS' and popq.tenant_id = ${tenant_id} and popq.batch_id = '${batch_id}'
+                group by popq.origin_id,popq.group_id ,popq.tenant_id,popq.root_pipeline_id,popq.producer_process_id, popq.batch_id;
+
+
+             "} on-condition if "true"=="true"
+
+        file-merger-pdf as "file merger pdf for product outbound"
+        result-table "alchemy_response.cleaned_pdf_info"
+        copro-url "${copro.file-merger.url}"
+        resource-conn "intics_zio_db_conn"
+        output-directory "${gen_directory.file_merger_pdf_dest}"
+        using {"
+                SELECT origin_id, output_file_name, group_id, filepaths, tenant_id, root_pipeline_id, process_id,batch_id
+                FROM macro.cleaned_pdf_input where group_id=${group_id} and tenant_id = ${tenant_id} and batch_id='${batch_id}';
+        "} on-condition if "${alchemy.migration.cleaned.pdf.activator}"=="true"
+
+        transform as "insert into audit table for file merger pdf for product outbound " on "intics_zio_db_conn" using
+        {"
+                insert into audit.process_audit_output
+                (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint,batch_id)
+                select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint, '${batch_id}'
+                from alchemy_response.cleaned_pdf_info ai
+                where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id} and batch_id='${batch_id}'
+                group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage;
+
+                insert into audit.process_audit_output
+                (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint,paper_no ,batch_id)
+                select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage,'', now(), ai.endpoint,min(soo.paper_no), '${batch_id}'
+                from alchemy_migration.alchemy_transform_output_table ai
+                join alchemy_migration.alchemy_migration_payload_queue b on ai.origin_id =b.origin_id and ai.root_pipeline_id =b.root_pipeline_id and ai.tenant_id =b.tenant_id
+                join ${temp_schema_name}.source_of_truth_${init_process_id.process_id} soo on soo.origin_id =b.origin_id and soo.root_pipeline_id = b.root_pipeline_id and soo.tenant_id =b.tenant_id
+                where ai.root_pipeline_id = ${gen_id.root_pipeline_id}
+                and ai.tenant_id = ${tenant_id} and ai.group_id= ${group_id}
+                and b.batch_id='${batch_id}' and b.status ='IN_PROGRESS' and b.group_id=${group_id} and b.tenant_id =${tenant_id}
+                group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.endpoint, ai.stage,b.batch_id;
+
+        "}  on-condition if "true"=="true"
+
+        transform as "pipeline error details insertion for the failure case" on "intics_zio_db_conn" using
+        {"
+             INSERT INTO alchemy_response.pipeline_error_details
+                 (tenant_id, transaction_id, origin_id, status, error_code, failure_stage, error_message, error_message_detail, failure_timestamp, created_on)
+             SELECT
+                 pqsa.tenant_id,
+                 '${transaction_id}' as transaction_id,
+                 ampq.origin_id,
+                 CASE
+                    WHEN SUM(CASE WHEN pqsa.status = 'FAILED' THEN 1 ELSE 0 END) > 0 THEN 'FAILED'
+                    WHEN SUM(CASE WHEN pqsa.status = 'ABORTED' THEN 1 ELSE 0 END) > 0 THEN 'ABORTED'
+                    ELSE 'COMPLETED'
+                 END as status,
+                 CASE
+                     WHEN SUM(CASE WHEN pqsa.status = 'FAILED' THEN 1 ELSE 0 END) > 0 THEN 500
+                     WHEN SUM(CASE WHEN pqsa.status = 'ABORTED' THEN 1 ELSE 0 END) > 0 THEN 429
+                     ELSE 200
+                 END AS error_code,
+                 COALESCE(
+                     MIN(CASE WHEN pqsa.status IN ('FAILED', 'ABORTED') THEN pqsa.stage END),
+                     'COMPETED'
+                 ) AS failure_stage,
+                 CASE
+                     WHEN SUM(CASE WHEN pqsa.status = 'FAILED' THEN 1 ELSE 0 END) > 0 THEN
+                         CONCAT('Error Code: 500 : ',
+                                MIN(CASE WHEN pqsa.status = 'FAILED' THEN pqsa.stage END),
+                                ' has been FAILED for originId=', ampq.origin_id)
+                     WHEN SUM(CASE WHEN pqsa.status = 'ABORTED' THEN 1 ELSE 0 END) > 0 THEN
+                         CONCAT('Error Code: 429 : ',
+                                MIN(CASE WHEN pqsa.status = 'ABORTED' THEN pqsa.stage END),
+                                ' has been ABORTED for originId=', ampq.origin_id)
+                     ELSE
+                         CONCAT('COMPLETED: Pipeline completed for the originId=', ampq.origin_id)
+                 END AS error_message,
+                 CASE
+                     WHEN SUM(CASE WHEN pqsa.status = 'FAILED' THEN 1 ELSE 0 END) > 0 THEN
+                         CONCAT('Error details: ',
+                                MIN(CASE WHEN pqsa.status = 'FAILED' THEN pqsa.stage END),
+                                ' has been FAILED for originId=', ampq.origin_id, ' at ', NOW())
+                     WHEN SUM(CASE WHEN pqsa.status = 'ABORTED' THEN 1 ELSE 0 END) > 0 THEN
+                         CONCAT('Error details: ',
+                                MIN(CASE WHEN pqsa.status = 'ABORTED' THEN pqsa.stage END),
+                                ' has been ABORTED for originId=', ampq.origin_id, ' at ', NOW())
+                     ELSE
+                         CONCAT('COMPLETED: Pipeline completed for the originId=', ampq.origin_id, ' at ', NOW())
+                 END AS error_message_detail,
+                 COALESCE(
+                     MIN(CASE WHEN pqsa.status IN ('FAILED', 'ABORTED') THEN pqsa.updated_on END),
+                     NOW()
+                 ) AS failure_timestamp,
+                 NOW() AS created_on
+             FROM chrono_clash.chrono_clash_audit pqsa
+             JOIN alchemy_migration.alchemy_migration_payload_queue ampq
+                 ON ampq.origin_id = pqsa.origin_id
+                 AND ampq.batch_id = pqsa.batch_id
+             WHERE pqsa.batch_id = '${batch_id}'
+               AND pqsa.group_id = '${group_id}'
+               AND pqsa.root_pipeline_id = '${gen_id.root_pipeline_id}'
+               AND pqsa.tenant_id = ${tenant_id}
+             GROUP BY ampq.origin_id,pqsa.tenant_id;
+      "} on-condition if "true"=="true"
+
+        productResponse as "product response insertion and generation"
+        tenantId "${alchemyAuth.tenantId}"
+        auth-token ""
+        result-table "alchemy_response.alchemy_product_response"
+        on-resource-conn "intics_zio_db_conn"
+        using  {"
+                SELECT ampq.origin_id, '${transaction_id}' as transaction_id, ampq.producer_process_id as process_id, '${group_id}' as group_id,
+                ampq.tenant_id, ampq.root_pipeline_id, 'Product' as feature, ampq.batch_id,
+                ped.status AS pipeline_status
+                FROM alchemy_migration.alchemy_migration_payload_queue ampq
+                join alchemy_response.pipeline_error_details ped on ped.origin_id = ampq.origin_id and ped.tenant_id = ampq.tenant_id
+                where ampq.batch_id = '${batch_id}' and ampq.group_id =${group_id} and ampq.tenant_id = ${tenant_id} and ampq.status='IN_PROGRESS';
+        "}  on-condition if "true"=="true"
+
+
+
+    transform as "insert into audit table for product Response" on "intics_zio_db_conn" using
+        {"
+                insert into audit.process_audit_output
+                (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint, batch_id, paper_no)
+                select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response , ai.status,ai.stage, ai.message, now(), ai.endpoint, '${batch_id}',min(paper_no)
+                from alchemy_response.alchemy_product_response ai
+                join ${temp_schema_name}.source_of_truth_${init_process_id.process_id} soo on soo.origin_id =ai.origin_id and soo.root_pipeline_id = ai.root_pipeline_id and soo.tenant_id =ai.tenant_id
+                where ai.root_pipeline_id = '${gen_id.root_pipeline_id}' and ai.tenant_id = ${tenant_id} and ai.group_id= ${group_id}  and ai.batch_id='${batch_id}'
+                group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response , ai.status, ai.message, ai.endpoint, ai.stage;
+        "}  on-condition if "true"=="true"
+
+
+        transform as "update to completed alchemy migration payload queue" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO alchemy_migration.alchemy_migration_pipeline_audit
+                (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+                VALUES('${group_id}', now(), '${created_user_id}', '${created_user_id}', ${tenant_id}, 'COMPLETED', 'ALCHEMY_MIGRATION', 'alchemy migration completed for the files with group_id ${group_id}', '${gen_id.root_pipeline_id}', '${batch_id}');
+
+                UPDATE alchemy_migration.alchemy_migration_payload_queue
+                SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts=now(), status='COMPLETED'
+                WHERE group_id =${group_id} AND status ='IN_PROGRESS' AND stage ='ALCHEMY_MIGRATION' AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+
+        "} on-condition if "true"=="true"
+
+}
+
+catch{
+        transform as "Insert to failed alchemy migration audit queue" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO alchemy_migration.alchemy_migration_pipeline_audit
+                (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+                VALUES('${group_id}', now(), '${created_user_id}', '${created_user_id}', ${tenant_id}, 'COMPLETED', 'ALCHEMY_MIGRATION', 'alchemy migration failed in migration processor with group_id ${group_id}', '${gen_id.root_pipeline_id}', '${batch_id}');
+
+                UPDATE alchemy_migration.alchemy_migration_payload_queue
+                SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts=now(), status='FAILED'
+                WHERE group_id =${group_id} AND status ='IN_PROGRESS' AND stage ='ALCHEMY_MIGRATION' AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                update ingestion.pipeline_queue_status_audit as a
+                set status = 'FAILED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                where  a.group_id=${group_id}
+                and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='ALCHEMY_MIGRATION' ;
+
+        "} on-condition if "true"=="true"
+
+}
+
+finally{
+
+        transform as "Move to archive after completed" on "intics_zio_db_conn" using
+        {"
+                update ingestion.pipeline_queue_status_audit as a
+                set status = 'COMPLETED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                where  a.group_id=${group_id}
+                and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='ALCHEMY_MIGRATION' ;
+
+                INSERT INTO alchemy_migration.alchemy_migration_payload_queue_archive
+                (producer_process_id, consumer_process_id, origin_id,group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, batch_id)
+                SELECT producer_process_id, consumer_process_id, origin_id, group_id, created_on, status, stage,consumed_on_ts, root_pipeline_id, ${tenant_id}, batch_id
+                FROM alchemy_migration.alchemy_migration_payload_queue
+                where status='COMPLETED' AND group_id=${group_id} AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                Delete from alchemy_migration.alchemy_migration_payload_queue
+                where status='COMPLETED' AND group_id=${group_id} AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+        "} on-condition if "true"=="true"
+
+        transform as "Move to archive after failed" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO alchemy_migration.alchemy_migration_payload_error_queue
+                (producer_process_id, consumer_process_id, origin_id,group_id, created_on, status, stage, message, consumed_on_ts, root_pipeline_id, tenant_id, batch_id)
+                SELECT producer_process_id, consumer_process_id,origin_id, group_id, created_on, status, stage, 'alchemy_migration Processor failed for group_id ${group_id}',consumed_on_ts, root_pipeline_id, ${tenant_id}, batch_id
+                FROM alchemy_migration.alchemy_migration_payload_queue
+                where status='FAILED' AND group_id=${group_id} AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                Delete from alchemy_migration.alchemy_migration_payload_queue
+                where status='FAILED'
+                AND group_id=${group_id} AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+        "} on-condition if "true"=="true"
+}
+
+}

@@ -1,0 +1,1196 @@
+process "data.coverage.lookup.consolidated"
+{
+try{
+
+        transform as "create input and result tables for the control data pipeline" on "intics_zio_db_conn" using {"
+
+               CREATE TABLE IF NOT EXISTS ${COVERAGE_REPORT}.a_member_details_result_audit (
+                   id bigserial NOT null,
+                   root_pipeline_id int8 null,
+                   tenant_id int8 null,
+                   created_on timestamp null,
+                   origin_id varchar null,
+                   file_name varchar null,
+                   docid varchar NULL,
+                   member_zipcode_actual_value varchar NULL,
+                   member_zipcode_extracted_value text NULL,
+                   member_zipcode_match_status varchar NULL,
+                   member_zipcode_mismatch_count int8 NULL,
+                   member_zipcode_classification varchar NULL,
+                   member_city_actual_value varchar NULL,
+                   member_city_extracted_value text NULL,
+                   member_city_match_status varchar NULL,
+                   member_city_mismatch_count int8 NULL,
+                   member_city_classification varchar NULL,
+                   member_state_actual_value varchar NULL,
+                   member_state_extracted_value text NULL,
+                   member_state_match_status varchar NULL,
+                   member_state_mismatch_count int8 NULL,
+                   member_state_classification varchar NULL,
+                   member_date_of_birth_actual_value varchar NULL,
+                   member_date_of_birth_extracted_value text NULL,
+                   member_date_of_birth_match_status varchar NULL,
+                   member_date_of_birth_mismatch_count int8 NULL,
+                   member_date_of_birth_classification varchar NULL,
+                   member_address_line1_actual_value varchar NULL,
+                   member_address_line1_extracted_value text NULL,
+                   member_address_line1_match_status varchar NULL,
+                   member_address_line1_mismatch_count int8 NULL,
+                   member_address_line1_classification varchar NULL,
+                   member_first_name_actual_value varchar NULL,
+                   member_first_name_extracted_value text NULL,
+                   member_first_name_match_status varchar NULL,
+                   member_first_name_mismatch_count int8 NULL,
+                   member_first_name_classification varchar NULL,
+                   member_gender_actual_value varchar NULL,
+                   member_gender_extracted_value text NULL,
+                   member_gender_match_status varchar NULL,
+                   member_gender_mismatch_count int8 NULL,
+                   member_gender_classification varchar NULL,
+                   member_group_id_actual_value varchar NULL,
+                   member_group_id_extracted_value text NULL,
+                   member_group_id_match_status varchar NULL,
+                   member_group_id_mismatch_count int8 NULL,
+                   member_group_id_classification varchar NULL,
+                   member_id_actual_value varchar NULL,
+                   member_id_extracted_value text NULL,
+                   member_id_match_status varchar NULL,
+                   member_id_mismatch_count int8 NULL,
+                   member_id_classification varchar NULL,
+                   member_last_name_actual_value varchar NULL,
+                   member_last_name_extracted_value text NULL,
+                   member_last_name_match_status varchar NULL,
+                   member_last_name_mismatch_count int8 NULL,
+                   member_last_name_classification varchar NULL,
+                   medicaid_id_actual_value varchar NULL,
+                   medicaid_id_extracted_value text NULL,
+                   medicaid_id_match_status varchar NULL,
+                   medicaid_id_mismatch_count int8 NULL,
+                   medicaid_id_classification varchar NULL,
+                   member_full_name_actual_value varchar NULL,
+                   member_full_name_extracted_value text NULL,
+                   member_full_name_match_status varchar NULL,
+                   member_full_name_mismatch_count int8 NULL,
+                   member_full_name_classification varchar NULL,
+                   CONSTRAINT member_result_primary PRIMARY KEY (id)
+               );
+
+            CREATE TABLE IF NOT EXISTS ${COVERAGE_REPORT}.a_referring_provider_details_result_audit(
+            id bigserial NOT null,
+            root_pipeline_id int8 null,
+            tenant_id int8 null,
+            created_on timestamp null,
+            origin_id varchar null,
+            file_name varchar null,
+            docid varchar NULL,
+            referring_provider_address_line1_actual_value varchar NULL,
+            referring_provider_address_line1_extracted_value text NULL,
+            referring_provider_address_line1_match_status varchar NULL,
+            referring_provider_address_line1_mismatch_count int8 NULL,
+            referring_provider_address_line1_classification varchar NULL,
+            referring_provider_address_line2_actual_value varchar NULL,
+            referring_provider_address_line2_extracted_value text NULL,
+            referring_provider_address_line2_match_status varchar NULL,
+            referring_provider_address_line2_mismatch_count int8 NULL,
+            referring_provider_address_line2_classification varchar NULL,
+            referring_provider_first_name_actual_value varchar NULL,
+            referring_provider_first_name_extracted_value text NULL,
+            referring_provider_first_name_match_status varchar NULL,
+            referring_provider_first_name_mismatch_count int8 NULL,
+            referring_provider_first_name_classification varchar NULL,
+            referring_provider_last_name_actual_value varchar NULL,
+            referring_provider_last_name_extracted_value text NULL,
+            referring_provider_last_name_match_status varchar NULL,
+            referring_provider_last_name_mismatch_count int8 NULL,
+            referring_provider_last_name_classification varchar NULL,
+            referring_provider_npi_actual_value varchar NULL,
+            referring_provider_npi_extracted_value text NULL,
+            referring_provider_npi_match_status varchar NULL,
+            referring_provider_npi_mismatch_count int8 NULL,
+            referring_provider_npi_classification varchar NULL,
+            referring_provider_state_actual_value varchar NULL,
+            referring_provider_state_extracted_value text NULL,
+            referring_provider_state_match_status varchar NULL,
+            referring_provider_state_mismatch_count int8 NULL,
+            referring_provider_state_classification varchar NULL,
+            referring_provider_city_actual_value varchar NULL,
+            referring_provider_city_extracted_value text NULL,
+            referring_provider_city_match_status varchar NULL,
+            referring_provider_city_mismatch_count int8 NULL,
+            referring_provider_city_classification varchar NULL,
+            referring_provider_zipcode_actual_value varchar NULL,
+            referring_provider_zipcode_extracted_value text NULL,
+            referring_provider_zipcode_match_status varchar NULL,
+            referring_provider_zipcode_mismatch_count int8 NULL,
+            referring_provider_zipcode_classification varchar NULL,
+            referring_provider_specialty_actual_value varchar NULL,
+            referring_provider_specialty_extracted_value text NULL,
+            referring_provider_specialty_match_status varchar NULL,
+            referring_provider_specialty_mismatch_count int8 NULL,
+            referring_provider_specialty_classification varchar NULL,
+            referring_provider_tin_actual_value varchar NULL,
+            referring_provider_tin_extracted_value text NULL,
+            referring_provider_tin_match_status varchar NULL,
+            referring_provider_tin_mismatch_count int8 NULL,
+            referring_provider_tin_classification varchar NULL,
+            referring_provider_full_name_actual_value varchar NULL,
+            referring_provider_full_name_extracted_value text NULL,
+            referring_provider_full_name_match_status varchar NULL,
+            referring_provider_full_name_mismatch_count int8 NULL,
+            referring_provider_full_name_classification varchar NULL,
+            CONSTRAINT referring_provider_result_primary PRIMARY KEY(id));
+
+            CREATE TABLE IF NOT EXISTS ${COVERAGE_REPORT}.a_requested_service_details_result_audit(
+            id bigserial NOT null,
+            root_pipeline_id int8 null,
+            tenant_id int8 null,
+            created_on timestamp null,
+            origin_id varchar null,
+            file_name varchar null,
+            docid varchar NULL,
+            service_code_actual_value varchar NULL,
+            service_code_extracted_value text NULL,
+            service_code_match_status varchar NULL,
+            service_code_mismatch_count int8 NULL,
+            service_code_classification varchar NULL,
+            service_description_actual_value varchar NULL,
+            service_description_extracted_value text NULL,
+            service_description_match_status varchar NULL,
+            service_description_mismatch_count int8 NULL,
+            service_description_classification varchar NULL,
+            diagnosis_code_actual_value varchar NULL,
+            diagnosis_code_extracted_value text NULL,
+            diagnosis_code_match_status varchar NULL,
+            diagnosis_code_mismatch_count int8 NULL,
+            diagnosis_code_classification varchar NULL,
+            diagnosis_description_actual_value varchar NULL,
+            diagnosis_description_extracted_value text NULL,
+            diagnosis_description_match_status varchar NULL,
+            diagnosis_description_mismatch_count int8 NULL,
+            diagnosis_description_classification varchar NULL,
+            service_to_date_actual_value varchar NULL,
+            service_to_date_extracted_value text NULL,
+            service_to_date_match_status varchar NULL,
+            service_to_date_mismatch_count int8 NULL,
+            service_to_date_classification varchar NULL,
+            service_from_date_actual_value varchar NULL,
+            service_from_date_extracted_value text NULL,
+            service_from_date_match_status varchar NULL,
+            service_from_date_mismatch_count int8 NULL,
+            service_from_date_classification varchar NULL,
+            level_of_service_actual_value varchar NULL,
+            level_of_service_extracted_value text NULL,
+            level_of_service_match_status varchar NULL,
+            level_of_service_mismatch_count int8 NULL,
+            level_of_service_classification varchar NULL,
+            length_of_stay_actual_value varchar NULL,
+            length_of_stay_extracted_value text NULL,
+            length_of_stay_match_status varchar NULL,
+            length_of_stay_mismatch_count int8 NULL,
+            length_of_stay_classification varchar NULL,
+            auth_admit_date_actual_value varchar NULL,
+            auth_admit_date_extracted_value text NULL,
+            auth_admit_date_match_status varchar NULL,
+            auth_admit_date_mismatch_count int8 NULL,
+            auth_admit_date_classification varchar NULL,
+            auth_discharge_date_actual_value varchar NULL,
+            auth_discharge_date_extracted_value text NULL,
+            auth_discharge_date_match_status varchar NULL,
+            auth_discharge_date_mismatch_count int8 NULL,
+            auth_discharge_date_classification varchar NULL,
+            auth_discharge_disposition_actual_value varchar NULL,
+            auth_discharge_disposition_extracted_value text NULL,
+            auth_discharge_disposition_match_status varchar NULL,
+            auth_discharge_disposition_mismatch_count int8 NULL,
+            auth_discharge_disposition_classification varchar NULL,
+            auth_id_actual_value varchar NULL,
+            auth_id_extracted_value text NULL,
+            auth_id_match_status varchar NULL,
+            auth_id_mismatch_count int8 NULL,
+            auth_id_classification varchar NULL,
+            level_of_care_actual_value varchar NULL,
+            level_of_care_extracted_value text NULL,
+            level_of_care_match_status varchar NULL,
+            level_of_care_mismatch_count int8 NULL,
+            level_of_care_classification varchar NULL,
+            notification_type_actual_value varchar NULL,
+            notification_type_extracted_value varchar NULL,
+            notification_type_mismatch_count int8 NULL,
+            notification_type_classification varchar NULL,
+            CONSTRAINT requested_service_result_primary PRIMARY KEY(id));
+
+            CREATE TABLE IF NOT EXISTS ${COVERAGE_REPORT}.a_servicing_facility_details_result_audit(
+            id bigserial NOT null,
+            root_pipeline_id int8 null,
+            tenant_id int8 null,
+            created_on timestamp null,
+            origin_id varchar null,
+            file_name varchar null,
+            docid varchar NULL,
+            servicing_facility_address_line1_actual_value varchar NULL,
+            servicing_facility_address_line1_extracted_value text NULL,
+            servicing_facility_address_line1_match_status varchar NULL,
+            servicing_facility_address_line1_mismatch_count int8 NULL,
+            servicing_facility_address_line1_classification varchar NULL,
+            servicing_facility_address_line2_actual_value varchar NULL,
+            servicing_facility_address_line2_extracted_value text NULL,
+            servicing_facility_address_line2_match_status varchar NULL,
+            servicing_facility_address_line2_mismatch_count int8 NULL,
+            servicing_facility_address_line2_classification varchar NULL,
+            servicing_facility_first_name_actual_value varchar NULL,
+            servicing_facility_first_name_extracted_value text NULL,
+            servicing_facility_first_name_match_status varchar NULL,
+            servicing_facility_first_name_mismatch_count int8 NULL,
+            servicing_facility_first_name_classification varchar NULL,
+            servicing_facility_last_name_actual_value varchar NULL,
+            servicing_facility_last_name_extracted_value text NULL,
+            servicing_facility_last_name_match_status varchar NULL,
+            servicing_facility_last_name_mismatch_count int8 NULL,
+            servicing_facility_last_name_classification varchar NULL,
+            servicing_facility_npi_actual_value varchar NULL,
+            servicing_facility_npi_extracted_value text NULL,
+            servicing_facility_npi_match_status varchar NULL,
+            servicing_facility_npi_mismatch_count int8 NULL,
+            servicing_facility_npi_classification varchar NULL,
+            servicing_facility_state_actual_value varchar NULL,
+            servicing_facility_state_extracted_value text NULL,
+            servicing_facility_state_match_status varchar NULL,
+            servicing_facility_state_mismatch_count int8 NULL,
+            servicing_facility_state_classification varchar NULL,
+            servicing_facility_city_actual_value varchar NULL,
+            servicing_facility_city_extracted_value text NULL,
+            servicing_facility_city_match_status varchar NULL,
+            servicing_facility_city_mismatch_count int8 NULL,
+            servicing_facility_city_classification varchar NULL,
+            servicing_facility_zipcode_actual_value varchar NULL,
+            servicing_facility_zipcode_extracted_value text NULL,
+            servicing_facility_zipcode_match_status varchar NULL,
+            servicing_facility_zipcode_mismatch_count int8 NULL,
+            servicing_facility_zipcode_classification varchar NULL,
+            servicing_facility_specialty_actual_value varchar NULL,
+            servicing_facility_specialty_extracted_value text NULL,
+            servicing_facility_specialty_match_status varchar NULL,
+            servicing_facility_specialty_mismatch_count int8 NULL,
+            servicing_facility_specialty_classification varchar NULL,
+            servicing_facility_tin_actual_value varchar NULL,
+            servicing_facility_tin_extracted_value text NULL,
+            servicing_facility_tin_match_status varchar NULL,
+            servicing_facility_tin_mismatch_count int8 NULL,
+            servicing_facility_tin_classification varchar NULL,
+            servicing_facility_full_name_actual_value varchar NULL,
+            servicing_facility_full_name_extracted_value text NULL,
+            servicing_facility_full_name_match_status varchar NULL,
+            servicing_facility_full_name_mismatch_count int8 NULL,
+            servicing_facility_full_name_classification varchar NULL,
+            CONSTRAINT servicing_facility_result_primary PRIMARY KEY(id));
+
+            CREATE TABLE IF NOT EXISTS ${COVERAGE_REPORT}.a_servicing_provider_details_result_audit(
+            id bigserial NOT null,
+            root_pipeline_id int8 null,
+            tenant_id int8 null,
+            created_on timestamp null,
+            origin_id varchar null,
+            file_name varchar null,
+            docid varchar NULL,
+            servicing_provider_address_line1_actual_value varchar NULL,
+            servicing_provider_address_line1_extracted_value text NULL,
+            servicing_provider_address_line1_match_status varchar NULL,
+            servicing_provider_address_line1_mismatch_count int8 NULL,
+            servicing_provider_address_line1_classification varchar NULL,
+            servicing_provider_address_line2_actual_value varchar NULL,
+            servicing_provider_address_line2_extracted_value text NULL,
+            servicing_provider_address_line2_match_status varchar NULL,
+            servicing_provider_address_line2_mismatch_count int8 NULL,
+            servicing_provider_address_line2_classification varchar NULL,
+            servicing_provider_first_name_actual_value varchar NULL,
+            servicing_provider_first_name_extracted_value text NULL,
+            servicing_provider_first_name_match_status varchar NULL,
+            servicing_provider_first_name_mismatch_count int8 NULL,
+            servicing_provider_first_name_classification varchar NULL,
+            servicing_provider_last_name_actual_value varchar NULL,
+            servicing_provider_last_name_extracted_value text NULL,
+            servicing_provider_last_name_match_status varchar NULL,
+            servicing_provider_last_name_mismatch_count int8 NULL,
+            servicing_provider_last_name_classification varchar NULL,
+            servicing_provider_npi_actual_value varchar NULL,
+            servicing_provider_npi_extracted_value text NULL,
+            servicing_provider_npi_match_status varchar NULL,
+            servicing_provider_npi_mismatch_count int8 NULL,
+            servicing_provider_npi_classification varchar NULL,
+            servicing_provider_state_actual_value varchar NULL,
+            servicing_provider_state_extracted_value text NULL,
+            servicing_provider_state_match_status varchar NULL,
+            servicing_provider_state_mismatch_count int8 NULL,
+            servicing_provider_state_classification varchar NULL,
+            servicing_provider_city_actual_value varchar NULL,
+            servicing_provider_city_extracted_value text NULL,
+            servicing_provider_city_match_status varchar NULL,
+            servicing_provider_city_mismatch_count int8 NULL,
+            servicing_provider_city_classification varchar NULL,
+            servicing_provider_zipcode_actual_value varchar NULL,
+            servicing_provider_zipcode_extracted_value text NULL,
+            servicing_provider_zipcode_match_status varchar NULL,
+            servicing_provider_zipcode_mismatch_count int8 NULL,
+            servicing_provider_zipcode_classification varchar NULL,
+            servicing_provider_specialty_actual_value varchar NULL,
+            servicing_provider_specialty_extracted_value text NULL,
+            servicing_provider_specialty_match_status varchar NULL,
+            servicing_provider_specialty_mismatch_count int8 NULL,
+            servicing_provider_specialty_classification varchar NULL,
+            servicing_provider_tin_actual_value varchar NULL,
+            servicing_provider_tin_extracted_value text NULL,
+            servicing_provider_tin_match_status varchar NULL,
+            servicing_provider_tin_mismatch_count int8 NULL,
+            servicing_provider_tin_classification varchar NULL,
+            servicing_provider_full_name_actual_value varchar NULL,
+            servicing_provider_full_name_extracted_value text NULL,
+            servicing_provider_full_name_match_status varchar NULL,
+            servicing_provider_full_name_mismatch_count int8 NULL,
+            servicing_provider_full_name_classification varchar NULL,
+            CONSTRAINT servicing_provider_result_primary PRIMARY KEY(id));
+
+        CREATE TABLE IF NOT EXISTS ${COVERAGE_REPORT}.a_additional_auth_details_result_audit(
+            id bigserial NOT null,
+            root_pipeline_id int8 null,
+            tenant_id int8 null,
+            created_on timestamp null,
+            origin_id varchar null,
+            file_name varchar null,
+            docid varchar NULL,
+            additional_auth_properties_actual_value text NULL,
+            additional_auth_properties_extracted_value text NULL,
+            additional_auth_properties_match_status varchar NULL,
+            additional_auth_properties_mismatch_count int8 NULL,
+            additional_auth_properties_classification varchar NULL,
+            CONSTRAINT additional_auth_properties_result_primary PRIMARY KEY(id));
+
+
+        CREATE TABLE IF NOT EXISTS ${COVERAGE_REPORT}.a_responsible_area_details_result_audit(
+            id bigserial NOT null,
+            root_pipeline_id int8 null,
+            tenant_id int8 null,
+            created_on timestamp null,
+            origin_id varchar null,
+            file_name varchar null,
+            docid varchar NULL,
+            responsible_area_actual_value text NULL,
+            responsible_area_extracted_value text NULL,
+            responsible_area_match_status varchar NULL,
+            responsible_area_mismatch_count int8 NULL,
+            responsible_area_classification varchar NULL,
+            CONSTRAINT responsible_area_result_primary PRIMARY KEY(id));
+
+        "} on-condition if "true"=="true"
+
+
+        transform as "insert into the consolidated for member" on "intics_zio_db_conn" using
+        {"
+
+
+             create table ${temp_schema_name}.a_member_details_result_${init_process_id.process_id} as
+             SELECT
+                 ${root_pipeline_id} as root_pipeline_id,
+                 ${tenant_id} as tenant_id,
+                 now() as created_on,
+                 '${origin_id}' as origin_id,
+                 '${file_name}' as file_name,
+                 a.docid,
+
+                 d.actual_value AS member_zipcode_actual_value,
+                 d.extracted_value AS member_zipcode_extracted_value,
+                 d.match_status AS member_zipcode_match_status,
+                 d.mismatch_count AS member_zipcode_mismatch_count,
+                 d.classification AS member_zipcode_classification,
+
+                 e.actual_value AS member_date_of_birth_actual_value,
+                 e.extracted_value AS member_date_of_birth_extracted_value,
+                 e.match_status AS member_date_of_birth_match_status,
+                 e.mismatch_count AS member_date_of_birth_mismatch_count,
+                 e.classification AS member_date_of_birth_classification,
+
+                 f.actual_value AS member_first_name_actual_value,
+                 f.extracted_value AS member_first_name_extracted_value,
+                 f.match_status AS member_first_name_match_status,
+                 f.mismatch_count AS member_first_name_mismatch_count,
+                 f.classification AS member_first_name_classification,
+
+                 g.actual_value AS member_gender_actual_value,
+                 g.extracted_value AS member_gender_extracted_value,
+                 g.match_status AS member_gender_match_status,
+                 g.mismatch_count AS member_gender_mismatch_count,
+                 g.classification AS member_gender_classification,
+
+                 h.actual_value AS member_group_id_actual_value,
+                 h.extracted_value AS member_group_id_extracted_value,
+                 h.match_status AS member_group_id_match_status,
+                 h.mismatch_count AS member_group_id_mismatch_count,
+                 h.classification AS member_group_id_classification,
+
+                 i.actual_value AS member_id_actual_value,
+                 i.extracted_value AS member_id_extracted_value,
+                 i.match_status AS member_id_match_status,
+                 i.mismatch_count AS member_id_mismatch_count,
+                 i.classification AS member_id_classification,
+
+                 j.actual_value AS member_last_name_actual_value,
+                 j.extracted_value AS member_last_name_extracted_value,
+                 j.match_status AS member_last_name_match_status,
+                 j.mismatch_count AS member_last_name_mismatch_count,
+                 j.classification AS member_last_name_classification,
+
+                 k.actual_value AS medicaid_id_actual_value,
+                 k.extracted_value AS medicaid_id_extracted_value,
+                 k.match_status AS medicaid_id_match_status,
+                 k.mismatch_count AS medicaid_id_mismatch_count,
+                 k.classification AS medicaid_id_classification,
+
+                 l.actual_value AS member_city_actual_value,
+                 l.extracted_value AS member_city_extracted_value,
+                 l.match_status AS member_city_match_status,
+                 l.mismatch_count AS member_city_mismatch_count,
+                 l.classification AS member_city_classification,
+
+                 m.actual_value AS member_state_actual_value,
+                 m.extracted_value AS member_state_extracted_value,
+                 m.match_status AS member_state_match_status,
+                 m.mismatch_count AS member_state_mismatch_count,
+                 m.classification AS member_state_classification,
+
+                 n.actual_value AS member_address_line1_actual_value,
+                 n.extracted_value AS member_address_line1_extracted_value,
+                 n.match_status AS member_address_line1_match_status,
+                 n.mismatch_count AS member_address_line1_mismatch_count,
+                 n.classification AS member_address_line1_classification,
+
+                 o.actual_value AS member_full_name_actual_value,
+                 o.extracted_value AS member_full_name_extracted_value,
+                 o.match_status AS member_full_name_match_status,
+                 o.mismatch_count AS member_full_name_mismatch_count,
+                 o.classification AS member_full_name_classification
+
+             FROM ${coverage.report.input.data.table} a
+             LEFT JOIN ${COVERAGE_REPORT}.member_zipcode_result d ON a.docid = d.file_name and d.root_pipeline_id=${root_pipeline_id}
+             LEFT JOIN ${COVERAGE_REPORT}.member_date_of_birth_result e ON a.docid = e.file_name and e.root_pipeline_id=${root_pipeline_id}
+             LEFT JOIN ${COVERAGE_REPORT}.member_first_name_result f ON a.docid = f.file_name and f.root_pipeline_id=${root_pipeline_id}
+             LEFT JOIN ${COVERAGE_REPORT}.member_gender_result g ON a.docid = g.file_name and g.root_pipeline_id=${root_pipeline_id}
+             LEFT JOIN ${COVERAGE_REPORT}.member_group_id_result h ON a.docid = h.file_name and h.root_pipeline_id=${root_pipeline_id}
+             LEFT JOIN ${COVERAGE_REPORT}.member_id_result i ON a.docid = i.file_name and i.root_pipeline_id=${root_pipeline_id}
+             LEFT JOIN ${COVERAGE_REPORT}.member_last_name_result j ON a.docid = j.file_name and j.root_pipeline_id=${root_pipeline_id}
+             LEFT JOIN ${COVERAGE_REPORT}.medicaid_id_result k ON a.docid = k.file_name and k.root_pipeline_id=${root_pipeline_id}
+             LEFT JOIN ${COVERAGE_REPORT}.member_city_result l ON a.docid = l.file_name and l.root_pipeline_id=${root_pipeline_id}
+             LEFT JOIN ${COVERAGE_REPORT}.member_state_result m ON a.docid = m.file_name and m.root_pipeline_id=${root_pipeline_id}
+             LEFT JOIN ${COVERAGE_REPORT}.member_address_line1_result n ON a.docid = n.file_name and n.root_pipeline_id=${root_pipeline_id}
+             LEFT JOIN ${COVERAGE_REPORT}.member_full_name_result o ON a.docid = o.file_name and o.root_pipeline_id=${root_pipeline_id}
+             WHERE a.docid ='${doc_id}'  AND (
+                       d.file_name IS NOT NULL OR
+                       e.file_name IS NOT NULL OR
+                       f.file_name IS NOT NULL OR
+                       g.file_name IS NOT NULL OR
+                       h.file_name IS NOT NULL OR
+                       i.file_name IS NOT NULL OR
+                       j.file_name IS NOT NULL OR
+                       k.file_name IS NOT NULL OR
+                       l.file_name IS NOT NULL OR
+                       m.file_name IS NOT NULL OR
+                       n.file_name IS NOT NULL OR
+                       o.file_name IS NOT NULL)
+        "} on-condition if "true"=="true"
+
+
+        transform as "insert into the consolidated for referring_provider" on "intics_zio_db_conn" using
+        {"
+
+
+             create table ${temp_schema_name}.a_referring_provider_details_result_${init_process_id.process_id} as
+             SELECT
+                 ${root_pipeline_id} as root_pipeline_id,
+                 ${tenant_id} as tenant_id,
+                 now() as created_on,
+                 '${origin_id}' as origin_id,
+                 '${file_name}' as file_name,
+                 a.docid,
+
+                 b.actual_value AS referring_provider_address_line1_actual_value,
+                 b.extracted_value AS referring_provider_address_line1_extracted_value,
+                 b.match_status AS referring_provider_address_line1_match_status,
+                 b.mismatch_count AS referring_provider_address_line1_mismatch_count,
+                 b.classification AS referring_provider_address_line1_classification,
+
+                 c.actual_value AS referring_provider_address_line2_actual_value,
+                 c.extracted_value AS referring_provider_address_line2_extracted_value,
+                 c.match_status AS referring_provider_address_line2_match_status,
+                 c.mismatch_count AS referring_provider_address_line2_mismatch_count,
+                 c.classification AS referring_provider_address_line2_classification,
+
+                 d.actual_value AS referring_provider_city_actual_value,
+                 d.extracted_value AS referring_provider_city_extracted_value,
+                 d.match_status AS referring_provider_city_match_status,
+                 d.mismatch_count AS referring_provider_city_mismatch_count,
+                 d.classification AS referring_provider_city_classification,
+
+                 e.actual_value AS referring_provider_state_actual_value,
+                 e.extracted_value AS referring_provider_state_extracted_value,
+                 e.match_status AS referring_provider_state_match_status,
+                 e.mismatch_count AS referring_provider_state_mismatch_count,
+                 e.classification AS referring_provider_state_classification,
+
+                 f.actual_value AS referring_provider_zipcode_actual_value,
+                 f.extracted_value AS referring_provider_zipcode_extracted_value,
+                 f.match_status AS referring_provider_zipcode_match_status,
+                 f.mismatch_count AS referring_provider_zipcode_mismatch_count,
+                 f.classification AS referring_provider_zipcode_classification,
+
+                 g.actual_value AS referring_provider_first_name_actual_value,
+                 g.extracted_value AS referring_provider_first_name_extracted_value,
+                 g.match_status AS referring_provider_first_name_match_status,
+                 g.mismatch_count AS referring_provider_first_name_mismatch_count,
+                 g.classification AS referring_provider_first_name_classification,
+
+                 h.actual_value AS referring_provider_last_name_actual_value,
+                 h.extracted_value AS referring_provider_last_name_extracted_value,
+                 h.match_status AS referring_provider_last_name_match_status,
+                 h.mismatch_count AS referring_provider_last_name_mismatch_count,
+                 h.classification AS referring_provider_last_name_classification,
+
+                 i.actual_value AS referring_provider_npi_actual_value,
+                 i.extracted_value AS referring_provider_npi_extracted_value,
+                 i.match_status AS referring_provider_npi_match_status,
+                 i.mismatch_count AS referring_provider_npi_mismatch_count,
+                 i.classification AS referring_provider_npi_classification,
+
+                 j.actual_value AS referring_provider_specialty_actual_value,
+                 j.extracted_value AS referring_provider_specialty_extracted_value,
+                 j.match_status AS referring_provider_specialty_match_status,
+                 j.mismatch_count AS referring_provider_specialty_mismatch_count,
+                 j.classification AS referring_provider_specialty_classification,
+
+                 k.actual_value AS referring_provider_tin_actual_value,
+                 k.extracted_value AS referring_provider_tin_extracted_value,
+                 k.match_status AS referring_provider_tin_match_status,
+                 k.mismatch_count AS referring_provider_tin_mismatch_count,
+                 k.classification AS referring_provider_tin_classification,
+
+                 l.actual_value AS referring_provider_full_name_actual_value,
+                 l.extracted_value AS referring_provider_full_name_extracted_value,
+                 l.match_status AS referring_provider_full_name_match_status,
+                 l.mismatch_count AS referring_provider_full_name_mismatch_count,
+                 l.classification AS referring_provider_full_name_classification
+
+             FROM ${coverage.report.input.data.table} a
+             LEFT JOIN ${COVERAGE_REPORT}.referring_provider_address_line1_result b ON a.docid = b.file_name and b.root_pipeline_id=${root_pipeline_id}
+             LEFT JOIN ${COVERAGE_REPORT}.referring_provider_address_line2_result c ON a.docid = c.file_name and c.root_pipeline_id=${root_pipeline_id}
+             LEFT JOIN ${COVERAGE_REPORT}.referring_provider_city_result d ON a.docid = d.file_name and d.root_pipeline_id=${root_pipeline_id}
+             LEFT JOIN ${COVERAGE_REPORT}.referring_provider_state_result e ON a.docid = e.file_name and e.root_pipeline_id=${root_pipeline_id}
+             LEFT JOIN ${COVERAGE_REPORT}.referring_provider_zipcode_result f ON a.docid = f.file_name and f.root_pipeline_id=${root_pipeline_id}
+             LEFT JOIN ${COVERAGE_REPORT}.referring_provider_first_name_result g ON a.docid = g.file_name and g.root_pipeline_id=${root_pipeline_id}
+             LEFT JOIN ${COVERAGE_REPORT}.referring_provider_last_name_result h ON a.docid = h.file_name and h.root_pipeline_id=${root_pipeline_id}
+             LEFT JOIN ${COVERAGE_REPORT}.referring_provider_npi_result i ON a.docid = i.file_name and i.root_pipeline_id=${root_pipeline_id}
+             LEFT JOIN ${COVERAGE_REPORT}.referring_provider_specialty_result j ON a.docid = j.file_name and j.root_pipeline_id=${root_pipeline_id}
+             LEFT JOIN ${COVERAGE_REPORT}.referring_provider_tin_result k ON a.docid = k.file_name and k.root_pipeline_id=${root_pipeline_id}
+             LEFT JOIN ${COVERAGE_REPORT}.referring_provider_full_name_result l ON a.docid = l.file_name and l.root_pipeline_id=${root_pipeline_id}
+             WHERE  a.docid ='${doc_id}'  AND (
+             b.file_name IS NOT NULL OR
+             c.file_name IS NOT NULL OR
+             d.file_name IS NOT NULL OR
+             e.file_name IS NOT NULL OR
+             f.file_name IS NOT NULL OR
+             g.file_name IS NOT NULL OR
+             h.file_name IS NOT NULL OR
+             i.file_name IS NOT NULL OR
+             j.file_name IS NOT NULL OR
+             k.file_name IS NOT NULL OR
+             l.file_name IS NOT NULL)
+
+
+        "} on-condition if "true"=="true"
+
+        transform as "insert into the consolidated for servicing_facility" on "intics_zio_db_conn" using
+        {"
+
+                create table ${temp_schema_name}.a_servicing_facility_details_result_${init_process_id.process_id} as
+                SELECT
+                    ${root_pipeline_id} as root_pipeline_id,
+                    ${tenant_id} as tenant_id,
+                    now() as created_on,
+                    '${origin_id}' as origin_id,
+                    '${file_name}' as file_name,
+                    a.docid,
+
+                    b.actual_value AS servicing_facility_address_line1_actual_value,
+                    b.extracted_value AS servicing_facility_address_line1_extracted_value,
+                    b.match_status AS servicing_facility_address_line1_match_status,
+                    b.mismatch_count AS servicing_facility_address_line1_mismatch_count,
+                    b.classification AS servicing_facility_address_line1_classification,
+
+                    c.actual_value AS servicing_facility_address_line2_actual_value,
+                    c.extracted_value AS servicing_facility_address_line2_extracted_value,
+                    c.match_status AS servicing_facility_address_line2_match_status,
+                    c.mismatch_count AS servicing_facility_address_line2_mismatch_count,
+                    c.classification AS servicing_facility_address_line2_classification,
+
+                    d.actual_value AS servicing_facility_city_actual_value,
+                    d.extracted_value AS servicing_facility_city_extracted_value,
+                    d.match_status AS servicing_facility_city_match_status,
+                    d.mismatch_count AS servicing_facility_city_mismatch_count,
+                    d.classification AS servicing_facility_city_classification,
+
+                    e.actual_value AS servicing_facility_state_actual_value,
+                    e.extracted_value AS servicing_facility_state_extracted_value,
+                    e.match_status AS servicing_facility_state_match_status,
+                    e.mismatch_count AS servicing_facility_state_mismatch_count,
+                    e.classification AS servicing_facility_state_classification,
+
+                    f.actual_value AS servicing_facility_zipcode_actual_value,
+                    f.extracted_value AS servicing_facility_zipcode_extracted_value,
+                    f.match_status AS servicing_facility_zipcode_match_status,
+                    f.mismatch_count AS servicing_facility_zipcode_mismatch_count,
+                    f.classification AS servicing_facility_zipcode_classification,
+
+                    g.actual_value AS servicing_facility_first_name_actual_value,
+                    g.extracted_value AS servicing_facility_first_name_extracted_value,
+                    g.match_status AS servicing_facility_first_name_match_status,
+                    g.mismatch_count AS servicing_facility_first_name_mismatch_count,
+                    g.classification AS servicing_facility_first_name_classification,
+
+                    h.actual_value AS servicing_facility_last_name_actual_value,
+                    h.extracted_value AS servicing_facility_last_name_extracted_value,
+                    h.match_status AS servicing_facility_last_name_match_status,
+                    h.mismatch_count AS servicing_facility_last_name_mismatch_count,
+                    h.classification AS servicing_facility_last_name_classification,
+
+                    i.actual_value AS servicing_facility_npi_actual_value,
+                    i.extracted_value AS servicing_facility_npi_extracted_value,
+                    i.match_status AS servicing_facility_npi_match_status,
+                    i.mismatch_count AS servicing_facility_npi_mismatch_count,
+                    i.classification AS servicing_facility_npi_classification,
+
+                    j.actual_value AS servicing_facility_specialty_actual_value,
+                    j.extracted_value AS servicing_facility_specialty_extracted_value,
+                    j.match_status AS servicing_facility_specialty_match_status,
+                    j.mismatch_count AS servicing_facility_specialty_mismatch_count,
+                    j.classification AS servicing_facility_specialty_classification,
+
+                    k.actual_value AS servicing_facility_tin_actual_value,
+                    k.extracted_value AS servicing_facility_tin_extracted_value,
+                    k.match_status AS servicing_facility_tin_match_status,
+                    k.mismatch_count AS servicing_facility_tin_mismatch_count,
+                    k.classification AS servicing_facility_tin_classification,
+
+                    l.actual_value AS servicing_facility_full_name_actual_value,
+                    l.extracted_value AS servicing_facility_full_name_extracted_value,
+                    l.match_status AS servicing_facility_full_name_match_status,
+                    l.mismatch_count AS servicing_facility_full_name_mismatch_count,
+                    l.classification AS servicing_facility_full_name_classification
+
+                    FROM ${coverage.report.input.data.table} a
+                    LEFT JOIN ${COVERAGE_REPORT}.servicing_facility_address_line1_result b ON a.docid = b.file_name and b.root_pipeline_id=${root_pipeline_id}
+                    LEFT JOIN ${COVERAGE_REPORT}.servicing_facility_address_line2_result c ON a.docid = c.file_name and c.root_pipeline_id=${root_pipeline_id}
+                    LEFT JOIN ${COVERAGE_REPORT}.servicing_facility_city_result d ON a.docid = d.file_name and d.root_pipeline_id=${root_pipeline_id}
+                    LEFT JOIN ${COVERAGE_REPORT}.servicing_facility_state_result e ON a.docid = e.file_name and e.root_pipeline_id=${root_pipeline_id}
+                    LEFT JOIN ${COVERAGE_REPORT}.servicing_facility_zipcode_result f ON a.docid = f.file_name and f.root_pipeline_id=${root_pipeline_id}
+                    LEFT JOIN ${COVERAGE_REPORT}.servicing_facility_first_name_result g ON a.docid = g.file_name and g.root_pipeline_id=${root_pipeline_id}
+                    LEFT JOIN ${COVERAGE_REPORT}.servicing_facility_last_name_result h ON a.docid = h.file_name and h.root_pipeline_id=${root_pipeline_id}
+                    LEFT JOIN ${COVERAGE_REPORT}.servicing_facility_npi_result i ON a.docid = i.file_name and i.root_pipeline_id=${root_pipeline_id}
+                    LEFT JOIN ${COVERAGE_REPORT}.servicing_facility_specialty_result j ON a.docid = j.file_name and j.root_pipeline_id=${root_pipeline_id}
+                    LEFT JOIN ${COVERAGE_REPORT}.servicing_facility_tin_result k ON a.docid = k.file_name and k.root_pipeline_id=${root_pipeline_id}
+                    LEFT JOIN ${COVERAGE_REPORT}.servicing_facility_full_name_result l ON a.docid = l.file_name and l.root_pipeline_id=${root_pipeline_id}
+                    WHERE a.docid ='${doc_id}'  AND (
+                    b.file_name IS NOT NULL OR
+                     c.file_name IS NOT NULL OR
+                     d.file_name IS NOT NULL OR
+                     e.file_name IS NOT NULL OR
+                     f.file_name IS NOT NULL OR
+                     g.file_name IS NOT NULL OR
+                     h.file_name IS NOT NULL OR
+                     i.file_name IS NOT NULL OR
+                     j.file_name IS NOT NULL OR
+                     k.file_name IS NOT NULL OR
+                     l.file_name IS NOT NULL)
+          "} on-condition if "true"=="true"
+          transform as "insert into the consolidated for servicing_provider" on "intics_zio_db_conn" using
+                {"
+
+      create table ${temp_schema_name}.a_servicing_provider_details_result_${init_process_id.process_id} as
+      SELECT
+          ${root_pipeline_id} as root_pipeline_id,
+          ${tenant_id} as tenant_id,
+          now() as created_on,
+          '${origin_id}' as origin_id,
+          '${file_name}' as file_name,
+          a.docid,
+
+          b.actual_value AS servicing_provider_address_line1_actual_value,
+          b.extracted_value AS servicing_provider_address_line1_extracted_value,
+          b.match_status AS servicing_provider_address_line1_match_status,
+          b.mismatch_count AS servicing_provider_address_line1_mismatch_count,
+          b.classification AS servicing_provider_address_line1_classification,
+
+          c.actual_value AS servicing_provider_address_line2_actual_value,
+          c.extracted_value AS servicing_provider_address_line2_extracted_value,
+          c.match_status AS servicing_provider_address_line2_match_status,
+          c.mismatch_count AS servicing_provider_address_line2_mismatch_count,
+          c.classification AS servicing_provider_address_line2_classification,
+
+          d.actual_value AS servicing_provider_city_actual_value,
+          d.extracted_value AS servicing_provider_city_extracted_value,
+          d.match_status AS servicing_provider_city_match_status,
+          d.mismatch_count AS servicing_provider_city_mismatch_count,
+          d.classification AS servicing_provider_city_classification,
+
+          e.actual_value AS servicing_provider_state_actual_value,
+          e.extracted_value AS servicing_provider_state_extracted_value,
+          e.match_status AS servicing_provider_state_match_status,
+          e.mismatch_count AS servicing_provider_state_mismatch_count,
+          e.classification AS servicing_provider_state_classification,
+
+          f.actual_value AS servicing_provider_zipcode_actual_value,
+          f.extracted_value AS servicing_provider_zipcode_extracted_value,
+          f.match_status AS servicing_provider_zipcode_match_status,
+          f.mismatch_count AS servicing_provider_zipcode_mismatch_count,
+          f.classification AS servicing_provider_zipcode_classification,
+
+          g.actual_value AS servicing_provider_first_name_actual_value,
+          g.extracted_value AS servicing_provider_first_name_extracted_value,
+          g.match_status AS servicing_provider_first_name_match_status,
+          g.mismatch_count AS servicing_provider_first_name_mismatch_count,
+          g.classification AS servicing_provider_first_name_classification,
+
+          h.actual_value AS servicing_provider_last_name_actual_value,
+          h.extracted_value AS servicing_provider_last_name_extracted_value,
+          h.match_status AS servicing_provider_last_name_match_status,
+          h.mismatch_count AS servicing_provider_last_name_mismatch_count,
+          h.classification AS servicing_provider_last_name_classification,
+
+          i.actual_value AS servicing_provider_npi_actual_value,
+          i.extracted_value AS servicing_provider_npi_extracted_value,
+          i.match_status AS servicing_provider_npi_match_status,
+          i.mismatch_count AS servicing_provider_npi_mismatch_count,
+          i.classification AS servicing_provider_npi_classification,
+
+          j.actual_value AS servicing_provider_specialty_actual_value,
+          j.extracted_value AS servicing_provider_specialty_extracted_value,
+          j.match_status AS servicing_provider_specialty_match_status,
+          j.mismatch_count AS servicing_provider_specialty_mismatch_count,
+          j.classification AS servicing_provider_specialty_classification,
+
+          k.actual_value AS servicing_provider_tin_actual_value,
+          k.extracted_value AS servicing_provider_tin_extracted_value,
+          k.match_status AS servicing_provider_tin_match_status,
+          k.mismatch_count AS servicing_provider_tin_mismatch_count,
+          k.classification AS servicing_provider_tin_classification,
+
+          l.actual_value AS servicing_provider_full_name_actual_value,
+          l.extracted_value AS servicing_provider_full_name_extracted_value,
+          l.match_status AS servicing_provider_full_name_match_status,
+          l.mismatch_count AS servicing_provider_full_name_mismatch_count,
+          l.classification AS servicing_provider_full_name_classification
+
+      FROM ${coverage.report.input.data.table} a
+      LEFT JOIN ${COVERAGE_REPORT}.servicing_provider_address_line1_result b ON a.docid = b.file_name and b.root_pipeline_id=${root_pipeline_id}
+      LEFT JOIN ${COVERAGE_REPORT}.servicing_provider_address_line2_result c ON a.docid = c.file_name and c.root_pipeline_id=${root_pipeline_id}
+      LEFT JOIN ${COVERAGE_REPORT}.servicing_provider_city_result d ON a.docid = d.file_name and d.root_pipeline_id=${root_pipeline_id}
+      LEFT JOIN ${COVERAGE_REPORT}.servicing_provider_state_result e ON a.docid = e.file_name and e.root_pipeline_id=${root_pipeline_id}
+      LEFT JOIN ${COVERAGE_REPORT}.servicing_provider_zipcode_result f ON a.docid = f.file_name and f.root_pipeline_id=${root_pipeline_id}
+      LEFT JOIN ${COVERAGE_REPORT}.servicing_provider_first_name_result g ON a.docid = g.file_name and g.root_pipeline_id=${root_pipeline_id}
+      LEFT JOIN ${COVERAGE_REPORT}.servicing_provider_last_name_result h ON a.docid = h.file_name and h.root_pipeline_id=${root_pipeline_id}
+      LEFT JOIN ${COVERAGE_REPORT}.servicing_provider_npi_result i ON a.docid = i.file_name and i.root_pipeline_id=${root_pipeline_id}
+      LEFT JOIN ${COVERAGE_REPORT}.servicing_provider_specialty_result j ON a.docid = j.file_name and j.root_pipeline_id=${root_pipeline_id}
+      LEFT JOIN ${COVERAGE_REPORT}.servicing_provider_tin_result k ON a.docid = k.file_name and k.root_pipeline_id=${root_pipeline_id}
+      LEFT JOIN ${COVERAGE_REPORT}.servicing_provider_full_name_result l ON a.docid = l.file_name and l.root_pipeline_id=${root_pipeline_id}
+      WHERE a.docid ='${doc_id}'  AND (
+      b.file_name IS NOT NULL OR
+      c.file_name IS NOT NULL OR
+      d.file_name IS NOT NULL OR
+      e.file_name IS NOT NULL OR
+      f.file_name IS NOT NULL OR
+      g.file_name IS NOT NULL OR
+      h.file_name IS NOT NULL OR
+      i.file_name IS NOT NULL OR
+      j.file_name IS NOT NULL OR
+      k.file_name IS NOT NULL OR
+      l.file_name IS NOT NULL)
+  "} on-condition if "true"=="true"
+
+
+        transform as "insert into the consolidated for requested_service" on "intics_zio_db_conn" using
+        {"
+        create table ${temp_schema_name}.a_requested_service_details_result_${init_process_id.process_id} as
+        SELECT
+            ${root_pipeline_id} as root_pipeline_id,
+            ${tenant_id} as tenant_id,
+            now() as created_on,
+            '${origin_id}' as origin_id,
+            '${file_name}' as file_name,
+            a.docid,
+
+            b.actual_value AS service_code_actual_value,
+            b.extracted_value AS service_code_extracted_value,
+            b.match_status AS service_code_match_status,
+            b.mismatch_count AS service_code_mismatch_count,
+            b.classification AS service_code_classification,
+
+            c.actual_value AS service_description_actual_value,
+            c.extracted_value AS service_description_extracted_value,
+            c.match_status AS service_description_match_status,
+            c.mismatch_count AS service_description_mismatch_count,
+            c.classification AS service_description_classification,
+
+            d.actual_value AS diagnosis_code_actual_value,
+            d.extracted_value AS diagnosis_code_extracted_value,
+            d.match_status AS diagnosis_code_match_status,
+            d.mismatch_count AS diagnosis_code_mismatch_count,
+            d.classification AS diagnosis_code_classification,
+
+            e.actual_value AS diagnosis_description_actual_value,
+            e.extracted_value AS diagnosis_description_extracted_value,
+            e.match_status AS diagnosis_description_match_status,
+            e.mismatch_count AS diagnosis_description_mismatch_count,
+            e.classification AS diagnosis_description_classification,
+
+            f.actual_value AS service_to_date_actual_value,
+            f.extracted_value AS service_to_date_extracted_value,
+            f.match_status AS service_to_date_match_status,
+            f.mismatch_count AS service_to_date_mismatch_count,
+            f.classification AS service_to_date_classification,
+
+            g.actual_value AS service_from_date_actual_value,
+            g.extracted_value AS service_from_date_extracted_value,
+            g.match_status AS service_from_date_match_status,
+            g.mismatch_count AS service_from_date_mismatch_count,
+            g.classification AS service_from_date_classification,
+
+            h.actual_value AS level_of_service_actual_value,
+            h.extracted_value AS level_of_service_extracted_value,
+            h.match_status AS level_of_service_match_status,
+            h.mismatch_count AS level_of_service_mismatch_count,
+            h.classification AS level_of_service_classification,
+
+            i.actual_value AS length_of_stay_actual_value,
+            i.extracted_value AS length_of_stay_extracted_value,
+            i.match_status AS length_of_stay_match_status,
+            i.mismatch_count AS length_of_stay_mismatch_count,
+            i.classification AS length_of_stay_classification,
+
+            j.actual_value AS auth_admit_date_actual_value,
+            j.extracted_value AS auth_admit_date_extracted_value,
+            j.match_status AS auth_admit_date_match_status,
+            j.mismatch_count AS auth_admit_date_mismatch_count,
+            j.classification AS auth_admit_date_classification,
+
+            k.actual_value AS auth_discharge_date_actual_value,
+            k.extracted_value AS auth_discharge_date_extracted_value,
+            k.match_status AS auth_discharge_date_match_status,
+            k.mismatch_count AS auth_discharge_date_mismatch_count,
+            k.classification AS auth_discharge_date_classification,
+
+            l.actual_value AS auth_discharge_disposition_actual_value,
+            l.extracted_value AS auth_discharge_disposition_extracted_value,
+            l.match_status AS auth_discharge_disposition_match_status,
+            l.mismatch_count AS auth_discharge_disposition_mismatch_count,
+            l.classification AS auth_discharge_disposition_classification,
+
+            m.actual_value AS auth_id_actual_value,
+            m.extracted_value AS auth_id_extracted_value,
+            m.match_status AS auth_id_match_status,
+            m.mismatch_count AS auth_id_mismatch_count,
+            m.classification AS auth_id_classification,
+
+            n.actual_value AS level_of_care_actual_value,
+            n.extracted_value AS level_of_care_extracted_value,
+            n.match_status AS level_of_care_match_status,
+            n.mismatch_count AS level_of_care_mismatch_count,
+            n.classification AS level_of_care_classification,
+
+            o.actual_value AS notification_type_actual_value,
+            o.extracted_value AS notification_type_extracted_value,
+            o.mismatch_count AS notification_type_mismatch_count,
+            o.classification AS  notification_type_classification
+
+        FROM ${coverage.report.input.data.table} a
+        LEFT JOIN ${COVERAGE_REPORT}.service_code_result b ON a.docid = b.file_name and b.root_pipeline_id=${root_pipeline_id}
+        LEFT JOIN ${COVERAGE_REPORT}.service_description_result c ON a.docid = c.file_name and c.root_pipeline_id=${root_pipeline_id}
+        LEFT JOIN ${COVERAGE_REPORT}.diagnosis_code_result d ON a.docid = d.file_name and d.root_pipeline_id=${root_pipeline_id}
+        LEFT JOIN ${COVERAGE_REPORT}.diagnosis_description_result e ON a.docid = e.file_name and e.root_pipeline_id=${root_pipeline_id}
+        LEFT JOIN ${COVERAGE_REPORT}.service_to_date_result f ON a.docid = f.file_name and f.root_pipeline_id=${root_pipeline_id}
+        LEFT JOIN ${COVERAGE_REPORT}.service_from_date_result g ON a.docid = g.file_name and g.root_pipeline_id=${root_pipeline_id}
+        LEFT JOIN ${COVERAGE_REPORT}.level_of_service_result h ON a.docid = h.file_name and h.root_pipeline_id=${root_pipeline_id}
+        LEFT JOIN ${COVERAGE_REPORT}.length_of_stay_result i ON a.docid = i.file_name and i.root_pipeline_id=${root_pipeline_id}
+        LEFT JOIN ${COVERAGE_REPORT}.auth_admit_date_result j ON a.docid = j.file_name and j.root_pipeline_id=${root_pipeline_id}
+        LEFT JOIN ${COVERAGE_REPORT}.auth_discharge_date_result k ON a.docid = k.file_name and k.root_pipeline_id=${root_pipeline_id}
+        LEFT JOIN ${COVERAGE_REPORT}.auth_discharge_disposition_result l ON a.docid = l.file_name and l.root_pipeline_id=${root_pipeline_id}
+        LEFT JOIN ${COVERAGE_REPORT}.auth_id_result m ON a.docid = m.file_name and m.root_pipeline_id=${root_pipeline_id}
+        LEFT JOIN ${COVERAGE_REPORT}.level_of_care_result n ON a.docid = n.file_name and n.root_pipeline_id=${root_pipeline_id}
+        LEFT JOIN ${COVERAGE_REPORT}.notification_type_result o ON a.docid = o.file_name and o.root_pipeline_id=${root_pipeline_id}
+        WHERE a.docid ='${doc_id}'  AND (
+        b.file_name IS NOT NULL OR
+        c.file_name IS NOT NULL OR
+        d.file_name IS NOT NULL OR
+        e.file_name IS NOT NULL OR
+        f.file_name IS NOT NULL OR
+        g.file_name IS NOT NULL OR
+        h.file_name IS NOT NULL OR
+        i.file_name IS NOT NULL OR
+        j.file_name IS NOT NULL OR
+        k.file_name IS NOT NULL OR
+        l.file_name IS NOT NULL OR
+        o.file_name IS NOT NULL OR
+        m.file_name IS NOT NULL OR
+        n.file_name IS NOT NULL)
+  "} on-condition if "true"=="true"
+
+
+
+        transform as "insert into the consolidated for additional_auth_properties" on "intics_zio_db_conn" using
+        {"
+        create table ${temp_schema_name}.a_additional_auth_details_result_audit_${init_process_id.process_id} as
+        SELECT
+            ${root_pipeline_id} as root_pipeline_id,
+            ${tenant_id} as tenant_id,
+            now() as created_on,
+            '${origin_id}' as origin_id,
+            '${file_name}' as file_name,
+            a.docid,
+
+            b.actual_value AS additional_auth_properties_actual_value,
+            b.extracted_value AS additional_auth_properties_extracted_value,
+            b.match_status AS additional_auth_properties_match_status,
+            b.mismatch_count AS additional_auth_properties_mismatch_count,
+            b.classification AS additional_auth_properties_classification
+
+        FROM ${coverage.report.input.data.table} a
+        LEFT JOIN ${COVERAGE_REPORT}.additional_auth_properties_result b
+            ON a.docid = b.file_name
+            AND b.root_pipeline_id = ${root_pipeline_id}
+        WHERE a.docid = '${doc_id}'
+          AND b.file_name IS NOT NULL;
+
+  "} on-condition if "true"=="true"
+
+
+ transform as "insert into the consolidated for responsible area" on "intics_zio_db_conn" using
+        {"
+        create table ${temp_schema_name}.a_responsible_area_result_${init_process_id.process_id} as
+        SELECT
+            ${root_pipeline_id} as root_pipeline_id,
+            ${tenant_id} as tenant_id,
+            now() as created_on,
+            '${origin_id}' as origin_id,
+            '${file_name}' as file_name,
+            a.docid,
+
+            b.actual_value AS responsible_area_actual_value,
+            b.extracted_value AS responsible_area_extracted_value,
+            b.match_status AS responsible_area_match_status,
+            b.mismatch_count AS responsible_area_mismatch_count,
+            b.classification AS responsible_area_classification
+
+        FROM ${coverage.report.input.data.table} a
+        LEFT JOIN ${COVERAGE_REPORT}.responsible_area_result b
+            ON a.docid = b.file_name
+            AND b.root_pipeline_id = ${root_pipeline_id}
+        WHERE a.docid = '${doc_id}'
+          AND b.file_name IS NOT NULL;
+
+  "} on-condition if "true"=="true"
+
+
+     transform as "insert into the final audit table for all the containers" on "intics_zio_db_conn" using
+     {"
+         INSERT INTO ${COVERAGE_REPORT}.a_member_details_result_audit (
+         root_pipeline_id, tenant_id, created_on, origin_id, file_name, docid,
+         member_zipcode_actual_value, member_zipcode_extracted_value, member_zipcode_match_status, member_zipcode_mismatch_count, member_zipcode_classification,
+         member_date_of_birth_actual_value, member_date_of_birth_extracted_value, member_date_of_birth_match_status, member_date_of_birth_mismatch_count, member_date_of_birth_classification,
+         member_first_name_actual_value, member_first_name_extracted_value, member_first_name_match_status, member_first_name_mismatch_count, member_first_name_classification,
+         member_gender_actual_value, member_gender_extracted_value, member_gender_match_status, member_gender_mismatch_count, member_gender_classification,
+         member_group_id_actual_value, member_group_id_extracted_value, member_group_id_match_status, member_group_id_mismatch_count, member_group_id_classification,
+         member_id_actual_value, member_id_extracted_value, member_id_match_status, member_id_mismatch_count, member_id_classification,
+         member_last_name_actual_value, member_last_name_extracted_value, member_last_name_match_status, member_last_name_mismatch_count, member_last_name_classification,
+         medicaid_id_actual_value, medicaid_id_extracted_value, medicaid_id_match_status, medicaid_id_mismatch_count, medicaid_id_classification,
+         member_city_actual_value, member_city_extracted_value, member_city_match_status, member_city_mismatch_count, member_city_classification,
+         member_state_actual_value, member_state_extracted_value, member_state_match_status, member_state_mismatch_count, member_state_classification,
+         member_address_line1_actual_value, member_address_line1_extracted_value, member_address_line1_match_status, member_address_line1_mismatch_count, member_address_line1_classification,
+         member_full_name_actual_value, member_full_name_extracted_value, member_full_name_match_status, member_full_name_mismatch_count, member_full_name_classification
+         )
+         SELECT
+             ${init_process_id.process_id}, ${tenant_id}, created_on, origin_id, file_name, docid,
+             member_zipcode_actual_value, member_zipcode_extracted_value, member_zipcode_match_status, member_zipcode_mismatch_count, member_zipcode_classification,
+             member_date_of_birth_actual_value, member_date_of_birth_extracted_value, member_date_of_birth_match_status, member_date_of_birth_mismatch_count, member_date_of_birth_classification,
+             member_first_name_actual_value, member_first_name_extracted_value, member_first_name_match_status, member_first_name_mismatch_count, member_first_name_classification,
+             member_gender_actual_value, member_gender_extracted_value, member_gender_match_status, member_gender_mismatch_count, member_gender_classification,
+             member_group_id_actual_value, member_group_id_extracted_value, member_group_id_match_status, member_group_id_mismatch_count, member_group_id_classification,
+             member_id_actual_value, member_id_extracted_value, member_id_match_status, member_id_mismatch_count, member_id_classification,
+             member_last_name_actual_value, member_last_name_extracted_value, member_last_name_match_status, member_last_name_mismatch_count, member_last_name_classification,
+             medicaid_id_actual_value, medicaid_id_extracted_value, medicaid_id_match_status, medicaid_id_mismatch_count, medicaid_id_classification,
+             member_city_actual_value, member_city_extracted_value, member_city_match_status, member_city_mismatch_count, member_city_classification,
+             member_state_actual_value, member_state_extracted_value, member_state_match_status, member_state_mismatch_count, member_state_classification,
+             member_address_line1_actual_value, member_address_line1_extracted_value, member_address_line1_match_status, member_address_line1_mismatch_count, member_address_line1_classification,
+             member_full_name_actual_value, member_full_name_extracted_value, member_full_name_match_status, member_full_name_mismatch_count, member_full_name_classification
+         FROM ${temp_schema_name}.a_member_details_result_${init_process_id.process_id}
+         WHERE docid='${doc_id}';
+
+         INSERT INTO ${COVERAGE_REPORT}.a_referring_provider_details_result_audit (
+         root_pipeline_id, tenant_id, created_on, origin_id, file_name, docid,
+         referring_provider_address_line1_actual_value, referring_provider_address_line1_extracted_value, referring_provider_address_line1_match_status, referring_provider_address_line1_mismatch_count, referring_provider_address_line1_classification,
+         referring_provider_address_line2_actual_value, referring_provider_address_line2_extracted_value, referring_provider_address_line2_match_status, referring_provider_address_line2_mismatch_count, referring_provider_address_line2_classification,
+         referring_provider_first_name_actual_value, referring_provider_first_name_extracted_value, referring_provider_first_name_match_status, referring_provider_first_name_mismatch_count, referring_provider_first_name_classification,
+         referring_provider_last_name_actual_value, referring_provider_last_name_extracted_value, referring_provider_last_name_match_status, referring_provider_last_name_mismatch_count, referring_provider_last_name_classification,
+         referring_provider_npi_actual_value, referring_provider_npi_extracted_value, referring_provider_npi_match_status, referring_provider_npi_mismatch_count, referring_provider_npi_classification,
+         referring_provider_state_actual_value, referring_provider_state_extracted_value, referring_provider_state_match_status, referring_provider_state_mismatch_count, referring_provider_state_classification,
+         referring_provider_city_actual_value, referring_provider_city_extracted_value, referring_provider_city_match_status, referring_provider_city_mismatch_count, referring_provider_city_classification,
+         referring_provider_zipcode_actual_value, referring_provider_zipcode_extracted_value, referring_provider_zipcode_match_status, referring_provider_zipcode_mismatch_count, referring_provider_zipcode_classification,
+         referring_provider_specialty_actual_value, referring_provider_specialty_extracted_value, referring_provider_specialty_match_status, referring_provider_specialty_mismatch_count, referring_provider_specialty_classification,
+         referring_provider_tin_actual_value, referring_provider_tin_extracted_value, referring_provider_tin_match_status, referring_provider_tin_mismatch_count, referring_provider_tin_classification,
+         referring_provider_full_name_actual_value, referring_provider_full_name_extracted_value, referring_provider_full_name_match_status, referring_provider_full_name_mismatch_count, referring_provider_full_name_classification
+         )
+         SELECT
+             ${init_process_id.process_id}, ${tenant_id}, created_on, origin_id, file_name, docid,
+             referring_provider_address_line1_actual_value, referring_provider_address_line1_extracted_value, referring_provider_address_line1_match_status, referring_provider_address_line1_mismatch_count, referring_provider_address_line1_classification,
+             referring_provider_address_line2_actual_value, referring_provider_address_line2_extracted_value, referring_provider_address_line2_match_status, referring_provider_address_line2_mismatch_count, referring_provider_address_line2_classification,
+             referring_provider_first_name_actual_value, referring_provider_first_name_extracted_value, referring_provider_first_name_match_status, referring_provider_first_name_mismatch_count, referring_provider_first_name_classification,
+             referring_provider_last_name_actual_value, referring_provider_last_name_extracted_value, referring_provider_last_name_match_status, referring_provider_last_name_mismatch_count, referring_provider_last_name_classification,
+             referring_provider_npi_actual_value, referring_provider_npi_extracted_value, referring_provider_npi_match_status, referring_provider_npi_mismatch_count, referring_provider_npi_classification,
+             referring_provider_state_actual_value, referring_provider_state_extracted_value, referring_provider_state_match_status, referring_provider_state_mismatch_count, referring_provider_state_classification,
+             referring_provider_city_actual_value, referring_provider_city_extracted_value, referring_provider_city_match_status, referring_provider_city_mismatch_count, referring_provider_city_classification,
+             referring_provider_zipcode_actual_value, referring_provider_zipcode_extracted_value, referring_provider_zipcode_match_status, referring_provider_zipcode_mismatch_count, referring_provider_zipcode_classification,
+             referring_provider_specialty_actual_value, referring_provider_specialty_extracted_value, referring_provider_specialty_match_status, referring_provider_specialty_mismatch_count, referring_provider_specialty_classification,
+             referring_provider_tin_actual_value, referring_provider_tin_extracted_value, referring_provider_tin_match_status, referring_provider_tin_mismatch_count, referring_provider_tin_classification,
+             referring_provider_full_name_actual_value, referring_provider_full_name_extracted_value, referring_provider_full_name_match_status, referring_provider_full_name_mismatch_count, referring_provider_full_name_classification
+         FROM ${temp_schema_name}.a_referring_provider_details_result_${init_process_id.process_id}
+         WHERE docid='${doc_id}';
+
+         INSERT INTO ${COVERAGE_REPORT}.a_requested_service_details_result_audit (
+         root_pipeline_id, tenant_id, created_on, origin_id, file_name, docid,
+         service_code_actual_value, service_code_extracted_value, service_code_match_status, service_code_mismatch_count, service_code_classification,
+         service_description_actual_value, service_description_extracted_value, service_description_match_status, service_description_mismatch_count, service_description_classification,
+         diagnosis_code_actual_value, diagnosis_code_extracted_value, diagnosis_code_match_status, diagnosis_code_mismatch_count, diagnosis_code_classification,
+         diagnosis_description_actual_value, diagnosis_description_extracted_value, diagnosis_description_match_status, diagnosis_description_mismatch_count, diagnosis_description_classification,
+         service_to_date_actual_value, service_to_date_extracted_value, service_to_date_match_status, service_to_date_mismatch_count, service_to_date_classification,
+         service_from_date_actual_value, service_from_date_extracted_value, service_from_date_match_status, service_from_date_mismatch_count, service_from_date_classification,
+         level_of_service_actual_value, level_of_service_extracted_value, level_of_service_match_status, level_of_service_mismatch_count, level_of_service_classification,
+         length_of_stay_actual_value, length_of_stay_extracted_value, length_of_stay_match_status, length_of_stay_mismatch_count, length_of_stay_classification,
+         auth_admit_date_actual_value, auth_admit_date_extracted_value, auth_admit_date_match_status, auth_admit_date_mismatch_count, auth_admit_date_classification,
+         auth_discharge_date_actual_value, auth_discharge_date_extracted_value, auth_discharge_date_match_status, auth_discharge_date_mismatch_count, auth_discharge_date_classification,
+         auth_discharge_disposition_actual_value, auth_discharge_disposition_extracted_value, auth_discharge_disposition_match_status, auth_discharge_disposition_mismatch_count, auth_discharge_disposition_classification,
+         auth_id_actual_value, auth_id_extracted_value, auth_id_match_status, auth_id_mismatch_count, auth_id_classification,
+         level_of_care_actual_value, level_of_care_extracted_value, level_of_care_match_status, level_of_care_mismatch_count, level_of_care_classification,
+         notification_type_actual_value, notification_type_extracted_value, notification_type_mismatch_count,notification_type_classification
+         )
+         SELECT
+             ${init_process_id.process_id}, ${tenant_id}, created_on, origin_id, file_name, docid,
+             service_code_actual_value, service_code_extracted_value, service_code_match_status, service_code_mismatch_count, service_code_classification,
+             service_description_actual_value, service_description_extracted_value, service_description_match_status, service_description_mismatch_count, service_description_classification,
+             diagnosis_code_actual_value, diagnosis_code_extracted_value, diagnosis_code_match_status, diagnosis_code_mismatch_count, diagnosis_code_classification,
+             diagnosis_description_actual_value, diagnosis_description_extracted_value, diagnosis_description_match_status, diagnosis_description_mismatch_count, diagnosis_description_classification,
+             service_to_date_actual_value, service_to_date_extracted_value, service_to_date_match_status, service_to_date_mismatch_count, service_to_date_classification,
+             service_from_date_actual_value, service_from_date_extracted_value, service_from_date_match_status, service_from_date_mismatch_count, service_from_date_classification,
+             level_of_service_actual_value, level_of_service_extracted_value, level_of_service_match_status, level_of_service_mismatch_count, level_of_service_classification,
+             length_of_stay_actual_value, length_of_stay_extracted_value, length_of_stay_match_status, length_of_stay_mismatch_count, length_of_stay_classification,
+             auth_admit_date_actual_value, auth_admit_date_extracted_value, auth_admit_date_match_status, auth_admit_date_mismatch_count, auth_admit_date_classification,
+             auth_discharge_date_actual_value, auth_discharge_date_extracted_value, auth_discharge_date_match_status, auth_discharge_date_mismatch_count, auth_discharge_date_classification,
+             auth_discharge_disposition_actual_value, auth_discharge_disposition_extracted_value, auth_discharge_disposition_match_status, auth_discharge_disposition_mismatch_count, auth_discharge_disposition_classification,
+             auth_id_actual_value, auth_id_extracted_value, auth_id_match_status, auth_id_mismatch_count, auth_id_classification,
+             level_of_care_actual_value, level_of_care_extracted_value, level_of_care_match_status, level_of_care_mismatch_count, level_of_care_classification,notification_type_actual_value, notification_type_extracted_value, notification_type_mismatch_count,notification_type_classification
+         FROM ${temp_schema_name}.a_requested_service_details_result_${init_process_id.process_id}
+         WHERE docid='${doc_id}';
+
+         INSERT INTO ${COVERAGE_REPORT}.a_servicing_facility_details_result_audit (
+         root_pipeline_id, tenant_id, created_on, origin_id, file_name, docid,
+         servicing_facility_address_line1_actual_value, servicing_facility_address_line1_extracted_value, servicing_facility_address_line1_match_status, servicing_facility_address_line1_mismatch_count, servicing_facility_address_line1_classification,
+         servicing_facility_address_line2_actual_value, servicing_facility_address_line2_extracted_value, servicing_facility_address_line2_match_status, servicing_facility_address_line2_mismatch_count, servicing_facility_address_line2_classification,
+         servicing_facility_first_name_actual_value, servicing_facility_first_name_extracted_value, servicing_facility_first_name_match_status, servicing_facility_first_name_mismatch_count, servicing_facility_first_name_classification,
+         servicing_facility_last_name_actual_value, servicing_facility_last_name_extracted_value, servicing_facility_last_name_match_status, servicing_facility_last_name_mismatch_count, servicing_facility_last_name_classification,
+         servicing_facility_npi_actual_value, servicing_facility_npi_extracted_value, servicing_facility_npi_match_status, servicing_facility_npi_mismatch_count, servicing_facility_npi_classification,
+         servicing_facility_state_actual_value, servicing_facility_state_extracted_value, servicing_facility_state_match_status, servicing_facility_state_mismatch_count, servicing_facility_state_classification,
+         servicing_facility_city_actual_value, servicing_facility_city_extracted_value, servicing_facility_city_match_status, servicing_facility_city_mismatch_count, servicing_facility_city_classification,
+         servicing_facility_zipcode_actual_value, servicing_facility_zipcode_extracted_value, servicing_facility_zipcode_match_status, servicing_facility_zipcode_mismatch_count, servicing_facility_zipcode_classification,
+         servicing_facility_specialty_actual_value, servicing_facility_specialty_extracted_value, servicing_facility_specialty_match_status, servicing_facility_specialty_mismatch_count, servicing_facility_specialty_classification,
+         servicing_facility_tin_actual_value, servicing_facility_tin_extracted_value, servicing_facility_tin_match_status, servicing_facility_tin_mismatch_count, servicing_facility_tin_classification,
+         servicing_facility_full_name_actual_value, servicing_facility_full_name_extracted_value, servicing_facility_full_name_match_status, servicing_facility_full_name_mismatch_count, servicing_facility_full_name_classification
+         )
+         SELECT
+             ${init_process_id.process_id}, ${tenant_id}, created_on, origin_id, file_name, docid,
+             servicing_facility_address_line1_actual_value, servicing_facility_address_line1_extracted_value, servicing_facility_address_line1_match_status, servicing_facility_address_line1_mismatch_count, servicing_facility_address_line1_classification,
+             servicing_facility_address_line2_actual_value, servicing_facility_address_line2_extracted_value, servicing_facility_address_line2_match_status, servicing_facility_address_line2_mismatch_count, servicing_facility_address_line2_classification,
+             servicing_facility_first_name_actual_value, servicing_facility_first_name_extracted_value, servicing_facility_first_name_match_status, servicing_facility_first_name_mismatch_count, servicing_facility_first_name_classification,
+             servicing_facility_last_name_actual_value, servicing_facility_last_name_extracted_value, servicing_facility_last_name_match_status, servicing_facility_last_name_mismatch_count, servicing_facility_last_name_classification,
+             servicing_facility_npi_actual_value, servicing_facility_npi_extracted_value, servicing_facility_npi_match_status, servicing_facility_npi_mismatch_count, servicing_facility_npi_classification,
+             servicing_facility_state_actual_value, servicing_facility_state_extracted_value, servicing_facility_state_match_status, servicing_facility_state_mismatch_count, servicing_facility_state_classification,
+             servicing_facility_city_actual_value, servicing_facility_city_extracted_value, servicing_facility_city_match_status, servicing_facility_city_mismatch_count, servicing_facility_city_classification,
+             servicing_facility_zipcode_actual_value, servicing_facility_zipcode_extracted_value, servicing_facility_zipcode_match_status, servicing_facility_zipcode_mismatch_count, servicing_facility_zipcode_classification,
+             servicing_facility_specialty_actual_value, servicing_facility_specialty_extracted_value, servicing_facility_specialty_match_status, servicing_facility_specialty_mismatch_count, servicing_facility_specialty_classification,
+             servicing_facility_tin_actual_value, servicing_facility_tin_extracted_value, servicing_facility_tin_match_status, servicing_facility_tin_mismatch_count, servicing_facility_tin_classification,
+             servicing_facility_full_name_actual_value, servicing_facility_full_name_extracted_value, servicing_facility_full_name_match_status, servicing_facility_full_name_mismatch_count, servicing_facility_full_name_classification
+         FROM ${temp_schema_name}.a_servicing_facility_details_result_${init_process_id.process_id}
+         WHERE docid='${doc_id}';
+
+         INSERT INTO ${COVERAGE_REPORT}.a_servicing_provider_details_result_audit (
+         root_pipeline_id, tenant_id, created_on, origin_id, file_name, docid,
+         servicing_provider_address_line1_actual_value, servicing_provider_address_line1_extracted_value, servicing_provider_address_line1_match_status, servicing_provider_address_line1_mismatch_count, servicing_provider_address_line1_classification,
+         servicing_provider_address_line2_actual_value, servicing_provider_address_line2_extracted_value, servicing_provider_address_line2_match_status, servicing_provider_address_line2_mismatch_count, servicing_provider_address_line2_classification,
+         servicing_provider_first_name_actual_value, servicing_provider_first_name_extracted_value, servicing_provider_first_name_match_status, servicing_provider_first_name_mismatch_count, servicing_provider_first_name_classification,
+         servicing_provider_last_name_actual_value, servicing_provider_last_name_extracted_value, servicing_provider_last_name_match_status, servicing_provider_last_name_mismatch_count, servicing_provider_last_name_classification,
+         servicing_provider_npi_actual_value, servicing_provider_npi_extracted_value, servicing_provider_npi_match_status, servicing_provider_npi_mismatch_count, servicing_provider_npi_classification,
+         servicing_provider_state_actual_value, servicing_provider_state_extracted_value, servicing_provider_state_match_status, servicing_provider_state_mismatch_count, servicing_provider_state_classification,
+         servicing_provider_city_actual_value, servicing_provider_city_extracted_value, servicing_provider_city_match_status, servicing_provider_city_mismatch_count, servicing_provider_city_classification,
+         servicing_provider_zipcode_actual_value, servicing_provider_zipcode_extracted_value, servicing_provider_zipcode_match_status, servicing_provider_zipcode_mismatch_count, servicing_provider_zipcode_classification,
+         servicing_provider_specialty_actual_value, servicing_provider_specialty_extracted_value, servicing_provider_specialty_match_status, servicing_provider_specialty_mismatch_count, servicing_provider_specialty_classification,
+         servicing_provider_tin_actual_value, servicing_provider_tin_extracted_value, servicing_provider_tin_match_status, servicing_provider_tin_mismatch_count, servicing_provider_tin_classification,
+         servicing_provider_full_name_actual_value, servicing_provider_full_name_extracted_value, servicing_provider_full_name_match_status, servicing_provider_full_name_mismatch_count, servicing_provider_full_name_classification
+         )
+         SELECT
+             ${init_process_id.process_id}, ${tenant_id}, created_on, origin_id, file_name, docid,
+             servicing_provider_address_line1_actual_value, servicing_provider_address_line1_extracted_value, servicing_provider_address_line1_match_status, servicing_provider_address_line1_mismatch_count, servicing_provider_address_line1_classification,
+             servicing_provider_address_line2_actual_value, servicing_provider_address_line2_extracted_value, servicing_provider_address_line2_match_status, servicing_provider_address_line2_mismatch_count, servicing_provider_address_line2_classification,
+             servicing_provider_first_name_actual_value, servicing_provider_first_name_extracted_value, servicing_provider_first_name_match_status, servicing_provider_first_name_mismatch_count, servicing_provider_first_name_classification,
+             servicing_provider_last_name_actual_value, servicing_provider_last_name_extracted_value, servicing_provider_last_name_match_status, servicing_provider_last_name_mismatch_count, servicing_provider_last_name_classification,
+             servicing_provider_npi_actual_value, servicing_provider_npi_extracted_value, servicing_provider_npi_match_status, servicing_provider_npi_mismatch_count, servicing_provider_npi_classification,
+             servicing_provider_state_actual_value, servicing_provider_state_extracted_value, servicing_provider_state_match_status, servicing_provider_state_mismatch_count, servicing_provider_state_classification,
+             servicing_provider_city_actual_value, servicing_provider_city_extracted_value, servicing_provider_city_match_status, servicing_provider_city_mismatch_count, servicing_provider_city_classification,
+             servicing_provider_zipcode_actual_value, servicing_provider_zipcode_extracted_value, servicing_provider_zipcode_match_status, servicing_provider_zipcode_mismatch_count, servicing_provider_zipcode_classification,
+             servicing_provider_specialty_actual_value, servicing_provider_specialty_extracted_value, servicing_provider_specialty_match_status, servicing_provider_specialty_mismatch_count, servicing_provider_specialty_classification,
+             servicing_provider_tin_actual_value, servicing_provider_tin_extracted_value, servicing_provider_tin_match_status, servicing_provider_tin_mismatch_count, servicing_provider_tin_classification,
+             servicing_provider_full_name_actual_value, servicing_provider_full_name_extracted_value, servicing_provider_full_name_match_status, servicing_provider_full_name_mismatch_count, servicing_provider_full_name_classification
+         FROM ${temp_schema_name}.a_servicing_provider_details_result_${init_process_id.process_id}
+         WHERE docid='${doc_id}';
+
+INSERT INTO ${COVERAGE_REPORT}.a_additional_auth_details_result_audit (
+        root_pipeline_id, tenant_id, created_on, origin_id, file_name, docid,
+        additional_auth_properties_actual_value, additional_auth_properties_extracted_value, additional_auth_properties_match_status,
+        additional_auth_properties_mismatch_count, additional_auth_properties_classification
+    )
+    SELECT
+        ${init_process_id.process_id}, ${tenant_id}, created_on, origin_id, file_name, docid,
+        additional_auth_properties_actual_value, additional_auth_properties_extracted_value, additional_auth_properties_match_status,
+        additional_auth_properties_mismatch_count, additional_auth_properties_classification
+    FROM ${temp_schema_name}.a_additional_auth_details_result_audit_${init_process_id.process_id}
+    WHERE docid = '${doc_id}';
+
+    INSERT INTO ${COVERAGE_REPORT}.a_responsible_area_details_result_audit (
+            root_pipeline_id, tenant_id, created_on, origin_id, file_name, docid,
+            responsible_area_actual_value, responsible_area_extracted_value, responsible_area_match_status,
+            responsible_area_mismatch_count, responsible_area_classification
+        )
+        SELECT
+            ${init_process_id.process_id}, ${tenant_id}, created_on, origin_id, file_name, docid,
+            responsible_area_actual_value, responsible_area_extracted_value, responsible_area_match_status,
+            responsible_area_mismatch_count, responsible_area_classification
+        FROM ${temp_schema_name}.a_responsible_area_result_${init_process_id.process_id}
+        WHERE docid = '${doc_id}';
+     "} on-condition if "true"=="true"
+
+catch{
+
+}
+finally {
+    transform as "Drop all the temporary tables created for all containers" on "intics_zio_db_conn" using
+        {"
+            DROP TABLE IF EXISTS ${temp_schema_name}.a_member_details_result_${init_process_id.process_id};
+            DROP TABLE IF EXISTS ${temp_schema_name}.a_referring_provider_details_result_${init_process_id.process_id};
+            DROP TABLE IF EXISTS ${temp_schema_name}.a_requested_service_details_result_${init_process_id.process_id};
+            DROP TABLE IF EXISTS ${temp_schema_name}.a_servicing_facility_details_result_${init_process_id.process_id};
+            DROP TABLE IF EXISTS ${temp_schema_name}.a_servicing_provider_details_result_${init_process_id.process_id};
+            DROP TABLE IF EXISTS ${temp_schema_name}.a_additional_auth_details_result_audit_${init_process_id.process_id};
+            DROP TABLE IF EXISTS ${temp_schema_name}.a_responsible_area_result_${init_process_id.process_id};
+        "} on-condition if "true"=="true"
+}
+}

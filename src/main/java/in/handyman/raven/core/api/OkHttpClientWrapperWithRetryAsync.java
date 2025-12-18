@@ -1,7 +1,7 @@
 package in.handyman.raven.core.api;
 
 import in.handyman.raven.lambda.access.repo.HandymanRepo;
-import in.handyman.raven.lib.model.retry.CoproRetryErrorAuditTable;
+import in.handyman.raven.lib.services.retry.CoproRetryErrorAuditTable;
 import okhttp3.*;
 
 import java.io.IOException;

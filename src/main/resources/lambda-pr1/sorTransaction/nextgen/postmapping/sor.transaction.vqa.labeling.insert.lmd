@@ -1,0 +1,187 @@
+process "sor.transaction.vqa.labeling.insert"
+{
+try{
+
+            transform as "Insert into after filtered llm json label parser based on label wise" on "intics_zio_db_conn" using
+            {"
+
+
+                -- STEP 2: Insert blacklist keywords
+                INSERT INTO ${temp_schema_name}.flat_blacklist_keywords_${init_process_id.process_id}
+                (
+                    sor_item_name,
+                    sor_item_id,
+                    blacklisted_label,
+                    root_pipeline_id,
+                    origin_id,
+                    group_id,
+                    tenant_id,
+                    sor_container_id
+                )
+                SELECT
+                    cfg.sor_item_name,
+                    cfg.sor_item_id,
+                    REPLACE(LOWER(TRIM(cfg.black_list_keyword)), ' ', '') AS blacklisted_label,
+                    audit.root_pipeline_id,
+                    audit.origin_id,
+                    audit.group_id,
+                    audit.tenant_id,
+                    cfg.sor_container_id
+                FROM sor_meta.sor_item_label_config cfg
+                JOIN sor_meta.sor_container sc
+                  ON cfg.sor_container_id = sc.sor_container_id
+                JOIN sor_meta.sor_item si
+                  ON si.sor_container_id = sc.sor_container_id
+                 AND si.sor_item_id = cfg.sor_item_id
+                JOIN ${temp_schema_name}.llm_json_parser_output_${init_process_id.process_id} audit
+                  ON cfg.sor_item_name = audit.sor_item_name
+                 AND REPLACE(LOWER(TRIM(cfg.black_list_keyword)), ' ', '') = REPLACE(LOWER(TRIM(audit.sor_item_label)), ' ', '')
+                WHERE cfg.active = TRUE
+                  AND audit.is_label_matching='true'
+                  AND audit.tenant_id = ${tenant_id}
+                  AND audit.group_id = '${group_id}'
+                  AND audit.batch_id = '${batch_id}'
+                  AND sc.document_type = '${document_type}' AND audit.is_label_matching='true';
+
+
+                -- STEP 3: Insert only non-blacklisted items
+                INSERT INTO ${temp_schema_name}.after_filtered_llm_json_parser_output_${init_process_id.process_id}
+                (
+                    created_on,
+                    last_updated_on,
+                    extracted_image_unit,
+                    image_dpi,
+                    image_height,
+                    image_width,
+                    sor_container_name,
+                    paper_no,
+                    origin_id,
+                    group_id,
+                    tenant_id,
+                    root_pipeline_id,
+                    batch_id,
+                    model_registry,
+                    confidence,
+                    bbox,
+                    answer,
+                    sor_item_name,
+                    sor_item_label,
+                    sor_container_id,
+                    sor_item_id
+                )
+                SELECT
+                    a.created_on,
+                    a.last_updated_on,
+                    a.extracted_image_unit,
+                    a.image_dpi,
+                    a.image_height,
+                    a.image_width,
+                    a.sor_container_name,
+                    a.paper_no,
+                    a.origin_id,
+                    a.group_id,
+                    a.tenant_id,
+                    a.root_pipeline_id,
+                    a.batch_id,
+                    a.model_registry,
+                    a.confidence,
+                    a.bbox,
+                    a.answer,
+                    a.sor_item_name,
+                    a.sor_item_label,
+                    a.sor_container_id,
+                    si.sor_item_id
+                FROM ${temp_schema_name}.filtered_llm_json_parser_output_${init_process_id.process_id} a
+                JOIN sor_meta.sor_container sc
+                  ON a.sor_container_id = sc.sor_container_id
+                JOIN sor_meta.sor_item si
+                  ON si.sor_container_id = sc.sor_container_id
+                 AND si.sor_item_name = a.sor_item_name
+                LEFT JOIN ${temp_schema_name}.flat_blacklist_keywords_${init_process_id.process_id} b
+                  ON si.sor_item_id = b.sor_item_id
+                 AND a.tenant_id = b.tenant_id
+                 AND a.group_id = b.group_id
+                 AND a.origin_id = b.origin_id
+                 AND a.sor_container_id = b.sor_container_id
+                 AND REPLACE(LOWER(TRIM(a.sor_item_label)), ' ', '') = b.blacklisted_label
+                WHERE a.tenant_id = ${tenant_id}
+                  AND a.group_id = '${group_id}'
+                  AND a.batch_id = '${batch_id}'
+                  AND b.sor_item_name IS NULL
+                  AND sc.document_type = '${document_type}';
+
+            "} on-condition if "${sor.transaction.label.json.parser.activator}"=="true"
+
+
+            transform as "Insert into vqa transaction for legacy route" on "intics_zio_db_conn" using
+            {"
+
+                INSERT INTO ${temp_schema_name}.vqa_transaction_${init_process_id.process_id}
+                ( created_on, created_user_id, last_updated_on, last_updated_user_id,
+                answer,extracted_image_unit, group_id, image_dpi, image_height,
+                image_width, model_id, model_info, origin_id, paper_no, question_id, root_pipeline_id,
+                sor_item_name, sor_question, synonym_id, tenant_id, weight,
+                model_registry,status,stage, sor_item_attribution_id, document_id, vqa_score , b_box, category, batch_id)
+                SELECT kjpo.created_on, kjpo.tenant_id, kjpo.last_updated_on as last_updated_on, kjpo.tenant_id ,
+                (case when kjpo.answer = 'null' then null else kjpo.answer end) as answer ,
+                kjpo.extracted_image_unit,kjpo.group_id ,
+                kjpo.image_dpi , kjpo.image_width , kjpo.image_height , smc.model_id , 'RADON' as model_info,
+                kjpo.origin_id , kjpo.paper_no , smc.question_id , kjpo.root_pipeline_id , smc.sor_item_name , smc.question ,
+                smc.synonym_id , kjpo.tenant_id , 150 as weight, kjpo.model_registry,'COMPLETED' as status,'SOR_TRANSACTION' as stage, smc.sor_item_attribution_id as sor_item_attribution_id,
+                '${document_id}' as document_id,( case when kjpo.answer = 'null' then 0 when kjpo.answer = '' then ${radon.kvp.bbox.vqa.score.default} when a.vqa_score is null then ${radon.kvp.bbox.vqa.score.default} else a.vqa_score end ) as vqa_score,(case when kjpo.answer='' then '{}' when a.b_box is null then '{}'  when a.b_box is not null then a.b_box  else '{}' end ) as b_box, '${qn_category}', kjpo.batch_id
+                from ${temp_schema_name}.filtered_llm_json_parser_output_${init_process_id.process_id} kjpo
+                left join ${temp_schema_name}.radon_kvp_bbox_output_${init_process_id.process_id} a on kjpo.origin_id = a.origin_id and kjpo.tenant_id = a.tenant_id
+                and kjpo.paper_no = a.paper_no and a.sor_item_name=kjpo.sor_item_name
+                and a.answer=kjpo.answer and a.batch_id=kjpo.batch_id and a.status='COMPLETED'
+                join ${temp_schema_name}.sor_meta_consolidated_${init_process_id.process_id} smc on kjpo.tenant_id = smc.tenant_id
+                where smc.model_name in ('RADON','KRYPTON') and kjpo.group_id ='${group_id}' and kjpo.batch_id ='${batch_id}'
+                and smc.document_type='${document_type}' and smc.template_name ='UNIVERSE' ;
+
+            "} on-condition if "${sor.transaction.meta.mapping.radon.vqa.activator}"=="false"
+
+            transform as "Insert into vqa transaction for krypton route" on "intics_zio_db_conn" using {"
+
+                    INSERT INTO ${temp_schema_name}.vqa_transaction_${init_process_id.process_id}
+                    ( created_on, created_user_id, last_updated_on, last_updated_user_id,
+                    answer,extracted_image_unit, group_id, image_dpi, image_height,
+                    image_width, model_id, model_info, origin_id, paper_no, question_id, root_pipeline_id,
+                    sor_item_name, sor_question, synonym_id, tenant_id, weight,
+                    model_registry,status,stage, sor_item_attribution_id, document_id, vqa_score , b_box, category, batch_id)
+                    SELECT kjpo.created_on, kjpo.tenant_id, kjpo.last_updated_on as last_updated_on, kjpo.tenant_id ,(case when kjpo.answer = 'null' then null else kjpo.answer end) as answer , kjpo.extracted_image_unit,kjpo.group_id ,
+                    kjpo.image_dpi , kjpo.image_width , kjpo.image_height , smc.model_id , 'RADON' as model_info,
+                    kjpo.origin_id , kjpo.paper_no , smc.question_id , kjpo.root_pipeline_id, smc.sor_item_name , smc.question ,
+                    smc.synonym_id , kjpo.tenant_id , 150 as weight, kjpo.model_registry,'COMPLETED' as status,'SOR_TRANSACTION' as stage, smc.sor_item_attribution_id as sor_item_attribution_id,
+                    '${document_id}' as document_id,
+                    ( case
+                    when kjpo.answer = 'null' then 0 ::numeric
+                    when kjpo.answer = '' then ${radon.kvp.bbox.vqa.score.default} ::numeric
+                    when kjpo.confidence is null then ${radon.kvp.bbox.vqa.score.default} ::numeric
+                    else kjpo.confidence ::numeric end ) as vqa_score,
+                    (case when kjpo.answer='' then '{}'
+                    when kjpo.bbox is null then '{}'
+                    when kjpo.bbox is not null then kjpo.bbox
+                    else '{}' end ) as b_box, '${qn_category}',
+                    kjpo.batch_id,
+                    smc.sor_container_id,
+                    smc.sor_container_name,
+                    kjpo.section_alias,
+                    kjpo.sor_item_label
+                    from ${temp_schema_name}.filtered_llm_json_parser_output_${init_process_id.process_id} kjpo
+                    join ${temp_schema_name}.sor_meta_consolidated_${init_process_id.process_id} smc on kjpo.tenant_id = smc.tenant_id
+                    where smc.model_name in('RADON','KRYPTON') and kjpo.group_id ='${group_id}' and kjpo.batch_id ='${batch_id}'
+                    and smc.document_type='${document_type}' and smc.template_name ='UNIVERSE' and kjpo.tenant_id='${tenant_id}' ;
+
+            "}on-condition if "${sor.transaction.meta.mapping.radon.vqa.activator}"=="true"
+
+
+}
+catch{
+
+
+}
+finally{
+
+
+}
+
+}

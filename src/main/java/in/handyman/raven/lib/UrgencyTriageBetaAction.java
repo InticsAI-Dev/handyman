@@ -20,9 +20,9 @@ import java.util.Optional;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 
-import in.handyman.raven.lib.model.urgencyTriageBeta.UrgencyTriageBetaConsumerProcess;
-import in.handyman.raven.lib.model.urgencyTriageBeta.UrgencyTriageBetaOutputTable;
-import in.handyman.raven.lib.model.utmodel.UrgencyTriageInputTable;
+import in.handyman.raven.lib.services.urgencyTriageBeta.UrgencyTriageBetaConsumerProcess;
+import in.handyman.raven.lib.services.urgencyTriageBeta.UrgencyTriageBetaOutputTable;
+import in.handyman.raven.lib.services.utmodel.UrgencyTriageInputTable;
 import in.handyman.raven.util.ExceptionUtil;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;

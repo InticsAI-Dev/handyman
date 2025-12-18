@@ -20,12 +20,9 @@ import java.util.Optional;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 
-import in.handyman.raven.lib.model.outbound.AlchemyKvpInputEntity;
-import in.handyman.raven.lib.model.outbound.AlchemyKvpOutputEntity;
-import in.handyman.raven.lib.model.outbound.OutboundKvpConsumerProcess;
-import in.handyman.raven.lib.model.outbound.table.AlchemyTableInputEntity;
-import in.handyman.raven.lib.model.outbound.table.AlchemyTableOutputEntity;
-import in.handyman.raven.lib.model.outbound.table.OutboundTableConsumerProcess;
+import in.handyman.raven.lib.services.outbound.table.AlchemyTableInputEntity;
+import in.handyman.raven.lib.services.outbound.table.AlchemyTableOutputEntity;
+import in.handyman.raven.lib.services.outbound.table.OutboundTableConsumerProcess;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;

@@ -1,0 +1,268 @@
+process "natural.keys.master.data.ddl"
+
+{
+
+    try {
+
+            transform as "table creation for (PRESCRIBER) natural keys comparison " on "intics_zio_db_conn" using
+            {"
+
+
+                    CREATE TABLE md_lookup_naturalkey.prescriber_name_rank (
+                    origin_id varchar NULL,
+                    paper_no int4 NULL,
+                    sor_item_name varchar NULL,
+                    extracted_value text NULL,
+                    weight_rank int8 NULL,
+                    tenant_id int8 NULL
+                    );
+
+                    CREATE TABLE md_lookup_naturalkey.prescriber_name_similarity_check (
+                    origin_id varchar NULL,
+                    paper_no int4 NULL,
+                    sor_item_name varchar NULL,
+                    extracted_value text NULL,
+                    prescriber_name text NULL,
+                    similarity float4 NULL,
+                    tenant_id int8 NULL
+                    );
+
+
+                    CREATE TABLE md_lookup_naturalkey.rank_1_prescriber_name (
+                    origin_id varchar NULL,
+                    paper_no int4 NULL,
+                    eoc_identifier varchar NULL,
+                    sor_item_name varchar NULL,
+                    extracted_value text NULL,
+                    actual_value text NULL,
+                    similarity float4 NULL,
+                    similarity_rank int8 NULL,
+                    tenant_id int8 NULL
+                    );
+
+
+                    CREATE TABLE md_lookup_naturalkey.sequencing_name_rank (
+                    origin_id varchar NULL,
+                    paper_no int4 NULL,
+                    eoc_identifier varchar NULL,
+                    sor_item_name varchar NULL,
+                    extracted_value text NULL,
+                    prescriber_name text NULL,
+                    similarity float4 NULL,
+                    similarity_rank int8 NULL,
+                    tenant_id int8 NULL
+                    );
+
+                    CREATE TABLE md_lookup_naturalkey.prescriber_name_integration (
+                    origin_id varchar NULL,
+                    tenant_id int8 NULL,
+                    paper_no int4 NULL,
+                    eoc_identifier varchar NULL,
+                    matched_name text NULL,
+                    rank1_npi text NULL,
+                    rank2_npi text NULL,
+                    rank3_npi text NULL,
+                    rank1_city text NULL,
+                    rank2_city text NULL,
+                    rank3_city text NULL,
+                    rank1_phone text NULL,
+                    rank2_phone text NULL,
+                    rank3_phone text NULL,
+                    rank1_fax text NULL,
+                    rank2_fax text NULL,
+                    rank3_fax text NULL,
+                    rank1_zip text NULL,
+                    rank2_zip text NULL,
+                    rank3_zip text NULL,
+                    rank1_address text NULL,
+                    rank2_address text NULL,
+                    rank3_address text NULL
+                    );
+
+
+
+                    CREATE TABLE md_lookup_naturalkey.nk_final_prescriber_city (
+                    origin_id varchar NULL,
+                    paper_no int4 NULL,
+                    eoc_identifier varchar NULL,
+                    actual_value varchar NULL,
+                    extracted_value text NULL,
+                    similarity_score float4 NULL,
+                    tenant_id int8 NULL
+                    );
+
+
+                    CREATE TABLE md_lookup_naturalkey.nk_final_prescriber_fax (
+                    origin_id varchar NULL,
+                    paper_no int4 NULL,
+                    eoc_identifier varchar NULL,
+                    actual_value varchar NULL,
+                    extracted_value text NULL,
+                    similarity_score float4 NULL,
+                    tenant_id int8 NULL
+                    );
+
+
+                    CREATE TABLE md_lookup_naturalkey.nk_final_prescriber_phone (
+                    origin_id varchar NULL,
+                    paper_no int4 NULL,
+                    eoc_identifier varchar NULL,
+                    actual_value varchar NULL,
+                    extracted_value text NULL,
+                    "case" float4 NULL,
+                    tenant_id int8 NULL
+                    );
+
+
+                    CREATE TABLE md_lookup_naturalkey.nk_final_prescriber_zip (
+                    origin_id varchar NULL,
+                    paper_no int4 NULL,
+                    eoc_identifier varchar NULL,
+                    actual_value text NULL,
+                    extracted_value text NULL,
+                    similarity_score float4 NULL,
+                    tenant_id int8 NULL
+                    );
+
+
+            "}  on-condition if "true"=="true"
+
+            transform as "table creation for (PROVIDER) natural keys comparison " on "intics_zio_db_conn" using
+            {"
+
+
+                    CREATE TABLE md_lookup_naturalkey.nk_final_provider_address (
+                    origin_id varchar NULL,
+                    paper_no int4 NULL,
+                    actual_value text NULL,
+                    extracted_value text NULL,
+                    similarity_score float4 NULL,
+                    tenant_id int8 NULL
+                    );
+
+                    CREATE TABLE md_lookup_naturalkey.nk_final_provider_city (
+                    origin_id varchar NULL,
+                    paper_no int4 NULL,
+                    actual_value varchar NULL,
+                    extracted_value text NULL,
+                    similarity_score float4 NULL,
+                    tenant_id int8 NULL
+                    );
+
+
+
+                    CREATE TABLE md_lookup_naturalkey.nk_final_provider_fax (
+                    origin_id varchar NULL,
+                    paper_no int4 NULL,
+                    actual_value varchar NULL,
+                    extracted_value text NULL,
+                    similarity_score float4 NULL,
+                    tenant_id int8 NULL
+                    );
+
+
+                    CREATE TABLE md_lookup_naturalkey.nk_final_provider_phone (
+                    origin_id varchar NULL,
+                    paper_no int4 NULL,
+                    actual_value varchar NULL,
+                    extracted_value text NULL,
+                    similarity_score float4 NULL,
+                    tenant_id int8 NULL
+                    );
+
+
+                    CREATE TABLE md_lookup_naturalkey.nk_final_provider_zip (
+                    origin_id varchar NULL,
+                    paper_no int4 NULL,
+                    actual_value varchar NULL,
+                    extracted_value text NULL,
+                    similarity_score float4 NULL,
+                    tenant_id int8 NULL
+                    );
+
+
+                    CREATE TABLE md_lookup_naturalkey.provider_name_integration (
+                    origin_id varchar NULL,
+                    tenant_id int8 NULL,
+                    paper_no int4 NULL,
+                    eoc_identifier varchar NULL,
+                    matched_name text NULL,
+                    rank1_npi text NULL,
+                    rank2_npi text NULL,
+                    rank3_npi text NULL,
+                    rank1_city text NULL,
+                    rank2_city text NULL,
+                    rank3_city text NULL,
+                    rank1_phone text NULL,
+                    rank2_phone text NULL,
+                    rank3_phone text NULL,
+                    rank1_fax text NULL,
+                    rank2_fax text NULL,
+                    rank3_fax text NULL,
+                    rank1_zip text NULL,
+                    rank2_zip text NULL,
+                    rank3_zip text NULL,
+                    rank1_address text NULL,
+                    rank2_address text NULL,
+                    rank3_address text NULL
+                    );
+
+
+                    CREATE TABLE md_lookup_naturalkey.provider_name_rank (
+                    origin_id varchar NULL,
+                    paper_no int4 NULL,
+                    sor_item_name varchar NULL,
+                    extracted_value text NULL,
+                    weight_rank int8 NULL,
+                    tenant_id int8 NULL
+                    );
+
+
+
+                    CREATE TABLE md_lookup_naturalkey.provider_name_similarity_check (
+                    origin_id varchar NULL,
+                    paper_no int4 NULL,
+                    sor_item_name varchar NULL,
+                    extracted_value text NULL,
+                    actual_value text NULL,
+                    similarity float4 NULL,
+                    tenant_id int8 NULL
+                    );
+
+
+                    CREATE TABLE md_lookup_naturalkey.provider_sequencing_name_rank (
+                    origin_id varchar NULL,
+                    paper_no int4 NULL,
+                    eoc_identifier varchar NULL,
+                    sor_item_name varchar NULL,
+                    extracted_value text NULL,
+                    actual_value text NULL,
+                    similarity float4 NULL,
+                    similarity_rank int8 NULL,
+                    tenant_id int8 NULL
+                    );
+
+
+
+                    CREATE TABLE md_lookup_naturalkey.rank_1_provider_name (
+                    origin_id varchar NULL,
+                    paper_no int4 NULL,
+                    eoc_identifier varchar NULL,
+                    sor_item_name varchar NULL,
+                    extracted_value text NULL,
+                    actual_value text NULL,
+                    similarity float4 NULL,
+                    similarity_rank int8 NULL,
+                    tenant_id int8 NULL
+                    );
+
+            "}  on-condition if "true"=="true"
+
+
+    }  catch {
+
+    }
+    finally {
+
+    }
+}

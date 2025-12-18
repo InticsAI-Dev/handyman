@@ -1,0 +1,36 @@
+process "sor.transaction.main"
+{
+	try{
+
+		assign as "time_stamp_sor_transaction" source "intics_zio_db_conn" using
+        {"
+        "} on-condition if "true"=="true"
+
+        callprocess as "calling sor_transaction processor "
+        with-target "sor.transaction.processor"
+        from-file "${basepath}/sorTransaction/nextgen/sor.transaction.processor.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+        "} on-condition if "true"=="true"
+
+        transform as "Insert into vqa transaction audits" on "intics_zio_db_conn" using
+       {"
+       "} on-condition if "true"=="true"
+
+	}
+	catch{
+			transform as "update to failed in sor transaction audit" on "intics_zio_db_conn" using
+           {"
+           "} on-condition if "true"=="true"
+
+	}
+	finally{
+
+        transform as "move data from temporary tables into main audit tables in sor transaction " on "intics_zio_db_conn" using
+        {"
+        "} on-condition if "true"=="true"
+
+
+	}
+
+}

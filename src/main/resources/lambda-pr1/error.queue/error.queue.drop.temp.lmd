@@ -1,0 +1,38 @@
+process "error.queue.drop.temp"
+{
+try{
+        transform as "mandatory field data cleanup " on "intics_zio_db_conn" using {"
+
+                INSERT INTO error_queue.mandatory_sor_item_aggregate_audit
+                (root_pipeline_id ,tenant_id,origin_id ,error_response)
+                select root_pipeline_id ,tenant_id,origin_id ,error_response
+                from ${temp_schema_name}.mandatory_sor_item_aggregate_${init_process_id.process_id};
+
+                INSERT INTO error_queue.error_queue_mandatory_json_creator_audit
+                 (document_id, origin_id, group_id, total_no_of_pages, uploaded_on, root_pipeline_id, batch_id, tenant_id, error_response)
+                SELECT document_id, origin_id, group_id, total_no_of_pages, uploaded_on, root_pipeline_id, batch_id, tenant_id, error_response
+                FROM ${temp_schema_name}.error_queue_mandatory_json_creator_${init_process_id.process_id};
+
+                INSERT INTO error_queue.mandatory_sor_item_list_audit
+                (root_pipeline_id, tenant_id, origin_id, paper_no, sor_item_name)
+                SELECT root_pipeline_id, tenant_id, origin_id, paper_no, sor_item_name
+                FROM ${temp_schema_name}.mandatory_sor_item_list_${init_process_id.process_id};
+
+                INSERT INTO error_queue.cummulative_result_eq_audit
+                (cum_count, frequency, b_box, confidence_score, extracted_value, filter_score, group_id, maximum_score, origin_id, paper_no, question_id, root_pipeline_id, sor_item_name, synonym_id, tenant_id, batch_id)
+                SELECT cum_count, frequency, b_box, confidence_score, extracted_value, filter_score, group_id, maximum_score, origin_id, paper_no, question_id, root_pipeline_id, sor_item_name, synonym_id, tenant_id, batch_id
+                FROM ${temp_schema_name}.cummulative_result_eq_${init_process_id.process_id};
+
+                INSERT INTO error_queue.sor_item_eq_audit
+                (sor_item_name, tenant_id, document_type, sor_container_name, batch_id)
+                SELECT sor_item_name, tenant_id, document_type, sor_container_name, batch_id
+                FROM ${temp_schema_name}.sor_item_eq_${init_process_id.process_id};
+
+        "} on-condition if "true"=="true"
+
+}
+catch{
+}
+finally{
+}
+}

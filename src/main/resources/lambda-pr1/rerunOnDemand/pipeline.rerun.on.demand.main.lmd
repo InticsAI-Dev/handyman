@@ -1,0 +1,86 @@
+process "pipeline.rerun.on.demand.main"
+{
+try{
+      transform as "Deleting origins in all the queues" on "intics_zio_db_conn" using
+        {"
+                delete from preprocess.preprocess_payload_queue where origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                delete from paper_filter.agentic_paper_filter_payload_queue where origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                delete from sor_transaction.sor_transaction_payload_queue where origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                delete from sor_grouping.sor_grouping_payload_queue where origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                delete from alchemy_migration.alchemy_migration_payload_queue where origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+                delete from product_outbound.product_outbound_payload_queue where origin_id = ANY(string_to_array('${failed.origin.ids}', ','));
+
+        "} on-condition if "true"=="true"
+
+        callprocess as "calling ingestion main caller"
+        with-target "ingestion.main.caller"
+        from-file "${basepath}/rerunOnDemand/pipeline.rerun.on.demand.ingestion.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${pipeline.rerun.on.demand.failed.stage}"=="INGESTION"
+
+
+        callprocess as "calling preprocess main caller"
+        with-target "ingestion.main.caller"
+        from-file "${basepath}/rerunOnDemand/pipeline.rerun.on.demand.preprocess.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${pipeline.rerun.on.demand.failed.stage}"=="PREPROCESS"
+
+
+
+        callprocess as "calling agenti filter main caller"
+        with-target "ingestion.main.caller"
+        from-file "${basepath}/rerunOnDemand/pipeline.rerun.on.demand.agentic.filter.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${pipeline.rerun.on.demand.failed.stage}"=="AGENTIC_FILTER"
+
+
+
+        callprocess as "calling sor transaction main caller"
+        with-target "ingestion.main.caller"
+        from-file "${basepath}/rerunOnDemand/pipeline.rerun.on.demand.sor.transaction.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${pipeline.rerun.on.demand.failed.stage}"=="SOR_TRANSACTION"
+
+
+        callprocess as "calling sor grouping main caller"
+        with-target "ingestion.main.caller"
+        from-file "${basepath}/rerunOnDemand/pipeline.rerun.on.demand.sor.grouping.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${pipeline.rerun.on.demand.failed.stage}"=="SOR_GROUPING"
+
+
+        callprocess as "calling outbound transform main caller"
+        with-target "ingestion.main.caller"
+        from-file "${basepath}/rerunOnDemand/pipeline.rerun.on.demand.outbound.transform.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${pipeline.rerun.on.demand.failed.stage}"=="OUTBOUND_TRANSFORM"
+
+
+
+        callprocess as "calling product outbound main caller"
+        with-target "ingestion.main.caller"
+        from-file "${basepath}/rerunOnDemand/pipeline.rerun.on.demand.outbound.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "${pipeline.rerun.on.demand.failed.stage}"=="OUTBOUND"
+
+}
+catch{
+
+}
+finally{
+}
+}

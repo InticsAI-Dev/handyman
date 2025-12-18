@@ -1,0 +1,163 @@
+process "sor.ocr.comparison.scalar.processor"
+{
+    try{
+        transform as "insert audit for scalar" on "intics_zio_db_conn" using
+       {"
+             INSERT INTO sor_validation.sor_validation_pipeline_audit
+             (group_id, created_on, created_by, user_id, tenant_id, status, stage, message,root_pipeline_id, batch_id)
+             VALUES('${group_id}', now(), '${created_user_id}', '${created_user_id}', ${tenant_id}, 'STARTED', 'SCALAR', 'scalar validation started for the files with group_id ${group_id}','${gen_id.root_pipeline_id}', '${batch_id}');
+       "} on-condition if "true"=="true"
+
+            coproStart as "Calling validation copro start action" for "VALIDATION"
+            copro-server-url "${copro.validation.admin.start.url}"
+            export-command "${copro.validation.export}"
+            process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+            using
+            {"
+                ${validationStartCommand}
+
+            "} on-condition if "${pipeline_train_mode.valuation}" == "true"
+
+
+              scalarAdapter as "scalar adapter for docnut attribution"
+              on-resource-conn "intics_zio_db_conn"
+              process-id "${init_process_id.process_id}"
+              using-docnut-result
+              {"
+                       SELECT dp.sor_item_name as sor_key,dp.sor_item_name as sor_item_name,si.sor_item_id, dp.sor_question as question, dp.answer as input_value, dp.weight,dp.vqa_score,
+                        si.allowed_adapter , si.restricted_adapter ,dp.synonym_id, dp.question_id,'${init_process_id.process_id}' as process_id,
+                        si.word_limit , si.word_threshold ,
+                        si.char_limit , si.char_threshold ,
+                        si.validator_threshold , si.allowed_characters ,
+                        si.comparable_characters, si.restricted_adapter_flag,
+                        dp.origin_id ,dp.paper_no ,dp.group_id,
+                        dp.created_user_id, dp.tenant_id,dp.b_box, dp.model_registry, dp.root_pipeline_id, dp.batch_id, si.is_encrypted, ep.encryption_policy
+                        FROM ${temp_schema_name}.ocr_text_comparison_result_${init_process_id.process_id} dp
+                        JOIN sor_meta.sor_item si ON si.sor_item_name = dp.sor_item_name and si.tenant_id = dp.tenant_id
+                        join sor_meta.encryption_policies ep ON si.encryption_policy_id=ep.encryption_policy_id
+                        join sor_meta.sor_container sc ON si.sor_container_id = sc.sor_container_id
+                        join sor_validation.sor_validation_payload_queue st on st.origin_id=dp.origin_id
+                        WHERE dp.group_id = '${group_id}' AND si.allowed_adapter !='ner'
+                        AND dp.answer is not null and dp.tenant_id = ${tenant_id} and dp.batch_id = '${batch_id}' and sc.document_type='${document_type}' and sc.status = 'ACTIVE' and si.status = 'ACTIVE';
+              "} on-condition if "${scalar.adapter.activator}"=="true"
+
+             nerAdapter as "nerAdapter for vqa attribution"
+             on-resource-conn "intics_zio_db_conn"
+             result-table "${temp_schema_name}.adapter_result_${init_process_id.process_id}"
+             using-docnut-result
+              {"
+                        SELECT dp.sor_item_name as sor_key,si.sor_item_id, dp.sor_question as question, dp.answer as input_value, dp.weight,dp.vqa_score,
+                        si.allowed_adapter , si.restricted_adapter,dp.synonym_id,dp.question_id, '${init_process_id.process_id}' as process_id,
+                        si.word_limit , si.word_threshold ,
+                        si.char_limit , si.char_threshold ,
+                        si.validator_threshold , si.allowed_characters ,
+                        si.comparable_characters, si.restricted_adapter_flag,
+                        dp.origin_id ,dp.paper_no ,dp.group_id,
+                        dp.created_user_id, dp.tenant_id,dp.b_box, dp.model_registry, dp.root_pipeline_id, dp.batch_id, si.is_encrypted, ep.encryption_policy
+                        FROM ${temp_schema_name}.ocr_text_comparison_result_${init_process_id.process_id} dp
+                        JOIN sor_meta.sor_item si ON si.sor_item_name = dp.sor_item_name and si.tenant_id = dp.tenant_id
+                        join sor_meta.encryption_policies ep ON si.encryption_policy_id=ep.encryption_policy_id
+                        join sor_meta.sor_container sc ON si.sor_container_id = sc.sor_container_id
+                        join sor_validation.sor_validation_payload_queue st on st.origin_id=dp.origin_id
+                        WHERE dp.group_id = '${group_id}' AND si.allowed_adapter ='ner'
+                        AND dp.answer is not null AND dp.tenant_id = ${tenant_id} and dp.batch_id = '${batch_id}'  and sc.document_type='${document_type}' and sc.status = 'ACTIVE' and si.status = 'ACTIVE';
+              "} on-condition if "${scalar.adapter.activator}"=="true"
+
+                    coproStop as "Calling validation copro stop action" for "VALIDATION"
+                    copro-server-url "${copro.validation.admin.stop.url}"
+                    process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+                    using
+                    {"
+                        gunicorn
+
+                    "} on-condition if "${validation.stop.action}"=="true"
+
+
+                transform as "Insert into Argon Result" on "intics_zio_db_conn" using
+                {"
+                   INSERT INTO ${temp_schema_name}.scalar_validation_${init_process_id.process_id}
+                   (created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, origin_id, paper_no,group_id, question,predicted_value,weight, score, sor_item_attribution_id, sor_item_name, document_id, validation_name,b_box,root_pipeline_id,vqa_score,question_id,synonym_id, model_registry, batch_id, category)
+                   SELECT now(),'${created_user_id}',now(),'${created_user_id}',${tenant_id},a.origin_id,a.paper_no,a.group_id,a.question,a.answer,a.weight, a.confidence_score,a.sor_item_id,a.sor_item_name,'${document_id}',a.validation_name,a.b_box,'${gen_id.root_pipeline_id}',a.vqa_score,a.question_id,a.synonym_id, a.model_registry, b.batch_id, a.category
+                   FROM ${temp_schema_name}.adapter_result_${init_process_id.process_id} a
+                    join sor_validation.sor_validation_payload_queue b on b.origin_id=a.origin_id and b.batch_id = a.batch_id;
+                "} on-condition if "${scalar.adapter.activator}"=="true" on-condition if  "${validation.multiverse-mode}"=="true"
+
+                transform as "insert into scalar validator without scalar and ner validaton" on "intics_zio_db_conn" using {"
+                        INSERT INTO ${temp_schema_name}.scalar_validation_${init_process_id.process_id}
+                        (created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, origin_id,
+                        paper_no,group_id, question,predicted_value,weight, score, sor_item_attribution_id,
+                        sor_item_name, document_id, validation_name,b_box,root_pipeline_id,vqa_score,question_id,synonym_id, model_registry, batch_id, category)
+                        SELECT now(),'${created_user_id}',now(),'${created_user_id}',${tenant_id},a.origin_id,
+                        a.paper_no,a.group_id,a.sor_question,a.answer,a.weight,100,a.sor_item_attribution_id,
+                        a.sor_item_name,a.document_id,'NA',a.b_box,a.root_pipeline_id,a.vqa_score,a.question_id,a.synonym_id, a.model_registry, st.batch_id, a.category
+                        FROM ${temp_schema_name}.ocr_text_comparison_result_${init_process_id.process_id} a
+                         join sor_validation.sor_validation_payload_queue st on st.origin_id=a.origin_id and a.batch_id = st.batch_id
+                         join ${temp_schema_name}.source_of_truth_${init_process_id.process_id} sot on sot.origin_id=a.origin_id and sot.paper_no=a.paper_no
+                         WHERE a.group_id='${group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+                 "} on-condition if "${scalar.adapter.activator}"=="false"
+
+                transform as "insert into pipeline summary audit sor validation" on "intics_zio_db_conn" using {"
+                   INSERT INTO ${temp_schema_name}.summary_audit_papers_${process-id}
+                   (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken,root_pipeline_id, tenant_id, batch_id)
+                   SELECT ${process-id} , 'SOR_VALIDATION' ,'SCALAR_VALIDATION',coalesce (count(DISTINCT CASE WHEN status='COMPLETED' THEN concat(origin_id,'_',paper_no) WHEN status='ABSENT' THEN concat(origin_id,'_',paper_no) END),0) ,
+                   coalesce (count(DISTINCT CASE WHEN status='FAILED' THEN concat(origin_id,'_',paper_no) END),0),min(created_on),max(created_on), EXTRACT(epoch FROM (max(created_on)-min(created_on))),'${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}'
+                   FROM ${temp_schema_name}.adapter_result_${init_process_id.process_id}
+                   WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                   INSERT INTO ${temp_schema_name}.summary_audit_files_${process-id}
+                   (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken, root_pipeline_id, tenant_id, batch_id)
+                   SELECT ${process-id} , 'SOR_VALIDATION' ,'SCALAR_VALIDATION',coalesce (sum(CASE WHEN status='IN_PROGRESS' THEN 1 ELSE 0 END),0) ,
+                   coalesce (sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END),0),min(created_on),max(created_on), EXTRACT(epoch FROM (max(created_on)-min(created_on))),'${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}'
+                   FROM sor_validation.sor_validation_payload_queue
+                   WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                   INSERT INTO audit.pipeline_summary_audit
+                   (process_id, created_on, module_name, macro_process, files_processed_count,papers_processed_count,files_failed_count,papers_failed_count,start_time,end_time, time_taken, group_id, root_pipeline_id, created_user_id, template_id, tenant_id,average_time, batch_id)
+                   SELECT msaf.process_id ,now(),msaf.module_name ,msaf.macro_process ,msaf.completed_count,msap.completed_count,msaf.failed_count,msap.failed_count,msap.min_created_on,msap.max_created_on, EXTRACT(epoch FROM (msap.max_created_on-msap.min_created_on)),
+                   '${group_id}','${gen_id.root_pipeline_id}','${created_user_id}','${document_id}',${tenant_id},(CASE WHEN (msaf.completed_count+msaf.failed_count)=0 THEN msaf.time_taken WHEN (msaf.time_taken/(msaf.completed_count+msaf.failed_count))=0 THEN msaf.time_taken ELSE (msaf.time_taken/(msaf.completed_count+msaf.failed_count)) END), msaf.batch_id
+                   FROM ${temp_schema_name}.summary_audit_files_${process-id} msaf,
+                   ${temp_schema_name}.summary_audit_papers_${process-id} msap
+                   WHERE msaf.module_name=msap.module_name
+                   AND msaf.macro_process=msap.macro_process AND
+                   msaf.batch_id=msap.batch_id AND
+                   msaf.module_name='SOR_VALIDATION'
+                   AND msaf.macro_process='SCALAR_VALIDATION'
+                   AND msaf.tenant_id = ${tenant_id}
+                   and msaf.batch_id = '${batch_id}';
+
+                "} on-condition if "true"=="false"
+
+    }
+   catch{
+        transform as "Update to FAILED in sor transaction payload queue" on "intics_zio_db_conn" using
+             {"
+                  UPDATE sor_validation.sor_validation_payload_queue
+                  SET status='FAILED', consumed_on_ts = '${time_stamp_preprocess.consumed_on_ts}', consumer_process_id = '${process-id}'
+                  WHERE group_id='${group_id}' AND status='IN_PROGRESS' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                  update ingestion.pipeline_queue_status_audit as a
+                  set status = 'FAILED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                  where  a.group_id=${group_id}
+                  and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='SOR_VALIDATION' and status='IN_PROGRESS';
+
+             "}  on-condition if "true"=="true"
+   }
+   finally{
+         transform as "move data from temporary tables into main audit tables in sor transaction " on "intics_zio_db_conn" using
+            {"
+                INSERT INTO sor_transaction.adapter_result_audit
+                (origin_id, paper_no, group_id, process_id, sor_id, sor_item_id, sor_item_name, question, answer, vqa_score, weight, created_user_id, tenant_id, created_on, word_score, char_score, validator_score_allowed, validator_score_negative, confidence_score, validation_name, b_box, status, stage, message, root_pipeline_id,question_id,synonym_id, model_registry, category, batch_id)
+                SELECT  origin_id, paper_no, group_id, process_id, sor_id, sor_item_id, sor_item_name, question, answer, vqa_score, weight, created_user_id, tenant_id, created_on, word_score, char_score, validator_score_allowed, validator_score_negative, confidence_score, validation_name, b_box, status, stage, message, root_pipeline_id,question_id,synonym_id, model_registry, category, batch_id
+                FROM ${temp_schema_name}.adapter_result_${init_process_id.process_id}
+                WHERE category='${qn_category}' and batch_id = '${batch_id}';
+
+            "} on-condition if "true"=="true"
+
+         transform as "insert audit for scalar validation" on "intics_zio_db_conn" using
+               {"
+                   INSERT INTO sor_validation.sor_validation_pipeline_audit
+                   (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+                   VALUES('${group_id}', now(), '${created_user_id}', '${created_user_id}', ${tenant_id}, 'COMPLETED', 'SCALAR', 'scalar validation completed for the files with group_id ${group_id}', '${gen_id.root_pipeline_id}', '${batch_id}');
+               "} on-condition if "true"=="true"
+   }
+}

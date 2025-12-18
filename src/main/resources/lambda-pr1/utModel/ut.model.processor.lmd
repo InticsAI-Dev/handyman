@@ -1,0 +1,280 @@
+process "ut.model.processor"
+{
+try{
+
+        assign as "ut_model" source "intics_zio_db_conn"
+        using
+        {"
+              SELECT now() as consumed_on_ts;
+        "} on-condition if "true"=="true"
+
+        transform as "Update to in-progress in payload queue" on "intics_zio_db_conn"
+        using
+        {"
+
+                UPDATE urgency_triage.ut_model_payload_queue
+                SET status='IN_PROGRESS', consumed_on_ts = '${ut_model.consumed_on_ts}', consumer_process_id = '${init_process_id.process_id}'
+                WHERE group_id='${group_id}' AND status='STAGED' AND stage='URGENCY_TRIAGE_MODEL' and tenant_id = ${tenant_id} and batch_id ='${batch_id}';
+
+
+                update ingestion.pipeline_queue_status_audit as a
+                set status = 'IN_PROGRESS' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                where  a.group_id=${group_id}
+                and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='URGENCY_TRIAGE_MODEL' ;
+
+
+                UPDATE batching.sub_batching_process_payload_queue a
+                 SET status='IN_PROGRESS',  stage='URGENCY_TRIAGE_MODEL'
+                 WHERE a.group_id='${group_id}'  and a.batch_id ='${batch_id}'
+                 and a.tenant_id = ${tenant_id} and a.root_pipeline_id='${gen_id.root_pipeline_id}';
+
+
+                INSERT INTO urgency_triage.ut_model_pipeline_audit
+                (process_id, origin_id,group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+                select ${init_process_id.process_id},origin_id,group_id, now(),
+                'STARTED', 'URGENCY_TRIAGE_MODEL','handwritten urgency triage process STARTED for group_id ${group_id}','${gen_id.root_pipeline_id}', ${tenant_id},batch_id
+                FROM urgency_triage.ut_model_payload_queue
+                WHERE status='IN_PROGRESS' AND stage='URGENCY_TRIAGE_MODEL' AND group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+        "}on-condition if "true"=="true"
+
+        assign as "ut_target_directory" source "intics_zio_db_conn" using
+        {"
+                SELECT concat('${gen_directory.current_directory}','/ut_model/') as target_directory_path;
+
+        "} on-condition if "true"=="true"
+
+
+        transform as "Insert into payload_input_table" on "intics_zio_db_conn"
+        using
+        {"
+                insert into ${temp_schema_name}.ut_payload_input_table_${init_process_id.process_id}(origin_id, preprocessed_file_id, paper_no, input_file_path, created_user_id, last_updated_user_id, tenant_id, template_id,
+                process_id, model_registry_id, group_id, root_pipeline_id, batch_id)
+                SELECT a.origin_id as originId, soo.preprocessed_file_id as preprocessedFileId, a.paper_no as paperNo, b.file_path as inputFilePath,
+                b.created_user_id  as createdUserId, b.last_updated_user_id  as lastUpdatedUserId,
+                b.tenant_id as tenantId,'${document_id}' as templateId, '${init_process_id.process_id}' as processId,123 as modelRegistryId, chk.group_id as groupId,
+                '${gen_id.root_pipeline_id}' as root_pipeline_id, chk.batch_id
+                from urgency_triage.ut_model_payload_queue chk
+                join paper.paper_level_score_audit a on chk.origin_id=a.origin_id
+                JOIN info.source_of_truth soo on soo.origin_id =a.origin_id
+                JOIN info.asset b on b.file_id =soo.preprocessed_file_id  and soo.paper_no =a.paper_no
+                WHERE chk.status ='IN_PROGRESS' AND chk.group_id='${group_id}' and soo.tenant_id = ${tenant_id} and chk.batch_id = '${batch_id}';
+        "}on-condition if "true"=="true"
+
+
+        urgencyTriageModel as "urgency-triage-model"
+        output-dir "${ut_target_directory.target_directory_path}"
+        copro-url "${copro.urgency-triage-model.url}"
+        output-table "urgency_triage.ut_model_result"
+        resource-conn "intics_zio_db_conn"
+        using
+        {"
+                SELECT a.origin_id, a.preprocessed_file_id, a.paper_no, a.input_file_path, a.created_user_id, a.last_updated_user_id, a.tenant_id, a.template_id, a.process_id, a.model_registry_id, a.group_id, a.root_pipeline_id, a.batch_id,
+                b.base_prompt as prompt, now() as created_on
+                FROM ${temp_schema_name}.ut_payload_input_table_${init_process_id.process_id} a
+                left join sor_meta.radon_prompt_table b on a.tenant_id = b.tenant_id and b.process='RADON_UT'
+                 WHERE a.group_id='${group_id}' AND  a.root_pipeline_id='${gen_id.root_pipeline_id}' and a.batch_id = '${batch_id}';
+        "} on-condition if "${ut.radon.postprocessor.activator}"=="false"
+
+        urgencyTriageModel as "urgency-triage-model"
+        output-dir "${ut_target_directory.target_directory_path}"
+        copro-url "${copro.urgency-triage-model.url}"
+        output-table "urgency_triage.ut_model_api_result"
+        resource-conn "intics_zio_db_conn"
+        using
+        {"
+                SELECT a.origin_id, a.preprocessed_file_id, a.paper_no, a.input_file_path, a.created_user_id, a.last_updated_user_id, a.tenant_id, a.template_id, a.process_id, a.model_registry_id, a.group_id, a.root_pipeline_id, a.batch_id,
+                b.base_prompt as prompt,  now() as created_on
+                FROM ${temp_schema_name}.ut_payload_input_table_${init_process_id.process_id} a
+                left join sor_meta.radon_prompt_table b on a.tenant_id = b.tenant_id and b.process='RADON_UT'
+                WHERE a.group_id='${group_id}' AND  a.root_pipeline_id='${gen_id.root_pipeline_id}' and a.batch_id = '${batch_id}';
+
+        "} on-condition if "${ut.radon.postprocessor.activator}"=="true"
+
+
+        transform as "insert into audit table for urgency-triage-model" on "intics_zio_db_conn" using
+        {"
+                insert into audit.process_audit_output
+                (tenant_id,root_pipeline_id,origin_id,request,response,status,stage, message,created_on,endpoint,paper_no, batch_id)
+                select ai.tenant_id, ai.root_pipeline_id, ai.origin_id, ai.request, ai.response, ai.status,ai.stage, ai.message, now(), ai.endpoint, ai.paper_no, '${batch_id}'
+                from urgency_triage.ut_model_result ai
+                where root_pipeline_id = '${gen_id.root_pipeline_id}' and tenant_id = ${tenant_id} and group_id= ${group_id} and batch_id='${batch_id}'
+                group by ai.origin_id,ai.tenant_id, ai.root_pipeline_id, ai.request, ai.response, ai.status, ai.message, ai.endpoint, ai.stage, ai.paper_no
+        "}  on-condition if "true"=="true"
+
+         transform as "Postprocessor for UT" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO urgency_triage.ut_model_result
+                (created_on, created_user_id, last_updated_on, last_updated_user_id, process_id, group_id, tenant_id, confidence_score, origin_id, paper_no, template_id, model_id, status, stage, message, bboxes, root_pipeline_id, model_name,model_version,batch_id, paper_type)
+                select created_on, created_user_id, last_updated_on, last_updated_user_id, process_id, group_id, tenant_id, confidence_score, origin_id, paper_no, template_id, model_id, status, stage, message, bboxes, root_pipeline_id, model_name,model_version,batch_id,
+                CASE
+                        WHEN paper_type LIKE '%NON_URGENT%' OR paper_type IS NULL OR paper_type = ''
+                        THEN 'NON_URGENT'
+                        ELSE 'URGENT'
+                    END AS paper_type
+                from urgency_triage.ut_model_api_result umr
+                where group_id='${group_id}' AND  root_pipeline_id='${gen_id.root_pipeline_id}' and batch_id = '${batch_id}' ;
+
+        "} on-condition if "${ut.radon.postprocessor.activator}"=="true"
+
+
+        transform as "Update to completed in payload queue" on "intics_zio_db_conn"
+        using
+        {"
+
+                UPDATE urgency_triage.ut_model_result ut
+                SET document_type = pcfr.document_type,
+                confidence_score = CASE
+                WHEN pcfr.document_type = 'Handwritten' AND ut.confidence_score > 40
+                THEN ut.confidence_score - 20
+                ELSE ut.confidence_score
+                END
+                FROM paper_classification.paper_classification_result pcfr
+                JOIN urgency_triage.ut_model_payload_queue a ON a.origin_id = pcfr.origin_id and a.batch_id = pcfr.batch_id
+                WHERE pcfr.origin_id = ut.origin_id
+                AND pcfr.group_id = '${group_id}'
+                AND pcfr.tenant_id = ${tenant_id}
+                AND pcfr.batch_id = '${batch_id}';
+
+                UPDATE urgency_triage.ut_model_payload_queue a
+                SET status=b.status,stage=b.stage,  consumer_process_id = '${init_process_id.process_id}'
+                FROM urgency_triage.ut_model_result b
+                WHERE  a.origin_id=b.origin_id and a.status='IN_PROGRESS' and b.status='FAILED' AND a.group_id='${group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                UPDATE urgency_triage.ut_model_payload_queue a
+                SET status=b.status, consumer_process_id = '${init_process_id.process_id}'
+                FROM urgency_triage.ut_model_result b
+                WHERE  a.origin_id=b.origin_id and a.status='IN_PROGRESS' and b.status='COMPLETED' AND a.group_id='${group_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                update urgency_triage.ut_model_payload_queue
+                set status='FAILED'
+                where status='IN_PROGRESS' and group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+
+                UPDATE batching.sub_batching_process_payload_queue a
+                 SET status='COMPLETED',  stage='URGENCY_TRIAGE_MODEL'
+                 WHERE a.group_id='${group_id}'  and a.batch_id ='${batch_id}'
+                 and a.tenant_id = ${tenant_id} and a.root_pipeline_id='${gen_id.root_pipeline_id}';
+
+                INSERT INTO urgency_triage.ut_model_pipeline_audit
+                (process_id, origin_id,group_id, created_on, status, stage, message, root_pipeline_id, tenant_id, batch_id)
+                select ${init_process_id.process_id},origin_id,group_id, now(),
+                status, 'URGENCY_TRIAGE_MODEL','urgency triage process COMPLETED for group_id ${group_id}','${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}'
+                FROM urgency_triage.ut_model_payload_queue
+                WHERE stage='URGENCY_TRIAGE_MODEL' AND group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+        "}on-condition if "true"=="true"
+
+}
+catch{
+        transform as "Update to failed in payload queue" on "intics_zio_db_conn"
+        using
+        {"
+
+                UPDATE urgency_triage.ut_model_payload_queue
+                SET status='FAILED',  consumer_process_id = '${init_process_id.process_id}'
+                WHERE group_id='${group_id}' AND status='IN_PROGRESS' AND group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                INSERT INTO urgency_triage.ut_model_pipeline_audit
+                (process_id, origin_id,group_id, created_on, status, stage, message, root_pipeline_id, tenant_id, batch_id)
+                select ${init_process_id.process_id},origin_id,group_id, now(),
+                'FAILED', 'URGENCY_TRIAGE_MODEL','urgency triage FAILED for group_id ${group_id}','${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM urgency_triage.ut_model_payload_queue
+                WHERE status='FAILED' AND stage='URGENCY_TRIAGE_MODEL' AND group_id='${group_id}' AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+        "}on-condition if "true"=="true"
+}
+finally{
+
+          transform as "Update to failed in payload queue" on "intics_zio_db_conn"
+                using
+                {"
+                        UPDATE urgency_triage.ut_model_payload_queue
+                        SET status='FAILED',  consumer_process_id = '${init_process_id.process_id}'
+                        WHERE group_id='${group_id}' AND status='IN_PROGRESS' AND group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+                "}on-condition if "true"=="true"
+
+	        transform as "insert into pipeline summary audit ut classification" on "intics_zio_db_conn" using
+	        {"
+                INSERT INTO ${temp_schema_name}.summary_audit_papers_${process-id}
+                (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken, root_pipeline_id, tenant_id, batch_id)
+                SELECT ${process-id} , 'URGENCY_TRIAGE_MODEL' ,'UT_MODEL',coalesce (sum(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END),0) ,coalesce (sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END),0),min(created_on),max(last_updated_on), EXTRACT(epoch FROM (max(last_updated_on)-min(created_on))),'${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM urgency_triage.ut_model_result
+                WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}'
+                group by batch_id;
+
+                INSERT INTO ${temp_schema_name}.summary_audit_files_${process-id}
+                (process_id ,module_name,macro_process,completed_count,failed_count,min_created_on,max_created_on,time_taken, root_pipeline_id, tenant_id, batch_id)
+                SELECT ${process-id} , 'URGENCY_TRIAGE_MODEL' ,'UT_MODEL',coalesce (sum(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END),0) ,coalesce (sum(CASE WHEN status='FAILED' THEN 1 ELSE 0 END),0),min(created_on),max(created_on), EXTRACT(epoch FROM (max(created_on)-min(created_on))),'${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+                FROM urgency_triage.ut_model_payload_queue
+                WHERE group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}'
+                group by batch_id;
+
+                INSERT INTO audit.pipeline_summary_audit
+                (process_id, created_on, module_name, macro_process, files_processed_count,papers_processed_count,files_failed_count,papers_failed_count,start_time,end_time, time_taken, group_id, root_pipeline_id, created_user_id, template_id, tenant_id,average_time, batch_id )
+                SELECT msaf.process_id ,now(),msaf.module_name ,msaf.macro_process ,msaf.completed_count,msap.completed_count,msaf.failed_count,msap.failed_count,msap.min_created_on,msap.max_created_on, EXTRACT(epoch FROM (msap.max_created_on-msap.min_created_on)),
+                '${group_id}','${gen_id.root_pipeline_id}','${created_user_id}','${document_id}',${tenant_id},(CASE WHEN (msaf.completed_count+msaf.failed_count)=0 THEN msaf.time_taken WHEN (msaf.time_taken/(msaf.completed_count+msaf.failed_count))=0 THEN msaf.time_taken ELSE (msaf.time_taken/(msaf.completed_count+msaf.failed_count)) END), msaf.batch_id
+                FROM ${temp_schema_name}.summary_audit_files_${process-id} msaf,
+                ${temp_schema_name}.summary_audit_papers_${process-id} msap
+                WHERE msaf.module_name=msap.module_name AND msaf.macro_process=msap.macro_process AND
+                msaf.module_name='URGENCY_TRIAGE_MODEL' and msaf.batch_id=msap.batch_id AND
+                msaf.macro_process='UT_MODEL' and msaf.tenant_id = ${tenant_id} and msaf.batch_id = '${batch_id}';
+
+        "} on-condition if "true"=="true"
+
+
+        transform as "moving to payload queue archive" on "intics_zio_db_conn"
+        using
+        {"
+                INSERT into urgency_triage.ut_model_payload_queue_archive (producer_process_id, consumer_process_id, origin_id,group_id, created_on, last_updated_on, status, stage, consumed_on_ts,root_pipeline_id, tenant_id, batch_id)
+                SELECT producer_process_id, consumer_process_id, origin_id, group_id, created_on, last_updated_on,status, stage, consumed_on_ts,root_pipeline_id, ${tenant_id}, batch_id
+                FROM urgency_triage.ut_model_payload_queue
+                WHERE status='COMPLETED' and stage='URGENCY_TRIAGE_MODEL'
+                AND group_id='${group_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                DELETE FROM urgency_triage.ut_model_payload_queue
+                WHERE status='COMPLETED' and stage='URGENCY_TRIAGE_MODEL'
+                AND group_id='${group_id}' AND tenant_id = ${tenant_id}
+                and batch_id = '${batch_id}';
+        "}on-condition if "true"=="true"
+
+
+        transform as "moving to payload ERROR queue" on "intics_zio_db_conn"
+        using
+        {"
+
+                update ingestion.pipeline_queue_status_audit as a
+                set status = 'COMPLETED' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                where  a.group_id=${group_id}
+                and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='URGENCY_TRIAGE_MODEL' ;
+
+
+                INSERT into urgency_triage.ut_model_payload_error_queue(producer_process_id, consumer_process_id, origin_id,group_id, created_on,last_updated_on,status, stage, consumed_on_ts, root_pipeline_id, tenant_id, batch_id)
+                SELECT producer_process_id, consumer_process_id, origin_id, group_id,created_on, last_updated_on,status, stage, consumed_on_ts, root_pipeline_id, ${tenant_id}, batch_id
+                FROM urgency_triage.ut_model_payload_queue
+                WHERE status='FAILED' and stage='URGENCY_TRIAGE_MODEL'
+                AND group_id='${group_id}' AND tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                DELETE FROM urgency_triage.ut_model_payload_queue
+                WHERE status='FAILED' and stage='URGENCY_TRIAGE_MODEL'
+                AND group_id='${group_id}' AND tenant_id = ${tenant_id};
+
+        "}on-condition if "true"=="true"
+
+
+
+        transform as "insert the values into macro.urgency_triage_input_table_audit" on "intics_zio_db_conn"
+        using
+        {"
+                INSERT INTO macro.ut_payload_input_table_audit
+                (origin_id, preprocessed_file_id, paper_no, input_file_path, created_user_id, last_updated_user_id, tenant_id, template_id, process_id, model_registry_id, group_id, root_pipeline_id, batch_id)
+                SELECT origin_id, preprocessed_file_id, paper_no, input_file_path, created_user_id, last_updated_user_id, tenant_id, template_id, process_id, model_registry_id, group_id, root_pipeline_id, batch_id
+                FROM ${temp_schema_name}.ut_payload_input_table_${init_process_id.process_id};
+
+                DELETE FROM ${temp_schema_name}.ut_payload_input_table_${init_process_id.process_id};
+
+        "}on-condition if "true"=="true"
+
+
+
+}
+}

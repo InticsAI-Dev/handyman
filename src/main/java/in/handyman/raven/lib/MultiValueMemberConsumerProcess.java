@@ -5,7 +5,9 @@ import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.MultiValueMemberMapper;
-import in.handyman.raven.lib.model.multi.member.indicator.*;
+import in.handyman.raven.lib.services.indicator.MultiValueMemberMapperOutputTable;
+import in.handyman.raven.lib.services.indicator.MultiValueMemberMapperTransformInputTable;
+import in.handyman.raven.lib.services.indicator.extractedSorItemList;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -468,6 +470,7 @@ public class MultiValueMemberConsumerProcess {
                 .tenantId(mmIndicatorRow.getTenantId())
                 .modelRegistry(mmIndicatorRow.getModelRegistry())
                 .batchId(mmIndicatorRow.getBatchId())
+                .sorContainerInstance(mmIndicatorRow.getSorContainerInstance())
                 .build();
     }
 

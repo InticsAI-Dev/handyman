@@ -1,0 +1,64 @@
+process "unused.entity.main"
+
+{
+  try{
+         callprocess as "calling unusedEntity master data ddl"
+                     with-target "unused.entity.ddl"
+                     from-file "${basepath}/unusedEntity/unused.entity.ddl.lmd"
+                     using "intics_zio_db_conn"
+                     for-every {"
+                                     SELECT 1;
+                    "} on-condition if "true"=="true"
+
+
+         assign as "gen_id" source "intics_zio_db_conn" using
+                    {"
+                         SELECT cast((nextval('group_id_migration_seq')) as int) as group_id_migration_seq;
+                         SELECT concat('MIGRATION-',cast((nextval('migration_id_seq')) as int) ) as migration_id;
+                    "} on-condition if "true"=="true"
+
+
+
+         transform as "Insert into unused_entity master data queue" on "intics_zio_db_conn" using
+                    {"
+                        INSERT INTO unused_entity_master_data_process.unused_entity_process_payload_queue
+                        (producer_process_id, migration_id, group_id, created_on, root_pipeline_id, status, stage, tenant_id)
+                        VALUES(${process-id},  '${gen_id.migration_id}', ${gen_id.group_id_migration_seq}, now(), ${root-ref-id}, 'STAGED', 'UNUSED_ENTITY_MIGRATION', ${tenant_id});
+                    "} on-condition if "${unused_entity.activator}"=="true"
+
+                     callprocess as "calling unusedEntity master data processor"
+                     with-target "unused.entity.processor"
+                     from-file "${basepath}/unusedEntity/unused.entity.processor.lmd"
+                     using "intics_zio_db_conn"
+                     for-every {"
+                            SELECT producer_process_id,  migration_id, group_id, created_on, consumed_on_ts, root_pipeline_id, status, stage, tenant_id
+                                                   FROM unused_entity_master_data_process.unused_entity_process_payload_queue
+                                                   where status= 'STAGED' and group_id= ${gen_id.group_id_migration_seq};
+                     "} on-condition if "true"=="true"
+
+             }
+
+                catch{
+
+
+                }
+                finally{
+                    transform as "Drop temporary tables for consolidated unused_entity question and truth entity placeholder " on "intics_zio_db_conn" using
+                                {"
+                                    INSERT INTO sor_meta_master_data.unused_entity_meta_data_placeholder_audit
+                                    (unused_entity_id, asset_name, document_type, container_name, sor_item_name, truth_entity_name, truth_entity_placeholder_value,root_pipeline_id, sip_type, model_registry_id)
+                                    SELECT unused_entity_id, asset_name, document_type, container_name, sor_item_name, truth_entity_name, truth_entity_placeholder_value,${root-ref-id},sip_type,model_registry_id
+                                    FROM ${temp_schema_name}.unused_entity_meta_data_placeholder_${process-id};
+
+                                    INSERT INTO sor_meta_master_data.unused_entity_meta_data_qn_audit
+                                    (unused_entity_id, asset_name, document_type, container_name, sor_item_name, truth_entity_name, synonym, question,root_pipeline_id, sip_type,model_registry_id)
+                                    SELECT unused_entity_id, asset_name, document_type, container_name, sor_item_name, truth_entity_name, synonym, question, ${root-ref-id},sip_type,model_registry_id
+                                    FROM ${temp_schema_name}.unused_entity_meta_data_qn_${process-id};
+
+
+                                    DROP TABLE IF EXISTS ${temp_schema_name}.unused_entity_meta_data_qn_${process-id};
+                                    DROP TABLE IF EXISTS ${temp_schema_name}.unused_entity_meta_data_placeholder_${process-id};
+
+                                "} on-condition if "${drop.tables.unused_entity.onboard}"=="true"
+                }
+            }

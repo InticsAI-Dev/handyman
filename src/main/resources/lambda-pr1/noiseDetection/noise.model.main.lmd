@@ -1,0 +1,67 @@
+process "noise.model.main"
+{
+try {
+        assign as "init_process_id" source "intics_zio_db_conn" using
+        {"
+             SELECT ${process-id} as process_id;
+        "} on-condition if "true"=="true"
+
+        assign as "pipeline_train_mode" source "intics_zio_db_conn" using
+        {"
+              select  (case when '${noise.model.start.action}'='true' AND '${pipeline.train.mode}'='true' then 'true' else 'false' end) as noise_model;
+        "}on-condition if "true"=="true"
+
+
+        coproStart as "Calling noise Model copro start action" for "NOISE_MODEL"
+        copro-server-url "${copro.noise.model.admin.start.url}"
+        export-command "${copro.noisemodel.export}"
+        process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+        using
+        {"
+                ${noiseModelStartCommand}
+
+        "}on-condition if "${pipeline_train_mode.noise_model}" == "true"
+
+
+        callprocess as "calling noise model processor"
+        with-target "noise.model.processor"
+        from-file "${basepath}/noiseDetection/noise.model.processor.lmd"
+        using "intics_zio_db_conn"
+        for-every
+        {"
+                SELECT DISTINCT group_id
+                FROM noise_model.noise_model_payload_queue
+                WHERE status='STAGED' AND stage='NOISE_MODEL' and group_id='${gen_group_id.group_id}' and batch_id ='${batch_id}';
+        "} on-condition if "true"=="true"
+
+        coproStop as "Calling noise model copro stop action" for "NOISE_MODEL"
+        copro-server-url "${copro.noise.model.admin.stop.url}"
+        process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+        using
+        {"
+               gunicorn
+
+        "}on-condition if "${noise.model.stop.action}"=="true"
+
+
+
+}
+catch{
+        transform as "failed in noise detection main caller " on "intics_zio_db_conn" using
+        {"
+
+                INSERT INTO noise_model.noise_detection_pipeline_audit
+                (process_id,group_id, created_on, status, stage, message,root_pipeline_id, batch_id)
+                values( ${init_process_id.process_id},'${gen_group_id.group_id}', now(),
+                'FAILED', 'NOISE_MODEL',' noise detection main caller FAILED for process_id ${init_process_id.process_id}','${gen_id.root_pipeline_id}', '${batch_id}');
+
+        "} on-condition if "true"=="true"
+}
+finally{
+
+
+
+
+}
+
+}

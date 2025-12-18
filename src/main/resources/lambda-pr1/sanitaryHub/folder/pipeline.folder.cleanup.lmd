@@ -1,0 +1,83 @@
+process "pipeline.folder.cleanup"
+{
+try{
+
+        callprocess as "pipeline folder cleanup table creation"
+        with-target "pipeline.folder.cleanup.ddl"
+        from-file "${basepath}/sanitaryHub/folder/pipeline.folder.cleanup.ddl.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+                SELECT 1;
+        "} on-condition if "true"=="true"
+
+
+       callprocess as "calling pipeline folder backup"
+       with-target "pipeline.folder.backup"
+       from-file "${basepath}/sanitaryHub/folder/pipeline.folder.backup.lmd"
+       using "intics_zio_db_conn"
+       for-every {"
+                SELECT ar.target_directory_path as current_directory_path, ar.group_id as group_id,
+                ar.tenant_id as tenant_id, ar.root_pipeline_id as process_id,
+                ar.root_pipeline_id as root_pipeline_id, ar.process_name
+                from ingestion.pipeline_directory_info ar
+                where ar.tenant_id = ${tenant_id} and status = 'STAGED' and ar.process_name = ANY(string_to_array('${folder.backup.cleanup.processes}', ',')) and ar.created_on < NOW() - INTERVAL '${pipeline.folder.cleanup.interval.value}' ;
+       "} on-condition if "{folder.backup.activator}"=="true"
+
+        folderDeleteByProcess as "folder cleanup pipeline based on the current pipeline execution"
+        resource-conn "intics_zio_db_conn"
+        cleanup-process-name "${folder.cleanup.process.name}"
+        using {"
+            SELECT ar.target_directory_path as current_directory_path, ar.group_id as group_id,
+            ar.tenant_id as tenant_id, ar.created_on,
+            ar.root_pipeline_id as root_pipeline_id, ar.process_name, ar.transaction_id
+            from ingestion.pipeline_directory_info ar
+            where ar.tenant_id = ${tenant_id} and status = 'STAGED' and ar.transaction_id IN ('${transaction_id}');
+        "} on-condition if "${pipeline.execution.cleanup.activator}"=="true"
+
+        folderDeleteByProcess as "Ingestion file cleanup pipeline based on the current pipeline execution"
+        resource-conn "intics_zio_db_conn"
+        cleanup-process-name "${ingestion.file.cleanup.process.name}"
+        using {"
+            SELECT idfd.file_path as current_directory_path, soo.group_id as group_id,
+            idfd.tenant_id as tenant_id, idfd.download_completed_on,
+            pi2.root_pipeline_id as root_pipeline_id, '${ingestion.file.cleanup.process.name}' as process_name
+            from inbound_config.ingestion_downloaded_file_details idfd
+            join info.pipeline_info pi2 on pi2.transaction_id = idfd.transaction_id
+            join info.asset a1 on a1.root_pipeline_id = pi2.root_pipeline_id and a1.file_name = idfd.file_name
+            join info.source_of_origin soo on soo.asset_id = a1.asset_id
+            where idfd.tenant_id = ${tenant_id} and idfd.status = 'COMPLETED' and pi2.root_pipeline_id IN (${init_process_id.process_id});
+        "} on-condition if "${pipeline.execution.cleanup.activator}"=="true"
+
+        folderDeleteByProcess as "folder cleanup pipeline based on the time interval"
+        resource-conn "intics_zio_db_conn"
+        cleanup-process-name "${folder.cleanup.process.name}"
+        using {"
+            SELECT COALESCE(ar.target_directory_path, ar.current_directory) as current_directory_path, ar.group_id as group_id,
+            ar.tenant_id as tenant_id, ar.created_on,
+            ar.root_pipeline_id as root_pipeline_id, ar.process_name
+            from ingestion.pipeline_directory_info ar
+            where ar.tenant_id = ${tenant_id} and status = 'STAGED' and ar.created_on < NOW() - INTERVAL '${pipeline.folder.cleanup.interval.value}';
+        "} on-condition if "${time.interval.cleanup.activator}"=="true"
+
+        folderDeleteByProcess as "Ingestion file cleanup pipeline based on the time interval"
+        resource-conn "intics_zio_db_conn"
+        cleanup-process-name "${ingestion.file.cleanup.process.name}"
+        using {"
+            SELECT idfd.file_path as current_directory_path, soo.group_id as group_id,
+            idfd.tenant_id as tenant_id, idfd.download_completed_on,
+            pi2.root_pipeline_id as root_pipeline_id, '${ingestion.file.cleanup.process.name}' as process_name
+            from inbound_config.ingestion_downloaded_file_details idfd
+            join info.pipeline_info pi2 on pi2.transaction_id = idfd.transaction_id
+            join info.asset a1 on a1.root_pipeline_id = pi2.root_pipeline_id and a1.file_name = idfd.file_name
+            join info.source_of_origin soo on soo.asset_id = a1.asset_id
+            where idfd.tenant_id = ${tenant_id} and idfd.status = 'COMPLETED' and idfd.pipeline_initiated_on < NOW() - INTERVAL '${pipeline.folder.cleanup.interval.value}';
+        "} on-condition if "${time.interval.cleanup.activator}"=="true"
+
+}
+catch{
+
+}
+finally{
+
+}
+}

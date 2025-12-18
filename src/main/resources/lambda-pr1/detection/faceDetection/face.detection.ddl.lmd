@@ -1,0 +1,121 @@
+process "face.detection.ddl"
+{
+try{
+        transform as "create face_detection ddl" on "intics_zio_db_conn" using
+        {"
+
+                CREATE TABLE if not exists face_detection.face_detection_payload_queue_archive
+                (
+                producer_process_id INT8 NOT NULL,
+                consumer_process_id INT8 NULL,
+                group_id INT4 NOT NULL,
+                origin_id VARCHAR NOT NULL,
+                created_on TIMESTAMP NOT NULL,
+                status VARCHAR NOT NULL,
+                stage  VARCHAR NOT NULL,
+                consumed_on_ts TIMESTAMP NULL,
+                root_pipeline_id INT8 NULL,
+                tenant_id INT8 NULL,
+                batch_id VARCHAR NULL,
+                CONSTRAINT face_detection_payload_queue_archive_pk PRIMARY KEY (group_id,origin_id,tenant_id)
+                );
+
+                CREATE TABLE if not exists face_detection.face_detection_payload_error_queue
+                (
+                producer_process_id INT8 NOT NULL,
+                consumer_process_id INT8 NULL,
+                origin_id VARCHAR NOT NULL,
+                group_id INT4 NULL,
+                created_on TIMESTAMP NOT NULL,
+                status VARCHAR NOT NULL,
+                stage  VARCHAR NOT NULL,
+                message VARCHAR NULL,
+                consumed_on_ts TIMESTAMP NULL,
+                root_pipeline_id INT8 NULL,
+                tenant_id INT8 NULL,
+                batch_id VARCHAR NULL,
+                CONSTRAINT face_detection_payload_error_queue_pk PRIMARY KEY (producer_process_id, origin_id,tenant_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.face_detection_input_${init_process_id.process_id} (
+                id bigserial NOT NULL,
+                origin_id varchar NULL,
+                input_file_path varchar NULL,
+                paper_no INT4 NULL,
+                root_pipeline_id INT8 NULL,
+                tenant_id INT8 NULL,
+                group_id INT4 NULL,
+                process_id INT4 NULL,
+                process text NULL,
+                batch_id VARCHAR NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS face_detection.face_detection_input_audit (
+                id bigserial NOT NULL,
+                origin_id varchar NULL,
+                input_file_path varchar NULL,
+                paper_no INT4 NULL,
+                root_pipeline_id INT8 NULL,
+                tenant_id INT8 NULL,
+                group_id INT4 NULL,
+                process_id INT4 NULL,
+                process text NULL,
+                batch_id VARCHAR NULL
+                );
+
+
+                create table if not exists face_detection.face_detection_result(
+                id bigserial NOT NULL,
+                created_on TIMESTAMP NOT NULL,
+                created_user_id INT8 NOT NULL,
+                last_updated_on TIMESTAMP NULL,
+                last_updated_user_id INT8 NULL,
+                origin_id varchar NOT NULL,
+                paper_no INT4 NOT NULL,
+                predicted_value varchar NULL,
+                precision INT8 NULL,
+                left_pos INT8 NULL,
+                upper_pos INT8 NULL,
+                right_pos INT8 NULL,
+                lower_pos INT8 NULL,
+                encode text NULL,
+                group_id INT4 NULL,
+                file_path VARCHAR NULL,
+                tenant_id INT8 NULL,
+                process_id INT8 NULL,
+                root_pipeline_id INT8 NULL,
+                process VARCHAR NULL,
+                status varchar NULL,
+                stage varchar NULL,
+                message text NULL,
+                model_name VARCHAR NULL,
+                model_version VARCHAR NULL,
+                batch_id VARCHAR NULL,
+                request text NULL,
+                response text NULL,
+                endpoint varchar NULL,
+                CONSTRAINT face_detection_result_pk PRIMARY KEY (id)
+                );
+
+                CREATE TABLE IF NOT EXISTS face_detection.face_detection_pipeline_audit (
+                id bigserial NOT NULL,
+                process_id bigint NULL,
+                origin_id VARCHAR NULL,
+                group_id VARCHAR NULL,
+                created_on VARCHAR NULL,
+                status VARCHAR NULL,
+                stage VARCHAR NULL,
+                message VARCHAR NULL,
+                root_pipeline_id INT8 NULL,
+                tenant_id INT8 NULL,
+                batch_id VARCHAR NULL
+                );
+        "} on-condition if "true"=="true"
+}
+
+catch{
+}
+
+finally{
+}
+}

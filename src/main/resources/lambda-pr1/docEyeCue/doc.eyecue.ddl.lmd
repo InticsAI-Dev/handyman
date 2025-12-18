@@ -1,0 +1,199 @@
+process "doc.eyecue.ddl"
+{
+  try {
+    transform as "create audit schema & tables" on "intics_zio_db_conn" using {"
+      CREATE SCHEMA IF NOT EXISTS doc_eyecue;
+
+      CREATE TABLE IF NOT EXISTS doc_eyecue.doc_eyecue_pipeline_audit (
+        id BIGSERIAL PRIMARY KEY,
+        origin_id VARCHAR,
+        group_id VARCHAR,
+        tenant_id int8 NULL,
+        template_id VARCHAR,
+        process_id int8 NULL,
+        created_on TIMESTAMP,
+        status VARCHAR,
+        stage VARCHAR,
+        message TEXT,
+        root_pipeline_id BIGINT,
+        batch_id VARCHAR
+      );
+    "} on-condition if "true"=="true"
+
+    transform as "create output & payload tables" on "intics_zio_db_conn" using {"
+
+      CREATE TABLE IF NOT EXISTS ${temp_schema_name}.doc_eyecue_pipeline_result_${init_process_id.process_id} (
+        origin_id VARCHAR NOT NULL,
+        group_id INT4 NULL,
+        tenant_id BIGINT NULL,
+        template_id VARCHAR NULL,
+        processed_file_path VARCHAR NULL,
+        status VARCHAR NULL,
+        stage VARCHAR NULL,
+        message TEXT NULL,
+        created_on TIMESTAMP NULL,
+        process_id int8 NULL,
+        root_pipeline_id BIGINT NULL,
+        batch_id VARCHAR NULL,
+        last_updated_on TIMESTAMP NULL,
+        request TEXT NULL,
+        response TEXT NULL,
+        endpoint VARCHAR NULL,
+        encoded_file_path VARCHAR NULL,
+        doc_eyecue_duration INT8 NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS doc_eyecue.doc_eyecue_pipeline_result_audit (
+              origin_id VARCHAR NOT NULL,
+              group_id INT4 NULL,
+              tenant_id BIGINT NULL,
+              template_id VARCHAR NULL,
+              processed_file_path VARCHAR NULL,
+              status VARCHAR NULL,
+              stage VARCHAR NULL,
+              message TEXT NULL,
+              created_on TIMESTAMP NULL,
+              process_id int8 NULL,
+              root_pipeline_id BIGINT NULL,
+              batch_id VARCHAR NULL,
+              last_updated_on TIMESTAMP NULL,
+              endpoint VARCHAR NULL,
+              encoded_file_path VARCHAR NULL,
+              doc_eyecue_duration INT8 NULL
+            );
+
+      CREATE TABLE IF NOT EXISTS doc_eyecue.doc_eyecue_payload_queue_archive (
+        origin_id VARCHAR NOT NULL,
+        group_id INT4 NOT NULL,
+        tenant_id BIGINT NULL,
+        template_id VARCHAR NULL,
+        producer_process_id BIGINT NOT NULL,
+        batch_id VARCHAR NOT NULL,
+        created_on TIMESTAMP NULL,
+        status VARCHAR NULL,
+        stage VARCHAR NULL,
+        consumed_on_ts TIMESTAMP NULL,
+        root_pipeline_id BIGINT NULL,
+        CONSTRAINT doc_eyecue_payload_queue_archive_pk PRIMARY KEY (producer_process_id, origin_id, tenant_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS doc_eyecue.doc_eyecue_payload_error_queue (
+        origin_id VARCHAR NOT NULL,
+        group_id INT4 NOT NULL,
+        tenant_id BIGINT NULL,
+        template_id VARCHAR  NULL,
+        producer_process_id BIGINT NOT NULL,
+        batch_id VARCHAR NOT NULL,
+        created_on TIMESTAMP NULL,
+        status VARCHAR NULL,
+        stage VARCHAR NULL,
+        message VARCHAR NULL,
+        consumed_on_ts TIMESTAMP NULL,
+        root_pipeline_id BIGINT NULL,
+        CONSTRAINT doc_eyecue_payload_error_queue_pk PRIMARY KEY (producer_process_id, origin_id, tenant_id)
+      );
+    "} on-condition if "true"=="true"
+
+    transform as "create temp input & summary tables" on "intics_zio_db_conn" using {"
+      CREATE TABLE IF NOT EXISTS ${temp_schema_name}.doc_eyecue_input_table_${init_process_id.process_id} (
+          origin_id VARCHAR NOT NULL,
+          batch_id VARCHAR NOT NULL,
+          process_id int8 NOT NULL,
+          group_id BIGINT NOT NULL,
+          tenant_id BIGINT NOT NULL,
+          template_id VARCHAR NULL,
+          root_pipeline_id BIGINT NOT NULL,
+          input_file_path VARCHAR NOT NULL,
+          created_on TIMESTAMP NULL,
+          document_id VARCHAR NULL,
+          file_name VARCHAR NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS doc_eyecue.doc_eyecue_input_table_audit (
+          id bigserial PRIMARY KEY not NULL,
+          origin_id VARCHAR NOT NULL,
+          batch_id VARCHAR NOT NULL,
+          process_id int8 NOT NULL,
+          group_id BIGINT NOT NULL,
+          tenant_id BIGINT NOT NULL,
+          template_id VARCHAR NULL,
+          root_pipeline_id BIGINT NOT NULL,
+          input_file_path VARCHAR NOT NULL,
+          created_on TIMESTAMP NULL,
+          document_id VARCHAR NULL,
+          file_name VARCHAR NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS ${temp_schema_name}.summary_audit_papers_${init_process_id.process_id} (
+        module_name TEXT,
+        macro_process TEXT,
+        completed_count BIGINT,
+        failed_count BIGINT,
+        min_created_on TIMESTAMP,
+        max_created_on TIMESTAMP,
+        time_taken BIGINT,
+        process_id BIGINT NOT NULL,
+        batch_id VARCHAR NOT NULL,
+        root_pipeline_id BIGINT,
+        tenant_id BIGINT
+      );
+
+      CREATE TABLE IF NOT EXISTS ${temp_schema_name}.summary_audit_files_${init_process_id.process_id} (
+        module_name TEXT,
+        macro_process TEXT,
+        completed_count BIGINT,
+        failed_count BIGINT,
+        min_created_on TIMESTAMP,
+        max_created_on TIMESTAMP,
+        time_taken BIGINT,
+        process_id BIGINT NOT NULL,
+        batch_id VARCHAR NOT NULL,
+        root_pipeline_id BIGINT,
+        tenant_id BIGINT
+      );
+    "} on-condition if "true"=="true"
+
+    transform as "create table for storecontent upload audit" on "intics_zio_db_conn" using {"
+        CREATE TABLE IF NOT EXISTS doc_eyecue.storecontent_upload_audit (
+            origin_id VARCHAR NOT NULL,
+            document_id VARCHAR NULL,
+            group_id INT4 NULL,
+            tenant_id INT8 NULL,
+            processed_file_path VARCHAR NULL,
+            storecontent_status VARCHAR NULL,
+            storecontent_message TEXT NULL,
+            storecontent_content_id VARCHAR NULL,
+            created_on TIMESTAMP NULL,
+            process_id INT8 NULL,
+            root_pipeline_id INT8 NULL,
+            batch_id VARCHAR NULL,
+            last_updated_on TIMESTAMP NULL,
+            endpoint VARCHAR NULL,
+            upload_type VARCHAR NULL,
+            file_name VARCHAR NULL,
+            file_size INT8 NULL
+        );
+    "} on-condition if "true"=="true"
+
+
+  } catch {
+    transform as "ddl failure audit" on "intics_zio_db_conn" using {"
+      INSERT INTO doc_eyecue.doc_eyecue_pipeline_audit
+        (process_id, origin_id, group_id, created_on, status, stage, message, root_pipeline_id, tenant_id, template_id, batch_id)
+      VALUES(
+        ${init_process_id.process_id},
+        '${origin_id}',
+        '${gen_group_id.group_id}',
+        now(),
+        'FAILED',
+        'DOC_EYE_CUE_DDL',
+        'DDL setup failed',
+        ${gen_id.root_pipeline_id},
+        ${tenant_id},
+        '${template_id}',
+        '${batch_id}'
+      );
+    "} on-condition if "true"=="true"
+  } finally {
+  }
+}

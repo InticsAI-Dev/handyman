@@ -1,0 +1,49 @@
+process "outbound.delivery.notify.trigger"
+{
+try{
+
+        transform as "create ddl for Customized trigger payload queue insert" on "intics_zio_db_conn" using
+        {"
+                CREATE TABLE IF NOT EXISTS api_triggers.api_triggers_payload_queue (
+                            producer_process_id int8 NOT NULL,
+                            consumer_process_id int8 NULL,
+                            origin_id varchar NOT NULL,
+                            group_id int4 NULL,
+                            created_on timestamp NULL,
+                            consumed_on_ts varchar NULL,
+                            status varchar NULL,
+                            stage varchar NULL,
+                            tenant_id int8 NULL,
+                            root_pipeline_id int8 NULL,
+                            CONSTRAINT product_outbound_payload_queue_pk PRIMARY KEY (tenant_id, origin_id)
+                );
+
+        "} on-condition if "false"=="true"
+
+        outbound-delivery-notify as "outbound zip to delivery"
+        document-id "${origin_file.file_name}"
+        intics-zip-uri "${notify_zip.file_uri}"
+        checksum "${zip_file_checksum}"
+        resource-conn "intics_zio_db_conn"
+        using  { "
+            select file_name as file_name, '' as file_uri,'' as zip_file_check_sum,
+            '${outbound.doc.delivery.notify.url}' as endpoint,'${outbound.appId}' as app_id,'${outbound.appKeyId}' as app_secret_key,product_response as outbound_json,'${outbound.context.condition}' as outbound_condition
+            from product_outbound.product_response_details
+            where tenant_id = ${tenant_id} and origin_id='${origin_id}';
+
+        " } on-condition if "true"=="true"
+
+
+
+
+
+
+
+
+}catch{
+
+}
+finally{
+
+}
+}

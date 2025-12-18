@@ -1,0 +1,130 @@
+process "tenant.migration.export"
+{
+try{
+        transform as "Export the data from sor meta and convert into json" on "intics_zio_db_conn" using
+        {"
+                create schema if not exists meta_bootstraping;
+                CREATE TABLE if not exists  meta_bootstraping.export_excel_output_table (
+                    migration_id bigserial NOT NULL,
+                    group_id int8 NULL,
+                    tenant_id int8 NULL,
+                    output_json jsonb NULL,
+                    root_pipeline_id int8 null,
+                    created_on timestamp null,
+                    created_user_id int8 null,
+                    last_updated_on timestamp null,
+                    last_updated_user_id int8 null,
+                    status varchar null,
+                    version int8 null
+                );
+
+                CREATE TABLE if not exists  meta_bootstraping.export_excel_output_temp_table (
+                    migration_id bigserial NOT NULL,
+                    group_id int8 NULL,
+                    tenant_id int8 NULL,
+                    output_json jsonb NULL,
+                    category varchar null,
+                    root_pipeline_id int8 null,
+                    created_on timestamp null,
+                    created_user_id int8 null,
+                    last_updated_on timestamp null,
+                    last_updated_user_id int8 null,
+                    status varchar null,
+                    version int8 null
+                );
+
+        "} on-condition if "true"=="true"
+
+        transform as "Export the question data from sor meta and convert into json" on "intics_zio_db_conn" using
+        {"
+
+               INSERT INTO meta_bootstraping.export_excel_output_temp_table
+               (tenant_id, output_json, category, root_pipeline_id,created_on, created_user_id, last_updated_on, last_updated_user_id, status, version)
+               select d.tenant_id,jsonb_agg( jsonb_build_object('DocumentType' , d.document_type ,
+               'TemplateName',ai.template_name ,
+               'ContainerName',sc.sor_container_name,
+               'TruthEntityName',te.truth_entity_name,
+               'SipType',te.sip_type ,
+               'SorItemName',si.sor_item_name,
+               'Synonym',st.synonym ,
+               'Question',sq.question ,
+               'SipType',te.sip_type
+               )) as output_json , 'QUESTION',${process-id},now(), ${tenant_id}, now(), ${tenant_id}, 'ACTIVE', 1
+               from sor_meta.document d
+               left join sor_meta.asset_info ai on d.document_type =ai.document_type and d.tenant_id =ai.tenant_id
+               left join sor_meta.sor_container sc on sc.document_type =d.document_type and d.tenant_id =sc.tenant_id
+               left JOIN sor_meta.truth_entity te on te.sor_container_id =sc.sor_container_id and d.tenant_id=te.tenant_id
+               left join sor_meta.sor_tsynonym st on st.truth_entity_id =te.truth_entity_id and d.tenant_id=st.tenant_id
+               left join sor_meta.sor_item si on st.sor_item_id =si.sor_item_id and d.tenant_id=si.tenant_id
+               left join sor_meta.sor_question sq on sq.synonym_id =st.synonym_id and d.tenant_id=sq.tenant_id
+               where d.tenant_id =${tenant_id}
+               group by d.tenant_id;
+
+        "} on-condition if "true"=="true"
+
+        transform as "Export the placeholder data from sor meta and convert into json" on "intics_zio_db_conn" using
+        {"
+
+               INSERT INTO meta_bootstraping.export_excel_output_temp_table
+               (tenant_id, output_json,category, root_pipeline_id,created_on, created_user_id, last_updated_on, last_updated_user_id, status, version)
+               select d.tenant_id,jsonb_agg( jsonb_build_object('DocumentType' , d.document_type ,
+                             'TemplateName',ai.template_name ,
+                             'ContainerName',sc.sor_container_name,
+                             'TruthEntityName',te.truth_entity_name,
+                             'SipType',te.sip_type ,
+                             'Placeholder',tep.truth_entity_placeholder_value
+                             )),'PLACEHOLDER',${process-id},now(), ${tenant_id}, now(), ${tenant_id}, 'ACTIVE', 1
+                             from sor_meta.document d
+                             left join sor_meta.asset_info ai on d.document_type =ai.document_type and d.tenant_id =ai.tenant_id
+                             left join sor_meta.sor_container sc on sc.document_type =d.document_type and d.tenant_id =sc.tenant_id
+                             left JOIN sor_meta.truth_entity te on te.sor_container_id =sc.sor_container_id and d.tenant_id=te.tenant_id
+                             LEFT JOIN sor_meta.truth_entity_placeholder tep on tep.truth_entity_id  = te.truth_entity_id and tep.sor_container_id=sc.sor_container_id
+                             where d.tenant_id =${tenant_id}
+                             group by d.tenant_id;
+
+        "} on-condition if "true"=="true"
+
+         transform as "Export both question and placeholder from sor meta and convert into json" on "intics_zio_db_conn" using
+            {"
+
+                   INSERT INTO meta_bootstraping.export_excel_output_table
+                   (tenant_id, output_json, root_pipeline_id,created_on, created_user_id, last_updated_on, last_updated_user_id, status, version)
+                 select tenant_id,jsonb_agg( jsonb_build_object(category,output_json)),${process-id},now(), ${tenant_id}, now(), ${tenant_id}, 'ACTIVE', 1
+                 from meta_bootstraping.export_excel_output_temp_table
+                 where tenant_id =${tenant_id} and root_pipeline_id=${process-id}
+                 group by tenant_id;
+
+            "} on-condition if "true"=="true"
+
+        transform as "Export the data from sor meta and convert into json" on "intics_zio_db_conn" using
+        {"
+
+               INSERT INTO meta_bootstraping.export_excel_output_table
+               (tenant_id, output_json, root_pipeline_id,created_on, created_user_id, last_updated_on, last_updated_user_id, status, version)
+               select d.tenant_id,jsonb_agg( jsonb_build_object('DocumentType' , d.document_type ,
+               'TemplateName',ai.template_name ,
+               'ContainerName',sc.sor_container_name,
+               'TruthEntityName',te.truth_entity_name,
+               'SipType',te.sip_type ,
+               'SorItemName',si.sor_item_name,
+               'Synonym',st.synonym ,
+               'Question',sq.question ,
+               'SipType',te.sip_type
+               )),${process-id},now(), ${tenant_id}, now(), ${tenant_id}, 'ACTIVE', 1
+               from sor_meta.document d
+               left join sor_meta.asset_info ai on d.document_type =ai.document_type and d.tenant_id =ai.tenant_id
+               left join sor_meta.sor_container sc on sc.document_type =d.document_type and d.tenant_id =sc.tenant_id
+               left JOIN sor_meta.truth_entity te on te.sor_container_id =sc.sor_container_id and d.tenant_id=te.tenant_id
+               left join sor_meta.sor_tsynonym st on st.truth_entity_id =te.truth_entity_id and d.tenant_id=st.tenant_id
+               left join sor_meta.sor_item si on st.sor_item_id =si.sor_item_id and d.tenant_id=si.tenant_id
+               left join sor_meta.sor_question sq on sq.synonym_id =st.synonym_id and d.tenant_id=sq.tenant_id
+               where d.tenant_id =${tenant_id}
+               group by d.tenant_id;
+
+        "} on-condition if "true"=="none"
+
+}
+catch{}
+finally{}
+
+}

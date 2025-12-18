@@ -1,0 +1,785 @@
+process "eocdoc.detail.insert"
+
+{
+
+    try {
+
+		transform as "insert into eoc transform audit started" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO eoc_transformer.eoc_transformer_pipeline_audit
+                (process_id,origin_id, created_on, group_id,  status, stage, message, root_pipeline_id, tenant_id,batch_id)
+                VALUES( '${init_process_id.process_id}','${origin_id}', now(), '${group_id}',  'STARTED', 'EOC_TRANSFORM', 'eoc transform detail insert started for origin id ${origin_id}', '${gen_id.root_pipeline_id}', ${tenant_id},'${batch_id}');
+
+                UPDATE  eoc_transformer.eoc_transformer_payload_queue
+                SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts=now(),status='IN_PROGRESS'
+                WHERE origin_id='${origin_id}' AND status='STAGED' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+
+                update ingestion.pipeline_queue_status_audit as a
+                set status = 'IN_PROGRESS' , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                where  a.group_id=${group_id}
+                and a.batch_id='${batch_id}' and a.tenant_id =${tenant_id} and a.stage ='EOC_TRANSFORM' ;
+
+
+                UPDATE batching.sub_batching_process_payload_queue a
+                SET status='IN_PROGRESS',  stage='EOC_TRANSFORM'
+                WHERE a.group_id='${group_id}'  and a.tenant_id='${tenant_id}'
+                and a.batch_id ='${batch_id}';
+
+
+        "}  on-condition if "true"=="true"
+
+
+        assign as "origin_file" source "intics_zio_db_conn" using
+        {"
+            SELECT file_name
+            FROM ${temp_schema_name}.asset_${init_process_id.process_id} join ${temp_schema_name}.source_of_origin_${init_process_id.process_id} on asset.file_id = source_of_origin.file_id
+            where source_of_origin.origin_id = '${origin_id}' and source_of_origin.tenant_id = ${tenant_id} and source_of_origin.batch_id = '${batch_id}'
+        "} on-condition if "true"=="true"
+
+        transform as "inserting eoc extraction" on "intics_zio_db_conn" using
+        {"
+            insert into eoc_response.eoc_extraction
+            (pahub_patient_instance_id, origin_id, document_id, eoc_identifier, values, paper_no, root_pipeline_id, tenant_id, batch_id)
+            select a.pahub_patient_instance_id, a.origin_id , '${origin_file.file_name}' ,a.pahub_id ,a.source_of_pahub ,
+            cast(unnest(a.paper_nos) as int4)as paper_no, '${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}'
+            from sor_grouping.pahub_patient_instance a
+            where origin_id = '${origin_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+        "} on-condition if "true"=="true"
+
+        transform as "inserting eoc trans" on "intics_zio_db_conn" using
+        {"
+            insert into eoc_response.eoc_trans (cummulative_id,origin_id ,paper_no ,eoc_identifier,values,sor_item_name ,document_id,confidence_score,value_type,b_box, root_pipeline_id, tenant_id, batch_id)
+            select b.cummulative_id ,a.origin_id,a.paper_no,a.eoc_identifier,b.extracted_value ,b.sor_item_name,a.document_id ,b.confidence_score,c.document_type,b.b_box::json,  '${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}'
+            from eoc_response.eoc_extraction  a
+            join voting.cummulative_result_bbox_info b on a.origin_id =b.origin_id and a.paper_no=b.paper_no and b.sor_item_name != 'eoc_id'
+             left join paper_classification.paper_classification_result c on b.origin_id =c.origin_id and b.paper_no=c.paper_no
+             where a.origin_id='${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+        "} on-condition if "true"=="true"
+
+        transform as "inserting hw value type" on "intics_zio_db_conn" using
+        {"
+            insert into eoc_response.hw_value_type
+            (eoc_identifier, origin_id, document_id, max_confidence_score, value, root_pipeline_id, tenant_id, batch_id)
+            select a.eoc_identifier , a.origin_id,a.document_id,max(a.confidence_score) as max_confidence_score,sum(case when a.value_type='Handwritten' then 1 else 0 end ) as value, '${gen_id.root_pipeline_id}', ${tenant_id}, a.batch_id
+            from eoc_response.eoc_trans a
+            where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+            group by a.origin_id,a.document_id,a.eoc_identifier,a.batch_id ;
+        "} on-condition if "true"=="true"
+
+        transform as "inserting eoc document detail data" on "intics_zio_db_conn" using
+        {"
+           INSERT INTO eoc_response.eoc_document_detail(origin_id ,document_id,eoc_identifier,
+           process_completed_on,process_started_on,uploaded_on ,total_processed_duration,start_page_no,end_page_no, root_pipeline_id, tenant_id,
+           created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+           select a.origin_id,c.file_name ,a.eoc_identifier,now(), '${created_on}'
+           ,'${created_on}', round(extract(epoch from (now()-cast('${created_on}' as timestamp)))),
+           min(a.paper_no), max(a.paper_no),  '${gen_id.root_pipeline_id}', ${tenant_id},
+           '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+           from eoc_response.eoc_extraction a join
+           ${temp_schema_name}.source_of_origin_${init_process_id.process_id} b on a.origin_id =b.origin_id
+           join ${temp_schema_name}.asset_${init_process_id.process_id} c on b.file_id =c.file_id
+           where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+           group by a.origin_id ,c.file_name ,a.eoc_identifier, a.batch_id;
+
+            INSERT INTO eoc_response.document_type_detail
+            (eoc_identifier, origin_id, document_id, value_type, root_pipeline_id, tenant_id,
+            created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+            select b.eoc_identifier ,b.origin_id, b.document_id ,(case when b.value > 0 then 'Handwritten' else 'Printed' end),  '${gen_id.root_pipeline_id}', ${tenant_id},
+            '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, b.batch_id
+            from eoc_response.hw_value_type b
+            where b.origin_id  = '${origin_id}' and b.tenant_id = ${tenant_id} and b.batch_id = '${batch_id}';
+
+            INSERT INTO eoc_response.eoc_id_detail(eoc_identifier, origin_id, confidence_score, source_of_pa_hub_patient_request_id, value, document_id,
+            start_page_no, end_page_no, page_number, bounding_box, root_pipeline_id, tenant_id,
+            created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, value_type, batch_id)
+            select a.eoc_identifier, a.origin_id, max(a.confidence_score), 'EID',
+            max(case when a.sor_item_name='patient_eoc' then a.values else null end), a.document_id,
+            min(a.paper_no), max(a.paper_no), a.paper_no, to_jsonb(a.b_box),  '${gen_id.root_pipeline_id}', ${tenant_id},
+            '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.value_type,a.batch_id
+            from eoc_response.eoc_trans a ,  eoc_response.eoc_extraction b
+            where a.origin_id = '${origin_id}' and a.tenant_id = ${tenant_id}
+            and a.sor_item_name='patient_eoc' and  a.values != '' and a.origin_id = b.origin_id and b.values = 'EID' and a.batch_id = '${batch_id}'
+            group by a.origin_id, a.paper_no, a.eoc_identifier,
+            a.document_id, to_jsonb(a.b_box), a.value_type, a.batch_id;
+
+            INSERT INTO eoc_response.intics_reference_id_detail
+            (eoc_identifier, origin_id, confidence_score, source_of_intics_reference_id, value, document_id,start_page_no, end_page_no, root_pipeline_id, tenant_id,
+            created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+            SELECT a.eoc_identifier,'${origin_id}', MAX(b.confidence_score),a.values, a.eoc_identifier,'${origin_file.file_name}', min(a.paper_no), max(a.paper_no),  '${gen_id.root_pipeline_id}', ${tenant_id},
+            '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+            FROM eoc_response.eoc_extraction a, eoc_response.eoc_trans b
+            where a.origin_id='${origin_id}' and a.values !='EID' and a.eoc_identifier != '' and a.values IN ('PND','QID','PID') and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+            group by a.eoc_identifier, a.values,  a.origin_id, a.batch_id;
+
+           INSERT INTO eoc_response.intics_reference_id_detail
+           (eoc_identifier,origin_id,source_of_intics_reference_id,document_id,start_page_no,end_page_no, value, root_pipeline_id, tenant_id,
+           created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+           select a.eoc_identifier ,a.origin_id ,a.values  ,a.document_id ,min(a.paper_no)  ,max(a.paper_no), a.eoc_identifier, '${gen_id.root_pipeline_id}', ${tenant_id},
+           '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+           from eoc_response.eoc_extraction a
+           where a.origin_id = '${origin_id}' and a.values ='NID' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}'
+           group by a.eoc_identifier, a.origin_id, a.values, a.document_id,a.batch_id;
+
+        "} on-condition if "true"=="true"
+
+        transform as "inserting pahub instance detail data" on "intics_zio_db_conn" using
+        {"
+            insert into eoc_response.pahub_patient_request
+            ( origin_id,eoc_identifier,document_id, root_pipeline_id, tenant_id,
+            created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+            select origin_id ,eoc_identifier,document_id, '${gen_id.root_pipeline_id}', ${tenant_id},
+            '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, batch_id
+            from eoc_response.eoc_document_detail where origin_id = '${origin_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+            insert into eoc_response.patient_detail (origin_id,eoc_identifier,document_id, root_pipeline_id, tenant_id,
+            created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+            select a.origin_id,a.eoc_identifier ,a.document_id, '${gen_id.root_pipeline_id}', ${tenant_id},
+            '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+            from eoc_response.pahub_patient_request a where origin_id = '${origin_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+            insert into eoc_response.patient_sordetails ( document_id,eoc_identifier,origin_id,patient_sordetails,
+            mandatory,status,created_on,last_modified_date, root_pipeline_id, tenant_id, batch_id)
+            select document_id,eoc_identifier,origin_id,sor_item_name,(case when
+            sor_item_name not in ('patient_name','patient_id','patient_dob') then false else true
+            end),'inprogress',now(),now(), '${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+            from eoc_response.eoc_trans where sor_item_name like '%patient%' and origin_id = '${origin_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+            insert into eoc_response.prescriber_detail(origin_id,eoc_identifier,document_id, root_pipeline_id, tenant_id,
+            created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+            select a.origin_id,a.eoc_identifier ,a.document_id, '${gen_id.root_pipeline_id}', ${tenant_id},
+            '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+            from eoc_response.pahub_patient_request a where origin_id = '${origin_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+            insert into eoc_response.prescriber_sordetails  ( document_id,eoc_identifier,origin_id,prescriber_sordetails ,
+            mandatory,status,created_on,last_modified_date, root_pipeline_id, tenant_id, batch_id)
+            select document_id,eoc_identifier,origin_id,sor_item_name,(case when
+            sor_item_name not in ('patient_name','patient_id','patient_dob') then false else true
+            end),'inprogress',now(),now(), '${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+            from eoc_response.eoc_trans where sor_item_name like '%prescriber%' and origin_id = '${origin_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+            insert  into eoc_response.drug_detail (origin_id,eoc_identifier,document_id , root_pipeline_id, tenant_id,
+            created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id )
+            select a.origin_id,a.eoc_identifier ,a.document_id, '${gen_id.root_pipeline_id}', ${tenant_id},
+            '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+            from eoc_response.pahub_patient_request a where origin_id = '${origin_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+            insert into eoc_response.drug_sordetails ( document_id,eoc_identifier,origin_id,drug_sordetails ,
+            mandatory,status,created_on,last_modified_date, root_pipeline_id, tenant_id, batch_id)
+            select document_id,eoc_identifier,origin_id,sor_item_name,(case when
+            sor_item_name not in ('patient_name','patient_id','patient_dob') then false else true
+            end),'inprogress',now(),now(), '${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+            from eoc_response.eoc_trans where sor_item_name like '%drug%' and origin_id = '${origin_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+            insert into eoc_response.provider_detail  (origin_id,eoc_identifier,document_id , root_pipeline_id, tenant_id,
+            created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+            select a.origin_id,a.eoc_identifier ,a.document_id, '${gen_id.root_pipeline_id}', ${tenant_id},
+            '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+            from eoc_response.pahub_patient_request a where origin_id = '${origin_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+            insert into eoc_response.provider_sordetails  ( document_id,eoc_identifier,origin_id,provider_sordetails ,
+            mandatory,status,created_on,last_modified_date, root_pipeline_id, tenant_id, batch_id)
+            select document_id,eoc_identifier,origin_id,sor_item_name,(case when
+            sor_item_name not in ('patient_name','patient_id','patient_dob') then false else true
+            end),'inprogress',now(),now(), '${gen_id.root_pipeline_id}', ${tenant_id}, batch_id
+            from eoc_response.eoc_trans where sor_item_name like '%provider%' and origin_id = '${origin_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+        "} on-condition if "true"=="true"
+
+        transform as "inserting sor item details data" on "intics_zio_db_conn" using
+        {"
+
+            insert into eoc_response.patient_name
+            (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type,root_pipeline_id, tenant_id,
+            created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+            select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,
+            b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+            '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+            from eoc_response.patient_detail a
+            join eoc_response.eoc_trans  b
+            on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier  and b.sor_item_name='patient_name'
+            where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+            insert into eoc_response.patient_member_id
+            (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type, root_pipeline_id, tenant_id,
+            created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+            select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+            '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+            from eoc_response.patient_detail  a
+            join eoc_response.eoc_trans  b
+            on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+            and b.sor_item_name='patient_member_id'
+             where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+            insert into eoc_response.patient_group_number
+            (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type, root_pipeline_id, tenant_id,
+            created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+            select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},'${created_on}',
+            '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+            from eoc_response.patient_detail  a
+            join eoc_response.eoc_trans  b
+            on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+            and b.sor_item_name='patient_group_number'
+            where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+            insert into eoc_response.patient_date_of_birth
+            (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type, root_pipeline_id,tenant_id,
+            created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+            select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+            '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+            from eoc_response.patient_detail  a
+            join eoc_response.eoc_trans  b
+            on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier  and b.sor_item_name='patient_dob'
+            where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+            insert into eoc_response.patient_phone
+            (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type, root_pipeline_id, tenant_id,
+            created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+            select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+            '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+            from eoc_response.patient_detail  a
+            join eoc_response.eoc_trans  b
+            on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+            and b.sor_item_name='patient_phone'
+            where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+            insert into eoc_response.patient_address
+            (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type, root_pipeline_id, tenant_id,
+            created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+            select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+            '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+            from eoc_response.patient_detail  a
+            join eoc_response.eoc_trans  b
+            on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+            and b.sor_item_name='patient_address'
+            where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+            insert into eoc_response.patient_city_state_zip
+            (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type, root_pipeline_id, tenant_id,
+            created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+            select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+            '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+            from eoc_response.patient_detail  a
+            join eoc_response.eoc_trans  b
+            on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+            and b.sor_item_name='patient_city_state_zip'
+            where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+            insert into eoc_response.prescriber_tax_id
+            (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type,root_pipeline_id, tenant_id,
+            created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+            select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+            '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+            from eoc_response.patient_detail  a
+            join eoc_response.eoc_trans  b
+            on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+            and b.sor_item_name='prescriber_tax_id'
+            where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+
+            insert into eoc_response.prescriber_state
+            (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type,root_pipeline_id, tenant_id,
+            created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+            select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+            '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+            from eoc_response.patient_detail  a
+            join eoc_response.eoc_trans  b
+            on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+            and b.sor_item_name='prescriber_state'
+            where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+
+            insert into eoc_response.provider_tax_id
+              (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type,root_pipeline_id, tenant_id,
+              created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+            select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+            '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+            from eoc_response.patient_detail  a
+            join eoc_response.eoc_trans  b
+            on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+            and b.sor_item_name='provider_tax_id'
+            where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+
+            insert into eoc_response.provider_state
+             (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type,root_pipeline_id, tenant_id,
+             created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+            select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+            '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+            from eoc_response.patient_detail  a
+            join eoc_response.eoc_trans  b
+            on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+            and b.sor_item_name='provider_state'
+            where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+
+            insert into eoc_response.drug_date_of_service_from
+            (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type,root_pipeline_id, tenant_id,
+            created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+            select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+            '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+            from eoc_response.patient_detail  a
+            join eoc_response.eoc_trans  b
+            on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+            and b.sor_item_name='date_of_service_from'
+            where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+            insert into eoc_response.drug_date_of_service_to
+             (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type,root_pipeline_id, tenant_id,
+             created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+            select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+            '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+            from eoc_response.patient_detail  a
+            join eoc_response.eoc_trans  b
+            on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+            and b.sor_item_name='date_of_service_to'
+            where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+            insert into eoc_response.drug_diagnosis
+             (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type,root_pipeline_id, tenant_id,
+             created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+            select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+            '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+            from eoc_response.patient_detail a
+            join eoc_response.eoc_trans  b
+            on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+            and b.sor_item_name='diagnosis'
+            where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+            insert into eoc_response.drug_strength
+            (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type,root_pipeline_id, tenant_id,
+            created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+            select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+            '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+            from eoc_response.patient_detail  a
+            join eoc_response.eoc_trans  b
+            on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+            and b.sor_item_name='drug_strength'
+            where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+            insert into eoc_response.drug_dose
+             (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type, root_pipeline_id, tenant_id,
+             created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+            select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+            '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+            from eoc_response.patient_detail  a
+            join eoc_response.eoc_trans  b
+            on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+            and b.sor_item_name='drug_dose'
+            where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+            insert into eoc_response.drug_directions
+             (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type, root_pipeline_id, tenant_id,
+             created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+            select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+            '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+            from eoc_response.patient_detail  a
+            join eoc_response.eoc_trans  b
+            on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+            and b.sor_item_name='direction_sig' where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+            insert into eoc_response.drug_quantity
+             (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type,root_pipeline_id, tenant_id,
+             created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id )
+            select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+            '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+            from eoc_response.patient_detail  a
+            join eoc_response.eoc_trans  b
+            on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+            and b.sor_item_name='drug_quantity' where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+            insert into eoc_response.drug_hcpcs
+             (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type, root_pipeline_id, tenant_id,
+             created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+            select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+            '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+            from eoc_response.patient_detail  a
+            join eoc_response.eoc_trans  b
+            on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+            and b.sor_item_name='hcpcs' where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+            insert into eoc_response.drug_icd10
+            (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type, root_pipeline_id, tenant_id,
+            created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+            select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+            '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+            from eoc_response.patient_detail  a
+            join eoc_response.eoc_trans  b
+            on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+            and b.sor_item_name='icd10' where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+            insert into eoc_response.drug_jcode
+             (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type, root_pipeline_id, tenant_id,
+             created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+            select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+            '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+            from eoc_response.patient_detail  a
+            join eoc_response.eoc_trans  b
+            on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+            and b.sor_item_name='j_code' where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+            insert into eoc_response.provider_city_state_zip
+            (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type, root_pipeline_id, tenant_id,
+            created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+            select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+            '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+            from eoc_response.provider_detail  a
+            join eoc_response.eoc_trans  b
+            on a.origin_id =b.origin_id and a.eoc_identifier = b.eoc_identifier
+            and b.sor_item_name = 'provider_city_state_zip' where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+             insert into eoc_response.prescriber_city_state_zip
+            (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type,root_pipeline_id, tenant_id,
+            created_on, created_user_id, last_updated_on, last_updated_user_id, status, version,batch_id)
+            select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+            '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+            from eoc_response.prescriber_detail  a
+            join eoc_response.eoc_trans  b
+            on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+            and b.sor_item_name='prescriber_city_state_zip' where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+			insert into eoc_response.drug_name
+			(eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type, root_pipeline_id, tenant_id,
+			created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+			select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+			'${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+			from eoc_response.drug_detail a
+			join eoc_response.eoc_trans  b
+			on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+			and b.sor_item_name='drug_name' where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+
+        "}  on-condition if "true"=="true"
+
+        transform as "insert patient,prescriber,provider data to outbound zip table" on "intics_zio_db_conn" using
+        {"
+
+                insert into eoc_response.patient_zipcode
+                (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type,root_pipeline_id, tenant_id,
+                created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+                select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+                '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+                from eoc_response.patient_detail  a
+                join eoc_response.eoc_trans  b
+                on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+                and b.sor_item_name='patient_zip' where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                insert into eoc_response.patient_state
+                (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type,root_pipeline_id,tenant_id,
+                created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+                select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+                '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+                from eoc_response.patient_detail  a
+                join eoc_response.eoc_trans  b
+                on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+                and b.sor_item_name='patient_state' where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                insert into eoc_response.patient_city
+                (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type,root_pipeline_id, tenant_id,
+                created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+                select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+                '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+                from eoc_response.patient_detail  a
+                join eoc_response.eoc_trans  b
+                on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+                and b.sor_item_name='patient_city' where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                insert into eoc_response.prescriber_name
+                 (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type,root_pipeline_id, tenant_id,
+                 created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+                select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+                '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+                from eoc_response.prescriber_detail  a
+                join eoc_response.eoc_trans  b
+                on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+                and b.sor_item_name='prescriber_name' where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                insert into eoc_response.prescriber_npi
+                (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type, root_pipeline_id,tenant_id,
+                created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+                select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+                '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+                from eoc_response.prescriber_detail  a
+                join eoc_response.eoc_trans  b
+                on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+                and b.sor_item_name='prescriber_npi' where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                insert into eoc_response.prescriber_zipcode
+                 (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type,root_pipeline_id, tenant_id,
+                 created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+                select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+                '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+                from eoc_response.prescriber_detail a
+                join eoc_response.eoc_trans b
+                on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+                and b.sor_item_name='prescriber_zip' where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+
+                insert into eoc_response.prescriber_phone
+                 (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type,root_pipeline_id, tenant_id,
+                 created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+                select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+                '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+                from eoc_response.prescriber_detail  a
+                join eoc_response.eoc_trans  b
+                on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+                and b.sor_item_name='prescriber_phone' where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                insert into eoc_response.prescriber_state_lic_id
+                (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type,root_pipeline_id, tenant_id,
+                created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+                select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+                '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+                from eoc_response.prescriber_detail  a
+                join eoc_response.eoc_trans  b
+                on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+                and b.sor_item_name='prescriber_state_lic_id'
+                where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+
+
+                insert into eoc_response.prescriber_fax
+                (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type,root_pipeline_id, tenant_id,
+                created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+                select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+                '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+                from eoc_response.prescriber_detail  a
+                join eoc_response.eoc_trans  b
+                on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+                and b.sor_item_name='prescriber_fax'
+                where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                insert into eoc_response.prescriber_city
+                (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type, root_pipeline_id, tenant_id,
+                created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+                select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+                '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+                from eoc_response.prescriber_detail  a
+                join eoc_response.eoc_trans  b
+                on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+                and b.sor_item_name='prescriber_city'
+                where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+
+                insert into eoc_response.prescriber_address
+                (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type,root_pipeline_id, tenant_id,
+                created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+                select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+                '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+                from eoc_response.prescriber_detail  a
+                join eoc_response.eoc_trans b
+                on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+                and b.sor_item_name='prescriber_address'
+                where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                insert into eoc_response.provider_name
+                (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type,root_pipeline_id, tenant_id,
+                created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+                select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+                '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+                from eoc_response.provider_detail  a
+                join eoc_response.eoc_trans  b
+                on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+                and b.sor_item_name='provider_name'
+                where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                insert into eoc_response.provider_address
+                 (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type, root_pipeline_id,tenant_id,
+                 created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+                select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+                '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+                from eoc_response.provider_detail  a
+                join eoc_response.eoc_trans  b
+                on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+                and b.sor_item_name='provider_address'
+                where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                insert into eoc_response.provider_zipcode
+                 (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type,root_pipeline_id, tenant_id,
+                 created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+                select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+                '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+                from eoc_response.provider_detail  a
+                join eoc_response.eoc_trans  b
+                on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+                and b.sor_item_name='provider_zip'
+                where a.origin_id = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+
+                insert into eoc_response.provider_city
+                 (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type,root_pipeline_id, tenant_id,
+                 created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+                select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+                '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+                from eoc_response.provider_detail  a
+                join eoc_response.eoc_trans  b
+                on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+                and b.sor_item_name='provider_city'
+                where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+
+                insert into eoc_response.provider_phone
+                 (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type,root_pipeline_id, tenant_id,
+                 created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+                select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+                '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+                from eoc_response.provider_detail  a
+                join eoc_response.eoc_trans  b
+                on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+                and b.sor_item_name='provider_phone'
+                where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                insert into eoc_response.provider_npi
+                 (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type, root_pipeline_id, tenant_id,
+                 created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+                select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+                '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+                from eoc_response.provider_detail  a
+                join eoc_response.eoc_trans  b
+                on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+                and b.sor_item_name='provider_npi'
+                where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+                insert into eoc_response.provider_fax
+                 (eoc_identifier,origin_id,page_number,value,document_id,confidence_score,bounding_box,value_type, root_pipeline_id, tenant_id,
+                 created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id )
+                select a.eoc_identifier ,a.origin_id,b.paper_no ,b.values,a.document_id,b.confidence_score,b.b_box,b.value_type, '${gen_id.root_pipeline_id}', ${tenant_id},
+                '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+                from eoc_response.provider_detail  a
+                join eoc_response.eoc_trans  b
+                on a.origin_id =b.origin_id and a.eoc_identifier =b.eoc_identifier
+                and b.sor_item_name='provider_fax'
+                where a.origin_id  = '${origin_id}' and a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+
+
+
+        "}  on-condition if "${master.data.outboundZip}"=="false"
+
+        transform as "insert into barcode details" on "intics_zio_db_conn" using {"
+            INSERT INTO eoc_response.bar_code_details
+            (bounding_box, confidence_score, document_id, eoc_identifier, origin_id, page_number, value, value_type, root_pipeline_id, tenant_id,
+            created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+            select a.b_box::json , a.confidence_score , b.document_id,b.eoc_identifier,a.origin_id,a.paper_no,a.extracted_value,a.qr_format,  '${gen_id.root_pipeline_id}', ${tenant_id},
+            '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+            FROM qr_extraction.qr_extraction_details_bbox_info a
+            join eoc_response.eoc_extraction b on a.origin_id=b.origin_id and a.paper_no=b.paper_no and a.origin_id='${origin_id}' and a.is_candidate_qr='YES';
+
+         "} on-condition if "true"=="true"
+
+          transform as "insert image dpi details" on "intics_zio_db_conn" using {"
+                INSERT INTO eoc_response.image_dpi_information
+                 (process_id, group_id, root_pipeline_id, created_on, origin_id, paper_no, image_dpi, image_width, image_height,extracted_image_unit, tenant_id, batch_id)
+                 select '${process-id}',group_id,'${root-ref-id}',now(), origin_id, paper_no, image_dpi, image_width, image_height,extracted_image_unit, ${tenant_id}, '${batch_id}'
+                 from sor_transaction.vqa_transaction
+                 where origin_id='${origin_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}'
+                 group by origin_id,paper_no,image_dpi,image_width,image_height,group_id,extracted_image_unit;
+
+				INSERT into eoc_response.bounding_box_details
+                (origin_id, eoc_identifier, document_id, image_dpi, image_width,
+                image_height, extracted_image_unit, root_pipeline_id, tenant_id, created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+                SELECT b.origin_id, b.eoc_identifier, b.document_id, a.image_dpi, a.image_width,
+                a.image_height, a.extracted_image_unit,  '${gen_id.root_pipeline_id}', ${tenant_id},
+                '${created_on}', '${created_user_id}', '${created_on}', ${created_user_id}, 'ACTIVE', 1, a.batch_id
+                FROM eoc_response.image_dpi_information a
+                join eoc_response.eoc_extraction b on a.origin_id='${origin_id}' and b.origin_id='${origin_id}'
+                group by b.origin_id, b.eoc_identifier, b.document_id, a.image_dpi, a.image_width, a.image_height, a.extracted_image_unit, a.batch_id limit 1;
+             "} on-condition if "true"=="true"
+
+        transform as "insert for noise detection details" on "intics_zio_db_conn" using {"
+
+            INSERT INTO eoc_response.noise_model_details
+            (created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, tenant_id,
+            origin_id, root_pipeline_id, document_id, eoc_identifier, class_value, confidence_score, batch_id)
+            SELECT '${created_on}', ${created_user_id}, '${created_on}', ${created_user_id}, 'ACTIVE', 1, ${tenant_id},
+            a.origin_id, a.root_pipeline_id, b.document_id, b.eoc_identifier, a.consolidated_class, max(a.consolidated_confidence_score), a.batch_id
+            FROM noise_model.noise_model_output_table a
+            JOIN eoc_response.eoc_extraction b ON a.origin_id = b.origin_id
+            WHERE a.origin_id ='${origin_id}' and a.tenant_id = ${tenant_id} and a.consolidated_class = 'NOISY' and a.batch_id = '${batch_id}'
+            group by a.origin_id, a.root_pipeline_id, b.document_id, b.eoc_identifier, a.consolidated_class, a.batch_id;
+
+        "} on-condition if "true"=="true"
+
+        transform as "insert for urgency triage" on "intics_zio_db_conn" using {"
+            INSERT INTO eoc_response.urgency_details
+            (origin_id, page_number, document_id, value, bounding_box, value_type, confidence_score, eoc_identifier, root_pipeline_id, tenant_id,
+            created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, batch_id)
+            SELECT
+                a.origin_id,
+                a.paper_no,
+                b.document_id,
+                a.paper_type,
+                CAST(a.bboxes AS JSON),
+                a.document_type,
+                CAST(a.confidence_score AS INT8),
+                b.eoc_identifier,
+                '${gen_id.root_pipeline_id}',
+                ${tenant_id},
+                '${created_on}',
+                '${created_user_id}',
+                '${created_on}',
+                ${created_user_id},
+                'ACTIVE',
+                1,
+                a.batch_id
+            FROM
+                urgency_triage.ut_model_result_bbox_info a
+            JOIN
+                eoc_response.eoc_extraction b
+            ON
+                a.origin_id = b.origin_id
+                AND a.paper_no = b.paper_no
+            WHERE
+                a.origin_id = '${origin_id}'
+                AND a.paper_type IN ('URGENT', 'UNABLE TO IDENTIFY', 'NON_URGENT')
+                AND a.tenant_id = ${tenant_id} and a.batch_id = '${batch_id}';
+        "} on-condition if "true"=="true"
+
+        transform as "insert into eoc transform audit completed" on "intics_zio_db_conn" using
+        {"
+            INSERT INTO eoc_transformer.eoc_transformer_pipeline_audit
+            (process_id,origin_id, created_on, group_id, status, stage, message, root_pipeline_id, tenant_id, batch_id)
+            VALUES( '${init_process_id.process_id}','${origin_id}', now(), '${group_id}',  'COMPLETED',
+            'EOC_TRANSFORM', 'eoc transform detail insert completed for origin id ${origin_id}',  '${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}');
+
+            UPDATE  eoc_transformer.eoc_transformer_payload_queue
+            SET consumer_process_id='${init_process_id.process_id}', status='COMPLETED'
+            WHERE origin_id='${origin_id}' AND status='IN_PROGRESS' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                UPDATE batching.sub_batching_process_payload_queue a
+                SET status='COMPLETED',  stage='EOC_TRANSFORM'
+                WHERE a.group_id='${group_id}'  and a.tenant_id='${tenant_id}'
+                and a.batch_id ='${batch_id}';
+
+        "} on-condition if "true"=="true"
+
+
+}
+
+    catch {
+        transform as "insert into eoc transform audit failed" on "intics_zio_db_conn" using
+		{"
+			INSERT INTO eoc_transformer.eoc_transformer_pipeline_audit
+			(process_id,origin_id, created_on, group_id,  status, stage, message, root_pipeline_id, tenant_id, batch_id)
+			VALUES( '${init_process_id.process_id}','${origin_id}', now(), '${group_id}',  'FAILED', 'EOC_TRANSFORM',
+			'eoc transform detail insert failed for origin id ${origin_id}', '${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}');
+
+			UPDATE  eoc_transformer.eoc_transformer_payload_queue
+			SET consumer_process_id='${init_process_id.process_id}', status='FAILED'
+			WHERE origin_id='${origin_id}' AND status='IN_PROGRESS' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+		"}  on-condition if "true"=="true"
+    }
+
+    finally {
+
+
+        transform as "insert into eoc transform audit failed" on "intics_zio_db_conn" using
+        {"
+        UPDATE  eoc_transformer.eoc_transformer_payload_queue
+        SET consumer_process_id='${init_process_id.process_id}', status='FAILED'
+        WHERE origin_id='${origin_id}' AND status='IN_PROGRESS' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+        "}  on-condition if "true"=="true"}
+
+    }
+
+   }

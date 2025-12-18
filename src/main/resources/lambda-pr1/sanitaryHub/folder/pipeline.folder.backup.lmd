@@ -1,0 +1,48 @@
+process "pipeline.folder.backup"
+{
+try{
+
+
+        assign as "target_directory_path_details" source "intics_zio_db_conn" using
+        {"
+            SELECT replace(CONCAT('${backup_directory_path}', '/tenant_${tenant_id}/', 'folder_backup_dir/'),'//','/') AS folder_backup_dir;
+        "} on-condition if "true"=="true"
+
+        assign as "zip_file_name_details" source "intics_zio_db_conn" using
+        {"
+            SELECT lower(CONCAT('folder_backup_${process_name}_${root_pipeline_id}','.zip')) AS file_name;
+        "} on-condition if "true"=="true"
+
+        createDirectory as "creating_directory" using
+        {"
+            ${target_directory_path_details.folder_backup_dir}
+        "} on-condition if "true"=="true"
+
+         create-exact-zip "zip files"  file-name "${zip_file_name_details.file_name}" from  "${current_directory_path}"
+         destination "${target_directory_path_details.folder_backup_dir}" using
+         {} on-condition if "true"=="true"
+
+        multipartFolderDelete as "multipart folder cleanup for the pipeline ${root_pipeline_id}"
+        resource-conn "intics_zio_db_conn"
+        delete-url "${multipart.folder.delete.instances.url}"
+        using {"
+            SELECT '${current_directory_path}' as file_path,  '${group_id}' as group_id,
+             '${tenant_id}' as tenant_id, '${process_id}'  as process_id,
+            '${root_pipeline_id}' as root_pipeline_id;
+    	"} on-condition if "true"=="true"
+
+       transform as "update the input process table" on "intics_zio_db_conn" using
+       {"
+            UPDATE ingestion.pipeline_directory_info
+            SET status='COMPLETED'
+            where status='STAGED' and root_pipeline_id = ${root_pipeline_id} and tenant_id = ${tenant_id} and process_name = '${process_name}';
+       "} on-condition if "true"=="true"
+
+}
+catch{
+
+}
+finally{
+
+}
+}

@@ -1,0 +1,554 @@
+process "sor.validation.ddl"
+{
+try{
+
+        transform as "payload queue, adapter result table, create scalar and aggregator" on "intics_zio_db_conn" using
+        {"
+
+                CREATE TABLE IF NOT EXISTS sor_validation.sor_validation_payload_queue_archive (
+                producer_process_id int8 NOT NULL,
+                consumer_process_id int8 NULL,
+                origin_id varchar NOT NULL,
+                group_id int4 NULL,
+                created_on timestamp NULL,
+                consumed_on_ts timestamp NULL,
+                status varchar NULL,
+                stage varchar NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                CONSTRAINT sor_validation_payload_queue_archive_pk PRIMARY KEY (producer_process_id, origin_id,tenant_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS sor_validation.sor_validation_payload_error_queue (
+                producer_process_id int8 NOT NULL,
+                consumer_process_id int8 NULL,
+                origin_id varchar NOT NULL,
+                created_on timestamp NOT NULL,
+                group_id int4 not null,
+                status varchar NOT NULL,
+                stage  varchar NOT NULL,
+                message varchar NULL,
+                consumed_on_ts timestamp NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                CONSTRAINT sor_validation_payload_error_queue_pk PRIMARY KEY ( origin_id,tenant_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS sor_validation.sor_validation_pipeline_audit (
+                id bigserial NOT NULL,
+                group_id int4 NOT NULL,
+                created_on timestamp NOT NULL,
+                created_by varchar NOT NULL,
+                user_id varchar NOT NULL,
+                tenant_id int8 NULL,
+                status varchar NOT NULL,
+                stage varchar NOT NULL,
+                message varchar NOT NULL,
+                root_pipeline_id int8 NULL,
+                batch_id varchar NULL
+                );
+
+                CREATE SCHEMA if not exists score;
+
+                CREATE TABLE IF NOT EXISTS score.aggregation_evaluator (
+                aggregation_evaluator_id bigserial NOT NULL,
+                created_on timestamp NOT NULL,
+                created_user_id varchar NOT NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id varchar NULL,
+                tenant_id int8 NULL,
+                aggregated_score float8 NULL,
+                masked_score float8 NULL,
+                group_id int8 NULL,
+                origin_id varchar NOT NULL,
+                paper_no int4 NOT NULL,
+                predicted_value text NULL,
+                vqa_score float8 NULL,
+                rank int4 NULL,
+                sor_item_attribution_id int4 NOT NULL,
+                sor_item_name varchar NOT NULL,
+                document_id varchar NOT NULL,
+                acc_transaction_id int8 NULL,
+                b_box varchar NULL,
+                root_pipeline_id int8 NULL,
+                frequency int8 NULL,
+                question_id int8 NULL,
+                synonym_id int8 NULL,
+                model_registry varchar NULL,
+                status varchar NULL,
+                version int4 NULL,
+                acc_transcation_id int8 NULL,
+                model_registry_id varchar NULL,
+                batch_id varchar NULL,
+                category text NULL,
+                CONSTRAINT aggregation_evaluator_pkey PRIMARY KEY (aggregation_evaluator_id)
+                );
+
+
+                CREATE TABLE if not exists ${temp_schema_name}.aggregation_evaluator_${init_process_id.process_id} (
+                aggregation_evaluator_id bigserial NOT NULL,
+                created_on timestamp NOT NULL,
+                created_user_id varchar NOT NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id varchar NULL,
+                tenant_id int8 NULL,
+                aggregated_score float8 NULL,
+                masked_score float8 NULL,
+                group_id int8 NULL,
+                origin_id varchar NOT NULL,
+                paper_no int4 NOT NULL,
+                predicted_value text NULL,
+                vqa_score float8 NULL,
+                rank int4 NULL,
+                sor_item_attribution_id int4 NOT NULL,
+                sor_item_name varchar NOT NULL,
+                document_id varchar NOT NULL,
+                acc_transaction_id int8 NULL,
+                b_box varchar NULL,
+                root_pipeline_id int8 NULL,
+                frequency int8 NULL,
+                question_id int8 NULL,
+                synonym_id int8 NULL,
+                model_registry varchar NULL,
+                status varchar NULL,
+                version int4 NULL,
+                acc_transcation_id int8 NULL,
+                model_registry_id varchar NULL,
+                batch_id varchar NULL,
+                category text NULL
+                );
+
+
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.deep_sift_output_${init_process_id.process_id} (
+                id bigserial PRIMARY KEY,
+                origin_id varchar NOT NULL,
+                group_id varchar NOT NULL,
+                input_file_path text NULL,
+                created_on timestamp NOT NULL,
+                created_by varchar NOT NULL,
+                root_pipeline_id int8 NOT NULL,
+                tenant_id int4 NOT NULL,
+                batch_id varchar NOT NULL,
+                extracted_text text NULL,
+                paper_no int4 NOT NULL,
+                source_document_type varchar NOT NULL,
+                model_id int4 NULL,
+                model_name varchar NULL,
+                timetaken_ms BIGINT NULL,
+                status varchar NULL,
+                request TEXT NULL,
+                response TEXT NULL,
+                endpoint TEXT NULL
+                );
+
+
+                CREATE TABLE IF NOT EXISTS score.scalar_validation (
+                validation_id bigserial NOT NULL,
+                created_on timestamp NOT NULL,
+                created_user_id varchar NOT NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id varchar NULL,
+                tenant_id int8 NULL,
+                origin_id varchar NOT NULL,
+                group_id int4 NOT NULL,
+                paper_no int4 NOT NULL,
+                question varchar NULL,
+                predicted_value text NULL,
+                vqa_score float8 NULL,
+                score float8 NULL,
+                weight int4 NULL,
+                sor_item_attribution_id int4 NOT NULL,
+                sor_item_name varchar NOT NULL,
+                document_id varchar NOT NULL,
+                validation_name varchar NULL,
+                b_box varchar NULL,
+                root_pipeline_id int8 NULL,
+                question_id int8 NULL,
+                synonym_id int8 NULL,
+                model_registry varchar NULL,
+                status varchar NULL,
+                version int4 NULL,
+                category text NULL,
+                batch_id varchar NULL,
+                CONSTRAINT scalar_validation_pkey PRIMARY KEY (validation_id)
+                );
+
+
+                CREATE TABLE if not exists ${temp_schema_name}.scalar_validation_${init_process_id.process_id} (
+                validation_id bigserial NOT NULL,
+                created_on timestamp NOT NULL,
+                created_user_id varchar NOT NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id varchar NULL,
+                tenant_id int8 NULL,
+                origin_id varchar NOT NULL,
+                group_id int4 NOT NULL,
+                paper_no int4 NOT NULL,
+                question varchar NULL,
+                predicted_value text NULL,
+                vqa_score float8 NULL,
+                score float8 NULL,
+                weight int4 NULL,
+                sor_item_attribution_id int4 NOT NULL,
+                sor_item_name varchar NOT NULL,
+                document_id varchar NOT NULL,
+                validation_name varchar NULL,
+                b_box varchar NULL,
+                root_pipeline_id int8 NULL,
+                question_id int8 NULL,
+                synonym_id int8 NULL,
+                model_registry varchar NULL,
+                status varchar NULL,
+                version int4 NULL,
+                category text NULL,
+                batch_id varchar NULL
+                );
+
+
+                CREATE TABLE IF NOT EXISTS sor_grouping.sor_grouping_payload_queue (
+                producer_process_id int8 NOT NULL,
+                consumer_process_id int8 NULL,
+                origin_id varchar  NULL,
+                group_id int4  NULL,
+                created_on timestamp  NULL,
+                status varchar  NULL,
+                stage varchar  NULL,
+                consumed_on_ts timestamp NULL,
+                root_pipeline_id int8 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NOT NULL,
+                CONSTRAINT sor_grouping_payload_queue_pk PRIMARY KEY ( origin_id,tenant_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.sor_validation_chrono_clash_input_${init_process_id.process_id} (
+                    root_pipeline_id int8 NOT NULL,
+                    created_on timestamp NULL,
+                    updated_on timestamp NULL,
+                    batch_id varchar NOT NULL,
+                    group_id int4 NULL,
+                    origin_id varchar NOT NULL,
+                    tenant_id int8 NOT NULL,
+                    time_frame int4 NULL,
+                    stage varchar NULL,
+                    status varchar NULL,
+                    transaction_id varchar NOT NULL,
+                    downloaded_time timestamp NULL,
+                    remaining_time interval NULL,
+                    CONSTRAINT sor_validation_chrono_clash_input_${init_process_id.process_id}_pk PRIMARY KEY (origin_id,tenant_id,root_pipeline_id,transaction_id)
+                );
+
+        "}on-condition if "true"=="true"
+
+
+
+
+        transform as "voting v2 file ddl create table" on "intics_zio_db_conn" using
+        {"
+
+                CREATE TABLE if not exists ${temp_schema_name}.multi_value_sor_item_${init_process_id.process_id} (
+                origin_id varchar NULL,
+                sor_item_name varchar NULL,
+                question text NULL,
+                voting_out float4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NULL,
+                predicted_value text NULL,
+                group_id int4 NULL,
+                paper_no int4 NULL,
+                vqa_score float8 NULL,
+                question_id int8 NULL,
+                synonym_id int8 NULL,
+                model_registry varchar NULL,
+                weight int4 NULL,
+                score float8 NULL,
+                document_id varchar NULL,
+                validation_name varchar NULL,
+                b_box varchar NULL,
+                root_pipeline_id int8 null,
+                aggregated_score int8 null,
+                masked_score int8 null,
+                rank int8 null,
+                sor_item_attribution_id int8 null,
+                frequency int8 null
+                );
+
+
+                CREATE TABLE if not exists ${temp_schema_name}.multi_value_sor_item_page_clean_up_${init_process_id.process_id}  (
+                tenant_id int8 NULL,
+                question varchar NULL,
+                group_id int4 NULL,
+                origin_id varchar NULL,
+                paper_no int4 NULL,
+                sor_item_name varchar NULL,
+                predicted_value text NULL,
+                vqa_score float8 NULL,
+                batch_id varchar NULL,
+                question_id int8 NULL,
+                synonym_id int8 NULL,
+                model_registry varchar NULL,
+                weight int4 NULL,
+                score float8 NULL,
+                document_id varchar NULL,
+                validation_name varchar NULL,
+                b_box varchar NULL,
+                root_pipeline_id int8 null,
+                aggregated_score int8 null,
+                masked_score int8 null,
+                rank int8 null,
+                sor_item_attribution_id int8 null,
+                frequency int8 null
+                );
+
+
+                CREATE TABLE if not exists ${temp_schema_name}.max_conf_table_${init_process_id.process_id} (
+                origin_id varchar NULL,
+                sor_item_name varchar NULL,
+                b_box varchar NULL,
+                vqa_score float8 NULL,
+                root_pipeline_id int8 NULL,
+                batch_id varchar NULL,
+                tenant_id int8 NULL
+                );
+
+                CREATE TABLE if not exists macro.multi_value_sor_item_audit (
+                origin_id varchar NULL,
+                sor_item_name varchar NULL,
+                question text NULL,
+                voting_out float4 NULL,
+                tenant_id int8 NULL,
+                batch_id varchar NULL,
+                predicted_value text NULL,
+                group_id int4 NULL,
+                paper_no int4 NULL,
+                vqa_score float8 NULL,
+                question_id int8 NULL,
+                synonym_id int8 NULL,
+                model_registry varchar NULL,
+                weight int4 NULL,
+                score float8 NULL,
+                document_id varchar NULL,
+                validation_name varchar NULL,
+                b_box varchar NULL,
+                root_pipeline_id int8 null,
+                aggregated_score int8 null,
+                masked_score int8 null,
+                rank int8 null,
+                sor_item_attribution_id int8 null,
+                frequency int8 null
+                );
+
+                CREATE TABLE if not exists macro.multi_value_sor_item_page_clean_up_audit  (
+                tenant_id int8 NULL,
+                question varchar NULL,
+                group_id int4 NULL,
+                origin_id varchar NULL,
+                paper_no int4 NULL,
+                sor_item_name varchar NULL,
+                predicted_value text NULL,
+                vqa_score float8 NULL,
+                batch_id varchar NULL,
+                question_id int8 NULL,
+                synonym_id int8 NULL,
+                model_registry varchar NULL,
+                weight int4 NULL,
+                score float8 NULL,
+                document_id varchar NULL,
+                validation_name varchar NULL,
+                b_box varchar NULL,
+                root_pipeline_id int8 null,
+                aggregated_score int8 null,
+                masked_score int8 null,
+                rank int8 null,
+                sor_item_attribution_id int8 null,
+                frequency int8 null
+                );
+
+
+                CREATE TABLE if not exists macro.max_conf_table_audit (
+                origin_id varchar NULL,
+                sor_item_name varchar NULL,
+                b_box varchar NULL,
+                vqa_score float8 NULL,
+                root_pipeline_id int8 NULL,
+                batch_id varchar NULL,
+                tenant_id int8 NULL
+                );
+                CREATE TABLE IF NOT EXISTS macro.aggregate_cleaned_result (
+                validation_id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int4 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int4 NULL,
+                tenant_id int8 NULL,
+                aggregated_score float8 NULL,
+                masked_score float8 NULL,
+                origin_id varchar NULL,
+                paper_no int8 NULL,
+                predicted_value text NULL,
+                rank int4 NULL,
+                sor_item_attribution_id varchar NULL,
+                sor_item_name varchar NULL,
+                document_id varchar NULL,
+                b_box varchar NULL,
+                group_id int4 NULL,
+                root_pipeline_id int8 NULL,
+                vqa_score float8 NULL,
+                question_id int8 NULL,
+                synonym_id int8 NULL,
+                model_registry varchar NULL,
+                batch_id varchar NULL,
+                frequency int4 NULL
+                );
+
+
+        "} on-condition if "${voting.multi.value.line.item.activator}"=="true"
+
+        transform as "OCR text comparison validator file ddl create table" on "intics_zio_db_conn" using
+        {"
+                CREATE TABLE IF NOT EXISTS macro.ocr_text_comparison_result (
+                id bigserial not null,
+                created_on timestamp NOT NULL,
+                created_user_id int4 NOT NULL,
+                last_updated_on timestamp NOT NULL,
+                last_updated_user_id int4 NOT NULL,
+                tenant_id int8 NOT NULL,
+                origin_id varchar NULL,
+                group_id int4 NOT NULL,
+                paper_no int4 NOT NULL,
+                sor_question varchar NULL,
+                answer text NULL,
+                vqa_score float8 NULL,
+                score float8 NULL,
+                weight int4 NULL,
+                sor_item_attribution_id int4 NULL,
+                sor_item_name varchar NOT NULL,
+                document_id varchar NULL,
+                b_box varchar NULL,
+                root_pipeline_id int8 NULL,
+                question_id int8 NULL,
+                synonym_id int8 NULL,
+                model_registry varchar NULL,
+                category text NULL,
+                batch_id varchar NOT NULL,
+                is_ocr_field_comparable boolean NULL,
+                extracted_text text NULL,
+                threshold int8 NULL,
+                best_score int8 NULL,
+                regex_pattern text NULL,
+                candidates text NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS ${temp_schema_name}.ocr_text_comparison_result_${init_process_id.process_id} (
+                created_on timestamp NOT NULL,
+                created_user_id int4 NOT NULL,
+                last_updated_on timestamp NOT NULL,
+                last_updated_user_id int4 NOT NULL,
+                tenant_id int8 NOT NULL,
+                origin_id varchar NULL,
+                group_id int4 NOT NULL,
+                paper_no int4 NOT NULL,
+                sor_question varchar NULL,
+                answer text NULL,
+                vqa_score float8 NULL,
+                score float8 NULL,
+                weight int4 NULL,
+                sor_item_attribution_id int4 NULL,
+                sor_item_name varchar NOT NULL,
+                document_id varchar NULL,
+                b_box varchar NULL,
+                root_pipeline_id int8 NULL,
+                question_id int8 NULL,
+                synonym_id int8 NULL,
+                model_registry varchar NULL,
+                category text NULL,
+                batch_id varchar NOT NULL,
+                is_ocr_field_comparable boolean NULL,
+                extracted_text text NULL,
+                threshold int8 NULL,
+                best_score int8 NULL,
+                regex_pattern text NULL,
+                candidates text NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS  ${temp_schema_name}.ocr_text_comparison_input_${init_process_id.process_id}(
+                created_on timestamp NULL,
+                created_user_id int4 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int4 NULL,
+                tenant_id int8 NULL,
+                origin_id varchar NULL,
+                group_id int4 NULL,
+                paper_no int4 NULL,
+                sor_question varchar NULL,
+                answer text NULL,
+                vqa_score float8 NULL,
+                score float8 NULL,
+                weight int4 NULL,
+                sor_item_attribution_id int4 NULL,
+                sor_item_name varchar NULL,
+                document_id varchar NULL,
+                b_box varchar NULL,
+                root_pipeline_id int8 NULL,
+                question_id int8 NULL,
+                synonym_id int8 NULL,
+                model_registry varchar NULL,
+                category text NULL,
+                batch_id varchar NULL,
+                is_ocr_field_comparable boolean NULL,
+                extracted_text text NULL,
+                allowed_adapter varchar NULL,
+                is_encrypted boolean NULL,
+                encryption_policy varchar NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS macro.ocr_text_comparison_input_audit(
+                id bigserial NOT NULL,
+                created_on timestamp NULL,
+                created_user_id int4 NULL,
+                last_updated_on timestamp NULL,
+                last_updated_user_id int4 NULL,
+                tenant_id int8 NULL,
+                origin_id varchar NULL,
+                group_id int4 NULL,
+                paper_no int4 NULL,
+                sor_question varchar NULL,
+                answer text NULL,
+                vqa_score float8 NULL,
+                score float8 NULL,
+                weight int4 NULL,
+                sor_item_attribution_id int4 NULL,
+                sor_item_name varchar NULL,
+                document_id varchar NULL,
+                b_box varchar NULL,
+                root_pipeline_id int8 NULL,
+                question_id int8 NULL,
+                synonym_id int8 NULL,
+                model_registry varchar NULL,
+                category text NULL,
+                batch_id varchar NULL,
+                is_ocr_field_comparable boolean NULL,
+                extracted_text text NULL,
+                allowed_adapter varchar NULL,
+                is_encrypted boolean NULL,
+                encryption_policy varchar NULL
+                );
+
+
+        "} on-condition if "${ocr.text.comparison.validator}"=="true"
+
+
+
+}
+catch{
+        transform as "update to failed sor validation payload queue" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO sor_validation.sor_validation_pipeline_audit
+                (group_id, created_on, created_by, user_id, tenant_id, status, stage, message, root_pipeline_id)
+                VALUES('${gen_group_id.group_id}', now(), '${created_user_id}', '${created_user_id}', ${tenant_id}, 'FAILED', 'DDL_SOR_VALIDATION', 'Sor validation failed in ddl with group_id ${gen_group_id.group_id}','${gen_id.root_pipeline_id}');
+        "} on-condition if "true"=="true"
+}
+finally{
+}
+}

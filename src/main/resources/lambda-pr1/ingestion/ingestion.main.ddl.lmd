@@ -1,0 +1,489 @@
+process "ingestion.main.ddl"
+{
+	try{
+            transform as "Create ingestion audit,queue, archive, error queue, and ingestion tables" on "intics_zio_db_conn" using
+            {"
+                    CREATE TABLE IF NOT EXISTS  ingestion.ingestion_pipeline_audit (
+                    id bigserial NOT NULL,
+                    tenant_id int8 NULL,
+                    process_id bigint NULL,
+                    inbound_id varchar NULL,
+                    group_id varchar NULL,
+                    created_on varchar NULL,
+                    status varchar NULL,
+                    stage varchar NULL,
+                    message varchar NULL,
+                    root_pipeline_id int8 NULL
+                    );
+
+                    CREATE TABLE IF NOT EXISTS ingestion.ingestion_payload_queue_archive (
+                    producer_process_id int8 NOT NULL,
+                    consumer_process_id int8 NULL,
+                    inbound_id varchar NOT NULL,
+                    group_id int4 NOT NULL,
+                    created_on timestamp NOT NULL,
+                    status varchar NOT NULL,
+                    stage  varchar NOT NULL,
+                    consumed_on_ts timestamp NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL,
+                    CONSTRAINT ingestion_payload_queue_archive_pk PRIMARY KEY ( inbound_id,tenant_id)
+                    );
+
+                    CREATE TABLE IF NOT EXISTS ingestion.ingestion_payload_error_queue (
+                    producer_process_id int8 NOT NULL,
+                    consumer_process_id int8 NULL,
+                    group_id int4 NOT NULL,
+                    inbound_id varchar NOT NULL,
+                    created_on timestamp NOT NULL,
+                    status varchar NOT NULL,
+                    stage  varchar NOT NULL,
+                    message varchar NULL,
+                    consumed_on_ts timestamp NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL,
+                    CONSTRAINT ingestion_payload_error_queue_pk PRIMARY KEY (inbound_id,tenant_id)
+                    );
+
+                    CREATE TABLE IF NOT EXISTS ingestion.inbound_file (
+                    inbound_id bigserial NOT NULL,
+                    created_on timestamp NOT NULL,
+                    created_user_id varchar NOT NULL,
+                    last_updated_on timestamp NULL,
+                    last_updated_user_id varchar NULL,
+                    tenant_id int8 NULL,
+                    file_path varchar NOT NULL,
+                    document_id varchar NOT NULL,
+                    root_pipeline_id int8 NULL,
+                    CONSTRAINT inbound_file_pkey PRIMARY KEY (inbound_id)
+                    );
+
+                    CREATE TABLE  IF NOT EXISTS ingestion.feature_request (
+                    feature_request_id bigserial NOT NULL,
+                    created_on timestamp NOT NULL,
+                    created_user_id varchar NOT NULL,
+                    last_updated_on timestamp NULL,
+                    last_updated_user_id varchar NULL,
+                    tenant_id int8 NULL,
+                    enabled bool NOT NULL,
+                    sor_item_attribution_id int4 NOT NULL,
+                    inbound_id int8 NOT NULL,
+                    root_pipeline_id int8 NULL,
+                    CONSTRAINT feature_request_pkey PRIMARY KEY (feature_request_id),
+                    CONSTRAINT  feature_request_foreign_key FOREIGN KEY (inbound_id) REFERENCES ingestion.inbound_file(inbound_id)
+                    );
+
+                    CREATE TABLE IF NOT EXISTS preprocess.preprocess_payload_queue (
+                    producer_process_id int8 NOT NULL,
+                    consumer_process_id int8 NULL,
+                    origin_id varchar NOT NULL,
+                    group_id int4 NOT NULL,
+                    batch_id varchar not null,
+                    created_on timestamp NOT NULL,
+                    status varchar NOT NULL,
+                    stage  varchar NOT NULL,
+                    consumed_on_ts timestamp NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL,
+                    CONSTRAINT preprocess_payload_queue_pk PRIMARY KEY (origin_id,tenant_id)
+                    );
+
+                    CREATE TABLE IF NOT EXISTS doc_eyecue.doc_eyecue_payload_queue (
+                    producer_process_id    BIGINT NOT NULL,
+                    consumer_process_id    BIGINT,
+                    origin_id              VARCHAR NOT NULL,
+                    group_id               INT NOT NULL,
+                    batch_id               VARCHAR NOT NULL,
+                    tenant_id              BIGINT NOT NULL,
+                    root_pipeline_id       BIGINT,
+                    template_id            VARCHAR NULL,
+                    status                 VARCHAR NOT NULL,
+                    stage                  VARCHAR NOT NULL,
+                    created_on             TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    last_updated_on        TIMESTAMP,
+                    consumed_on_ts         TIMESTAMP,
+                    transaction_id         VARCHAR NULL,
+                    source                 VARCHAR NULL,
+                    CONSTRAINT doc_eyecue_payload_queue_pk PRIMARY KEY (origin_id, batch_id, tenant_id)
+                    );
+
+                    CREATE TABLE IF NOT EXISTS outbound.outbound_payload_queue (
+                    producer_process_id int8 NOT NULL,
+                    consumer_process_id int8 NULL,
+                    origin_id varchar NOT NULL,
+                    group_id int4 NULL,
+                    created_on timestamp NULL,
+                    consumed_on_ts timestamp NULL,
+                    status varchar NULL,
+                    stage varchar NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL,
+                    batch_id varchar not null,
+                    CONSTRAINT outbound_payload_queue_pk PRIMARY KEY (tenant_id, origin_id)
+                    );
+
+                    create SCHEMA if not exists product_outbound;
+                    CREATE TABLE IF NOT EXISTS product_outbound.product_outbound_payload_queue (
+                    producer_process_id int8 NOT NULL,
+                    consumer_process_id int8 NULL,
+                    origin_id varchar NOT NULL,
+                    group_id int4 NULL,
+                    batch_id varchar not null,
+                    created_on timestamp NULL,
+                    consumed_on_ts varchar NULL,
+                    status varchar NULL,
+                    stage varchar NULL,
+                    tenant_id int8 NULL,
+                    root_pipeline_id int8 NULL,
+                    CONSTRAINT product_outbound_payload_queue_pk PRIMARY KEY (tenant_id, origin_id)
+                    );
+
+
+                    CREATE TABLE IF NOT EXISTS info.asset (
+                        asset_id bigserial NOT NULL,
+                        created_on timestamp NULL,
+                        created_user_id int8 NULL,
+                        last_updated_on timestamp NULL,
+                        last_updated_user_id int8 NULL,
+                        status varchar NULL,
+                        version int4 NULL,
+                        file_checksum varchar NULL,
+                        file_extension varchar NULL,
+                        file_id varchar NULL,
+                        file_name varchar NULL,
+                        file_path varchar NULL,
+                        file_size float8 NULL,
+                        root_pipeline_id int8 NULL,
+                        tenant_id int8 NULL,
+                        transaction_id varchar NULL,
+                        workspace_id int8 NULL,
+                        height float4 NULL,
+                        width float4 NULL,
+                        dpi int4 NULL,
+                        channel_id int8 NULL,
+                        batch_id varchar NULL,
+                        decoded_file_name varchar NULL,
+                        CONSTRAINT asset_pkey PRIMARY KEY (asset_id)
+                    );
+
+
+                    CREATE TABLE IF NOT EXISTS ${temp_schema_name}.asset_${init_process_id.process_id} (
+                        asset_id int8 NOT NULL,
+                        created_on timestamp NULL,
+                        created_user_id int8 NULL,
+                        last_updated_on timestamp NULL,
+                        last_updated_user_id int8 NULL,
+                        status varchar NULL,
+                        version int4 NULL,
+                        file_checksum varchar NULL,
+                        file_extension varchar NULL,
+                        file_id varchar NULL,
+                        file_name varchar NULL,
+                        file_path varchar NULL,
+                        file_size float8 NULL,
+                        root_pipeline_id int8 NULL,
+                        tenant_id int8 NULL,
+                        transaction_id varchar NULL,
+                        workspace_id int8 NULL,
+                        height float4 NULL,
+                        width float4 NULL,
+                        dpi int4 NULL,
+                        channel_id int8 NULL,
+                        batch_id varchar NULL,
+                        decoded_file_name varchar NULL,
+                        CONSTRAINT asset_${init_process_id.process_id}_pkey PRIMARY KEY (asset_id)
+                    );
+
+                    CREATE TABLE  IF NOT EXISTS info.source_of_origin (
+                    origin_id varchar NOT NULL,
+                    group_id int4 NOT NULL,
+                    origin_type varchar null,
+                    preview_encode text null,
+                    preview_file_path text null,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NOT NULL,
+                    transaction_id varchar NULL,
+                    channel_id int8 null,
+                    status varchar null,
+                    version int8 null,
+                    created_user_id varchar NOT NULL,
+                    created_on timestamp NOT NULL,
+                    last_updated_user_id varchar NULL,
+                    last_updated_on timestamp NULL,
+                    file_id varchar NOT NULL,
+                    asset_id int8 null,
+                    batch_id varchar not null,
+                    CONSTRAINT source_of_origin_pkey PRIMARY KEY (origin_id,tenant_id)
+                    );
+
+                    CREATE TABLE IF NOT EXISTS ${temp_schema_name}.source_of_origin_${init_process_id.process_id} (
+                    origin_id varchar NOT NULL,
+                    tenant_id int8 NOT NULL,
+                    created_on timestamp NULL,
+                    created_user_id int8 NULL,
+                    last_updated_on timestamp NULL,
+                    last_updated_user_id int8 NULL,
+                    status varchar NULL,
+                    version int4 NULL,
+                    file_id varchar NULL,
+                    group_id int4 NULL,
+                    origin_type varchar NULL,
+                    preview_encode text NULL,
+                    root_pipeline_id int8 NULL,
+                    transaction_id varchar NULL,
+                    workspace_id int8 NULL,
+                    asset_id int8 NULL,
+                    channel_id int8 NULL,
+                    preview_file_path varchar NULL,
+                    batch_id varchar NOT NULL,
+                    CONSTRAINT source_of_origin_${init_process_id.process_id}_pkey PRIMARY KEY (origin_id,tenant_id)
+                    );
+
+                    CREATE TABLE IF NOT EXISTS ingestion.ingestion_payload_queue (
+                    producer_process_id int8 NOT NULL,
+                    consumer_process_id int8 NULL,
+                    group_id int4 NOT NULL,
+                    inbound_id varchar NOT NULL,
+                    created_on timestamp NOT NULL,
+                    status varchar NOT NULL,
+                    stage  varchar NOT NULL,
+                    consumed_on_ts timestamp NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL,
+                    CONSTRAINT ingestion_payload_queue_pk PRIMARY KEY ( inbound_id,tenant_id)
+                    );
+
+
+                    CREATE TABLE IF NOT EXISTS ${temp_schema_name}.sanitizer_summary_origin_audit_${init_process_id.process_id} (
+                    row_count int4 NULL,
+                    correct_row_count int4 NULL,
+                    error_row_count int4 NULL,
+                    comments varchar NULL,
+                    created_at timestamp NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL,
+                    batch_id varchar null
+                    );
+
+                    CREATE TABLE IF NOT EXISTS ingestion.sanitizer_summary_audit (
+                    row_count int4 NULL,
+                    correct_row_count int4 NULL,
+                    error_row_count int4 NULL,
+                    comments varchar NULL,
+                    created_at timestamp NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL
+                    );
+
+                    CREATE TABLE IF NOT EXISTS ${temp_schema_name}.file_details_origin_${init_process_id.process_id}(
+                    origin_id_seq INTEGER DEFAULT nextval('ingestion.origin_num') PRIMARY KEY,
+                    file_id varchar not null,
+                    process_id varchar  NULL,
+                    file_checksum varchar  NULL,
+                    file_extension varchar  NULL,
+                    file_name varchar  NULL,
+                    decoded_file_name varchar NULL,
+                    file_path varchar  NULL,
+                    file_size varchar  NULL,
+                    height float4 null,
+                    width float4 null,
+                    dpi int4 NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL,
+                    encode text null,
+                    batch_id varchar null
+                    );
+
+                    CREATE TABLE IF NOT EXISTS ${temp_schema_name}.batch_split_id_generation_${init_process_id.process_id} (
+                    asset_id bigserial not null,
+                    file_id varchar NOT NULL,
+                    file_name varchar NULL,
+                    file_checksum varchar NULL,
+                    file_path varchar NULL,
+                    decoded_file_name varchar NULL,
+                    file_extension varchar NULL,
+                    file_size int8 NULL,
+                    status varchar NULL,
+                    version int8 NULL,
+                    channel_id int8 NULL,
+                    root_pipeline_id int8 NULL,
+                    height float4 null,
+                    width float4 null,
+                    dpi int4 NULL,
+                    tenant_id int8 NOT NULL,
+                    transaction_id varchar NULL,
+                    created_user_id varchar NOT NULL,
+                    created_on timestamp NOT NULL,
+                    last_updated_user_id varchar NULL,
+                    last_updated_on timestamp NULL,
+                    row_count int8 not null,
+                    split_count int8 not null
+                    );
+
+                    CREATE TABLE IF NOT EXISTS macro.batch_split_id_generation_audit (
+                    asset_id bigserial not null,
+                    file_id varchar NOT NULL,
+                    file_name varchar NULL,
+                    decoded_file_name varchar NULL,
+                    file_checksum varchar NULL,
+                    file_path varchar NULL,
+                    file_extension varchar NULL,
+                    file_size int8 NULL,
+                    status varchar NULL,
+                    version int8 NULL,
+                    channel_id int8 NULL,
+                    root_pipeline_id int8 NULL,
+                    height float4 null,
+                    width float4 null,
+                    dpi int4 NULL,
+                    tenant_id int8 NOT NULL,
+                    transaction_id varchar NULL,
+                    created_user_id varchar NOT NULL,
+                    created_on timestamp NOT NULL,
+                    last_updated_user_id varchar NULL,
+                    last_updated_on timestamp NULL,
+                    row_count int8 not null,
+                    split_count int8 not null
+                    );
+
+
+                    CREATE TABLE IF NOT EXISTS macro.file_details_origin_audit(
+                    file_id varchar not null,
+                    process_id varchar  NULL,
+                    file_checksum varchar  NULL,
+                    file_extension varchar  NULL,
+                    file_name varchar  NULL,
+                    decoded_file_name varchar NULL,
+                    file_path varchar  NULL,
+                    file_size varchar  NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL,
+                    height float4 null,
+                    width float4 null,
+                    dpi int4 NULL,
+                    encode text null,
+                    batch_id varchar not null
+                    );
+
+                    CREATE TABLE IF NOT EXISTS ingestion.final_sanitizer_summary_audit (
+                    id bigserial NOT NULL,
+                    row_count int4 NULL,
+                    correct_row_count int4 NULL,
+                    error_row_count int4 NULL,
+                    comments varchar NULL,
+                    created_at timestamp NULL,
+                    process_id int8 NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL
+                    );
+
+                    CREATE TABLE IF NOT EXISTS  batching.batching_process_payload_queue (
+                    producer_process_id int8 NOT NULL,
+                    consumer_process_id int8 NULL,
+                    origin_id varchar NOT NULL,
+                    group_id int4 NOT NULL,
+                    created_on timestamp NOT NULL,
+                    status varchar NOT NULL,
+                    stage varchar NOT NULL,
+                    consumed_on_ts timestamp NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL,
+                    batch_id varchar not null,
+                    CONSTRAINT batching_process_payload_queue_pk PRIMARY KEY (tenant_id,origin_id)
+                    );
+
+                    CREATE TABLE IF NOT EXISTS  batching.sub_batching_process_payload_queue (
+                    producer_process_id int8 NOT NULL,
+                    consumer_process_id int8 NULL,
+                    origin_id varchar NOT NULL,
+                    group_id int4 NOT NULL,
+                    created_on timestamp NOT NULL,
+                    status varchar NOT NULL,
+                    stage varchar NOT NULL,
+                    consumed_on_ts timestamp NULL,
+                    root_pipeline_id int8 NULL,
+                    tenant_id int8 NULL,
+                    batch_id varchar not null,
+                    CONSTRAINT sub_batching_process_payload_queue_pk PRIMARY KEY (origin_id,batch_id,tenant_id)
+                    );
+
+            "} on-condition if "true"=="true"
+
+                    transform as "Creating a table for multipart file upload and download" on "intics_zio_db_conn" using
+                    {"
+                    CREATE TABLE IF NOT EXISTS multipart_info.multipart_delete (
+                    id BIGSERIAL NOT NULL,
+                    filepath varchar NULL,
+                    message TEXT NULL,
+                    status varchar NULL,
+                    origin_id varchar NULL,
+                    paper_no INT NULL,
+                    group_id INT NULL,
+                    tenant_id BIGINT NULL,
+                    template_id varchar NULL,
+                    process_id BIGINT NULL,
+                    root_pipeline_id BIGINT NULL,
+                    deleted_time TIMESTAMP NULL,
+                    batch_id varchar null,
+                    CONSTRAINT multipart_delete_pkey PRIMARY KEY (id)
+                    );
+
+                    CREATE TABLE IF NOT EXISTS multipart_info.multipart_folder_delete (
+                    id BIGSERIAL NOT NULL,
+                    filepath varchar NULL,
+                    message TEXT NULL,
+                    status varchar NULL,
+                    group_id INT NULL,
+                    tenant_id BIGINT NULL,
+                    process_id BIGINT NULL,
+                    root_pipeline_id BIGINT NULL,
+                    deleted_time TIMESTAMP NULL,
+                    CONSTRAINT multipart_folder_delete_pkey PRIMARY KEY (id)
+                    );
+
+                    CREATE TABLE IF NOT EXISTS multipart_info.multipart_upload (
+                    id BIGSERIAL NOT NULL,
+                    filepath varchar NULL,
+                    filename varchar NULL,
+                    message TEXT NULL,
+                    status varchar NULL,
+                    origin_id varchar NULL,
+                    paper_no INT NULL,
+                    group_id INT NULL,
+                    tenant_id BIGINT NULL,
+                    template_id varchar NULL,
+                    process_id BIGINT NULL,
+                    root_pipeline_id BIGINT NULL,
+                    uploaded_time TIMESTAMP NULL,
+                    batch_id varchar null,
+                    CONSTRAINT multipart_upload_pkey PRIMARY KEY (id)
+                    );
+            "}  on-condition if "true"=="true"
+
+
+
+            transform as "Inserting into inbound payload queue" on "intics_zio_db_conn" using
+            {"
+                    INSERT INTO ingestion.ingestion_payload_queue
+                    (producer_process_id,group_id, inbound_id, created_on, status, stage,root_pipeline_id, tenant_id)
+                    VALUES('${process-id}', '${gen_group_id.group_id}','${gen_group_id.inbound_id}',now(), 'STAGED', 'INGESTION','${gen_id.root_pipeline_id}', ${tenant_id});
+            "}  on-condition if "true"=="true"
+
+	}
+	catch{
+			transform as "Failed in ingestion ddl " on "intics_zio_db_conn" using
+            {"
+                    INSERT INTO ingestion.ingestion_pipeline_audit
+                    (tenant_id, process_id, group_id, created_on, status, stage, message,root_pipeline_id)
+                    VALUES( ${tenant_id}, '${init_process_id.process_id}','${gen_group_id.group_id}',now(), 'FAILED', 'INGESTION_DDL', 'failed in ingestion main ddl','${gen_id.root_pipeline_id}');
+            "}on-condition if "true"=="true"
+	}
+	finally{
+			transform as "Completed in ingestion ddl " on "intics_zio_db_conn" using
+            {"
+                    INSERT INTO ingestion.ingestion_pipeline_audit
+                    (tenant_id, process_id, group_id, created_on, status, stage, message,root_pipeline_id)
+                    VALUES(${tenant_id}, '${init_process_id.process_id}','${gen_group_id.group_id}',now(), 'COMPLETED', 'INGESTION_DDL', 'completed ingestion main ddl','${gen_id.root_pipeline_id}');
+            "}on-condition if "true"=="true"
+	}
+}

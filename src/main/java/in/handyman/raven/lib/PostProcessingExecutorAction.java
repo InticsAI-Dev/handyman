@@ -9,7 +9,7 @@ import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.PostProcessingExecutor;
-import in.handyman.raven.lib.model.scalar.ValidatorByBeanShellExecutor;
+import in.handyman.raven.lib.services.scalar.ValidatorByBeanShellExecutor;
 import in.handyman.raven.util.CommonQueryUtil;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -23,6 +23,7 @@ import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
@@ -132,29 +133,48 @@ public class PostProcessingExecutorAction implements IActionExecution {
 
     private void executeBatchInsert(Handle handle, List<PostProcessingExecutorInput> rows) {
         String sql = buildInsertSQL();
+
         try (PreparedBatch batch = handle.prepareBatch(sql)) {
+
             rows.forEach(row -> {
-                batch.bind("createdUserId", action.getContext().get("created_user_id"));
-                batch.bindBean(row);
-                batch.bind("groupId", Long.valueOf(postProcessingExecutor.getGroupId()));
-                batch.bind("batchId", postProcessingExecutor.getBatchId());
-                batch.add();
+                batch
+                        .bindBean(row) // 👈 binds ALL matching bean properties
+                        .bind("createdUserId", action.getContext().get("created_user_id"))
+                        .bind("groupId", Long.valueOf(postProcessingExecutor.getGroupId()))
+                        .bind("batchId", postProcessingExecutor.getBatchId())
+                        .add();
             });
+
             int[] counts = batch.execute();
             log.info(aMarker, "Batch inserted {} records", counts.length);
+
         } catch (Exception e) {
             log.error(aMarker, "Batch insert failed", e);
-            HandymanException.insertException("Error in batch insert into " + postProcessingExecutor.getOutputTable(), new HandymanException(e), action);
+            HandymanException.insertException(
+                    "Error in batch insert into " + postProcessingExecutor.getOutputTable(),
+                    new HandymanException(e),
+                    action
+            );
         }
     }
 
+
     private String buildInsertSQL() {
         return "INSERT INTO " + postProcessingExecutor.getOutputTable() + " (" +
-                "created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, aggregated_score, masked_score, group_id, origin_id, paper_no, predicted_value, vqa_score, " +
-                "rank, sor_item_attribution_id, sor_item_name, document_id, acc_transaction_id, b_box, root_pipeline_id, frequency, question_id, synonym_id, model_registry, batch_id, sor_container_instance) VALUES (" +
-                "now(), :createdUserId, now(), :createdUserId, :tenantId, :aggregatedScore, :maskedScore, :groupId, :originId, :paperNo, :extractedValue, :vqaScore, " +
-                ":rank, :sorItemAttributionId, :sorItemName, :documentId, :accTransactionId, :bbox, :rootPipelineId, :frequency, :questionId, :synonymId, :modelRegistry, :batchId , :sorContainerInstance)" ;
+                "created_on, created_user_id, last_updated_on, last_updated_user_id, " +
+                "tenant_id, aggregated_score, masked_score, group_id, origin_id, paper_no, " +
+                "predicted_value, vqa_score, rank, sor_item_attribution_id, sor_item_name, " +
+                "document_id, acc_transaction_id, b_box, root_pipeline_id, frequency, " +
+                "question_id, synonym_id, model_registry, batch_id, sor_container_instance" +
+                ") VALUES (" +
+                "now(), :createdUserId, now(), :createdUserId, " +
+                ":tenantId, :aggregatedScore, :maskedScore, :groupId, :originId, :paperNo, " +
+                ":extractedValue, :vqaScore, :rank, :sorItemAttributionId, :sorItemName, " +
+                ":documentId, :accTransactionId, :bbox, :rootPipelineId, :frequency, " +
+                ":questionId, :synonymId, :modelRegistry, :batchId, :sorContainerInstance" +
+                ")";
     }
+
 
     @Override
     public boolean executeIf() throws Exception {
@@ -167,6 +187,7 @@ public class PostProcessingExecutorAction implements IActionExecution {
     @Builder
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class PostProcessingExecutorInput {
+        private String id = UUID.randomUUID().toString();
         private Long tenantId;
         private double aggregatedScore;
         private double maskedScore;

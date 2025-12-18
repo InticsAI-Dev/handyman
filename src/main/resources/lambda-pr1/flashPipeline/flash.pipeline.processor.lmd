@@ -1,0 +1,136 @@
+process "flash.pipeline.main"
+{
+try
+{
+
+
+        transform as "completed the ddl for flash pipeline" on "intics_zio_db_conn" using
+        {"
+
+            INSERT INTO ingestion.pipeline_queue_status_audit
+            (batch_id, consumed_on_ts, consumer_process_id, created_on, group_id, origin_type, producer_process_id, root_pipeline_id, stage, status,message, tenant_id)
+            VALUES('${gen_id.batch_id}', now(), ${process-id}, now(), ${gen_id.group_id}, 'FLASH_PIPELINE', ${process-id}, ${process-id}, 'FLASH_INGESTION', 'STARTED', 'started ingestion of the file.', ${tenant_id});
+
+        "} on-condition if "true"=="true"
+
+        assign as "gen_id" source "intics_zio_db_conn" using {"
+                SELECT nextval('flash.group_id_seq') as group_id,concat('BATCH-' , nextval('flash.batch_id_seq')::varchar) as batch_id;
+        "} on-condition if "true"=="true"
+
+
+        assetInfo as "insert_into_macro_file_details"
+        on-resource-conn "intics_zio_db_conn"
+        get-audit-table "flash.sanitizer_summary_truth_audit"
+        result-table "flash.file_details_truth"
+        using {"
+              SELECT '${input-file-path}' as file_path,${gen_id.group_id} AS group_id,${gen_id.batch_id} AS batch_id,
+              now() as created_on,${tenant_id} as created_user_id, last_updated_on,${tenant_id} as last_updated_user_id,${tenant_id} as tenant_id
+        "} on-condition if "true"=="true"
+
+
+        transform as "completed the ddl for flash pipeline" on "intics_zio_db_conn" using
+        {"
+
+            INSERT INTO ingestion.pipeline_queue_status_audit
+            (batch_id, consumed_on_ts, consumer_process_id, created_on, group_id, origin_type, producer_process_id, root_pipeline_id, stage, status,message, tenant_id)
+            VALUES('${gen_id.batch_id}', now(), ${process-id}, now(), ${gen_id.group_id}, 'FLASH_PIPELINE', ${process-id}, ${process-id}, 'FLASH_INGESTION', 'COMPLETED', 'started the file processing.', ${tenant_id});
+
+            INSERT INTO ingestion.pipeline_queue_status_audit
+            (batch_id, consumed_on_ts, consumer_process_id, created_on, group_id, origin_type, producer_process_id, root_pipeline_id, stage, status,message, tenant_id)
+            VALUES('${gen_id.batch_id}', now(), ${process-id}, now(), ${gen_id.group_id}, 'FLASH_PIPELINE', ${process-id}, ${process-id}, 'FLASH_ITEMIZATION', 'STARTED', 'started the itemization stage.', ${tenant_id});
+
+        "} on-condition if "true"=="true"
+
+        paperItemizer as "paper itemizer for group id ${group_id} and batch_id ${batch_id}"
+        outputDir "${gen_directory.denoise_dest_path}"
+        copro-url "${copro.paper-itemizer.url}"
+        result-table "flash.paper_itemizer_audit"
+        processId "${init_process_id.process_id}"
+        resource-conn "intics_zio_db_conn"
+        using {"
+         SELECT file_id as origin_id, '' as group_id ,
+         '${input-file-path}' as file_path,
+         ${tenant_id} as tenant_id,${process-id} as process_id,
+         ${process-id} as root_pipeline_id,
+         '' as batch_id,
+         now() as created_on
+         from flash.file_details_truth
+         where file_path='${input-file-path}' and tenant_id = ${tenant_id};
+        "} on-condition if "true"=="true"
+
+        transform as "completed the ddl for flash pipeline" on "intics_zio_db_conn" using
+        {"
+
+            INSERT INTO ingestion.pipeline_queue_status_audit
+            (batch_id, consumed_on_ts, consumer_process_id, created_on, group_id, origin_type, producer_process_id, root_pipeline_id, stage, status,message, tenant_id)
+            VALUES('${gen_id.batch_id}', now(), ${process-id}, now(), ${gen_id.group_id}, 'FLASH_PIPELINE', ${process-id}, ${process-id}, 'FLASH_ITEMIZATION', 'COMPLETED', 'started the file processing.', ${tenant_id});
+
+            INSERT INTO ingestion.pipeline_queue_status_audit
+            (batch_id, consumed_on_ts, consumer_process_id, created_on, group_id, origin_type, producer_process_id, root_pipeline_id, stage, status,message, tenant_id)
+            VALUES('${gen_id.batch_id}', now(), ${process-id}, now(), ${gen_id.group_id}, 'FLASH_PIPELINE', ${process-id}, ${process-id}, 'FLASH_KRYPTON_API', 'STARTED', 'started the Krypton Api call stage.', ${tenant_id});
+
+        "} on-condition if "true"=="true"
+
+
+
+            radonKvp as "radon Kvp api calling macro"
+            on-resource-conn "intics_zio_db_conn"
+            copro-url "${gen_directory.sor_transaction_copro_trinity_triton_url}"
+            output-table "flash.radon_kvp_output_audit"
+            using
+            {"
+                    SELECT a.processed_file_path as input_file_path,
+                    a.system_prompt,
+                    a.user_prompt,
+                    'RADON_KVP' as process,
+                    a.paper_no,
+                    a.origin_id,
+                     a.process_id,
+                     a.group_id,
+                     a.tenant_id,
+                     a.root_pipeline_id,
+                     '${radon.kvp.action.model.name}' as model_name,
+                    a.batch_id,
+                    '${radon.kvp.action.model.name}' as model_registry,
+                    'PRIMARY' as category,
+                    now() as created_on,
+                    'KRYPTON START' as api_name,
+                    'false'::bool as post_process,
+                    '' post_process_class_name,
+                    1 as sor_container_id
+                    FROM flash.paper_itemizer_audit a
+            "}on-condition if "true"=="true"
+
+
+        transform as "completed the ddl for flash pipeline" on "intics_zio_db_conn" using
+        {"
+
+            INSERT INTO ingestion.pipeline_queue_status_audit
+            (batch_id, consumed_on_ts, consumer_process_id, created_on, group_id, origin_type, producer_process_id, root_pipeline_id, stage, status,message, tenant_id)
+            VALUES('${gen_id.batch_id}', now(), ${process-id}, now(), ${gen_id.group_id}, 'FLASH_PIPELINE', ${process-id}, ${process-id}, 'FLASH_KRYPTON_API', 'COMPLETED', 'completed the krypton api.', ${tenant_id});
+
+        "} on-condition if "true"=="true"
+
+
+}
+catch
+{
+
+
+        transform as "completed the ddl for flash pipeline" on "intics_zio_db_conn" using
+        {"
+
+            INSERT INTO ingestion.pipeline_queue_status_audit
+            (batch_id, consumed_on_ts, consumer_process_id, created_on, group_id, origin_type, producer_process_id, root_pipeline_id, stage, status,message, tenant_id)
+            VALUES('${gen_id.batch_id}', now(), ${process-id}, now(), ${gen_id.group_id}, 'FLASH_PIPELINE', ${process-id}, ${process-id}, 'FLASH_KRYPTON_API', 'FAILED', 'completed the krypton api.', ${tenant_id});
+
+        "} on-condition if "true"=="true"
+
+}
+
+finally {
+
+
+
+}
+}

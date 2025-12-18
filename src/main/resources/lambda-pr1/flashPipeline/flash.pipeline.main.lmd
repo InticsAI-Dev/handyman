@@ -1,0 +1,67 @@
+process "flash.pipeline.main"
+{
+try
+{
+
+
+        assign as "gen_id" source "intics_zio_db_conn" using {"
+                SELECT nextval('flash.group_id_seq') as group_id,concat('BATCH-' , nextval('flash.batch_id_seq')::varchar) as batch_id;
+        "} on-condition if "true"=="true"
+
+        transform as "completed the ddl for flash pipeline" on "intics_zio_db_conn" using
+        {"
+
+            INSERT INTO ingestion.pipeline_queue_status_audit
+            (batch_id, consumed_on_ts, consumer_process_id, created_on, group_id, origin_type, producer_process_id, root_pipeline_id, stage, status,message, tenant_id)
+            VALUES('${gen_id.batch_id}', now(), ${process-id}, now(), ${gen_id.group_id}, 'FLASH_PIPELINE', ${process-id}, ${process-id}, 'FLASH_MAIN_CALLER', 'STARTED', 'started calling the main caller', ${tenant_id});
+
+        "} on-condition if "true"=="true"
+
+        callprocess as "calling flash.pipeline.ddl.lmd caller"
+        with-target "flash.pipeline.ddl.lmd"
+        from-file "${basepath}/flash.pipeline.ddl.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+            SELECT 1;
+        "} on-condition if "true"=="true"
+
+
+        callprocess as "calling flash.pipeline.processor.lmd caller"
+        with-target "flash.pipeline.processor.lmd"
+        from-file "${basepath}/flash.pipeline.processor.lmd"
+        using "intics_zio_db_conn"
+        for-every {"
+            SELECT 1;
+        "} on-condition if "true"=="true"
+
+        transform as "completed the ddl for flash pipeline" on "intics_zio_db_conn" using
+        {"
+
+            INSERT INTO ingestion.pipeline_queue_status_audit
+            (batch_id, consumed_on_ts, consumer_process_id, created_on, group_id, origin_type, producer_process_id, root_pipeline_id, stage, status,message, tenant_id)
+            VALUES('${gen_id.batch_id}', now(), ${process-id}, now(), ${gen_id.group_id}, 'FLASH_PIPELINE', ${process-id}, ${process-id}, 'FLASH_MAIN_CALLER', 'COMPLETED', 'completed calling the main caller', ${tenant_id});
+
+        "} on-condition if "true"=="true"
+
+
+}
+catch
+{
+        transform as "completed the ddl for flash pipeline" on "intics_zio_db_conn" using
+        {"
+
+            INSERT INTO ingestion.pipeline_queue_status_audit
+            (batch_id, consumed_on_ts, consumer_process_id, created_on, group_id, origin_type, producer_process_id, root_pipeline_id, stage, status,message, tenant_id)
+            VALUES('${gen_id.batch_id}', now(), ${process-id}, now(), ${gen_id.group_id}, 'FLASH_PIPELINE', ${process-id}, ${process-id}, 'FLASH_MAIN_CALLER', 'FAILED', 'failed calling the main caller', ${tenant_id});
+
+        "} on-condition if "true"=="true"
+
+
+
+}
+
+finally {
+
+
+}
+}

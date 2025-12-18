@@ -1,0 +1,281 @@
+process "sor.grouping.processor"
+{
+	try {
+
+        transform as "Insert into chrono-clash file wise input table using the common time interval for sor-grouping" on "intics_zio_db_conn" using {"
+            INSERT INTO ${temp_schema_name}.grouping_chrono_clash_input_${init_process_id.process_id}
+            (root_pipeline_id, created_on, updated_on, batch_id, group_id, origin_id, tenant_id, time_frame, stage, status, transaction_id, downloaded_time, remaining_time)
+            SELECT sgpq.root_pipeline_id, now(), now(), sgpq.batch_id, sgpq.group_id, sgpq.origin_id, sgpq.tenant_id,
+            ${chronoclash.threshold.time} AS time_frame,
+            'SOR_GROUPING' AS stage,
+            CASE
+                WHEN now() - soo.file_downloaded_time >= (${chronoclash.threshold.time} * interval '1 minute')
+                     AND '${chronoclash.activator}' = 'true' AND POSITION('SOR_GROUPING' IN '${chronoclash.stage.controller}') > 0
+                THEN 'ABORTED'
+                ELSE 'IN_PROGRESS'
+            END AS status,
+            soo.transaction_id,
+            soo.file_downloaded_time as downloaded_time,
+            ((${chronoclash.threshold.time} * interval '1 minute') - (now() - soo.file_downloaded_time)) as remaining_time
+            FROM sor_grouping.sor_grouping_payload_queue sgpq
+            JOIN ${temp_schema_name}.downloaded_asset_source_details_${init_process_id.process_id} soo on soo.root_pipeline_id = sgpq.root_pipeline_id and soo.origin_id = sgpq.origin_id
+            WHERE sgpq.origin_id='${origin_id}' and sgpq.batch_id='${batch_id}' and sgpq.tenant_id =${tenant_id} and sgpq.stage ='SOR_GROUPING' and sgpq.status = 'STAGED';
+        "} on-condition if "${chronoclash.specific.time.interval.enabler}" == "false"
+
+        transform as "Insert into chrono-clash file wise input table using the specific time interval for sor-grouping" on "intics_zio_db_conn" using {"
+            INSERT INTO ${temp_schema_name}.grouping_chrono_clash_input_${init_process_id.process_id}
+            (root_pipeline_id, created_on, updated_on, batch_id, group_id, origin_id, tenant_id, time_frame, stage, status, transaction_id, downloaded_time, remaining_time)
+            SELECT sgpq.root_pipeline_id, now(), now(), sgpq.batch_id, sgpq.group_id, sgpq.origin_id, sgpq.tenant_id,
+            CASE
+                WHEN (CURRENT_TIME BETWEEN scti.start_time_frame::time AND scti.end_time_frame::time)
+                THEN scti.time_frame
+                ELSE ${chronoclash.threshold.time}
+            END AS time_frame,
+            'SOR_GROUPING' AS stage,
+            CASE
+                WHEN now() - soo.file_downloaded_time >= ((time_frame) * interval '1 minute') AND '${chronoclash.activator}' = 'true' AND POSITION('SOR_GROUPING' IN '${chronoclash.stage.controller}') > 0
+                THEN 'ABORTED'
+                ELSE 'IN_PROGRESS'
+            END AS status,
+            soo.transaction_id,
+            soo.file_downloaded_time as downloaded_time,
+            ((time_frame * interval '1 minute') - (now() - soo.file_downloaded_time)) as remaining_time
+            FROM sor_grouping.sor_grouping_payload_queue sgpq
+            JOIN ${temp_schema_name}.downloaded_asset_source_details_${init_process_id.process_id} soo on soo.root_pipeline_id = sgpq.root_pipeline_id and soo.origin_id = sgpq.origin_id
+            JOIN config.spw_chrono_clash_time_interval scti on scti.tenant_id = sgpq.tenant_id and scti.instance = '${root-pipeline-name}' and CURRENT_TIME BETWEEN scti.start_time_frame::time AND scti.end_time_frame::time
+            WHERE sgpq.origin_id='${origin_id}' and sgpq.batch_id='${batch_id}' and sgpq.tenant_id =${tenant_id} and sgpq.stage ='SOR_GROUPING' and sgpq.status = 'STAGED';
+        "} on-condition if "${chronoclash.specific.time.interval.enabler}" == "true"
+
+			transform as "insert into sor grouping audit started" on "intics_zio_db_conn" using
+            {"
+                    INSERT INTO sor_grouping.sor_grouping_pipeline_audit
+                    (origin_id, created_on, group_id, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+                    SELECT sgpq.origin_id, now(), sgpq.group_id, sgpq.tenant_id, sgpq.tenant_id, 'STARTED', 'SOR_GROUPING', 'sor grouping main caller started for origin id ${origin_id}', sgpq.root_pipeline_id, sgpq.batch_id
+                    FROM sor_grouping.sor_grouping_payload_queue sgpq
+                    JOIN ${temp_schema_name}.grouping_chrono_clash_input_${init_process_id.process_id} a ON a.origin_id = sgpq.origin_id AND a.tenant_id = sgpq.tenant_id
+                    WHERE sgpq.status = a.status and sgpq.group_id='${group_id}' and sgpq.tenant_id = ${tenant_id} and sgpq.batch_id = '${batch_id}';
+
+                    UPDATE sor_grouping.sor_grouping_payload_queue as sgpq
+                    SET consumer_process_id='${init_process_id.process_id}', consumed_on_ts=now(),status=a.status
+                    FROM ${temp_schema_name}.grouping_chrono_clash_input_${init_process_id.process_id} a
+                    WHERE a.origin_id = sgpq.origin_id and sgpq.origin_id='${origin_id}' AND sgpq.status='STAGED' and sgpq.tenant_id = ${tenant_id} and sgpq.batch_id = '${batch_id}';
+
+                    update ingestion.pipeline_queue_status_audit as sgpq
+                    set status = a.status , consumed_on_ts=now(), consumer_process_id = '${process-id}'
+                    FROM ${temp_schema_name}.grouping_chrono_clash_input_${init_process_id.process_id} a
+                    where a.origin_id = sgpq.origin_id and a.origin_id='${origin_id}' and a.group_id=${group_id} and sgpq.batch_id='${batch_id}' and sgpq.tenant_id =${tenant_id} and sgpq.stage ='SOR_GROUPING' ;
+
+					UPDATE batching.sub_batching_process_payload_queue as sgpq
+					SET status=a.status,  stage='SOR_GROUPING'
+					FROM ${temp_schema_name}.grouping_chrono_clash_input_${init_process_id.process_id} a
+					WHERE a.origin_id = sgpq.origin_id and sgpq.origin_id='${origin_id}' and a.group_id='${group_id}' and sgpq.batch_id ='${batch_id}' and sgpq.tenant_id = ${tenant_id};
+
+            "}  on-condition if "true"=="true"
+
+			assign as "file_count" source "intics_zio_db_conn" using {"
+				SELECT count(pi.origin_id) AS total_page
+				FROM info.paper_itemizer pi
+				WHERE origin_id='${origin_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+				SELECT count(sor_item_name) as patient_eoc_count
+                FROM ${temp_schema_name}.aggregation_evaluator_${init_process_id.process_id}
+                WHERE origin_id ='${origin_id}' AND sor_item_name='patient_eoc' and predicted_value !=''
+                 and predicted_value is not null  and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+                SELECT 'patient_eoc' as item_name ;
+			"}on-condition if "true"=="true"
+
+			episodeOfCoverage as "episode of coverage for group id origin_id ${origin_id}"
+			on-resource-conn "intics_zio_db_conn"
+			origin-id "${origin_id}"
+			group-id "${group_id}"
+			total-pages "${file_count.total_page}"
+			output-table "${temp_schema_name}.eoc_result_${init_process_id.process_id}"
+			grouping-item "${file_count.item_name}"
+			patient-eoc-count "${file_count.patient_eoc_count}"
+			input-file-path {"
+                             SELECT asset.file_path,sot.origin_id,asset.file_id,sot.paper_no
+                             FROM ${temp_schema_name}.source_of_truth_${init_process_id.process_id} sot
+                             JOIN ${temp_schema_name}.asset_${init_process_id.process_id} asset
+                             ON asset.asset_id=sot.asset_id
+                             JOIN sor_grouping.sor_grouping_payload_queue sqp
+                             ON sqp.origin_id=sot.origin_id and sqp.tenant_id=sot.tenant_id and sqp.batch_id=sot.batch_id
+                             WHERE sot.origin_id='${origin_id}' and sot.tenant_id = ${tenant_id} and sot.batch_id = '${batch_id}' and sqp.status='IN_PROGRESS';
+            "}
+			qr-grouping {"
+						   SELECT '${group_id}' AS group_id,extracted_value AS answer, min(paper_no) AS start_no, max(paper_no) AS end_no,'${file_count.total_page}' AS total_pages, '${batch_id}' as batch_id
+                           FROM qr_extraction.qr_extraction_details extr
+                           JOIN sor_grouping.sor_grouping_payload_queue sqp
+                           ON sqp.origin_id = extr.origin_id and sqp.tenant_id = extr.tenant_id and sqp.batch_id = extr.batch_id
+                           WHERE sqp.origin_id='${origin_id}'
+                           AND extr.qr_format='DATAMATRIX' AND extr.is_candidate_qr='YES'
+                           and extr.extracted_value is not null and extr.extracted_value!='' and extr.tenant_id = ${tenant_id} and extr.batch_id = '${batch_id}' and sqp.status='IN_PROGRESS'
+                           group by extr.extracted_value;
+			"}
+            eoc-grouping {"
+                            SELECT '${group_id}' AS group_id,predicted_value as answer,min(paper_no) AS start_no,max(paper_no) AS end_no ,'${file_count.total_page}' AS total_pages, '${batch_id}' as batch_id
+                            FROM ${temp_schema_name}.aggregation_evaluator_${init_process_id.process_id} sae
+                            JOIN sor_grouping.sor_grouping_payload_queue sqp
+                            join ${temp_schema_name}.sor_meta_consolidated_${init_process_id.process_id} sc on sae.synonym_id=sc.synonym_id and sae.sor_item_name=sc.sor_item_name and sae.tenant_id=sc.tenant_id
+                            ON sqp.origin_id=sae.origin_id and sqp.tenant_id=sae.tenant_id and sqp.batch_id=sae.batch_id
+                            WHERE sae.origin_id='${origin_id}'  and sae.predicted_value !=''
+                            and sae.predicted_value is not null and sae.tenant_id = ${tenant_id} and sae.batch_id = '${batch_id}' and sqp.status='IN_PROGRESS' and and sc.is_multi_entity_enabled=false
+                            group by predicted_value;
+            "}
+            pnd-grouping{"
+                            SELECT '${group_id}' AS group_id,string_agg(predicted_value,'-') AS answer,min(paper_no) AS start_no,max(paper_no) AS end_no ,'${file_count.total_page}' AS total_pages
+                            FROM ${temp_schema_name}.aggregation_evaluator_${init_process_id.process_id} sae
+                            JOIN sor_grouping.sor_grouping_payload_queue sqp
+                            ON sqp.origin_id=sae.origin_id and sqp.tenant_id=sae.tenant_id and sqp.batch_id=sae.batch_id
+                            WHERE sae.origin_id='${origin_id}'  and sae.predicted_value !=''
+                            and sae.predicted_value is not null and sae.tenant_id = ${tenant_id} and sae.batch_id = '${batch_id}' and sqp.status='IN_PROGRESS';
+            "}
+            on-condition if "true"=="true"
+
+
+            transform as "Insert into pahub patient instance" on "intics_zio_db_conn" using
+            {"
+                        INSERT INTO sor_grouping.pahub_patient_instance
+                        ( origin_id, group_id, created_on, created_user_id, last_updated_on, last_updated_user_id, source_of_pahub, tenant_id, document_id, pahub_id,paper_nos, root_pipeline_id, batch_id)
+                        select '${origin_id}','${group_id}',now(),'${created_user_id}',now(),'${created_user_id}',source_of_pahub,${tenant_id},
+                        '${document_id}',pahub_id,array_agg(paper_no), '${gen_id.root_pipeline_id}', '${batch_id}'
+                        FROM ${temp_schema_name}.eoc_result_${init_process_id.process_id}
+                        WHERE origin_id='${origin_id}' and status='COMPLETED' and tenant_id = ${tenant_id} and batch_id = '${batch_id}'
+                        group by pahub_id,source_of_pahub;
+           "}on-condition if "true"=="true"
+
+
+
+            transform as "Voting second phase for origin_id ${origin_id}" on "intics_zio_db_conn" using {"
+                                               -- paper unnest for patient instance;
+                    INSERT INTO ${temp_schema_name}.paper_unnest_${init_process_id.process_id}
+                    (origin_id,pahub_id,paper_number,root_pipeline_id, tenant_id, batch_id)
+                    SELECT origin_id,pahub_id ,unnest(paper_nos) as paper_number,  '${init_process_id.process_id}', ${tenant_id}, batch_id
+                    FROM sor_grouping.pahub_patient_instance
+                    WHERE origin_id='${origin_id}' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+          "} on-condition if "true"=="true"
+
+
+            callprocess as "Voting phase two version 1"
+            with-target "voting.processor.v1"
+            from-file "${basepath}/voting/phaseTwo/voting.phase.two.v1.lmd"
+            using "intics_zio_db_conn"
+            for-every {"
+                SELECT 1;
+            "} on-condition if "${voting.phase.two.activator.version1}"=="true"
+
+            callprocess as "Voting phase two version 2"
+            with-target "voting.processor.v2"
+            from-file "${basepath}/voting/phaseTwo/voting.phase.two.v2.lmd"
+            using "intics_zio_db_conn"
+            for-every {"
+                SELECT 1;
+            "} on-condition if "${voting.phase.two.activator.version2}"=="true"
+
+            callprocess as "Voting phase two version 3"
+            with-target "voting.processor.v3"
+            from-file "${basepath}/voting/phaseTwo/voting.phase.two.v3.lmd"
+            using "intics_zio_db_conn"
+            for-every {"
+                SELECT 1;
+            "} on-condition if "${voting.phase.two.activator.version3}"=="true"
+
+            callprocess as "Voting phase two version 4"
+            with-target "voting.processor.v4"
+            from-file "${basepath}/voting/phaseTwo/voting.phase.two.v4.lmd"
+            using "intics_zio_db_conn"
+            for-every {"
+                SELECT 1;
+            "} on-condition if "${voting.phase.two.activator.version4}"=="true"
+
+            multiValueMemberMapper as "AUMI multi-value member mapper voting result"
+            on-resource-conn "intics_zio_db_conn"
+            output-table "${temp_schema_name}.cummulative_result_${init_process_id.process_id}"
+            batch-id "${batch_id}"
+            using {"
+                select ae.root_pipeline_id, ae.batch_id, ae.group_id, ae.origin_id, sc.sor_container_name, ae.sor_item_name, ae.predicted_value, ae.paper_no, ae.tenant_id, ep.encryption_policy, si.is_encrypted, si.line_item_type, ae.synonym_id , ae.question_id, ae.frequency, ae.vqa_score, ae.b_box, ae.model_registry, ROUND(ae.vqa_score) as confidence_score, sc.document_type as document_type
+                from ${temp_schema_name}.aggregation_evaluator_${init_process_id.process_id} ae
+                join sor_meta.sor_item si on si.sor_item_name = ae.sor_item_name and si.tenant_id = ae.tenant_id and si.status = 'ACTIVE'
+                join sor_meta.sor_tsynonym st on st.sor_item_id = si.sor_item_id and st.synonym_id = ae.synonym_id and st.status = 'ACTIVE'
+                join sor_meta.sor_container sc on sc.sor_container_id = si.sor_container_id and sc.tenant_id = si.tenant_id and sc.status = 'ACTIVE'
+                join sor_meta.encryption_policies ep on ep.encryption_policy_id = si.encryption_policy_id and ep.status = 'ACTIVE'
+                where ae.root_pipeline_id = '${init_process_id.process_id}' and sc.sor_container_name = 'MEMBER_DETAILS' and ae.origin_id='${origin_id}';
+            "} on-condition if "${multi.member.mapper.activator}"=="true"
+
+
+            transform as "insert into sor grouping audit completed" on "intics_zio_db_conn" using
+            {"
+                    INSERT INTO sor_grouping.sor_grouping_pipeline_audit
+                    (origin_id, created_on, group_id, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+                    VALUES('${origin_id}', now(), '${group_id}', '${created_user_id}', ${tenant_id}, 'COMPLETED', 'SOR_GROUPING', 'sor grouping main caller completed origin id ${origin_id}', '${gen_id.root_pipeline_id}', '${batch_id}');
+
+                    UPDATE sor_grouping.sor_grouping_payload_queue
+                    SET status='COMPLETED'
+                    WHERE origin_id='${origin_id}' and status='IN_PROGRESS' and tenant_id = ${tenant_id} and batch_id='${batch_id}';
+
+					UPDATE batching.sub_batching_process_payload_queue a
+					 SET status='COMPLETED',  stage='SOR_GROUPING'
+					 WHERE a.origin_id='${origin_id}'
+					 and a.group_id='${group_id}'  and a.batch_id ='${batch_id}'
+					 and a.tenant_id = ${tenant_id};
+
+            "}  on-condition if "true"=="true"
+
+	}
+	catch{
+		transform as "insert into sor grouping audit failed" on "intics_zio_db_conn" using
+        {"
+                INSERT INTO sor_grouping.sor_grouping_pipeline_audit
+                (origin_id, created_on, group_id, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+                VALUES('${origin_id}', now(), '${group_id}', '${created_user_id}', ${tenant_id}, 'FAILED', 'SOR_GROUPING', 'sor grouping main caller failed', '${gen_id.root_pipeline_id}', '${batch_id}');
+
+                UPDATE sor_grouping.sor_grouping_payload_queue
+                SET status='FAILED'
+                WHERE origin_id='${origin_id}' AND status='IN_PROGRESS' and tenant_id = ${tenant_id} and batch_id='${batch_id}';
+        "}  on-condition if "true"=="true"
+	}
+	finally{
+
+
+            transform as "insert into sor grouping queue due to failed" on "intics_zio_db_conn" using
+            {"
+                UPDATE sor_grouping.sor_grouping_payload_queue
+                SET status='FAILED'
+                WHERE origin_id='${origin_id}' AND status='IN_PROGRESS' and tenant_id = ${tenant_id} and batch_id='${batch_id}';
+            "}  on-condition if "true"=="true"
+
+			transform as "insert into outbound after completed" on "intics_zio_db_conn" using {"
+                INSERT INTO eoc_transformer.eoc_transformer_payload_queue
+                (producer_process_id, origin_id, group_id, created_on, status, stage, root_pipeline_id, tenant_id, batch_id)
+                SELECT producer_process_id, origin_id, group_id, now(), 'STAGED', 'EOC_TRANSFORM', root_pipeline_id, ${tenant_id}, batch_id
+                FROM sor_grouping.sor_grouping_payload_queue
+                where status='COMPLETED' and stage='SOR_GROUPING' and origin_id='${origin_id}' and tenant_id = ${tenant_id} and batch_id='${batch_id}' and '${eoc.transform.activator}'='true';
+
+                INSERT INTO ingestion.pipeline_queue_status_audit
+                (producer_process_id, consumer_process_id, origin_id,batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, origin_type)
+                select producer_process_id, consumer_process_id, origin_id, batch_id, group_id, created_on, status, stage, consumed_on_ts, root_pipeline_id, tenant_id, '${origin_type}'
+                from eoc_transformer.eoc_transformer_payload_queue
+                where group_id='${gen_group_id.group_id}' and batch_id='${batch_id}' and tenant_id =${tenant_id};
+
+            "} on-condition if "true"=="true"
+
+            transform as "insert into sor grouping audit completed" on "intics_zio_db_conn" using
+            {"
+                    INSERT INTO sor_grouping.sor_grouping_pipeline_audit
+                    (origin_id, created_on, group_id, user_id, tenant_id, status, stage, message, root_pipeline_id, batch_id)
+                    VALUES('${origin_id}', now(), '${group_id}', '${created_user_id}', ${tenant_id}, 'COMPLETED', 'SOR_GROUPING', 'sor grouping main caller completed origin id ${origin_id}', '${gen_id.root_pipeline_id}', '${batch_id}');
+
+                    UPDATE sor_grouping.sor_grouping_payload_queue
+                    SET status='COMPLETED'
+                    WHERE origin_id='${origin_id}' and status='IN_PROGRESS' and tenant_id = ${tenant_id} and batch_id = '${batch_id}';
+
+					UPDATE batching.sub_batching_process_payload_queue a
+					 SET status='COMPLETED',  stage='SOR_GROUPING'
+					 WHERE a.origin_id='${origin_id}'
+					 and a.group_id='${group_id}' and a.batch_id ='${batch_id}'
+					 and a.tenant_id = ${tenant_id};
+
+            "}  on-condition if "true"=="true"
+	}
+}

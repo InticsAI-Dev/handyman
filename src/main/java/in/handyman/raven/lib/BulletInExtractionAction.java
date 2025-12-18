@@ -20,9 +20,9 @@ import java.util.Optional;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 
-import in.handyman.raven.lib.model.bulletin.detection.BulletinExtractionConsumerProcess;
-import in.handyman.raven.lib.model.bulletin.detection.BulletinQueryInputTable;
-import in.handyman.raven.lib.model.bulletin.detection.BulletinQueryOutputTable;
+import in.handyman.raven.lib.services.detection.BulletinExtractionConsumerProcess;
+import in.handyman.raven.lib.services.detection.BulletinQueryInputTable;
+import in.handyman.raven.lib.services.detection.BulletinQueryOutputTable;
 import okhttp3.MediaType;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;

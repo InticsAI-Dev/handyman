@@ -1,0 +1,123 @@
+process "bulletin.extraction.ddl"
+{
+     try{
+              transform as "create bulletin_extraction ddl" on "intics_zio_db_conn" using
+            {"
+
+                        CREATE TABLE if not exists bulletin_extraction.bulletin_extraction_payload_queue_archive
+                        (
+                        producer_process_id int8 NOT NULL,
+                        consumer_process_id int8 NULL,
+                        group_id int4 NOT NULL,
+                        origin_id varchar NOT NULL,
+                        created_on timestamp NOT NULL,
+                        status varchar NOT NULL,
+                        stage  varchar NOT NULL,
+                        consumed_on_ts timestamp NULL,
+                        root_pipeline_id int8 NULL,
+                        tenant_id int8 NULL,
+                        batch_id varchar NULL,
+                        CONSTRAINT bulletin_extraction_payload_queue_archive_pk PRIMARY KEY (group_id,origin_id,tenant_id)
+                        );
+
+                        CREATE TABLE if not exists bulletin_extraction.bulletin_extraction_payload_error_queue
+                        (
+                        producer_process_id int8 NOT NULL,
+                        consumer_process_id int8 NULL,
+                        origin_id varchar NOT NULL,
+                        group_id int4 NULL,
+                        created_on timestamp NOT NULL,
+                        status varchar NOT NULL,
+                        stage  varchar NOT NULL,
+                        message varchar NULL,
+                        consumed_on_ts timestamp NULL,
+                        root_pipeline_id int8 NULL,
+                        tenant_id int8 NULL,
+                        batch_id varchar NULL,
+                        CONSTRAINT bulletin_extraction_payload_error_queue_pk PRIMARY KEY (producer_process_id, origin_id,tenant_id)
+                        );
+
+                        create table if not exists ${temp_schema_name}.bulletin_extraction_input_table_${process-id}(
+                        id bigserial not null,
+                        origin_id varchar NOT NULL,
+                        paper_no int4 NOT NULL,
+                        group_id int4 NULL,
+                        file_path varchar null,
+                        tenant_id int8 null,
+                        process_id int8 null,
+                        output_dir varchar null,
+                        root_pipeline_id int8 NULL,
+                        process varchar null,
+                        synonym_id int8 null,
+                        prompt varchar null,
+                        batch_id varchar NULL,
+                        section_header varchar null
+                        );
+
+                        create table if not exists bulletin_extraction.bulletin_extraction_input_table_audit(
+                            id bigserial not null,
+                            origin_id varchar NOT NULL,
+                            paper_no int4 NOT NULL,
+                            group_id int4 NULL,
+                            file_path varchar null,
+                            tenant_id int8 null,
+                            process_id int8 null,
+                            output_dir varchar null,
+                            root_pipeline_id int8 NULL,
+                            process varchar null,
+                            synonym_id int8 null,
+                            prompt varchar null,
+                            batch_id varchar NULL,
+                            section_header varchar null
+                        );
+
+
+                        create table if not exists bulletin_extraction.bulletin_extraction_result(
+                            id bigserial not null,
+                           origin_id varchar NOT NULL,
+                            paper_no int4 NOT NULL,
+                            group_id int4 NULL,
+                            file_path varchar null,
+                            tenant_id int8 null,
+                            process_id int8 null,
+                            output_dir varchar null,
+                            root_pipeline_id int8 NULL,
+                            process varchar null,
+                             status varchar NULL,
+                            stage varchar NULL,
+                            message varchar NULL,
+                            model_name varchar NULL,
+                            model_version varchar NULL,
+                            created_on timestamp NULL,
+                            bulletin_section varchar null,
+                            bulletin_points varchar null,
+                            synonym_id int8 null,
+                            batch_id varchar NULL,
+                            request text null,
+                            response text null,
+                            endpoint varchar null,
+                        	CONSTRAINT bulletin_extraction_result_pk PRIMARY KEY (id)
+                            );
+
+                        CREATE TABLE IF NOT EXISTS bulletin_extraction.bulletin_extraction_pipeline_audit (
+							id bigserial NOT NULL,
+							process_id bigint NULL,
+							origin_id varchar NULL,
+							group_id varchar NULL,
+							created_on varchar NULL,
+							status varchar NULL,
+							stage varchar NULL,
+							message varchar NULL,
+							root_pipeline_id int8 NULL,
+							batch_id varchar NULL,
+							tenant_id int8 NULL
+                        );
+            "} on-condition if "true"=="true"
+     }
+
+     catch{
+     }
+
+     finally{
+     }
+}

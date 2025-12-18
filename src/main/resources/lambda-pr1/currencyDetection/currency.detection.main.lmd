@@ -1,0 +1,59 @@
+process "currency.detection.main"
+    {
+
+    try{
+
+            assign as "pipeline_train_mode" source "intics_zio_db_conn" using
+            {"
+                    select  (case when '${currency.detection.start.action}'='true' AND '${pipeline.train.mode}'='true' then 'true' else 'false' end) as currency_model;
+            "}on-condition if "true"=="true"
+
+            callprocess as "calling currency detection processor"
+            with-target "currency.detection.ddl"
+            from-file "${basepath}/currencyDetection/currency.detection.ddl.lmd"
+            using "intics_zio_db_conn"
+            for-every {"
+                    select 1;
+            "} on-condition if "true"=="true"
+
+            coproStart as "Calling currency detection Model copro start action" for "CURRENCY_DETECTION"
+            copro-server-url "${copro.currency.detection.admin.start.url}"
+            export-command "${copro.currency.detection.export}"
+            process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+            using
+            {"
+                    ${currencyDetectionStartCommand}
+
+            "}on-condition if "${pipeline_train_mode.currency_model}" == "true"
+
+            callprocess as "calling currency detection  processor"
+            with-target "currency.detection.processor"
+            from-file "${basepath}/currencyDetection/currency.detection.processor.lmd"
+            using "intics_zio_db_conn"
+            for-every {"
+                    select 1;
+            "} on-condition if "true"=="true"
+
+            coproStop as "Calling currency detection copro stop action" for "CURRENCY_DETECTION"
+            copro-server-url "${copro.currency.detection.admin.stop.url}"
+            process-id "${init_process_id.process_id}"  resource-conn "intics_zio_db_conn"
+            using
+            {"
+                    gunicorn
+
+            "}on-condition if "${currency.detection.stop.action}"=="true"
+
+    }
+    catch{
+            transform as "failed in currency detection main caller " on "intics_zio_db_conn" using {"
+                    INSERT INTO currency_detection.currency_detection_pipeline_audit
+                    (process_id,group_id, created_on, status, stage, message,root_pipeline_id, tenant_id, batch_id)
+                    values( ${init_process_id.process_id},'${gen_group_id.group_id}', now(),
+                    'FAILED', 'CURRENCY_DETECTION',' currency detection main caller FAILED for process_id ${init_process_id.process_id}','${gen_id.root_pipeline_id}', ${tenant_id}, '${batch_id}');
+
+            "} on-condition if "true"=="true"
+    }
+    finally{
+
+    }
+}
