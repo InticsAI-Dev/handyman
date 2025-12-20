@@ -1,5 +1,6 @@
 package in.handyman.raven.lib;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.core.encryption.SecurityEngine;
 import in.handyman.raven.core.encryption.impl.EncryptionRequestClass;
@@ -15,6 +16,7 @@ import in.handyman.raven.lib.adapters.selections.FieldSelectionAdapterFactory;
 import in.handyman.raven.lib.adapters.selections.LabelWithPriorityProcessor;
 import in.handyman.raven.lib.adapters.selections.models.SelectionFilteringInputTable;
 import in.handyman.raven.lib.adapters.selections.models.WhitelistLabelConfig;
+import in.handyman.raven.lib.adapters.selections.models.WhitelistSectionPriority;
 import in.handyman.raven.lib.model.SectionFiltering;
 import in.handyman.raven.util.CommonQueryUtil;
 import org.jdbi.v3.core.Jdbi;
@@ -217,6 +219,7 @@ public class SectionFilteringAction implements IActionExecution {
                         .blacklistedLabels(splitCsvToSet(row.getBlacklistedLabels()))
                         .blacklistedSections(splitCsvToSet(row.getBlacklistedSections()))
                         .whitelistedLabels(parseWhitelistConfig(row.getWhitelistedLabels(),objectMapper))
+                        .whitelistedSectionsWithPriority(parseWhiteListSectionWithPriority(row.getWhitelistedSectionsWithPriority(),objectMapper))
                         .build())
                 .collect(Collectors.toList());
     }
@@ -239,6 +242,42 @@ public class SectionFilteringAction implements IActionExecution {
             return Arrays.asList(objectMapper.readValue(jsonConfig, WhitelistLabelConfig[].class));
         } catch (Exception e) {
             return Collections.emptyList();
+        }
+    }
+
+    public List<WhitelistSectionPriority> parseWhiteListSectionWithPriority(
+            String whitelistedSectionsWithPriority,
+            ObjectMapper objectMapper
+    ) {
+
+        if (whitelistedSectionsWithPriority == null
+                || whitelistedSectionsWithPriority.trim().isEmpty()) {
+            return List.of();
+        }
+
+        try {
+            // Handle cases where JSON is stored as stringified JSON
+            String json = whitelistedSectionsWithPriority.trim();
+
+            // If accidentally wrapped in quotes
+            if ((json.startsWith("\"") && json.endsWith("\""))
+                    || (json.startsWith("'") && json.endsWith("'"))) {
+                json = objectMapper.readValue(json, String.class);
+            }
+
+            return objectMapper.readValue(
+                    json,
+                    new TypeReference<List<WhitelistSectionPriority>>() {}
+            );
+
+        } catch (Exception e) {
+            // IMPORTANT: fail-safe behavior (do NOT block extraction)
+            log.warn(
+                    "Failed to parse whitelistedSectionsWithPriority. Input={}",
+                    whitelistedSectionsWithPriority,
+                    e
+            );
+            return List.of();
         }
     }
 

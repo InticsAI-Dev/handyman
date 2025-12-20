@@ -1,6 +1,7 @@
 package in.handyman.raven.lib.adapters.selections;
 
 import in.handyman.raven.lib.adapters.selections.models.WhitelistLabelConfig;
+import in.handyman.raven.lib.adapters.selections.models.WhitelistSectionPriority;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -24,12 +25,13 @@ public class WhitelistFilterAdapter implements FieldSelectionAdapter {
                 })
                 .map(field -> {
                     if (field.isLabelMatching()) {
-                        return isLabelValueMatching(field.getWhitelistedLabels(), field, "SECTIONS");
+                        return isSectionValueMatchingWithPriority(field.getWhitelistedSectionsWithPriority(), field, "SECTIONS");
                     }
                     return field;
                 })
                 .collect(Collectors.toList());
     }
+
     public ExtractedField isLabelValueMatching(List<WhitelistLabelConfig> whitelistFields,
                                                    ExtractedField response,
                                                    String filteringType) {
@@ -91,6 +93,85 @@ public class WhitelistFilterAdapter implements FieldSelectionAdapter {
         return response;
     }
 
+    public ExtractedField isSectionValueMatchingWithPriority(
+            List<WhitelistSectionPriority> whitelistSections,
+            ExtractedField response,
+            String filteringType
+    ) {
+
+        if (response == null) {
+            return null;
+        }
+
+        // If no whitelist configured → allow everything
+        if (whitelistSections == null || whitelistSections.isEmpty()) {
+            response.setLabelMatching(true);
+            response.setLabelMatchMessage(
+                    "No whitelist configured for " + filteringType + ". All sections are allowed."
+            );
+            return response;
+        }
+
+        String rawSection = safeTrim(response.getSectionAlias());
+        String section = removeSpecialCharacters(rawSection).toLowerCase();
+
+        Integer bestPriority = null;
+        WhitelistSectionPriority bestMatch = null;
+
+        for (WhitelistSectionPriority cfg : whitelistSections) {
+            if (cfg == null || cfg.getWhitelistKey() == null) continue;
+
+            String sanitizedKey =
+                    removeSpecialCharacters(cfg.getWhitelistKey()).toLowerCase();
+
+            String searchConfig =
+                    cfg.getSectionSearchConfig() == null
+                            ? "EXACT"
+                            : cfg.getSectionSearchConfig().trim().toUpperCase();
+
+            boolean matched = false;
+
+            switch (searchConfig) {
+                case "CONTAINS":
+                    matched = section.contains(sanitizedKey);
+                    break;
+
+                case "EXACT":
+                default:
+                    matched = section.equals(sanitizedKey);
+                    break;
+            }
+
+            if (!matched) continue;
+
+            Integer priority = cfg.getSectionPriority();
+
+            // Pick highest priority (lower number = higher priority)
+            if (bestPriority == null || (priority != null && priority < bestPriority)) {
+                bestPriority = priority;
+                bestMatch = cfg;
+            }
+        }
+
+        // Nothing matched → allow everything
+        if (bestMatch == null) {
+            response.setLabelMatching(true);
+            response.setLabelMatchMessage(
+                    "No section matched whitelist. Allowing all sections."
+            );
+            return response;
+        }
+
+        // Only highest-priority match is allowed
+        response.setLabelMatching(true);
+        response.setLabelMatchMessage(
+                filteringType + " matched with highest priority section: '"
+                        + bestMatch.getWhitelistKey()
+                        + "' (priority=" + bestMatch.getSectionPriority() + ")"
+        );
+
+        return response;
+    }
 
     public String safeTrim(String input) {
         return input == null ? "" : input.trim();

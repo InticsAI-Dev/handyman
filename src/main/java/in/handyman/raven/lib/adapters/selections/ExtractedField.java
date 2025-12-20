@@ -1,6 +1,7 @@
 package in.handyman.raven.lib.adapters.selections;
 
 import in.handyman.raven.lib.adapters.selections.models.WhitelistLabelConfig;
+import in.handyman.raven.lib.adapters.selections.models.WhitelistSectionPriority;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -23,5 +24,6 @@ public class ExtractedField {
     private boolean isLabelMatching;
     private String labelMatchMessage;
     private List<WhitelistLabelConfig> whitelistedLabels;
+    private List<WhitelistSectionPriority> whitelistedSectionsWithPriority;
 
 }

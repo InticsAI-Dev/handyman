@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.sql.Timestamp;
+import java.util.List;
 
 @Data
 @AllArgsConstructor
@@ -45,6 +46,7 @@ public class SelectionFilteringInputTable {
     private String labelMatchMessage;
     private String whitelistedLabels;
     private String whitelistedLabelsWithPriority;
+    private String whitelistedSectionsWithPriority;
     private String labelPriorityIdx;
     private String sorContainerInstance;
 }
