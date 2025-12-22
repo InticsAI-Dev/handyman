@@ -27,7 +27,7 @@ public class DocumentEyeCueResponse {
     private String processedPdfChecksum;
     private Long docEyeCueDurationMs;
     private String errorMessage;
-    private ComputationDetails metricsData;
+    private ComputationDetails computationDetails;
     private Integer statusCode;
     private String detail;
     private UUID requestId;

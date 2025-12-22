@@ -194,7 +194,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                     : httpClient.newCall(request).execute();
             if (response == null) {
                 String errorMessage = "No response received from API";
-                parentObj.add(DeepSiftOutputTable.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).tenantId(entity.getTenantId()).createdOn(entity.getCreatedOn()).rootPipelineId(entity.getRootPipelineId()).request(encryptRequestResponse(dbJsonRequest)).response(errorMessage).endpoint(String.valueOf(endpoint)).request(entity.getRequestId().toString()).build());
+                parentObj.add(DeepSiftOutputTable.builder().batchId(entity.getBatchId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).tenantId(entity.getTenantId()).createdOn(entity.getCreatedOn()).rootPipelineId(entity.getRootPipelineId()).request(encryptRequestResponse(dbJsonRequest)).response(errorMessage).endpoint(String.valueOf(endpoint)).build());
                 log.error(aMarker, errorMessage);
                 HandymanException handymanException = new HandymanException(errorMessage);
                 HandymanException.insertException(errorMessage, handymanException, this.action);
@@ -256,11 +256,6 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                                 .request(encryptRequestResponse(dbJsonRequest))
                                 .response(encryptRequestResponse(responseBody))
                                 .endpoint(String.valueOf(endpoint))
-                                .coproStatusCode(modelResponse.getStatusCode())
-                                .computationDetails(objectMapper.writeValueAsString(modelResponse.getMetricsData()))
-                                .requestId(entity.getRequestId())
-                                .coproErrorDetails(modelResponse.getDetail())
-                                .coproLog(modelResponse.getCoproLog())
                                 .build());
                     }
                 }

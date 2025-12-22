@@ -22,11 +22,6 @@ import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import java.io.IOException;
 import java.util.*;
 
 import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
@@ -57,7 +52,7 @@ public class ProviderDataTransformer {
 
     public List<RadonQueryOutputTable> processProviderData(
             String sourceCode, String className, String responsePayload,
-            RadonQueryInputTable entity, String request, String apiResponse, String endpoint) throws IOException {
+            RadonQueryInputTable entity, String request, String apiResponse, String endpoint) {
         log.info("Starting processProviderData for class: {} with origin Id {} and paper no {} for container Id {}", className, entity.getOriginId(), entity.getPaperNo(), entity.getSorContainerId());
 
         List<RadonQueryOutputTable> outputList = new ArrayList<>();
@@ -85,29 +80,22 @@ public class ProviderDataTransformer {
 
                     outputList.addAll(mappedInterpreterData);
 
-                } catch (EvalError | IOException e) {
+                } catch (EvalError e) {
                     String errorMessage = "Error evaluating Beanshell script for origin id " + entity.getOriginId() + " and paper no " + entity.getPaperNo() + "message : " + e.getMessage();
-                    try {
-                        handleErrorOutputEntity(entity, errorMessage, request, responsePayload, endpoint, e, outputList, apiResponse);
-                    } catch (IOException ex) {
-                        throw new RuntimeException(ex);
-                    }
+                    handleErrorOutputEntity(entity, errorMessage, request, responsePayload, endpoint, e, outputList);
                 }
             });
 
         } catch (Exception e) {
             String errorMessage = "Error executing script for origin id " + entity.getOriginId() + " and paper no " + entity.getPaperNo() + "message : " + e.getMessage();
-            handleErrorOutputEntity(entity, errorMessage, request, responsePayload, endpoint, e, outputList, apiResponse);
+            handleErrorOutputEntity(entity, errorMessage, request, responsePayload, endpoint, e, outputList);
         }
 
         log.info("Total mapped entries: {}", outputList.size());
         return outputList;
     }
 
-    void handleErrorOutputEntity(RadonQueryInputTable entity, String message, String request, String responsePayload, String endpoint, Exception e, List<RadonQueryOutputTable> outputList, String apiResponse) throws IOException {
-
-        CoproMetrics coproMetrics = new CoproMetrics();
-        setParsedResponseValue(apiResponse, coproMetrics);
+    void handleErrorOutputEntity(RadonQueryInputTable entity, String message, String request, String responsePayload, String endpoint, Exception e, List<RadonQueryOutputTable> outputList) {
         outputList.add(RadonQueryOutputTable.builder()
                 .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
                 .paperNo(entity.getPaperNo())
@@ -127,11 +115,6 @@ public class ProviderDataTransformer {
                 .response(encryptRequestResponse(responsePayload))
                 .endpoint(String.valueOf(endpoint))
                 .sorContainerId(entity.getSorContainerId())
-                .requestId(entity.getRequestId())
-                .coproErrorDetails(coproMetrics.getCoproErrorDetails())
-                .computationDetails(coproMetrics.getComputationDetails())
-                .coproStatusCode(coproMetrics.getCoproStatusCode())
-                .coproLog(coproMetrics.getCoproLog())
                 .build());
         log.error(message);
         handleHandymanExceptionInsert(message, e);
@@ -156,7 +139,7 @@ public class ProviderDataTransformer {
     }
 
 
-    private Map<String, Object> parseResponse(String responsePayload, String request, String endpoint, RadonQueryInputTable entity, List<RadonQueryOutputTable> outputList) throws IOException {
+    private Map<String, Object> parseResponse(String responsePayload, String request, String endpoint, RadonQueryInputTable entity, List<RadonQueryOutputTable> outputList) {
 
         if (responsePayload == null) {
             log.warn("Response payload is null or empty.");
@@ -168,14 +151,14 @@ public class ProviderDataTransformer {
             });
         } catch (Exception e) {
             String errorMessage = "Error parsing response JSON in bean shell script for origin id " + entity.getOriginId() + " and paper no " + entity.getPaperNo() + "message : " + e.getMessage();
-            handleErrorOutputEntity(entity, errorMessage, request, responsePayload, endpoint, e, outputList, responsePayload);
+            handleErrorOutputEntity(entity, errorMessage, request, responsePayload, endpoint, e, outputList);
         }
         return Map.of();
     }
 
     private List<RadonQueryOutputTable> processMappingInterpreter(
             Interpreter interpreter, String className, Object response,
-            RadonQueryInputTable entity, String request, String apiResponse, String endpoint) throws EvalError, IOException {
+            RadonQueryInputTable entity, String request, String apiResponse, String endpoint) throws EvalError {
 
         interpreter.set("logger", log);
         String classInstantiation = className + " mapper = new " + className + "(logger);";
@@ -190,7 +173,7 @@ public class ProviderDataTransformer {
 
     private List<RadonQueryOutputTable> processMappingJava(
             Interpreter interpreter, String className, List<Map<String, String>> response,
-            RadonQueryInputTable entity, String request, String apiResponse, String endpoint) throws EvalError, IOException {
+            RadonQueryInputTable entity, String request, String apiResponse, String endpoint) throws EvalError {
         log.info("Processing provider data using Java class: {}", className);
 
         ProviderTransformerFinal processor = new ProviderTransformerFinal(log);
@@ -201,7 +184,7 @@ public class ProviderDataTransformer {
 
     private List<RadonQueryOutputTable> mapOutputTable(
             Object providerMapObject, RadonQueryInputTable entity,
-            String request, String apiResponse, String endpoint) throws IOException {
+            String request, String apiResponse, String endpoint) {
 
         List<RadonQueryOutputTable> outputList = new ArrayList<>();
 
@@ -239,13 +222,9 @@ public class ProviderDataTransformer {
 
 
                         outputList.add(buildOutputTable(entity, request, apiResponse, endpoint, containerId, responseJson));
-                    } catch (IOException e) {
+                    } catch (JsonProcessingException e) {
                         String errorMessage = "Error parsing response JSON in bean shell script for origin id " + entity.getOriginId() + " and paper no " + entity.getPaperNo() + "message : " + e.getMessage();
-                        try {
-                            handleErrorOutputEntity(entity, errorMessage, request, apiResponse, endpoint, e, outputList, apiResponse);
-                        } catch (IOException ex) {
-                            throw new RuntimeException(ex);
-                        }
+                        handleErrorOutputEntity(entity, errorMessage, request, apiResponse, endpoint, e, outputList);
 
                     }
                 });
@@ -305,9 +284,8 @@ public class ProviderDataTransformer {
 
     private RadonQueryOutputTable buildOutputTable(
             RadonQueryInputTable entity, String request, String apiResponse,
-            String endpoint, String containerId, String encryptedContent) throws IOException {
-        CoproMetrics coproMetrics = new CoproMetrics();
-        setParsedResponseValue(apiResponse, coproMetrics);
+            String endpoint, String containerId, String encryptedContent) {
+
         return RadonQueryOutputTable.builder()
                 .createdOn(entity.getCreatedOn())
                 .createdUserId(entity.getTenantId())
@@ -333,38 +311,7 @@ public class ProviderDataTransformer {
                 .response(encryptReqResIfRequired(apiResponse))
                 .endpoint(endpoint)
                 .sorContainerId(Long.valueOf(containerId))
-                .requestId(entity.getRequestId())
-                .coproErrorDetails(coproMetrics.getCoproErrorDetails())
-                .computationDetails(coproMetrics.getComputationDetails())
-                .coproStatusCode(coproMetrics.getCoproStatusCode())
-                .coproLog(coproMetrics.getCoproLog())
                 .build();
     }
-
-    private void setParsedResponseValue(String response, CoproMetrics coproMetrics ) throws IOException {
-        ObjectMapper mapper = new ObjectMapper();
-        JsonNode root = mapper.readTree(encryptRequestResponse(response));
-        JsonNode outputs = root.path("outputs");
-        JsonNode dataNode = outputs.get(0).path("data").get(0);
-        JsonNode innerJson = mapper.readTree(dataNode.asText());
-
-        coproMetrics.setCoproLog(innerJson.path("errorMessage").asText());
-        coproMetrics.setCoproStatusCode(innerJson.path("statusCode").asInt());
-        coproMetrics.setComputationDetails(innerJson.path("computationDetails").toString());
-        coproMetrics.setCoproErrorDetails(innerJson.path("detail").asText());
-
-    }
 }
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
-@Builder
-class CoproMetrics{
-    private Long sorContainerId;
-    private String computationDetails;
-    private Integer coproStatusCode;
-    private String coproLog;
-    private String coproErrorDetails;
-    private UUID requestId;
-}

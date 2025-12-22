@@ -21,26 +21,26 @@ public class DeepSiftActionTest {
                 .resultTable("deep_sift.deep_sift_output_audit")
                 .forkBatchSize("8")
                 .querySet("SELECT\n" +
-                        "    dsi.origin_id,\n" +
-                        "    dsi.group_id,\n" +
-                        "    dsi.created_on,\n" +
-                        "    dsi.created_by,\n" +
-                        "    dsi.input_file_path,\n" +
-                        "    dsi.root_pipeline_id,\n" +
-                        "    dsi.tenant_id,\n" +
-                        "    dsi.batch_id,\n" +
-                        "    dsi.paper_no,\n" +
-                        "    dsi.source_document_type,\n" +
-                        "    dsi.model_id,\n" +
-                        "    dsi.model_name,\n" +
-                        "    dsi.base_prompt,\n" +
-                        "    dsi.system_prompt\n" +
+                        "dsi.origin_id,\n" +
+                        "dsi.group_id,\n" +
+                        "dsi.created_on,\n" +
+                        "dsi.created_by,\n" +
+                        "dsi.input_file_path,\n" +
+                        "dsi.root_pipeline_id,\n" +
+                        "dsi.tenant_id,\n" +
+                        "dsi.batch_id,\n" +
+                        "dsi.paper_no,\n" +
+                        "dsi.source_document_type,\n" +
+                        "dsi.model_id,\n" +
+                        "dsi.model_name,\n" +
+                        "dsi.base_prompt,\n" +
+                        "dsi.system_prompt\n" +
                         "FROM deep_sift.deep_sift_input_audit dsi\n" +
                         "WHERE\n" +
-                        "dsi.batch_id = 'BATCH-68_0'\n" +
+                        "dsi.origin_id = 'ORIGIN-32'\n" +
                         "AND dsi.tenant_id = 1\n" +
-                        "AND dsi.group_id = '68'\n" +
-                        "AND dsi.model_name = 'XENON' limit 1;")
+                        "AND dsi.group_id = '35'\n" +
+                        "AND dsi.model_name = 'XENON' limit 5;")
                 .build();
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
         actionExecutionAudit.getContext().put("copro.data-extraction.url", "http://localhost:5432/xenon-textract");
@@ -73,10 +73,27 @@ public class DeepSiftActionTest {
                 .endPoint("http://localhost:8001/xenon-textract")
                 .processId("138980184199100180")
                 .resultTable("deep_sift.deep_sift_output_audit")
-                .querySet("SELECT     dsi.origin_id,     dsi.group_id,     dsi.created_on,     dsi.created_by,     \n" +
-                        "'/data/processed_images/pdf2png/COMM_P2_INREQ_3 (1)/COMM_P2_INREQ_3 (1)-1.png' as input_file_path,     dsi.root_pipeline_id,     dsi.tenant_id,     dsi.batch_id, \n" +
-                        "dsi.paper_no,     dsi.source_document_type,     dsi.model_id,     dsi.model_name,   \n" +
-                        "dsi.base_prompt,     dsi.system_prompt, gen_random_uuid() as request_id FROM deep_sift.deep_sift_input_audit dsi limit 1;" )
+                .querySet("SELECT\n" +
+                        "dsi.origin_id,\n" +
+                        "dsi.group_id,\n" +
+                        "dsi.created_on,\n" +
+                        "dsi.created_by,\n" +
+                        "dsi.input_file_path,\n" +
+                        "dsi.root_pipeline_id,\n" +
+                        "dsi.tenant_id,\n" +
+                        "dsi.batch_id,\n" +
+                        "dsi.paper_no,\n" +
+                        "dsi.source_document_type,\n" +
+                        "dsi.model_id,\n" +
+                        "dsi.model_name,\n" +
+                        "dsi.base_prompt,\n" +
+                        "dsi.system_prompt\n" +
+                        "FROM deep_sift.deep_sift_input_audit dsi\n" +
+                        "WHERE\n" +
+                        "dsi.origin_id = 'ORIGIN-32'\n" +
+                        "AND dsi.tenant_id = 1\n" +
+                        "AND dsi.group_id = '35'\n" +
+                        "AND dsi.model_name = 'XENON' limit 5;" )
                 .forkBatchSize("5")
                 .build();
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();

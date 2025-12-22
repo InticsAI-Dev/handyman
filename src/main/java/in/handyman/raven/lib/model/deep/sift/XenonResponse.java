@@ -57,7 +57,7 @@ public class XenonResponse {
     private String coproLog;
     private UUID requestId;
     private String detail;
-    private ComputationDetails metricsData;
+    private ComputationDetails computationDetails;
 
 
     // Additional helper methods if needed

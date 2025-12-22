@@ -38,9 +38,9 @@ import static in.handyman.raven.core.enums.FileProcessConstants.COPRO_API_FILE_I
 @ActionExecution(actionName = "DeepSift")
 public class DeepSiftAction implements IActionExecution {
 
-    public static final String INSERT_COLUMNS = "origin_id, group_id, input_file_path, created_on, created_by, root_pipeline_id,tenant_id, batch_id, extracted_text, paper_no, source_document_type,model_id, model_name, timetaken_ms, status,request, response, endpoint, request_id, copro_status_code, copro_log, copro_details, computation_details";
+    public static final String INSERT_COLUMNS = "origin_id, group_id, input_file_path, created_on, created_by, root_pipeline_id,tenant_id, batch_id, extracted_text, paper_no, source_document_type,model_id, model_name, timetaken_ms, status,request, response, endpoint";
     public static final String INSERT_INTO = "INSERT INTO ";
-    public static final String INSERT_INTO_VALUES = "VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?, ?, ?, ?, ? ::jsonb)";
+    public static final String INSERT_INTO_VALUES = "VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     public static final String DEEP_SIFT_CONSUMER_API_COUNT = "deep.sift.consumer.API.count";
     public static final String PAGE_CONTENT_MIN_LENGTH = "deep.sift.page.content.min.length.threshold";
     private final ActionExecutionAudit action;

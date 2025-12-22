@@ -21,7 +21,7 @@ public class LabelWithPriorityProcessor {
      */
     public List<SelectionFilteringInputTable> process(
             List<SelectionFilteringInputTable> input
-            ) {
+    ) {
         List<String> messages = new ArrayList<>();
 
         if (input == null || input.isEmpty()) return Collections.emptyList();

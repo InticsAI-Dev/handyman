@@ -59,7 +59,7 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
             ") VALUES (" +
             ":originId, :groupId, :attempt, :tenantId, :processId, :filePath, :paperNo, :message, :status, :stage, " +
             ":createdOn, :rootPipelineId, :batchId, NOW(), :request, :response, :endpoint, :coproServiceId ," +
-            ":computationDetails :: jsonb, :coproStatusCode, :coproLog, :coproDetails" +
+            ":computationDetails, :coproStatusCode, :coproLog, :coproDetails" +
             ")";
 
     static {

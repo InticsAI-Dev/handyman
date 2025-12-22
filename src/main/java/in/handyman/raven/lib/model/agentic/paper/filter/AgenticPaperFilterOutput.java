@@ -8,7 +8,6 @@ import lombok.NoArgsConstructor;
 
 import java.sql.Timestamp;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 @Data
@@ -44,11 +43,6 @@ public class AgenticPaperFilterOutput implements CoproProcessor.Entity {
     private String endpoint;
     private Integer containerId;
     private String promptType;
-    private String computationDetails;
-    private Integer coproStatusCode;
-    private String coproLog;
-    private String coproErrorDetails;
-    private UUID requestId;
 
     @Override
     public List<Object> getRowData() {
@@ -56,6 +50,6 @@ public class AgenticPaperFilterOutput implements CoproProcessor.Entity {
                 ,this.processId,this.filePath, this.extractedText, this.containerName, this.containerValue,this.paperNo,this.fileName
                 ,this.status,this.stage,this.message,this.isBlankPage,this.createdOn
                 ,this.rootPipelineId,this.templateName, this.modelName, this.modelVersion, this.batchId, this.lastUpdatedOn,
-                this.request, this.response, this.endpoint,this.containerId,this.promptType,this.requestId,this.coproStatusCode,this.coproLog,this.coproErrorDetails,this.computationDetails).collect(Collectors.toList());
+                this.request, this.response, this.endpoint,this.containerId,this.promptType).collect(Collectors.toList());
     }
 }

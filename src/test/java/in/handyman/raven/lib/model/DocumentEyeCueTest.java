@@ -31,9 +31,8 @@ class DocumentEyeCueTest {
                         "i.document_id,\n" +
                         "i.file_name\n" +
                         "FROM doc_eyecue.doc_eyecue_input_table_audit i\n" +
-                        "WHERE i.group_id = 68\n" +
-                        "AND i.batch_id = 'BATCH-68_0'\n" +
-                        "AND i.root_pipeline_id = 219\n" +
+                        "WHERE i.group_id = 35\n" +
+                        "AND i.batch_id = 'BATCH-35_0'\n" +
                         "AND i.tenant_id = 1;")
                 .build();
 

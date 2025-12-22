@@ -2,6 +2,7 @@ package in.handyman.raven.lib.model.retry;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.MissingNode;
 import in.handyman.raven.core.encryption.SecurityEngine;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.repo.HandymanRepo;
@@ -254,74 +255,33 @@ public class CoproRetryService {
             retryAudit.setMessage(response.code()  +" -> "+ response.message());
             try {
                 ObjectMapper mapper = new ObjectMapper();
-                JsonNode root = mapper.readTree(encryptRequestResponse(response.peekBody(Long.MAX_VALUE).string(), action));
+                final String peekResponseBody = response.peekBody(Long.MAX_VALUE).string();
+                JsonNode root = mapper.readTree(encryptRequestResponse(peekResponseBody, action));
                 JsonNode outputs = root.path("outputs");
 
-                String computationDetails = null;
-                Integer coproStatusCode = null;
-                String coproLog = null;
-                String coproDetails = null;
-                final String peekResponseBody = response.peekBody(Long.MAX_VALUE).string();
-                if (!outputs.isEmpty()) {
 
-                    final JsonNode innerJson = setParsedResponseValue(action, peekResponseBody);
+                if (outputs.isArray() &&  !outputs.isEmpty()) {
 
-                    // computationDetails
-                    JsonNode compNode = innerJson.get("computationDetails");
-                    computationDetails = compNode != null && !compNode.isNull() ? compNode.toString() : null;
+                    JsonNode innerJson = setParsedResponseValue(outputs, mapper);
+                    if (!innerJson.isMissingNode()) {
+                        retryAuditMetricSetter(innerJson, mapper, retryAudit);
+                    }
 
-                    // statusCode
-                    JsonNode statusNode = innerJson.get("statusCode");
-                    coproStatusCode = statusNode != null && !statusNode.isNull() ? statusNode.asInt() : null;
-
-                    // errorMessage
-                    JsonNode errorNode = innerJson.get("errorMessage");
-                    coproLog = errorNode != null && !errorNode.isNull() ? errorNode.asText() : null;
-
-                    // detail
-                    JsonNode detailNode = innerJson.get("detail");
-                    coproDetails = detailNode != null && !detailNode.isNull() ? detailNode.asText() : null;
-
-                    // requestId
-                    JsonNode reqNode = innerJson.get("requestId");
                 } else if (
-                        root.has("process")
-                                && ("DATA_EXTRACTION".equals(root.get("process").asText())
-                                || "DOC_EYE_CUE".equals(root.get("process").asText()))
+                        root.hasNonNull("process") &&
+                                ("DATA_EXTRACTION".equals(root.path("process").asText())
+                                        || "DOC_EYE_CUE".equals(root.path("process").asText()))
                 ) {
-
-                    // computationDetails = metricsData JSON or null
-                    JsonNode metricsNode = root.get("metricsData");
-                    computationDetails = metricsNode != null && !metricsNode.isNull()
-                            ? mapper.writeValueAsString(metricsNode)
-                            : null;
-
-                    // statusCode
-                    JsonNode statusNode = root.get("statusCode");
-                    coproStatusCode = statusNode != null && !statusNode.isNull() ? statusNode.asInt() : null;
-
-                    // errorMessage
-                    JsonNode errorNode = root.get("errorMessage");
-                    coproLog = errorNode != null && !errorNode.isNull() ? errorNode.asText() : null;
-
-                    // detail
-                    JsonNode detailNode = root.get("detail");
-                    coproDetails = detailNode != null && !detailNode.isNull() ? detailNode.asText() : null;
-
-                    // requestId
-                    JsonNode reqNode = root.get("requestId");
+                    retryAuditMetricSetter(root, mapper, retryAudit);
                 }
 
 
                 retryAudit.setResponse(encryptRequestResponse(peekResponseBody, action));
-                retryAudit.setCoproLog(coproLog);
 
-                retryAudit.setComputationDetails(computationDetails);
-                retryAudit.setCoproDetails(coproDetails);
-                retryAudit.setCoproStatusCode(coproStatusCode);
-
-            } catch (IOException ex) {
-                retryAudit.setResponse("peek-failed");
+            } catch (Exception ex) {
+                HandymanException handymanException = new HandymanException(ex);
+                HandymanException.insertException("Error in execute method for Copro retry service", handymanException, action);
+                retryAudit.setResponse(ex.getMessage());
             }
         } else if (e != null) {
             String message = e.getMessage() != null ? e.getMessage() : ExceptionUtil.toString(e);
@@ -335,13 +295,63 @@ public class CoproRetryService {
         }
     }
 
-    private JsonNode setParsedResponseValue(ActionExecutionAudit action, String responseBody) throws IOException {
-        ObjectMapper mapper = new ObjectMapper();
-        JsonNode root = mapper.readTree(encryptRequestResponse(responseBody, action));
-        JsonNode outputs = root.path("outputs");
-        JsonNode dataNode = outputs.get(0).path("data").get(0);
-        return mapper.readTree(dataNode.asText());
+    private void retryAuditMetricSetter(
+            JsonNode root,
+            ObjectMapper mapper,
+            CoproRetryErrorAuditTable retryAudit
+    ) throws Exception {
+
+        // computationDetails
+        JsonNode metricsNode = root.path("computationDetails");
+        String metricsMapping = (!metricsNode.isMissingNode() && !metricsNode.isNull() && !metricsNode.isEmpty())
+                ? mapper.writeValueAsString(metricsNode)
+                : null;
+        retryAudit.setComputationDetails(metricsMapping);
+
+        // statusCode
+        JsonNode statusNode = root.path("statusCode");
+        final Integer finalStatusCode =  (!statusNode.isMissingNode() && !statusNode.isNull())
+                ? statusNode.asInt()
+                : null;
+        retryAudit.setCoproStatusCode(finalStatusCode);
+
+        // errorMessage
+        JsonNode errorNode = root.path("errorMessage");
+        final String errorNodeMapping = (!errorNode.isMissingNode() && !errorNode.isNull() && !errorNode.asText().isEmpty())
+                ? errorNode.asText()
+                : null;
+        retryAudit.setCoproLog(errorNodeMapping);
+
+        // detail
+        JsonNode detailNode = root.path("detail");
+        final String detailNodeMapping = (!detailNode.isMissingNode() && !detailNode.isNull() && !detailNode.asText().isEmpty())
+                ? detailNode.asText()
+                : null;
+        retryAudit.setCoproDetails(detailNodeMapping);
     }
+
+
+    private JsonNode setParsedResponseValue(JsonNode outputs, ObjectMapper mapper) throws IOException {
+
+        if (!outputs.isArray() || outputs.isEmpty()) {
+            return MissingNode.getInstance();
+        }
+
+        JsonNode dataArray = outputs.get(0).path("data");
+
+        if (!dataArray.isArray() || dataArray.isEmpty()) {
+            return MissingNode.getInstance();
+        }
+
+        final JsonNode dataNode = dataArray.get(0);
+        if (dataNode.isNull() || dataNode.isMissingNode()) {
+            return MissingNode.getInstance();
+        }
+
+        final String finalDataNode = dataNode.asText();
+        return mapper.readTree(finalDataNode);
+    }
+
 
     public String encryptRequestResponse(String request, ActionExecutionAudit action) {
         String encryptReqRes = action.getContext().get(ENCRYPT_REQUEST_RESPONSE);

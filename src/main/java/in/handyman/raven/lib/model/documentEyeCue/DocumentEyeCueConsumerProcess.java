@@ -179,7 +179,7 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
                     : httpclient.newCall(request).execute();
             if (response == null) {
                 String errorMessage = "No response received from API";
-                resultList.add(DocumentEyeCueOutputTable.builder().processId(entity.getProcessId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(entity.getTenantId()).templateId(entity.getTemplateId()).processId(entity.getProcessId()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(errorMessage).rootPipelineId(entity.getRootPipelineId()).request(encryptRequestResponse(jsonInputRequest)).response(errorMessage).endpoint(String.valueOf(endpoint)).requestId(entity.getRequestId()).build());
+                resultList.add(DocumentEyeCueOutputTable.builder().processId(entity.getProcessId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(entity.getTenantId()).templateId(entity.getTemplateId()).processId(entity.getProcessId()).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(errorMessage).rootPipelineId(entity.getRootPipelineId()).request(encryptRequestResponse(jsonInputRequest)).response(errorMessage).endpoint(String.valueOf(endpoint)).build());
                 log.error(aMarker, errorMessage);
                 HandymanException handymanException = new HandymanException(errorMessage);
                 HandymanException.insertException(errorMessage, handymanException, this.action);
@@ -265,10 +265,6 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
                     .endpoint(endpoint.toString())
                     .encodedFilePath(encryptDocEyeBase64(documentEyeCueResponse.getProcessedPdfBase64()))
                     .docEyeCueDurationMs(documentEyeCueResponse.getDocEyeCueDurationMs())
-                    .requestId(entity.getRequestId())
-                    .computationDetails(objectMapper.writeValueAsString(documentEyeCueResponse.getMetricsData()))
-                    .coproErrorDetails(documentEyeCueResponse.getDetail())
-                    .coproStatusCode(documentEyeCueResponse.getStatusCode())
                     .build();
 
             resultList.add(outputRecord);
@@ -387,7 +383,6 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
                 .request(encryptRequestResponse(request))
                 .response(encryptRequestResponse(response))
                 .endpoint(endpoint.toString())
-                .requestId(entity.getRequestId())
                 .build();
 
         resultList.add(errorRecord);
