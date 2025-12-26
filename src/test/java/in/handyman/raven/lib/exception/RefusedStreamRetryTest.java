@@ -91,11 +91,11 @@ public class RefusedStreamRetryTest {
 
             long startTime = System.currentTimeMillis();
             Response response = retryService.callCoproApiWithRetry(
-                    request, "{\"test\": \"data\"}", auditTable, actionAudit);
+                    request, "{\"test\": \"data\"}", auditTable, actionAudit,UUID.randomUUID() );
             long duration = System.currentTimeMillis() - startTime;
 
             System.out.println("✅ Response Code: " + response.code());
-            System.out.println("✅ Response Body: " + response.body().string());
+//            System.out.println("✅ Response Body: " + response.body().string());
             System.out.println("✅ Total Duration: " + duration + "ms");
             response.close();
 
@@ -128,7 +128,7 @@ public class RefusedStreamRetryTest {
 
             long startTime = System.currentTimeMillis();
             Response response = retryService.callCoproApiWithRetry(
-                    request, "{\"test\": \"protocol\"}", auditTable, actionAudit);
+                    request, "{\"test\": \"protocol\"}", auditTable, actionAudit,UUID.randomUUID());
             long duration = System.currentTimeMillis() - startTime;
 
             System.out.println("✅ Response Code: " + response.code());
@@ -172,7 +172,7 @@ public class RefusedStreamRetryTest {
 
                 try {
                     Response response = retryService.callCoproApiWithRetry(
-                            request, "{\"request\": " + i + "}", auditTable, actionAudit);
+                            request, "{\"request\": " + i + "}", auditTable, actionAudit, UUID.randomUUID());
                     System.out.println("  ✅ Response: " + response.code() +
                             " | Remaining: " + response.header("X-Rate-Limit-Remaining", "N/A"));
                     response.close();
@@ -210,7 +210,7 @@ public class RefusedStreamRetryTest {
             ActionExecutionAudit actionAudit = createMockAudit(3, 2);
 
             Response response = retryService.callCoproApiWithRetry(
-                    request, "", auditTable, actionAudit);
+                    request, "", auditTable, actionAudit, UUID.randomUUID());
             System.out.println("✅ Response Code: " + response.code());
             response.close();
 
@@ -243,12 +243,12 @@ public class RefusedStreamRetryTest {
 
             long startTime = System.currentTimeMillis();
             Response response = retryService.callCoproApiWithRetry(
-                    request, "{\"test\": \"retry-success\"}", auditTable, actionAudit);
+                    request, "{\"test\": \"retry-success\"}", auditTable, actionAudit, UUID.randomUUID());
             long duration = System.currentTimeMillis() - startTime;
 
             System.out.println("✅ Success after retries!");
             System.out.println("✅ Response Code: " + response.code());
-            System.out.println("✅ Response Body: " + response.body().string());
+//            System.out.println("✅ Response Body: " + response.body().string());
             System.out.println("✅ Total Duration: " + duration + "ms");
             response.close();
 
@@ -280,7 +280,7 @@ public class RefusedStreamRetryTest {
 
             long startTime = System.currentTimeMillis();
             Response response = retryService.callCoproApiWithRetry(
-                    request, "{\"test\": \"intermittent\"}", auditTable, actionAudit);
+                    request, "{\"test\": \"intermittent\"}", auditTable, actionAudit, UUID.randomUUID());
             long duration = System.currentTimeMillis() - startTime;
 
             System.out.println("✅ Eventually succeeded!");
@@ -316,7 +316,7 @@ public class RefusedStreamRetryTest {
 
             long startTime = System.currentTimeMillis();
             Response response = retryService.callCoproApiWithRetry(
-                    request, "", auditTable, actionAudit);
+                    request, "", auditTable, actionAudit, UUID.randomUUID());
             long duration = System.currentTimeMillis() - startTime;
 
             System.out.println("✅ Response Code: " + response.code());
@@ -351,12 +351,12 @@ public class RefusedStreamRetryTest {
 
             long startTime = System.currentTimeMillis();
             Response response = retryService.callCoproApiWithRetry(
-                    request, "{\"test\": \"immediate-success\"}", auditTable, actionAudit);
+                    request, "{\"test\": \"immediate-success\"}", auditTable, actionAudit, UUID.randomUUID());
             long duration = System.currentTimeMillis() - startTime;
 
             System.out.println("✅ Immediate success (no retries)!");
             System.out.println("✅ Response Code: " + response.code());
-            System.out.println("✅ Response Body: " + response.body().string());
+//            System.out.println("✅ Response Body: " + response.body().string());
             System.out.println("✅ Duration: " + duration + "ms (should be < 1000ms)");
             response.close();
 

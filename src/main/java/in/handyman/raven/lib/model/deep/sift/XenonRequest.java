@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.UUID;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -22,6 +24,8 @@ public class XenonRequest {
     private String modelName;
     private Long actionId;
     private String inputFilePath;
+    private UUID requestId;
+    private Boolean coproMetricsActivator;
 
     @JsonProperty("base64Image")
     private String base64Img;

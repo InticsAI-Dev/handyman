@@ -9,8 +9,7 @@ import lombok.NoArgsConstructor;
 
 import java.sql.Timestamp;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import java.util.UUID;
 
 @Data
 @AllArgsConstructor
@@ -36,6 +35,8 @@ public class DeepSiftInputTable implements CoproProcessor.Entity {
     private Long processId;
     private String templateName;
     private Long timeTakenMS;
+    private UUID requestId;
+    private Boolean coproMetricsActivator;
 
     @Override
     public String getStatus() {

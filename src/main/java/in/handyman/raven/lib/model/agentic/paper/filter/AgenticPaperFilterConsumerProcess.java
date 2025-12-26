@@ -105,14 +105,19 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
             String textExtractionModelName = action.getContext().get(AGENTIC_PAPER_FILTER_MODEL_NAME);
             String inputFilePath = entity.getFilePath();
             String filePath = String.valueOf(entity.getFilePath());
+            final UUID requestId = UUID.randomUUID();
+            final Boolean coproMetricsActivator = Boolean.valueOf(action.getContext().getOrDefault("copro.metrics.activator","false"));
+            entity.setRequestId(requestId);
+            entity.setCoproMetricsActivator(coproMetricsActivator);
+
 
             if (log.isInfoEnabled()) {
-                log.info(aMarker, "Request has been build with the parameters \n URI : {}, with inputFilePath {} ", endpoint, inputFilePath);
+                log.info(aMarker, "Request has been build with the parameters \n URI : {}, with inputFilePath {} , Request Id {}", endpoint, inputFilePath, entity.getRequestId());
             }
             getCoproHandlerMethod(endpoint, entity, parentObj, textExtractionModelName, filePath);
         } catch (Exception e) {
             String errorMessage = "Error in process method for batch/group" + entity.getGroupId() +
-                    " originId " + entity.getOriginId() + " paperNo " + entity.getPaperNo() + "\n message: " + e.getMessage();
+                    " originId " + entity.getOriginId() + " paperNo " + entity.getPaperNo() +"Request Id:"+entity.getRequestId()+ "\n message: " + e.getMessage();
             log.error(aMarker, errorMessage, e);
             HandymanException.insertException(errorMessage, new HandymanException(e), this.action);
         }
@@ -168,6 +173,8 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         radonKvpExtractionRequest.setPaperNo(entity.getPaperNo());
         radonKvpExtractionRequest.setGroupId(Long.valueOf(entity.getGroupId()));
         radonKvpExtractionRequest.setModelName(action.getContext().get("agentic.paper.filter.activator").equalsIgnoreCase("true") ? "KRYPTON" : entity.getModelName());
+        radonKvpExtractionRequest.setRequestId(entity.getRequestId());
+        radonKvpExtractionRequest.setCoproMetricsActivator(entity.getCoproMetricsActivator());
         return radonKvpExtractionRequest;
     }
 
@@ -185,7 +192,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         Response response;
         try {
             response = Boolean.parseBoolean(action.getContext().getOrDefault("copro.isretry.enabled", "false"))
-                    ? coproRetryService.callCoproApiWithRetry(request, requestForInsert, auditInput, this.action)
+                    ? coproRetryService.callCoproApiWithRetry(request, requestForInsert, auditInput, this.action, entity.getRequestId())
                     : httpclient.newCall(request).execute();
 
             if (response == null) {
@@ -200,7 +207,7 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
                 Protocol protocol = response.protocol();
                 log.info(aMarker, " Protocol in use : {} ", protocol);
                 String responseBody = Objects.requireNonNull(safeResponse.body()).string();
-                
+
                 if (safeResponse.isSuccessful()) {
                     RadonKvpExtractionResponse modelResponse = mapper.readValue(responseBody, RadonKvpExtractionResponse.class);
                     if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {

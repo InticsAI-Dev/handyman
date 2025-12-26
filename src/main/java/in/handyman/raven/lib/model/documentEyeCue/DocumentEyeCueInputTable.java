@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.sql.Timestamp;
 import java.util.List;
+import java.util.UUID;
 
 @Data
 @AllArgsConstructor
@@ -27,6 +28,8 @@ public class DocumentEyeCueInputTable implements CoproProcessor.Entity {
     private Timestamp createdOn;
     private String documentId;
     private String fileName;
+    private UUID requestId;
+    private Boolean coproMetricActivator;
 
     @Override
     public List<Object> getRowData() {
