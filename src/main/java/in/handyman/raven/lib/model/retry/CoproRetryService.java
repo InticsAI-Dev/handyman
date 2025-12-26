@@ -256,7 +256,7 @@ public class CoproRetryService {
             try {
                 ObjectMapper mapper = new ObjectMapper();
                 final String peekResponseBody = response.peekBody(Long.MAX_VALUE).string();
-                JsonNode root = mapper.readTree(encryptRequestResponse(peekResponseBody, action));
+                JsonNode root = mapper.readTree(peekResponseBody);
                 JsonNode outputs = root.path("outputs");
 
 
