@@ -69,13 +69,29 @@ public class LabelWithPriorityProcessor {
 
         SelectionFilteringInputTable first = rows.get(0);
         boolean isFirstEmpty =
-                (first.getWhitelistedLabelsWithPriority() == null || first.getWhitelistedLabelsWithPriority().isBlank() || extractPriorityMap(rows).isEmpty());
-
+                (first.getWhitelistedLabelsWithPriority() == null || first.getWhitelistedLabelsWithPriority().isBlank());
 
         if (isFirstEmpty) {
             rows.forEach(r -> {
                 r.setLabelMatching(true);
                 r.setLabelMatchMessage(appendMsg(r,"Update with empty priority labels returning everything"));
+            });
+            return rows.get(0);
+        }
+
+        // Extract priority map to check if priorities are actually defined
+        Map<String, Integer> priorityMap = extractPriorityMap(rows);
+
+        // Check if ALL whitelist entries have null/empty priorities
+        boolean allPrioritiesEmpty = priorityMap.values().stream()
+                .allMatch(priority -> priority == null || priority == Integer.MAX_VALUE);
+
+        if (allPrioritiesEmpty) {
+            // No priorities defined - just allow all matching labels
+            rows.forEach(r -> {
+                r.setLabelPriorityIdx("1");
+                r.setLabelMatching(true);
+                r.setLabelMatchMessage(appendMsg(r, "Whitelist without priorities → all labels allowed"));
             });
             return rows.get(0);
         }
@@ -88,12 +104,10 @@ public class LabelWithPriorityProcessor {
         if (rows.size() == 2 && rows.stream().noneMatch(this::hasNonEmptyAnswer))
             return handleTwoRowsBothEmpty(rows, messages);
 
-        Map<String, Integer> priorityMap = extractPriorityMap(rows);
-
         boolean hasValidLabels = rows.stream()
                 .anyMatch(r -> r.getSorItemLabel() != null && !r.getSorItemLabel().isBlank());
 
-        if (priorityMap.isEmpty() || !hasValidLabels) {
+        if (!hasValidLabels) {
             return handleNoLabelPriority(rows, messages);
         }
 
@@ -183,14 +197,44 @@ public class LabelWithPriorityProcessor {
         // Step 1: Assign whitelist priorities
         assignPriorities(rows, priorityMap);
 
-        // Step 2: Find minimum priority
-        int minPriority = rows.stream()
+        // Step 2: Separate rows with and without priorities
+        List<SelectionFilteringInputTable> rowsWithPriority = rows.stream()
+                .filter(r -> {
+                    int priority = Integer.parseInt(r.getLabelPriorityIdx());
+                    return priority != Integer.MAX_VALUE;
+                })
+                .collect(Collectors.toList());
+
+        List<SelectionFilteringInputTable> rowsWithoutPriority = rows.stream()
+                .filter(r -> {
+                    int priority = Integer.parseInt(r.getLabelPriorityIdx());
+                    return priority == Integer.MAX_VALUE;
+                })
+                .collect(Collectors.toList());
+
+        // If a label has no priority defined, it's allowed but not prioritized
+        rowsWithoutPriority.forEach(r -> {
+            r.setLabelMatching(true);
+            r.setLabelMatchMessage(appendMsg(r, "Label allowed (no priority restriction)"));
+        });
+
+        // If no rows have priority, allow all
+        if (rowsWithPriority.isEmpty()) {
+            rows.forEach(r -> {
+                r.setLabelMatching(true);
+                r.setLabelPriorityIdx("1");
+            });
+            return rows.get(0);
+        }
+
+        // Step 3: Find minimum priority among rows that have priority
+        int minPriority = rowsWithPriority.stream()
                 .mapToInt(r -> Integer.parseInt(r.getLabelPriorityIdx()))
                 .min()
                 .orElse(Integer.MAX_VALUE);
 
-        // Step 3: Collect rows with same min priority
-        List<SelectionFilteringInputTable> topPriorityRows = rows.stream()
+        // Step 4: Collect rows with same min priority
+        List<SelectionFilteringInputTable> topPriorityRows = rowsWithPriority.stream()
                 .filter(r -> Integer.parseInt(r.getLabelPriorityIdx()) == minPriority)
                 .collect(Collectors.toList());
 
@@ -263,7 +307,8 @@ public class LabelWithPriorityProcessor {
             }
         }
 
-        for (SelectionFilteringInputTable r : rows) {
+        // Mark rows with priority
+        for (SelectionFilteringInputTable r : rowsWithPriority) {
             boolean isWinner = (r == winner);
             r.setLabelMatching(isWinner);
             if (!isWinner) {
@@ -271,7 +316,7 @@ public class LabelWithPriorityProcessor {
                         appendMsg(r, "Rejected: " +
                                 (hasNonEmptyAnswer(winner) && !hasNonEmptyAnswer(r)
                                         ? "winner has answer"
-                                        : "lower paperNo/id chosen"))
+                                        : "lower priority/paperNo/id chosen"))
                 );
             }
         }
@@ -294,7 +339,12 @@ public class LabelWithPriorityProcessor {
             Map<String, Integer> output = new HashMap<>();
 
             for (WhitelistLabelPriority row : list) {
-                output.put(removeSpecialCharacters(row.getWhitelistKey()), row.getLabelPriority());
+                // If priority is null or 0, treat as "no priority" (Integer.MAX_VALUE)
+                Integer priority = row.getLabelPriority();
+                if (priority == null || priority == 0) {
+                    priority = Integer.MAX_VALUE; // No priority = allowed but not ordered
+                }
+                output.put(removeSpecialCharacters(row.getWhitelistKey()), priority);
             }
 
             return output;
