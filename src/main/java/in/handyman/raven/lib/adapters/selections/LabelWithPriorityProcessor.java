@@ -101,7 +101,9 @@ public class LabelWithPriorityProcessor {
         boolean hasValidLabels = rows.stream()
                 .anyMatch(r -> r.getSorItemLabel() != null && !r.getSorItemLabel().isBlank());
 
-        if (!hasValidLabels) {
+        boolean emptyLabelWhitelisted = priorityMap.containsKey("");
+
+        if (!hasValidLabels && !emptyLabelWhitelisted) {
             return handleNoLabelPriority(rows, messages);
         }
 
