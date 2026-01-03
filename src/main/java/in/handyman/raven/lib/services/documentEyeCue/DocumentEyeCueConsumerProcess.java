@@ -82,6 +82,10 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
     public List<DocumentEyeCueOutputTable> process(URL endpoint, DocumentEyeCueInputTable entity) throws Exception {
         log.info(aMarker, "Document EyeCue consumer process started with endpoint {} and File path {}",
                 endpoint, entity.getFilePath());
+        final UUID requestId = UUID.randomUUID();
+        final Boolean coproMetricsCalculator = Boolean.valueOf(action.getContext().getOrDefault("copro.metrics.activator","false"));
+        entity.setRequestId(requestId);
+        entity.setCoproMetricActivator(coproMetricsCalculator);
 
         return documentEyeCueApiCall(entity, action, endpoint, documentEyeCue.getOutputDir());
     }
@@ -125,6 +129,8 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
         documentEyeCueRequest.setProcess(PROCESS_NAME);
         documentEyeCueRequest.setActionId(action.getActionId().intValue());
         documentEyeCueRequest.setOutputDir(outputDir);
+        documentEyeCueRequest.setRequestId(entity.getRequestId());
+        documentEyeCueRequest.setCoproMetricsActivator(entity.getCoproMetricActivator());
 
         // Set file path or base64 based on processing format
         String base64Content = processBase64.equals(ProcessFileFormatE.BASE64.name())
@@ -169,7 +175,7 @@ public class DocumentEyeCueConsumerProcess implements CoproProcessor.ConsumerPro
         Response response;
         try {
             response = Boolean.parseBoolean(action.getContext().getOrDefault("copro.isretry.enabled", "false"))
-                    ? coproRetryService.callCoproApiWithRetry(request, jsonInputRequest, auditInput, this.action)
+                    ? coproRetryService.callCoproApiWithRetry(request, jsonInputRequest, auditInput, this.action, entity.getRequestId())
                     : httpclient.newCall(request).execute();
             if (response == null) {
                 String errorMessage = "No response received from API";

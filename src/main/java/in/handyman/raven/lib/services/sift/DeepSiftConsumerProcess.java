@@ -66,6 +66,10 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
 
     @Override
     public List<DeepSiftOutputTable> process(URL endpoint, DeepSiftInputTable entity) throws IOException {
+        final UUID requestId = UUID.randomUUID();
+        final Boolean coproMetricsCalculator = Boolean.valueOf(action.getContext().getOrDefault("copro.metrics.activator","false"));
+        entity.setRequestId(requestId);
+        entity.setCoproMetricsActivator(coproMetricsCalculator);
         List<DeepSiftOutputTable> parentObj = new ArrayList<>();
         long startTime = System.currentTimeMillis();
 
@@ -127,6 +131,8 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
         deepSiftRequest.setGroupId(Long.valueOf(entity.getGroupId()));
         deepSiftRequest.setModelName(entity.getModelName());
         deepSiftRequest.setPaperNo(entity.getPaperNo());
+        deepSiftRequest.setRequestId(entity.getRequestId());
+        deepSiftRequest.setCoproMetricsActivator(entity.getCoproMetricsActivator());
         return deepSiftRequest;
     }
 
@@ -144,6 +150,8 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                 .actionId(deepSiftRequest.getActionId())
                 .inputFilePath(deepSiftRequest.getInputFilePath())
                 .base64Img(deepSiftRequest.getBase64Img())
+                .requestId(deepSiftRequest.getRequestId())
+                .coproMetricsActivator(deepSiftRequest.getCoproMetricsActivator())
                 .build();
         return objectMapper.writeValueAsString(customRequest);
     }
@@ -162,6 +170,8 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                     .modelName(deepSiftRequest.getModelName())
                     .actionId(deepSiftRequest.getActionId())
                     .inputFilePath(deepSiftRequest.getInputFilePath())
+                    .requestId(deepSiftRequest.getRequestId())
+                    .coproMetricsActivator(deepSiftRequest.getCoproMetricsActivator())
                     .build();
             return objectMapper.writeValueAsString(sanitizedRequest);
         } catch (JsonProcessingException e) {
@@ -180,7 +190,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
         Response response;
         try {
             response = Boolean.parseBoolean(action.getContext().getOrDefault("copro.isretry.enabled", "false"))
-                    ? coproRetryService.callCoproApiWithRetry(request, dbJsonRequest, auditInput, this.action)
+                    ? coproRetryService.callCoproApiWithRetry(request, dbJsonRequest, auditInput, this.action, entity.getRequestId())
                     : httpClient.newCall(request).execute();
             if (response == null) {
                 String errorMessage = "No response received from API";
@@ -274,6 +284,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                 .batchId(entity.getBatchId())
                 .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
                 .endpoint(String.valueOf(endPoint))
+                .requestId(entity.getRequestId().toString())
                 .build();
 
     }

@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.UUID;
+
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
@@ -25,4 +27,6 @@ public class DocumentEyeCueRequest {
     private Boolean forceOcr = false;
     private Boolean skipTextPages = true;
     private Integer maxPaperCount;
+    private UUID requestId;
+    private Boolean coproMetricsActivator;
 }

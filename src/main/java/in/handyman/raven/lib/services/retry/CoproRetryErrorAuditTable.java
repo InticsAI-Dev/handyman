@@ -34,4 +34,10 @@ public class CoproRetryErrorAuditTable {
     @Builder.Default
     private int attempt = 0;
     private String coproServiceId;
+    private String computationDetails;
+    private Integer coproStatusCode;
+    private String coproLog;
+    private String coproDetails;
+    private String requestId;
+
 }

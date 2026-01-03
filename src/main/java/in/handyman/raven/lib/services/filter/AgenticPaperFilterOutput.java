@@ -44,7 +44,6 @@ public class AgenticPaperFilterOutput implements CoproProcessor.Entity {
     private Integer containerId;
     private String promptType;
 
-
     @Override
     public List<Object> getRowData() {
         return Stream.of(this.originId, this.groupId, this.tenantId,this.templateId

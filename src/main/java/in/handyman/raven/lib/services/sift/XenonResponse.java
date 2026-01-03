@@ -1,11 +1,15 @@
 package in.handyman.raven.lib.services.sift;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import in.handyman.raven.lib.model.kvp.llm.radon.processor.ComputationDetails;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.UUID;
+@JsonIgnoreProperties(ignoreUnknown = true)
 @Data
 @Builder
 @AllArgsConstructor
@@ -50,6 +54,12 @@ public class XenonResponse {
 
     @JsonProperty("durationTime")
     private Long durationTime;
+    private Integer statusCode;
+    private String coproLog;
+    private UUID requestId;
+    private String detail;
+    private ComputationDetails computationDetails;
+
 
     // Additional helper methods if needed
     public boolean isSuccess() {

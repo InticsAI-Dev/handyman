@@ -45,7 +45,7 @@ public class ValidatorByBeanShellExecutor {
 
         if(!multiValuePostProcessing.isEmpty()) {
 
-            Map<String, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> byOrigin = groupByOriginAndContainerInstanceMultiLine(postProcessingExecutorInputs);
+            Map<String, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> byOrigin = groupByOriginAndContainerInstanceMultiLine(multiValuePostProcessing);
             List<CompletableFuture<Void>> originFutures = new ArrayList<>();
 
             byOrigin.forEach((origin, originInputs) -> originFutures.add(
@@ -59,7 +59,7 @@ public class ValidatorByBeanShellExecutor {
             log.info("Completed all validations for post processing inputs.");
         }
         if(!singleValuePostProcessing.isEmpty()){
-            Map<String, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> byOrigin = groupByOriginAndContainerInstance(postProcessingExecutorInputs);
+            Map<String, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> byOrigin = groupByOrigin(singleValuePostProcessing);
             List<CompletableFuture<Void>> originFutures = new ArrayList<>();
 
             byOrigin.forEach((origin, originInputs) -> originFutures.add(
@@ -84,10 +84,10 @@ public class ValidatorByBeanShellExecutor {
 
 
     private Map<String, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> groupByOriginAndContainerInstance(List<PostProcessingExecutorAction.PostProcessingExecutorInput> inputs) {
-        log.info("Grouping inputs by origin");
+        log.info("Grouping inputs by origin and paper no.");
         return inputs.stream()
                 .collect(Collectors.groupingBy(
-                        i -> i.getOriginId() + "|" + i.getPaperNo() + "|" + i.getSorContainerInstance()
+                        i -> i.getOriginId() + "|" + i.getPaperNo()
                 ));
     }
 
