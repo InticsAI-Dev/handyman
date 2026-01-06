@@ -203,7 +203,8 @@ public class LabelWithPriorityProcessor {
         List<SelectionFilteringInputTable> rowsNotInWhitelist = new ArrayList<>();
 
         for (SelectionFilteringInputTable r : rows) {
-            String normalizedLabel = removeSpecialCharacters(r.getSorItemLabel());
+            String label = r.getSorItemLabel();
+            String normalizedLabel = (label != null) ? removeSpecialCharacters(label) : "";
             String priorityStr = r.getLabelPriorityIdx();
 
             // Check if label exists in whitelist
@@ -268,7 +269,10 @@ public class LabelWithPriorityProcessor {
             winner.setLabelMatchMessage(appendMsg(winner, "Selected: highest priority"));
         } else {
             boolean allLabelsIdentical = topPriorityRows.stream()
-                    .map(r -> removeSpecialCharacters(r.getSorItemLabel()))
+                    .map(r -> {
+                        String label = r.getSorItemLabel();
+                        return (label != null) ? removeSpecialCharacters(label) : "";
+                    })
                     .filter(label -> label != null && !label.isEmpty())
                     .collect(Collectors.toSet())
                     .size() <= 1;
@@ -371,7 +375,8 @@ public class LabelWithPriorityProcessor {
     private void assignPriorities(List<SelectionFilteringInputTable> rows,
                                   Map<String, Integer> priorityMap) {
         rows.forEach(r -> {
-            String key = removeSpecialCharacters(r.getSorItemLabel());
+            String label = r.getSorItemLabel();
+            String key = (label != null) ? removeSpecialCharacters(label) : "";
             Integer p = priorityMap.get(key);
 
             if (p == null || p == Integer.MAX_VALUE) {
@@ -383,7 +388,7 @@ public class LabelWithPriorityProcessor {
     }
 
     public String removeSpecialCharacters(String input) {
-        if (input == null) return "";
+        if (input == null || input.isEmpty()) return "";
         return input.replaceAll("[^a-zA-Z0-9]", "").toLowerCase().trim();
     }
 
