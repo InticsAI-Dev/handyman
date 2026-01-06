@@ -387,9 +387,14 @@ public class LabelWithPriorityProcessor {
         });
     }
 
-    public String removeSpecialCharacters(String input) {
-        if (input == null || input.isEmpty()) return "";
-        return input.replaceAll("[^a-zA-Z0-9]", "").toLowerCase().trim();
+    /**
+     * Normalize label by removing all special characters EXCEPT # symbol.
+     * Removes spaces and special characters, but preserves # and alphanumeric characters.
+     */
+    private String removeSpecialCharacters(String input) {
+        if (input == null) return "";
+        // Remove all characters except alphanumeric and # symbol
+        return input.replaceAll("[^a-zA-Z0-9#]", "").toLowerCase().trim();
     }
 
     // ========================= STAGE 5: MESSAGES =========================
