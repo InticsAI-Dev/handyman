@@ -108,7 +108,39 @@ public class ControlDataComparisonAction implements IActionExecution {
 
     }
 
-    //DEBUG ON YOUR OWN RISK
+    private void normalizeServiceMultiValue(ControlDataComparisonQueryInputTable r) {
+
+        if (r == null || r.getSorItemName() == null) return;
+
+        String sor = r.getSorItemName().trim().toLowerCase();
+        if (!("service_code".equals(sor)
+                || "service_code_modifier".equals(sor)
+                || "service_quantity_units".equals(sor)
+                || "service_quantity_visits".equals(sor))) {
+            return;
+        }
+
+        String extracted = r.getExtractedValue();
+        if (extracted == null || extracted.trim().isEmpty()) return;
+
+        String[] parts = extracted.split(",");
+        List<String> cleaned = new ArrayList<String>();
+
+        for (String p : parts) {
+            if (p == null) continue;
+            String t = p.trim();
+            if (t.isEmpty()) continue;
+            if ("*".equals(t)) continue;
+            cleaned.add(t);
+        }
+
+        if (cleaned.isEmpty()) {
+            r.setExtractedValue("");
+        } else {
+            r.setExtractedValue(String.join(",", cleaned));
+        }
+    }
+
     private void performEncryption(
             List<ControlDataComparisonQueryInputTable> controlDataComparisonQueryInputTables,
             InticsIntegrity encryptionHandler
@@ -381,6 +413,9 @@ public class ControlDataComparisonAction implements IActionExecution {
 
 
     private ControlDataComparisonQueryInputTable doControlDataValidationByAdapters(ControlDataComparisonQueryInputTable comparisonInputLineItem) {
+
+        normalizeServiceMultiValue(comparisonInputLineItem);
+
         log.info(aMarker, "Validating record ID: {}, Origin ID: {}, Paper No: {}, Sor Item Name: {}",
                 comparisonInputLineItem.getId(),
                 comparisonInputLineItem.getOriginId(),
@@ -418,7 +453,23 @@ public class ControlDataComparisonAction implements IActionExecution {
 
                 String classification = determineClassification(item.getActualValue(), item.getExtractedValue(), item.getMatchStatus());
 
-                batch.bind("rootPipelineId", item.getRootPipelineId()).bind("createdOn", LocalDate.now()).bind("groupId", item.getGroupId()).bind("fileName", item.getFileName()).bind("originId", item.getOriginId()).bind("batchId", item.getBatchId()).bind("paperNo", item.getPaperNo()).bind("actualValue", item.getActualValue()).bind("extractedValue", item.getExtractedValue()).bind("matchStatus", item.getMatchStatus()).bind("mismatchCount", item.getMismatchCount()).bind("tenantId", item.getTenantId()).bind("classification", classification).bind("sorContainerId", item.getSorContainerId()).bind("sorItemName", item.getSorItemName()).bind("sorItemId", item.getSorItemId()).add();
+                batch.bind("rootPipelineId", item.getRootPipelineId())
+                        .bind("createdOn", LocalDate.now())
+                        .bind("groupId", item.getGroupId())
+                        .bind("fileName", item.getFileName())
+                        .bind("originId", item.getOriginId())
+                        .bind("batchId", item.getBatchId())
+                        .bind("paperNo", item.getPaperNo())
+                        .bind("actualValue", item.getActualValue())
+                        .bind("extractedValue", item.getExtractedValue())
+                        .bind("matchStatus", item.getMatchStatus())
+                        .bind("mismatchCount", item.getMismatchCount())
+                        .bind("tenantId", item.getTenantId())
+                        .bind("classification", classification)
+                        .bind("sorContainerId", item.getSorContainerId())
+                        .bind("sorItemName", item.getSorItemName())
+                        .bind("sorItemId", item.getSorItemId())
+                        .add();
             }
 
             int[] counts = batch.execute();
