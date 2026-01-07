@@ -108,7 +108,7 @@ public class ControlDataComparisonAction implements IActionExecution {
 
     }
 
-    private void normalizeServiceMultiValue(ControlDataComparisonQueryInputTable r) {
+    public void normalizeServiceMultiValue(ControlDataComparisonQueryInputTable r) {
 
         if (r == null || r.getSorItemName() == null) return;
 

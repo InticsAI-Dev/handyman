@@ -76,7 +76,6 @@ public class ControlDataComparisonTest {
         assertEquals(true, true);
     }
 
-    @BeforeEach
     void setup() throws Exception {
 
         ControlDataComparison controlDataComparison = ControlDataComparison.builder()
@@ -205,8 +204,9 @@ public class ControlDataComparisonTest {
             "'Actual empty, extracted preserved as-is','', 'X1616, X1717, X1818','X1616, X1717, X1818'",
             "'Actual contains nothing from extracted','X1919','X2020, X2121, X2222','X2020,X2121,X2222'",
             "'Extracted is literal null','X2323, X2424, X2525','null','null'",
-            "'Preserve case and formatting from actual','xAB12 , Xcd34 , XEf56','xab12,XCd34,XEf56','xAB12,XCd34,XEf56'"
+            "'Preserve case and formatting from actual','xAB12 , Xcd34 , XEf56','xab12,XCd34,XEf56','xAB12,Xcd34,XEf56'"
     })
+
     void testNormalizedExtractedValue(String description, String actual, String extracted, String expected) {
         SimilarityComparisonAdapter comparisonAdapter= new SimilarityComparisonAdapter();
 
@@ -220,5 +220,116 @@ public class ControlDataComparisonTest {
         assertEquals(expected, result, "Mismatch in case: " + description);
     }
 
+    private ControlDataComparisonQueryInputTable buildInputRecord(String sorItemName, String extractedValue) {
+        ControlDataComparisonQueryInputTable r = new ControlDataComparisonQueryInputTable();
+        r.setSorItemName(sorItemName);
+        r.setExtractedValue(extractedValue);
+        return r;
+    }
+
+    @Test
+    void testServiceCodeCleaning() {
+
+        ControlDataComparisonAction action =
+                new ControlDataComparisonAction(new ActionExecutionAudit(), log,
+                        ControlDataComparison.builder().build());
+
+        ControlDataComparisonQueryInputTable r =
+                buildInputRecord("service_code", " *, 97110, *, 97530 ");
+
+        action.normalizeServiceMultiValue(r);
+
+        assertEquals("97110,97530", r.getExtractedValue());
+    }
+
+    @Test
+    void testModifierCleaning() {
+
+        ControlDataComparisonAction action =
+                new ControlDataComparisonAction(new ActionExecutionAudit(), log,
+                        ControlDataComparison.builder().build());
+
+        ControlDataComparisonQueryInputTable r =
+                buildInputRecord("service_code_modifier", " * , 59 , *, LT , * ");
+
+        action.normalizeServiceMultiValue(r);
+
+        assertEquals("59,LT", r.getExtractedValue());
+    }
+
+    @Test
+    void testUnitsCleaning() {
+
+        ControlDataComparisonAction action =
+                new ControlDataComparisonAction(new ActionExecutionAudit(), log,
+                        ControlDataComparison.builder().build());
+
+        ControlDataComparisonQueryInputTable r =
+                buildInputRecord("service_quantity_units", " * , 10 , * , 5 ");
+
+        action.normalizeServiceMultiValue(r);
+
+        assertEquals("10,5", r.getExtractedValue());
+    }
+
+    @Test
+    void testVisitsCleaning() {
+
+        ControlDataComparisonAction action =
+                new ControlDataComparisonAction(new ActionExecutionAudit(), log,
+                        ControlDataComparison.builder().build());
+
+        ControlDataComparisonQueryInputTable r =
+                buildInputRecord("service_quantity_visits", "  *  , 2,  * ,3,* ");
+
+        action.normalizeServiceMultiValue(r);
+
+        assertEquals("2,3", r.getExtractedValue());
+    }
+
+    @Test
+    void testAllStarsBecomesEmpty() {
+
+        ControlDataComparisonAction action =
+                new ControlDataComparisonAction(new ActionExecutionAudit(), log,
+                        ControlDataComparison.builder().build());
+
+        ControlDataComparisonQueryInputTable r =
+                buildInputRecord("service_code_modifier", " * , * , * ");
+
+        action.normalizeServiceMultiValue(r);
+
+        assertEquals("", r.getExtractedValue());
+    }
+
+    @Test
+    void testNullExtractedDoesNothing() {
+
+        ControlDataComparisonAction action =
+                new ControlDataComparisonAction(new ActionExecutionAudit(), log,
+                        ControlDataComparison.builder().build());
+
+        ControlDataComparisonQueryInputTable r =
+                buildInputRecord("service_code", null);
+
+        action.normalizeServiceMultiValue(r);
+
+        assertEquals(null, r.getExtractedValue());
+    }
+
+    @Test
+    void testNonServiceSorIsNotModified() {
+
+        ControlDataComparisonAction action =
+                new ControlDataComparisonAction(new ActionExecutionAudit(), log,
+                        ControlDataComparison.builder().build());
+
+        ControlDataComparisonQueryInputTable r =
+                buildInputRecord("member_id", " *, ABC , 123 ");
+
+        action.normalizeServiceMultiValue(r);
+
+        assertEquals(" *, ABC , 123 ", r.getExtractedValue());
+    }
 
 }
