@@ -20,6 +20,7 @@ import in.handyman.raven.util.UniqueID;
 import lombok.extern.slf4j.Slf4j;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.slf4j.Logger;
+import org.slf4j.event.Level;
 import org.slf4j.helpers.MessageFormatter;
 import org.slf4j.helpers.SubstituteLogger;
 
@@ -266,6 +267,12 @@ public class LambdaEngine {
             stringBuilder.append("\n");
             actionExecutionAudit.getEventQueue().forEach(event -> {
                 if(event!=null) {
+                    if (event.getLevel() == Level.DEBUG && !log.isDebugEnabled()) {
+                        return;
+                    }
+                    if (event.getLevel() == Level.TRACE && !log.isTraceEnabled()) {
+                        return;
+                    }
                     ZonedDateTime localTime = Instant.ofEpochMilli(event.getTimeStamp())
                             .atZone(ZoneId.systemDefault());
 
