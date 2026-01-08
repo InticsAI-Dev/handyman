@@ -29,6 +29,7 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
     private final Logger log;
     private final Marker marker;
     private final ActionExecutionAudit action;
+    private final Integer pageContentMinLength;
     private static final String ENCRYPTION_ALGORITHM = "AES256";
     private static final String TEXT_DATA_TYPE = "TEXT_DATA";
 
@@ -89,6 +90,11 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
                         matchFound = true;
                     }
                 }
+            } else if ("empty_page".equals(searchType)) {
+                String belowMinFlag = getBelowMinPageLengthFlag(finalExtractedText);
+
+                matchedKeywords.add(belowMinFlag);
+                matchFound = true;
             } else {
                 log.error(marker, "Invalid searchType: {} for sorItemId: {}", searchType, entity.getSorItemId());
                 HandymanException handymanException = new HandymanException("Invalid searchType: " + searchType);
@@ -163,6 +169,14 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
         log.info(marker, "Completed process for sorItemId: {}, output records: {}, time taken: {} ms",
                 entity.getSorItemId(), outputRecords.size(), elapsedTimeMs);
         return outputRecords;
+    }
+
+    private String getBelowMinPageLengthFlag(String text) {
+        if (text == null || text.trim().isEmpty()) {
+            return "Y";
+        }
+        int wordCount = text.trim().split("\\s+").length;
+        return wordCount < pageContentMinLength ? "Y" : "N";
     }
 
     private DeepSiftSearchOutputTable buildOutputTable(DeepSiftSearchInputTable entity, String status, String message, long timeTakenMS) {
