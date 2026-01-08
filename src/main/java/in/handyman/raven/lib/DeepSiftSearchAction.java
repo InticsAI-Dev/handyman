@@ -41,7 +41,7 @@ public class DeepSiftSearchAction implements IActionExecution {
           "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::timestamp, ?, ?, ?, ?, ?, ?)";
 
   public static final String DEEP_SIFT_SEARCH_CONSUMER_API_COUNT = "deep.sift.search.consumer.API.count";
-  public static final String PAGE_CONTENT_MIN_LENGTH = "deep.sift.page.content.min.length.threshold";
+  public static final String PAGE_CONTENT_MIN_LENGTH = "clinical.present.page.content.min.length.threshold";
 
   private final ActionExecutionAudit action;
   private final Logger log;

@@ -90,7 +90,7 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
                         matchFound = true;
                     }
                 }
-            } else if ("empty page".equals(searchType)) {
+            } else if ("empty_page".equals(searchType)) {
                 String belowMinFlag = getBelowMinPageLengthFlag(finalExtractedText);
 
                 matchedKeywords.add(belowMinFlag);
