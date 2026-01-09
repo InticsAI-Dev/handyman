@@ -54,7 +54,8 @@ public class LabelWithPriorityProcessor {
         // 1️⃣ Group by originId → sorItemName
         List<SelectionFilteringInputTable> filtered =
                 input.stream()
-                        .filter(r -> r != null && !r.isLabelMatching())
+                        .filter(Objects::nonNull)
+                        .filter(SelectionFilteringInputTable::isLabelMatching)
                         .collect(Collectors.toList());
 
         logger.info("Found {} rows with label matching = true", filtered.size());
@@ -62,7 +63,8 @@ public class LabelWithPriorityProcessor {
         // 1️⃣ Group by originId → sorItemName
         List<SelectionFilteringInputTable> filteredNotMatching =
                 input.stream()
-                        .filter(r -> r != null && !r.isLabelMatching())
+                        .filter(Objects::nonNull)
+                        .filter(r -> !r.isLabelMatching())
                         .collect(Collectors.toList());
 
         logger.info("Found {} rows with label matching = false", filteredNotMatching.size());
