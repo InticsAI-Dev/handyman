@@ -80,10 +80,12 @@ public class LabelWithPriorityProcessor {
         List<SelectionFilteringInputTable> result = new ArrayList<>();
         for (Map<String, List<SelectionFilteringInputTable>> originMap : grouped.values()) {
             for (List<SelectionFilteringInputTable> rows : originMap.values()) {
-                logger.info("Processing group with {} rows - originId: {}, sorItemName: {}",
-                        rows.size(),
-                        rows.get(0).getOriginId(),
-                        rows.get(0).getSorItemName());
+                if (!rows.isEmpty()) {
+                    logger.info("Processing group with {} rows - originId: {}, sorItemName: {}",
+                            rows.size(),
+                            rows.get(0).getOriginId(),
+                            rows.get(0).getSorItemName());
+                }
                 SelectionFilteringInputTable winner = processSorItemRows(rows, messages);
                 result.addAll(rows);
             }
@@ -99,14 +101,24 @@ public class LabelWithPriorityProcessor {
             List<SelectionFilteringInputTable> rows,
             List<String> messages) {
 
-        logger.info("Processing SOR item rows. Count: {}", rows.size());
+        if (rows.isEmpty()) {
+            logger.warn("processSorItemRows called with empty list");
+            return null;
+        }
 
         SelectionFilteringInputTable first = rows.get(0);
+        String originId = first.getOriginId();
+        String sorItemName = first.getSorItemName();
+
+        logger.info("[originId: {}, sorItemName: {}] Processing SOR item rows. Count: {}",
+                originId, sorItemName, rows.size());
+
         boolean isFirstEmpty = (first.getWhitelistedLabelsWithPriority() == null ||
                 first.getWhitelistedLabelsWithPriority().isBlank());
 
         if (isFirstEmpty) {
-            logger.info("Whitelist is empty - allowing all rows");
+            logger.info("[originId: {}, sorItemName: {}] Whitelist is empty - allowing all rows",
+                    originId, sorItemName);
             rows.forEach(r -> {
                 r.setLabelPriorityIdx("N/A");
                 r.setLabelMatching(true);
@@ -116,7 +128,8 @@ public class LabelWithPriorityProcessor {
         }
 
         Map<String, Integer> priorityMap = extractPriorityMap(rows);
-        logger.info("Extracted priority map with {} entries", priorityMap.size());
+        logger.info("[originId: {}, sorItemName: {}] Extracted priority map with {} entries",
+                originId, sorItemName, priorityMap.size());
 
         // Assign priorities FIRST before any processing
         assignPriorities(rows, priorityMap);
@@ -125,7 +138,8 @@ public class LabelWithPriorityProcessor {
                 .allMatch(priority -> priority == null || priority == Integer.MAX_VALUE);
 
         if (allPrioritiesEmpty) {
-            logger.info("All priorities are empty/null - allowing all rows");
+            logger.info("[originId: {}, sorItemName: {}] All priorities are empty/null - allowing all rows",
+                    originId, sorItemName);
             rows.forEach(r -> {
                 r.setLabelPriorityIdx("N/A");
                 r.setLabelMatching(true);
@@ -135,17 +149,20 @@ public class LabelWithPriorityProcessor {
         }
 
         if (rows.size() == 1) {
-            logger.info("Single row detected - handling single row case");
+            logger.info("[originId: {}, sorItemName: {}] Single row detected - handling single row case",
+                    originId, sorItemName);
             return handleSingleRow(rows.get(0), messages);
         }
 
         if (rows.size() == 2 && rows.stream().filter(this::hasNonEmptyAnswer).count() == 1) {
-            logger.info("Two rows with one non-empty answer detected");
+            logger.info("[originId: {}, sorItemName: {}] Two rows with one non-empty answer detected",
+                    originId, sorItemName);
             return handleTwoRowsOneNonEmpty(rows, messages);
         }
 
         if (rows.size() == 2 && rows.stream().noneMatch(this::hasNonEmptyAnswer)) {
-            logger.info("Two rows both with empty answers detected");
+            logger.info("[originId: {}, sorItemName: {}] Two rows both with empty answers detected",
+                    originId, sorItemName);
             return handleTwoRowsBothEmpty(rows, messages);
         }
 
@@ -155,11 +172,13 @@ public class LabelWithPriorityProcessor {
         boolean emptyLabelWhitelisted = priorityMap.containsKey("");
 
         if (!hasValidLabels && !emptyLabelWhitelisted) {
-            logger.info("No valid labels present and empty label not whitelisted");
+            logger.info("[originId: {}, sorItemName: {}] No valid labels present and empty label not whitelisted",
+                    originId, sorItemName);
             return handleNoLabelPriority(rows, messages);
         }
 
-        logger.info("Using priority-based selection");
+        logger.info("[originId: {}, sorItemName: {}] Using priority-based selection",
+                originId, sorItemName);
         return handlePriorityBasedSelection(rows, priorityMap, messages);
     }
 
@@ -173,12 +192,17 @@ public class LabelWithPriorityProcessor {
             SelectionFilteringInputTable row,
             List<String> messages) {
 
-        logger.info("Handling single row - id: {}", row.getId());
+        String originId = row.getOriginId();
+        String sorItemName = row.getSorItemName();
+        long paperNo = row.getPaperNo();
+
+        logger.info("[originId: {}, sorItemName: {}, paperNo: {}] Handling single row - id: {}",
+                originId, sorItemName, paperNo, row.getId());
 
         // Priority already set by assignPriorities
         row.setLabelMatching(true);
         row.setLabelMatchMessage(appendMsg(row, "Single row → selected"));
-        messages.add("Single row → origin: " + row.getOriginId() + ", sorItem: " + row.getSorItemName());
+        messages.add("Single row → origin: " + originId + ", sorItem: " + sorItemName);
         return row;
     }
 
@@ -186,13 +210,19 @@ public class LabelWithPriorityProcessor {
             List<SelectionFilteringInputTable> rows,
             List<String> messages) {
 
-        logger.info("Handling two rows with one non-empty answer");
+        SelectionFilteringInputTable first = rows.get(0);
+        String originId = first.getOriginId();
+        String sorItemName = first.getSorItemName();
+
+        logger.info("[originId: {}, sorItemName: {}] Handling two rows with one non-empty answer",
+                originId, sorItemName);
 
         SelectionFilteringInputTable winner = rows.stream()
                 .filter(this::hasNonEmptyAnswer)
                 .findFirst().orElseThrow();
 
-        logger.info("Winner selected - id: {}", winner.getId());
+        logger.info("[originId: {}, sorItemName: {}, paperNo: {}] Winner selected - id: {}",
+                originId, sorItemName, winner.getPaperNo(), winner.getId());
 
         winner.setLabelMatching(true);
         winner.setLabelMatchMessage(appendMsg(winner, "Winner of two rows (has answer)"));
@@ -202,7 +232,8 @@ public class LabelWithPriorityProcessor {
                 .forEach(r -> {
                     r.setLabelMatching(false);
                     r.setLabelMatchMessage(appendMsg(r, "Rejected (empty answer)"));
-                    logger.info("Rejected row - id: {}", r.getId());
+                    logger.info("[originId: {}, sorItemName: {}, paperNo: {}] Rejected row - id: {}",
+                            originId, sorItemName, r.getPaperNo(), r.getId());
                 });
 
         messages.add("Two rows with one non-empty → origin: " + winner.getOriginId() +
@@ -214,15 +245,19 @@ public class LabelWithPriorityProcessor {
             List<SelectionFilteringInputTable> rows,
             List<String> messages) {
 
-        logger.info("Handling two rows both with empty answers - both selected");
+        SelectionFilteringInputTable first = rows.get(0);
+        String originId = first.getOriginId();
+        String sorItemName = first.getSorItemName();
+
+        logger.info("[originId: {}, sorItemName: {}] Handling two rows both with empty answers - both selected",
+                originId, sorItemName);
 
         rows.forEach(r -> {
             r.setLabelMatching(true);
             r.setLabelMatchMessage(appendMsg(r, "Both answers empty → both selected"));
         });
 
-        messages.add("Two rows both empty → origin: " + rows.get(0).getOriginId() +
-                ", sorItem: " + rows.get(0).getSorItemName());
+        messages.add("Two rows both empty → origin: " + originId + ", sorItem: " + sorItemName);
         return rows.get(0);
     }
 
@@ -230,14 +265,20 @@ public class LabelWithPriorityProcessor {
             List<SelectionFilteringInputTable> rows,
             List<String> messages) {
 
-        logger.info("Handling no label priority case - selecting by min paperNo/id");
+        SelectionFilteringInputTable first = rows.get(0);
+        String originId = first.getOriginId();
+        String sorItemName = first.getSorItemName();
+
+        logger.info("[originId: {}, sorItemName: {}] Handling no label priority case - selecting by min paperNo/id",
+                originId, sorItemName);
 
         SelectionFilteringInputTable winner = rows.stream()
                 .min(Comparator.comparingLong(SelectionFilteringInputTable::getPaperNo)
                         .thenComparingLong(SelectionFilteringInputTable::getId))
                 .orElseThrow();
 
-        logger.info("Winner selected - id: {}, paperNo: {}", winner.getId(), winner.getPaperNo());
+        logger.info("[originId: {}, sorItemName: {}, paperNo: {}] Winner selected - id: {}",
+                originId, sorItemName, winner.getPaperNo(), winner.getId());
 
         rows.forEach(r -> {
             r.setLabelMatching(r == winner);
@@ -257,7 +298,12 @@ public class LabelWithPriorityProcessor {
             Map<String, Integer> priorityMap,
             List<String> messages) {
 
-        logger.info("Starting priority-based selection with {} rows", rows.size());
+        SelectionFilteringInputTable first = rows.get(0);
+        String originId = first.getOriginId();
+        String sorItemName = first.getSorItemName();
+
+        logger.info("[originId: {}, sorItemName: {}] Starting priority-based selection with {} rows",
+                originId, sorItemName, rows.size());
 
         // Priorities already assigned by assignPriorities() earlier
 
@@ -279,20 +325,23 @@ public class LabelWithPriorityProcessor {
             if (!priorityMap.containsKey(normalizedLabel)) {
                 // Label NOT in whitelist → REJECT
                 rowsNotInWhitelist.add(r);
-                logger.info("Row id {} - NOT in whitelist", r.getId());
+                logger.info("[originId: {}, sorItemName: {}, paperNo: {}] Row id {} - NOT in whitelist",
+                        originId, sorItemName, r.getPaperNo(), r.getId());
             } else if (priorityStr != null && !priorityStr.equals("N/A")) {
                 // Label in whitelist with numeric priority
                 rowsWithDefinedPriority.add(r);
-                logger.info("Row id {} Label in whitelist with numeric priority ", r.getId());
+                logger.info("[originId: {}, sorItemName: {}, paperNo: {}] Row id {} - Label in whitelist with numeric priority",
+                        originId, sorItemName, r.getPaperNo(), r.getId());
             } else {
                 // Label in whitelist with null/0 priority
                 rowsWithNullPriority.add(r);
-                logger.info("Row id {} - in whitelist with null priority", r.getId());
+                logger.info("[originId: {}, sorItemName: {}, paperNo: {}] Row id {} - in whitelist with null priority",
+                        originId, sorItemName, r.getPaperNo(), r.getId());
             }
         }
 
-        logger.info("Categorized rows - defined priority: {}, null priority: {}, not in whitelist: {}",
-                rowsWithDefinedPriority.size(), rowsWithNullPriority.size(), rowsNotInWhitelist.size());
+        logger.info("[originId: {}, sorItemName: {}] Categorized rows - defined priority: {}, null priority: {}, not in whitelist: {}",
+                originId, sorItemName, rowsWithDefinedPriority.size(), rowsWithNullPriority.size(), rowsNotInWhitelist.size());
 
         // Reject all rows NOT in whitelist
         rowsNotInWhitelist.forEach(r -> {
@@ -308,7 +357,8 @@ public class LabelWithPriorityProcessor {
 
         // If no rows have defined priority, all null priority rows are allowed
         if (rowsWithDefinedPriority.isEmpty()) {
-            logger.info("No rows with defined priority - returning first available row");
+            logger.info("[originId: {}, sorItemName: {}] No rows with defined priority - returning first available row",
+                    originId, sorItemName);
             if (!rowsWithNullPriority.isEmpty()) {
                 return rowsWithNullPriority.get(0);
             }
@@ -322,14 +372,16 @@ public class LabelWithPriorityProcessor {
                 .min()
                 .orElse(Integer.MAX_VALUE);
 
-        logger.info("Minimum priority found: {}", minPriority);
+        logger.info("[originId: {}, sorItemName: {}] Minimum priority found: {}",
+                originId, sorItemName, minPriority);
 
         // Only keep rows with minimum priority; reject higher priorities
         List<SelectionFilteringInputTable> topPriorityRows = rowsWithDefinedPriority.stream()
                 .filter(r -> Integer.parseInt(r.getLabelPriorityIdx()) == minPriority)
                 .collect(Collectors.toList());
 
-        logger.info("Found {} rows with top priority {}", topPriorityRows.size(), minPriority);
+        logger.info("[originId: {}, sorItemName: {}] Found {} rows with top priority {}",
+                originId, sorItemName, topPriorityRows.size(), minPriority);
 
         // Reject rows with higher priority
         rowsWithDefinedPriority.stream()
@@ -340,17 +392,19 @@ public class LabelWithPriorityProcessor {
                             appendMsg(r, "Rejected: priority " + r.getLabelPriorityIdx() +
                                     " > min priority " + minPriority)
                     );
-                    logger.info("Rejected row id {} - priority {} > min {}",
-                            r.getId(), r.getLabelPriorityIdx(), minPriority);
+                    logger.info("[originId: {}, sorItemName: {}, paperNo: {}] Rejected row id {} - priority {} > min {}",
+                            originId, sorItemName, r.getPaperNo(), r.getId(), r.getLabelPriorityIdx(), minPriority);
                 });
 
         SelectionFilteringInputTable winner;
         if (topPriorityRows.size() == 1) {
             winner = topPriorityRows.get(0);
             winner.setLabelMatchMessage(appendMsg(winner, "Selected: highest priority"));
-            logger.info("Single winner - id: {}, priority: {}", winner.getId(), minPriority);
+            logger.info("[originId: {}, sorItemName: {}, paperNo: {}] Single winner - id: {}, priority: {}",
+                    originId, sorItemName, winner.getPaperNo(), winner.getId(), minPriority);
         } else {
-            logger.info("Multiple rows with same priority - applying tiebreaker logic");
+            logger.info("[originId: {}, sorItemName: {}] Multiple rows with same priority - applying tiebreaker logic",
+                    originId, sorItemName);
             boolean allLabelsIdentical = topPriorityRows.stream()
                     .map(r -> {
                         String label = r.getSorItemLabel();
@@ -360,7 +414,8 @@ public class LabelWithPriorityProcessor {
                     .collect(Collectors.toSet())
                     .size() <= 1;
 
-            logger.info("All labels identical: {}", allLabelsIdentical);
+            logger.info("[originId: {}, sorItemName: {}] All labels identical: {}",
+                    originId, sorItemName, allLabelsIdentical);
 
             if (allLabelsIdentical) {
                 winner = topPriorityRows.stream()
@@ -376,8 +431,8 @@ public class LabelWithPriorityProcessor {
                         .filter(r -> r.getPaperNo() == winnerPageNo)
                         .count();
 
-                logger.info("Winner selected by paperNo - id: {}, paperNo: {}, same page count: {}",
-                        winner.getId(), winnerPageNo, samePageCount);
+                logger.info("[originId: {}, sorItemName: {}, paperNo: {}] Winner selected by paperNo - id: {}, same page count: {}",
+                        originId, sorItemName, winnerPageNo, winner.getId(), samePageCount);
 
                 if (samePageCount > 1) {
                     winner.setLabelMatchMessage(
@@ -404,8 +459,8 @@ public class LabelWithPriorityProcessor {
                         .collect(Collectors.toSet())
                         .size() <= 1;
 
-                logger.info("Winner selected by answer/id - id: {}, hasAnswer: {}, allEqualAnswers: {}",
-                        winner.getId(), hasNonEmptyAnswer(winner), allEqualAnswers);
+                logger.info("[originId: {}, sorItemName: {}, paperNo: {}] Winner selected by answer/id - id: {}, hasAnswer: {}, allEqualAnswers: {}",
+                        originId, sorItemName, winner.getPaperNo(), winner.getId(), hasNonEmptyAnswer(winner), allEqualAnswers);
 
                 if (hasNonEmptyAnswer(winner)) {
                     winner.setLabelMatchMessage(
@@ -439,17 +494,26 @@ public class LabelWithPriorityProcessor {
         messages.add("Whitelist priority applied → origin: " + winner.getOriginId() +
                 ", sorItem: " + winner.getSorItemName());
 
-        logger.info("Priority-based selection completed - winner id: {}, priority: {}",
-                winner.getId(), winner.getLabelPriorityIdx());
+        logger.info("[originId: {}, sorItemName: {}, paperNo: {}] Priority-based selection completed - winner id: {}, priority: {}",
+                originId, sorItemName, winner.getPaperNo(), winner.getId(), winner.getLabelPriorityIdx());
 
         return winner;
     }
 
     // ========================= STAGE 4: PRIORITY MAP =========================
     private Map<String, Integer> extractPriorityMap(List<SelectionFilteringInputTable> rows) {
-        String json = rows.get(0).getWhitelistedLabelsWithPriority();
+        if (rows.isEmpty()) {
+            logger.warn("extractPriorityMap called with empty list");
+            return Map.of();
+        }
+
+        SelectionFilteringInputTable first = rows.get(0);
+        String originId = first.getOriginId();
+        String sorItemName = first.getSorItemName();
+        String json = first.getWhitelistedLabelsWithPriority();
+
         if (json == null || json.isBlank()) {
-            logger.info("No whitelist JSON found");
+            logger.info("[originId: {}, sorItemName: {}] No whitelist JSON found", originId, sorItemName);
             return Map.of();
         }
 
@@ -464,10 +528,12 @@ public class LabelWithPriorityProcessor {
                 }
                 output.put(removeSpecialCharacters(row.getWhitelistKey()), priority);
             }
-            logger.info("Successfully parsed priority map with {} entries", output.size());
+            logger.info("[originId: {}, sorItemName: {}] Successfully parsed priority map with {} entries",
+                    originId, sorItemName, output.size());
             return output;
         } catch (Exception e) {
-            logger.error("Failed to parse whitelist JSON: {}", e.getMessage(), e);
+            logger.error("[originId: {}, sorItemName: {}] Failed to parse whitelist JSON: {}",
+                    originId, sorItemName, e.getMessage(), e);
             return Map.of();
         }
     }
@@ -475,12 +541,23 @@ public class LabelWithPriorityProcessor {
     // FIX 2: Added null check inside assignPriorities method
     private void assignPriorities(List<SelectionFilteringInputTable> rows,
                                   Map<String, Integer> priorityMap) {
-        logger.info("Assigning priorities to {} rows", rows.size());
+        if (rows.isEmpty()) {
+            logger.warn("assignPriorities called with empty list");
+            return;
+        }
+
+        SelectionFilteringInputTable first = rows.get(0);
+        String originId = first.getOriginId();
+        String sorItemName = first.getSorItemName();
+
+        logger.info("[originId: {}, sorItemName: {}] Assigning priorities to {} rows",
+                originId, sorItemName, rows.size());
 
         rows.forEach(r -> {
             // Guard against null rows
             if (r == null) {
-                logger.info("Encountered null row in assignPriorities - skipping");
+                logger.info("[originId: {}, sorItemName: {}] Encountered null row in assignPriorities - skipping",
+                        originId, sorItemName);
                 return;
             }
 
@@ -490,14 +567,16 @@ public class LabelWithPriorityProcessor {
 
             if (p == null || p == Integer.MAX_VALUE) {
                 r.setLabelPriorityIdx("N/A");
-                logger.trace("Row id {} - assigned priority: N/A", r.getId());
+                logger.trace("[originId: {}, sorItemName: {}, paperNo: {}] Row id {} - assigned priority: N/A",
+                        originId, sorItemName, r.getPaperNo(), r.getId());
             } else {
                 r.setLabelPriorityIdx(String.valueOf(p));
-                logger.trace("Row id {} - assigned priority: {}", r.getId(), p);
+                logger.trace("[originId: {}, sorItemName: {}, paperNo: {}] Row id {} - assigned priority: {}",
+                        originId, sorItemName, r.getPaperNo(), r.getId(), p);
             }
         });
 
-        logger.info("Priority assignment completed");
+        logger.info("[originId: {}, sorItemName: {}] Priority assignment completed", originId, sorItemName);
     }
 
     /**
