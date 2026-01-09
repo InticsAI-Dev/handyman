@@ -82,7 +82,7 @@ public class SectionFilteringAction implements IActionExecution {
       final InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
       jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
       ObjectMapper objectMapper = new ObjectMapper();
-      LabelWithPriorityProcessor LabelWithPriorityProcessor = new LabelWithPriorityProcessor(objectMapper);
+      LabelWithPriorityProcessor LabelWithPriorityProcessor = new LabelWithPriorityProcessor(objectMapper, log);
       List<SelectionFilteringInputTable> updatedTableInfos = new ArrayList<>();
 
       // 1 Fetch data
