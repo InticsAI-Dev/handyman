@@ -2,8 +2,9 @@ package in.handyman.raven.lib.adapters.selections;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import in.handyman.raven.lib.adapters.selections.models.SelectionFilteringInputTable;
+import in.handyman.raven.lib.adapters.selections.models.AggregationEvaluatorInputModel;
 import in.handyman.raven.lib.adapters.selections.models.WhitelistLabelPriority;
+import org.slf4j.Logger;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -11,388 +12,329 @@ import java.util.stream.Collectors;
 public class LabelWithPriorityProcessor {
 
     private final ObjectMapper mapper;
+    private final Logger log;
 
-    public LabelWithPriorityProcessor(ObjectMapper mapper) {
+    public LabelWithPriorityProcessor(ObjectMapper mapper, Logger log) {
         this.mapper = mapper;
+        this.log = log;
     }
 
     /**
-     * Process input rows and return filtered rows with proper priority and matching flags.
+     * Process input rows and return filtered rows.
+     * Logic:
+     * 1. Group by originId + sorItemName.
+     * 2. For each group, select a SINGLE winner based on priority logic.
+     * 3. Return the list of winners.
      */
-    public List<SelectionFilteringInputTable> process(
-            List<SelectionFilteringInputTable> input
-    ) {
-        List<String> messages = new ArrayList<>();
+    public List<AggregationEvaluatorInputModel> process(List<AggregationEvaluatorInputModel> input) {
+        if (input == null || input.isEmpty()) {
+            log.info("LabelWithPriorityProcessor: Input is empty.");
+            return Collections.emptyList();
+        }
 
-        if (input == null || input.isEmpty()) return Collections.emptyList();
+        log.info("LabelWithPriorityProcessor: Processing {} input records.", input.size());
 
-        // 1️⃣ Group by originId → sorItemName
-        List<SelectionFilteringInputTable> filtered =
-                input.stream()
-                        .filter(SelectionFilteringInputTable::isLabelMatching)
-                        .collect(Collectors.toList());
+        // Group by originId + sorItemName
+        Map<String, List<AggregationEvaluatorInputModel>> groupedOriginWithItems = input.stream()
+                .collect(Collectors.groupingBy(r -> String.format("%s|%s", r.getOriginId(), r.getSorItemName())));
 
-        // 1️⃣ Group by originId → sorItemName
-        List<SelectionFilteringInputTable> filteredNotMatching =
-                input.stream()
-                        .filter(r -> !r.isLabelMatching())
-                        .collect(Collectors.toList());
+        log.info("LabelWithPriorityProcessor: Created {} groups.", groupedOriginWithItems.size());
 
-        Map<String, Map<String, List<SelectionFilteringInputTable>>> grouped = filtered.stream()
-                .collect(Collectors.groupingBy(
-                        SelectionFilteringInputTable::getOriginId,
-                        Collectors.groupingBy(SelectionFilteringInputTable::getSorItemName)
-                ));
+        List<AggregationEvaluatorInputModel> result = new ArrayList<>();
 
-        List<SelectionFilteringInputTable> result = new ArrayList<>();
-        for (Map<String, List<SelectionFilteringInputTable>> originMap : grouped.values()) {
-            for (List<SelectionFilteringInputTable> rows : originMap.values()) {
-                SelectionFilteringInputTable winner = processSorItemRows(rows, messages);
-                result.addAll(rows);
+        for (Map.Entry<String, List<AggregationEvaluatorInputModel>> entry : groupedOriginWithItems.entrySet()) {
+            String groupKey = entry.getKey();
+            List<AggregationEvaluatorInputModel> group = entry.getValue();
+
+            if (group == null || group.isEmpty())
+                continue;
+            AggregationEvaluatorInputModel winer = processGroup(group, groupKey);
+            if (winer != null) {
+                result.add(winer);
             }
         }
-        result.addAll(filteredNotMatching);
+
         return result;
     }
 
-    // ========================= STAGE 1: PROCESS SOR ITEM ROWS =========================
-    private SelectionFilteringInputTable processSorItemRows(
-            List<SelectionFilteringInputTable> rows,
-            List<String> messages) {
+    private AggregationEvaluatorInputModel processGroup(List<AggregationEvaluatorInputModel> group, String contextKey) {
+        log.info("[{}] Processing group with {} records.", contextKey, group.size());
 
-        SelectionFilteringInputTable first = rows.get(0);
-        boolean isFirstEmpty = (first.getWhitelistedLabelsWithPriority() == null ||
-                first.getWhitelistedLabelsWithPriority().isBlank());
+        // 1. Single value check
+        if (group.size() == 1) {
+            AggregationEvaluatorInputModel row = group.get(0);
+            row.setLabelMatching(true);
+            row.setLabelMatchMessage(appendMsg(row, "Single row → selected"));
+            log.info("[{}] Single row group. Selected ID: {}", contextKey, row.getId());
+            return row;
+        }
 
-        if (isFirstEmpty) {
-            rows.forEach(r -> {
-                r.setLabelPriorityIdx("N/A");
-                r.setLabelMatching(true);
-                r.setLabelMatchMessage(appendMsg(r, "Update with empty priority labels returning everything"));
+        // 2. Filter Empty Answers
+        List<AggregationEvaluatorInputModel> nonEmptyAnswers = group.stream()
+                .filter(this::hasNonEmptyAnswer)
+                .collect(Collectors.toList());
+
+        if (nonEmptyAnswers.isEmpty()) {
+            // All empty, return fallback (first by paperNo)
+            AggregationEvaluatorInputModel winner = group.stream()
+                    .min(Comparator.comparingLong(this::getSafePaperNo).thenComparingLong(this::getSafeId))
+                    .orElse(group.get(0));
+
+            winner.setLabelMatching(true);
+            winner.setLabelMatchMessage(appendMsg(winner, "All answers empty → selected by fallback"));
+
+            group.stream().filter(r -> r != winner).forEach(r -> {
+                r.setLabelMatching(false);
+                r.setLabelMatchMessage(appendMsg(r, "All answers empty → rejected"));
             });
-            return rows.get(0);
+            log.info("[{}] All answers empty. Selected Fallback ID: {}", contextKey, winner.getId());
+            return winner;
         }
 
-        Map<String, Integer> priorityMap = extractPriorityMap(rows);
+        // 3. Branching Logic
+        boolean hasSectionAlias = nonEmptyAnswers.stream()
+                .anyMatch(r -> r.getSectionAlias() != null && !r.getSectionAlias().isBlank());
 
-        // Assign priorities FIRST before any processing
-        assignPriorities(rows, priorityMap);
+        log.info("[{}] Branch Decision: hasSectionAlias={} (checked {} candidates)", contextKey, hasSectionAlias,
+                nonEmptyAnswers.size());
 
-        boolean allPrioritiesEmpty = priorityMap.values().stream()
-                .allMatch(priority -> priority == null || priority == Integer.MAX_VALUE);
-
-        if (allPrioritiesEmpty) {
-            rows.forEach(r -> {
-                r.setLabelPriorityIdx("N/A");
-                r.setLabelMatching(true);
-                r.setLabelMatchMessage(appendMsg(r, "Whitelist without priorities → all labels allowed"));
-            });
-            return rows.get(0);
+        AggregationEvaluatorInputModel winner;
+        if (hasSectionAlias) {
+            winner = filterBySectionPriority(nonEmptyAnswers, group, contextKey);
+        } else {
+            winner = filterByConsensusAndMajority(nonEmptyAnswers, group, contextKey);
         }
 
-        if (rows.size() == 1) return handleSingleRow(rows.get(0), messages);
-
-        if (rows.size() == 2 && rows.stream().filter(this::hasNonEmptyAnswer).count() == 1)
-            return handleTwoRowsOneNonEmpty(rows, messages);
-
-        if (rows.size() == 2 && rows.stream().noneMatch(this::hasNonEmptyAnswer))
-            return handleTwoRowsBothEmpty(rows, messages);
-
-        boolean hasValidLabels = rows.stream()
-                .anyMatch(r -> r.getSorItemLabel() != null && !r.getSorItemLabel().isBlank());
-
-        boolean emptyLabelWhitelisted = priorityMap.containsKey("");
-
-        if (!hasValidLabels && !emptyLabelWhitelisted) {
-            return handleNoLabelPriority(rows, messages);
-        }
-
-        return handlePriorityBasedSelection(rows, priorityMap, messages);
+        return winner;
     }
 
-    // ========================= STAGE 2: ROW CHECKS =========================
-    private boolean hasNonEmptyAnswer(SelectionFilteringInputTable row) {
+    // --- CASE A: Section Priority Logic ---
+    private AggregationEvaluatorInputModel filterBySectionPriority(List<AggregationEvaluatorInputModel> candidates,
+            List<AggregationEvaluatorInputModel> allGroupRows, String contextKey) {
+        log.info("[{}] Executing Section Priority Logic. Candidates: {}", contextKey, candidates.size());
+
+        List<WhitelistLabelPriority> priorityRules = extractPriorityList(allGroupRows);
+        log.info("[{}] Found {} priority rules.", contextKey, priorityRules.size());
+
+        if (!priorityRules.isEmpty()) {
+            // Find min priority value across CURRENT candidates using SECTION ALIAS
+            Integer minPriority = null;
+            for (AggregationEvaluatorInputModel r : candidates) {
+                Integer p = getSectionPriority(r, priorityRules);
+                if (p != null) {
+                    if (minPriority == null || p < minPriority) {
+                        minPriority = p;
+                    }
+                }
+            }
+
+            if (minPriority != null) {
+                final int best = minPriority;
+                log.info("[{}] Best Section Priority found: {}", contextKey, best);
+                List<AggregationEvaluatorInputModel> priorityWinners = candidates.stream()
+                        .filter(r -> {
+                            Integer p = getSectionPriority(r, priorityRules);
+                            return p != null && p == best;
+                        })
+                        .collect(Collectors.toList());
+
+                if (!priorityWinners.isEmpty()) {
+                    candidates = priorityWinners;
+                    log.info("[{}] Filtered to {} candidates by priority.", contextKey, candidates.size());
+                }
+            } else {
+                log.info("[{}] No matching Section Priority found for candidates.", contextKey);
+            }
+        } else {
+            log.info("[{}] No priority rules configured.", contextKey);
+        }
+
+        // Fallback
+        return finalizeWinner(candidates, allGroupRows, "Selected by Section Priority/Fallback", contextKey);
+    }
+
+    // --- CASE B: Voting / Consensus Logic ---
+    private AggregationEvaluatorInputModel filterByConsensusAndMajority(List<AggregationEvaluatorInputModel> candidates,
+            List<AggregationEvaluatorInputModel> allGroupRows, String contextKey) {
+        log.info("[{}] Executing Voting Logic. Candidates: {}", contextKey, candidates.size());
+
+        // Step 1: Consensus
+        boolean consensus = candidates.stream()
+                .map(AggregationEvaluatorInputModel::getAnswer)
+                .distinct()
+                .count() == 1;
+
+        log.info("[{}] Consensus Check: {}", contextKey, consensus);
+
+        if (consensus) {
+            // Select min paperNo
+            return finalizeWinner(candidates, allGroupRows, "Consensus → selected min paperNo", contextKey);
+        }
+
+        // Step 2: Container Majority Voting
+        // Count entries per SOR Container
+        Map<Long, Long> containerCounts = candidates.stream()
+                .filter(r -> r.getSorContainerId() != null)
+                .collect(Collectors.groupingBy(AggregationEvaluatorInputModel::getSorContainerId,
+                        Collectors.counting()));
+
+        if (!containerCounts.isEmpty()) {
+            long maxCount = containerCounts.values().stream().max(Long::compare).orElse(0L);
+            log.info("[{}] Container Majority Max Count: {}", contextKey, maxCount);
+
+            // Filter candidates to those belonging to ANY container with maxCount
+            List<AggregationEvaluatorInputModel> majorityCandidates = candidates.stream()
+                    .filter(r -> r.getSorContainerId() != null
+                            && containerCounts.get(r.getSorContainerId()) == maxCount)
+                    .collect(Collectors.toList());
+
+            if (!majorityCandidates.isEmpty()) {
+                candidates = majorityCandidates; // Narrow down candidates
+                log.info("[{}] Filtered to {} candidates by Majority.", contextKey, candidates.size());
+            }
+        }
+
+        // Step 3c: Priority Rules (Whitelist)
+        // Now matching on sorItemLabel (or sectionAlias as fallback if needed, but SQL
+        // suggested whitelist_key ~ label)
+        List<WhitelistLabelPriority> priorityRules = extractPriorityList(allGroupRows);
+        if (!priorityRules.isEmpty()) {
+            // Find min priority value across CURRENT candidates
+            Integer minPriority = null;
+            for (AggregationEvaluatorInputModel r : candidates) {
+                Integer p = getPriority(r, priorityRules);
+                if (p != null) {
+                    if (minPriority == null || p < minPriority) {
+                        minPriority = p;
+                    }
+                }
+            }
+
+            if (minPriority != null) {
+                final int best = minPriority;
+                log.info("[{}] Best Priority (in Voting) found: {}", contextKey, best);
+                List<AggregationEvaluatorInputModel> priorityWinners = candidates.stream()
+                        .filter(r -> {
+                            Integer p = getPriority(r, priorityRules);
+                            return p != null && p == best;
+                        })
+                        .collect(Collectors.toList());
+
+                if (!priorityWinners.isEmpty()) {
+                    candidates = priorityWinners; // Narrow down further
+                    log.info("[{}] Filtered to {} candidates by Priority (Voting phase).", contextKey,
+                            candidates.size());
+                }
+            }
+        }
+
+        // Step 3d: Final Tie-Breaker (PageNo -> ID)
+        return finalizeWinner(candidates, allGroupRows, "Selected by Voting Logic/Fallback", contextKey);
+    }
+
+    // --- Common Finalizer ---
+    private AggregationEvaluatorInputModel finalizeWinner(List<AggregationEvaluatorInputModel> candidates,
+            List<AggregationEvaluatorInputModel> allGroupRows, String successMsg, String contextKey) {
+        AggregationEvaluatorInputModel winner = candidates.stream()
+                .min(Comparator.comparingLong(this::getSafePaperNo)
+                        .thenComparingLong(this::getSafeId))
+                .orElse(candidates.get(0));
+
+        winner.setLabelMatching(true);
+        winner.setLabelMatchMessage(appendMsg(winner, successMsg));
+
+        log.info("[{}] Final Selection - ID: {}, PaperNo: {}, Reason: {}", contextKey, winner.getId(),
+                winner.getPaperNo(), successMsg);
+
+        final AggregationEvaluatorInputModel finalWinner = winner;
+        allGroupRows.stream().filter(r -> r != finalWinner).forEach(r -> {
+            r.setLabelMatching(false);
+            r.setLabelMatchMessage(appendMsg(r, "Rejected in voting phase"));
+        });
+
+        return winner;
+    }
+
+    private Integer getSectionPriority(AggregationEvaluatorInputModel row, List<WhitelistLabelPriority> rules) {
+        return getPriority(row, rules);
+    }
+
+    private Integer getPriority(AggregationEvaluatorInputModel row, List<WhitelistLabelPriority> rules) {
+        // SQL join: tsw.whitelist_key = t.sor_item_label
+        String label = row.getSectionAlias();
+        if (label == null)
+            return null; // Or try sectionAlias? sticking to label as per SQL
+
+        String normalizedLabel = removeSpecialCharacters(label);
+        Integer bestPriority = null;
+
+        for (WhitelistLabelPriority rule : rules) {
+            String key = removeSpecialCharacters(rule.getWhitelistKey());
+            String matchType = rule.getLabelSearchConfig();
+
+            boolean match = false;
+            if ("CONTAINS".equalsIgnoreCase(matchType)) {
+                if (normalizedLabel.contains(key))
+                    match = true;
+            } else {
+                if (normalizedLabel.equals(key))
+                    match = true;
+            }
+
+            if (match) {
+                Integer p = rule.getLabelPriority();
+                if (p != null) {
+                    if (bestPriority == null || p < bestPriority) {
+                        bestPriority = p;
+                    }
+                }
+            }
+        }
+        return bestPriority;
+    }
+
+    private boolean hasNonEmptyAnswer(AggregationEvaluatorInputModel row) {
         return row.getAnswer() != null && !row.getAnswer().isBlank();
     }
 
-    // ========================= STAGE 3: HANDLERS =========================
-    private SelectionFilteringInputTable handleSingleRow(
-            SelectionFilteringInputTable row,
-            List<String> messages) {
-
-        // Priority already set by assignPriorities
-        row.setLabelMatching(true);
-        row.setLabelMatchMessage(appendMsg(row, "Single row → selected"));
-        messages.add("Single row → origin: " + row.getOriginId() + ", sorItem: " + row.getSorItemName());
-        return row;
+    private long getSafePaperNo(AggregationEvaluatorInputModel row) {
+        return row.getPaperNo() != null ? row.getPaperNo() : Long.MAX_VALUE;
     }
 
-    private SelectionFilteringInputTable handleTwoRowsOneNonEmpty(
-            List<SelectionFilteringInputTable> rows,
-            List<String> messages) {
-
-        SelectionFilteringInputTable winner = rows.stream()
-                .filter(this::hasNonEmptyAnswer)
-                .findFirst().orElseThrow();
-
-        winner.setLabelMatching(true);
-        winner.setLabelMatchMessage(appendMsg(winner, "Winner of two rows (has answer)"));
-
-        rows.stream()
-                .filter(r -> r != winner)
-                .forEach(r -> {
-                    r.setLabelMatching(false);
-                    r.setLabelMatchMessage(appendMsg(r, "Rejected (empty answer)"));
-                });
-
-        messages.add("Two rows with one non-empty → origin: " + winner.getOriginId() +
-                ", sorItem: " + winner.getSorItemName());
-        return winner;
+    private long getSafeId(AggregationEvaluatorInputModel row) {
+        return row.getId() != null ? row.getId() : Long.MAX_VALUE;
     }
 
-    private SelectionFilteringInputTable handleTwoRowsBothEmpty(
-            List<SelectionFilteringInputTable> rows,
-            List<String> messages) {
-
-        rows.forEach(r -> {
-            r.setLabelMatching(true);
-            r.setLabelMatchMessage(appendMsg(r, "Both answers empty → both selected"));
-        });
-
-        messages.add("Two rows both empty → origin: " + rows.get(0).getOriginId() +
-                ", sorItem: " + rows.get(0).getSorItemName());
-        return rows.get(0);
-    }
-
-    private SelectionFilteringInputTable handleNoLabelPriority(
-            List<SelectionFilteringInputTable> rows,
-            List<String> messages) {
-
-        SelectionFilteringInputTable winner = rows.stream()
-                .min(Comparator.comparingLong(SelectionFilteringInputTable::getPaperNo)
-                        .thenComparingLong(SelectionFilteringInputTable::getId))
-                .orElseThrow();
-
-        rows.forEach(r -> {
-            r.setLabelMatching(r == winner);
-            r.setLabelPriorityIdx("N/A");
-            r.setLabelMatchMessage(appendMsg(r,
-                    r == winner ? "No label priority → selected min paperNo/id"
-                            : "No label priority → not selected"));
-        });
-
-        messages.add("No labels present → origin: " + winner.getOriginId() +
-                ", sorItem: " + winner.getSorItemName());
-        return winner;
-    }
-
-    private SelectionFilteringInputTable handlePriorityBasedSelection(
-            List<SelectionFilteringInputTable> rows,
-            Map<String, Integer> priorityMap,
-            List<String> messages) {
-
-        // Priorities already assigned by assignPriorities() earlier
-
-        // Separate rows into three categories:
-        // 1. Rows with defined priority (numeric values)
-        // 2. Rows with null priority (in whitelist but priority is null/0)
-        // 3. Rows NOT in whitelist (rejected)
-
-        List<SelectionFilteringInputTable> rowsWithDefinedPriority = new ArrayList<>();
-        List<SelectionFilteringInputTable> rowsWithNullPriority = new ArrayList<>();
-        List<SelectionFilteringInputTable> rowsNotInWhitelist = new ArrayList<>();
-
-        for (SelectionFilteringInputTable r : rows) {
-            String normalizedLabel = removeSpecialCharacters(r.getSorItemLabel());
-            String priorityStr = r.getLabelPriorityIdx();
-
-            // Check if label exists in whitelist
-            if (!priorityMap.containsKey(normalizedLabel)) {
-                // Label NOT in whitelist → REJECT
-                rowsNotInWhitelist.add(r);
-            } else if (priorityStr != null && !priorityStr.equals("N/A")) {
-                // Label in whitelist with numeric priority
-                rowsWithDefinedPriority.add(r);
-            } else {
-                // Label in whitelist with null/0 priority
-                rowsWithNullPriority.add(r);
-            }
-        }
-
-        // Reject all rows NOT in whitelist
-        rowsNotInWhitelist.forEach(r -> {
-            r.setLabelMatching(false);
-            r.setLabelMatchMessage(appendMsg(r, "Label not in whitelist → rejected"));
-        });
-
-        // Allow all rows with null priority (in whitelist but no priority defined)
-        rowsWithNullPriority.forEach(r -> {
-            r.setLabelMatching(true);
-            r.setLabelMatchMessage(appendMsg(r, "Label in whitelist (no priority restriction) → allowed"));
-        });
-
-        // If no rows have defined priority, all null priority rows are allowed
-        if (rowsWithDefinedPriority.isEmpty()) {
-            if (!rowsWithNullPriority.isEmpty()) {
-                return rowsWithNullPriority.get(0);
-            }
-            // All rows were not in whitelist
-            return rows.get(0);
-        }
-
-        // Find minimum priority among rows with defined priority
-        int minPriority = rowsWithDefinedPriority.stream()
-                .mapToInt(r -> Integer.parseInt(r.getLabelPriorityIdx()))
-                .min()
-                .orElse(Integer.MAX_VALUE);
-
-        // Only keep rows with minimum priority; reject higher priorities
-        List<SelectionFilteringInputTable> topPriorityRows = rowsWithDefinedPriority.stream()
-                .filter(r -> Integer.parseInt(r.getLabelPriorityIdx()) == minPriority)
-                .collect(Collectors.toList());
-
-        // Reject rows with higher priority
-        rowsWithDefinedPriority.stream()
-                .filter(r -> Integer.parseInt(r.getLabelPriorityIdx()) > minPriority)
-                .forEach(r -> {
-                    r.setLabelMatching(false);
-                    r.setLabelMatchMessage(
-                            appendMsg(r, "Rejected: priority " + r.getLabelPriorityIdx() +
-                                    " > min priority " + minPriority)
-                    );
-                });
-
-        SelectionFilteringInputTable winner;
-        if (topPriorityRows.size() == 1) {
-            winner = topPriorityRows.get(0);
-            winner.setLabelMatchMessage(appendMsg(winner, "Selected: highest priority"));
-        } else {
-            boolean allLabelsIdentical = topPriorityRows.stream()
-                    .map(r -> removeSpecialCharacters(r.getSorItemLabel()))
-                    .filter(label -> label != null && !label.isEmpty())
-                    .collect(Collectors.toSet())
-                    .size() <= 1;
-
-            if (allLabelsIdentical) {
-                winner = topPriorityRows.stream()
-                        .min(Comparator
-                                .comparingLong(SelectionFilteringInputTable::getPaperNo)
-                                .thenComparing((SelectionFilteringInputTable r) -> !hasNonEmptyAnswer(r))
-                                .thenComparingLong(SelectionFilteringInputTable::getId)
-                        )
-                        .orElseThrow();
-
-                long winnerPageNo = winner.getPaperNo();
-                long samePageCount = topPriorityRows.stream()
-                        .filter(r -> r.getPaperNo() == winnerPageNo)
-                        .count();
-
-                if (samePageCount > 1) {
-                    winner.setLabelMatchMessage(
-                            appendMsg(winner, "Same label on page " + winnerPageNo +
-                                    " → selected with answer/min id=" + winner.getId())
-                    );
-                } else {
-                    winner.setLabelMatchMessage(
-                            appendMsg(winner, "Same labels → selected min paperNo=" + winner.getPaperNo())
-                    );
-                }
-            } else {
-                winner = topPriorityRows.stream()
-                        .min(Comparator
-                                .comparing((SelectionFilteringInputTable r) -> !hasNonEmptyAnswer(r))
-                                .thenComparingLong(SelectionFilteringInputTable::getId)
-                        )
-                        .orElseThrow();
-
-                boolean allEqualAnswers = topPriorityRows.stream()
-                        .map(SelectionFilteringInputTable::getAnswer)
-                        .filter(Objects::nonNull)
-                        .filter(a -> !a.isBlank())
-                        .collect(Collectors.toSet())
-                        .size() <= 1;
-
-                if (hasNonEmptyAnswer(winner)) {
-                    winner.setLabelMatchMessage(
-                            appendMsg(winner, "Selected: has answer with priority " + minPriority)
-                    );
-                } else if (allEqualAnswers) {
-                    winner.setLabelMatchMessage(
-                            appendMsg(winner, "Equal answers → selected min id")
-                    );
-                } else {
-                    winner.setLabelMatchMessage(
-                            appendMsg(winner, "Selected min id (no answers present)")
-                    );
+    private List<WhitelistLabelPriority> extractPriorityList(List<AggregationEvaluatorInputModel> rows) {
+        // Try to find valid priority rules from any row in the group
+        for (AggregationEvaluatorInputModel row : rows) {
+            String json = row.getWhitelistedSectionsWithPriority();
+            if (json != null && !json.isBlank()) {
+                try {
+                    List<WhitelistLabelPriority> list = mapper.readValue(json,
+                            new TypeReference<List<WhitelistLabelPriority>>() {
+                            });
+                    if (list != null && !list.isEmpty())
+                        return list;
+                } catch (Exception e) {
+                    // Ignore and try next
                 }
             }
         }
-
-        for (SelectionFilteringInputTable r : topPriorityRows) {
-            boolean isWinner = (r == winner);
-            r.setLabelMatching(isWinner);
-            if (!isWinner) {
-                r.setLabelMatchMessage(
-                        appendMsg(r, "Rejected: " +
-                                (hasNonEmptyAnswer(winner) && !hasNonEmptyAnswer(r)
-                                        ? "winner has answer"
-                                        : "lower paperNo/id chosen"))
-                );
-            }
-        }
-
-        messages.add("Whitelist priority applied → origin: " + winner.getOriginId() +
-                ", sorItem: " + winner.getSorItemName());
-        return winner;
-    }
-
-    // ========================= STAGE 4: PRIORITY MAP =========================
-    private Map<String, Integer> extractPriorityMap(List<SelectionFilteringInputTable> rows) {
-        String json = rows.get(0).getWhitelistedLabelsWithPriority();
-        if (json == null || json.isBlank()) return Map.of();
-
-        try {
-            List<WhitelistLabelPriority> list = mapper.readValue(json,
-                    new TypeReference<List<WhitelistLabelPriority>>() {});
-            Map<String, Integer> output = new HashMap<>();
-            for (WhitelistLabelPriority row : list) {
-                Integer priority = row.getLabelPriority();
-                if (priority == null || priority == 0) {
-                    priority = Integer.MAX_VALUE;
-                }
-                output.put(removeSpecialCharacters(row.getWhitelistKey()), priority);
-            }
-            return output;
-        } catch (Exception e) {
-            return Map.of();
-        }
-    }
-
-    private void assignPriorities(List<SelectionFilteringInputTable> rows,
-                                  Map<String, Integer> priorityMap) {
-        rows.forEach(r -> {
-            String key = removeSpecialCharacters(r.getSorItemLabel());
-            Integer p = priorityMap.get(key);
-
-            if (p == null || p == Integer.MAX_VALUE) {
-                r.setLabelPriorityIdx("N/A");
-            } else {
-                r.setLabelPriorityIdx(String.valueOf(p));
-            }
-        });
+        return Collections.emptyList();
     }
 
     public String removeSpecialCharacters(String input) {
-        if (input == null) return "";
+        if (input == null)
+            return "";
         return input.replaceAll("[^a-zA-Z0-9]", "").toLowerCase().trim();
     }
 
     // ========================= STAGE 5: MESSAGES =========================
-    private String appendMsg(SelectionFilteringInputTable row, String message) {
-        String priority = row.getLabelPriorityIdx();
-        String msgWithPriority = "[p=" + (priority != null ? priority : "N/A") + "] " + message;
+    private String appendMsg(AggregationEvaluatorInputModel row, String message) {
         String existing = row.getLabelMatchMessage();
-        if (existing == null || existing.isBlank()) return msgWithPriority;
-        return existing + " | " + msgWithPriority;
+        if (existing == null || existing.isBlank())
+            return message;
+        return existing + " | " + message;
     }
 }

@@ -40,19 +40,39 @@ public class ValidatorByBeanShellExecutor {
     public List<PostProcessingExecutorAction.PostProcessingExecutorInput> doRowWiseValidator() throws InterruptedException, ExecutionException {
         int inputSize = postProcessingExecutorInputs.size();
         log.info("Starting row-wise validation for {} inputs", inputSize);
+        List<PostProcessingExecutorAction.PostProcessingExecutorInput> multiValuePostProcessing = postProcessingExecutorInputs.stream().filter(item -> "multi_value".equals(item.getLineItemType())).collect(Collectors.toList());
+        List<PostProcessingExecutorAction.PostProcessingExecutorInput> singleValuePostProcessing = postProcessingExecutorInputs.stream().filter(item -> "single_value".equals(item.getLineItemType())).collect(Collectors.toList());
 
-        Map<String, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> byOrigin = groupByOrigin(postProcessingExecutorInputs);
-        List<CompletableFuture<Void>> originFutures = new ArrayList<>();
+        if(!multiValuePostProcessing.isEmpty()) {
 
-        byOrigin.forEach((origin, originInputs) -> originFutures.add(
-                CompletableFuture.runAsync(() -> processOrigin(origin, originInputs), executor)
-        ));
+            Map<String, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> byOrigin = groupByOriginAndContainerInstanceMultiLine(multiValuePostProcessing);
+            List<CompletableFuture<Void>> originFutures = new ArrayList<>();
 
-        CompletableFuture.allOf(originFutures.toArray(new CompletableFuture[0])).get();
-        executor.shutdown();
-        executor.awaitTermination(1, TimeUnit.MINUTES);
+            byOrigin.forEach((origin, originInputs) -> originFutures.add(
+                    CompletableFuture.runAsync(() -> processOrigin(origin, originInputs), executor)
+            ));
 
-        log.info("Completed all validations for post processing inputs.");
+            CompletableFuture.allOf(originFutures.toArray(new CompletableFuture[0])).get();
+            executor.shutdown();
+            executor.awaitTermination(1, TimeUnit.MINUTES);
+
+            log.info("Completed all validations for post processing inputs.");
+        }
+        if(!singleValuePostProcessing.isEmpty()){
+            Map<String, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> byOrigin = groupByOrigin(singleValuePostProcessing);
+            List<CompletableFuture<Void>> originFutures = new ArrayList<>();
+
+            byOrigin.forEach((origin, originInputs) -> originFutures.add(
+                    CompletableFuture.runAsync(() -> processOrigin(origin, originInputs), executor)
+            ));
+
+            CompletableFuture.allOf(originFutures.toArray(new CompletableFuture[0])).get();
+            executor.shutdown();
+            executor.awaitTermination(1, TimeUnit.MINUTES);
+
+            log.info("Completed all validations for post processing inputs.");
+        }
+
         return postProcessingExecutorInputs;
     }
 
@@ -60,6 +80,24 @@ public class ValidatorByBeanShellExecutor {
         log.info("Grouping inputs by origin");
         return inputs.stream()
                 .collect(Collectors.groupingBy(PostProcessingExecutorAction.PostProcessingExecutorInput::getOriginId));
+    }
+
+
+    private Map<String, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> groupByOriginAndContainerInstance(List<PostProcessingExecutorAction.PostProcessingExecutorInput> inputs) {
+        log.info("Grouping inputs by origin and paper no.");
+        return inputs.stream()
+                .collect(Collectors.groupingBy(
+                        i -> i.getOriginId() + "|" + i.getPaperNo()
+                ));
+    }
+
+
+    private Map<String, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> groupByOriginAndContainerInstanceMultiLine(List<PostProcessingExecutorAction.PostProcessingExecutorInput> inputs) {
+        log.info("Grouping inputs by origin and container instance for multi line items ");
+        return inputs.stream()
+                .collect(Collectors.groupingBy(
+                        i -> i.getOriginId() + "|" + i.getPaperNo() + "|" + i.getSorContainerInstance()
+                ));
     }
 
     private void processOrigin(String originId, List<PostProcessingExecutorAction.PostProcessingExecutorInput> originInputs) {

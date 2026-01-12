@@ -464,13 +464,13 @@ public class OcrTextComparatorAction implements IActionExecution {
                                     "origin_id, group_id, paper_no, sor_question, answer, vqa_score, score, weight, " +
                                     "sor_item_attribution_id, sor_item_name, document_id, b_box, root_pipeline_id, " +
                                     "question_id, synonym_id, model_registry, category, batch_id, is_ocr_field_comparable, " +
-                                    "extracted_text, threshold, best_score, regex_pattern, candidates" +
+                                    "extracted_text, threshold, best_score, regex_pattern, candidates, sor_container_instance" +
                                     ") VALUES (" +
                                     ":createdOn, :createdUserId, :lastUpdatedOn, :lastUpdatedUserId, :tenantId, " +
                                     ":originId, :groupId, :paperNo, :sorQuestion, :answer, :vqaScore, :score, :weight, " +
                                     ":sorItemAttributionId, :sorItemName, :documentId, :bBox, :rootPipelineId, " +
                                     ":questionId, :synonymId, :modelRegistry, :category, :batchId, :isOcrFieldComparable, " +
-                                    ":extractedText, :threshold, :bestScore, :regexPattern, :candidates" +
+                                    ":extractedText, :threshold, :bestScore, :regexPattern, :candidates, :sorContainerInstance" +
                                     ");"
                     );
 
@@ -508,6 +508,7 @@ public class OcrTextComparatorAction implements IActionExecution {
                                 .bind("bestScore", result.getBestScore())
                                 .bind("regexPattern", result.getRegexPattern())
                                 .bind("candidates", "")
+                                .bind("sorContainerInstance", result.getSorContainerInstance())
                                 .add();
                     }
 

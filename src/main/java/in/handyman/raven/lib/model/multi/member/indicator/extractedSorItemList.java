@@ -25,4 +25,5 @@ public class extractedSorItemList {
     private Long rootPipelineId;
     private String batchId;
     private String documentType;
+    private String sorContainerInstance;
 }
