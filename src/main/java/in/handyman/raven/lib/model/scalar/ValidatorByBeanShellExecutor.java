@@ -56,13 +56,13 @@ public class ValidatorByBeanShellExecutor {
         return postProcessingExecutorInputs;
     }
 
-    private Map<String, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> groupByOrigin(List<PostProcessingExecutorAction.PostProcessingExecutorInput> inputs) {
+    public Map<String, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> groupByOrigin(List<PostProcessingExecutorAction.PostProcessingExecutorInput> inputs) {
         log.info("Grouping inputs by origin");
         return inputs.stream()
                 .collect(Collectors.groupingBy(PostProcessingExecutorAction.PostProcessingExecutorInput::getOriginId));
     }
 
-    private void processOrigin(String originId, List<PostProcessingExecutorAction.PostProcessingExecutorInput> originInputs) {
+    public void processOrigin(String originId, List<PostProcessingExecutorAction.PostProcessingExecutorInput> originInputs) {
         log.info("Processing origin {} with {} inputs", originId, originInputs.size());
         Map<Integer, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> byPage = groupByPage(originInputs);
 
@@ -71,13 +71,13 @@ public class ValidatorByBeanShellExecutor {
         );
     }
 
-    private Map<Integer, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> groupByPage(List<PostProcessingExecutorAction.PostProcessingExecutorInput> inputs) {
+    public Map<Integer, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> groupByPage(List<PostProcessingExecutorAction.PostProcessingExecutorInput> inputs) {
         log.info("Grouping inputs by page");
         return inputs.stream()
                 .collect(Collectors.groupingBy(PostProcessingExecutorAction.PostProcessingExecutorInput::getPaperNo));
     }
 
-    private void processPage(String originId, Integer pageNo, List<PostProcessingExecutorAction.PostProcessingExecutorInput> pageInputs) {
+    public void processPage(String originId, Integer pageNo, List<PostProcessingExecutorAction.PostProcessingExecutorInput> pageInputs) {
         log.info("START validation for origin {} page {}", originId, pageNo);
         long start = System.currentTimeMillis();
 
@@ -91,7 +91,7 @@ public class ValidatorByBeanShellExecutor {
         log.info("END validation for origin {} page {} ({} ms)", originId, pageNo, duration);
     }
 
-    private Map<String, String> createMap(List<PostProcessingExecutorAction.PostProcessingExecutorInput> pageInputs) {
+    public Map<String, String> createMap(List<PostProcessingExecutorAction.PostProcessingExecutorInput> pageInputs) {
         Map<String, String> map = new HashMap<>();
         for (PostProcessingExecutorAction.PostProcessingExecutorInput input : pageInputs) {
             map.put(input.getSorItemName(), input.getExtractedValue());
@@ -99,7 +99,7 @@ public class ValidatorByBeanShellExecutor {
         return map;
     }
 
-    private List<String> loadScriptOrder(List<PostProcessingExecutorAction.PostProcessingExecutorInput> pageInputs) {
+    public List<String> loadScriptOrder(List<PostProcessingExecutorAction.PostProcessingExecutorInput> pageInputs) {
         boolean multi = pageInputs.stream().anyMatch(i -> "multi_value".equals(i.getLineItemType()));
         String key = multi ? "outbound.mapper.multi.bsh.class.order" : "outbound.mapper.bsh.class.order";
         String order = actionExecutionAudit.getContext().get(key);
@@ -111,7 +111,7 @@ public class ValidatorByBeanShellExecutor {
         return classes;
     }
 
-    private Map<String, String> executeScripts(List<String> classes, Map<String, String> currentMap) {
+    public Map<String, String> executeScripts(List<String> classes, Map<String, String> currentMap) {
         Map<String, String> updatedMap = new HashMap<>(currentMap);
         Long pipelineId = actionExecutionAudit.getRootPipelineId();
 
@@ -123,7 +123,7 @@ public class ValidatorByBeanShellExecutor {
         return updatedMap;
     }
 
-    private void getPostProcessedValidatorMap(String className, String sourceCode, Map<String, String> updatedPostProcessingDetailsMap, Long rootPipelineId) {
+    public void getPostProcessedValidatorMap(String className, String sourceCode, Map<String, String> updatedPostProcessingDetailsMap, Long rootPipelineId) {
         try {
             Interpreter interpreter = new Interpreter();
             interpreter.eval(sourceCode);
