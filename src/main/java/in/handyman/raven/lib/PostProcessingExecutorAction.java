@@ -105,7 +105,7 @@ public class PostProcessingExecutorAction implements IActionExecution {
         }
     }
 
-    private void processEncryption(PostProcessingExecutorInput input, InticsIntegrity crypt, boolean encryptEnabled) {
+    void processEncryption(PostProcessingExecutorInput input, InticsIntegrity crypt, boolean encryptEnabled) {
         if ("multi_value".equalsIgnoreCase(input.getLineItemType())) {
             handleMultiValue(input, crypt, encryptEnabled);
         } else if (encryptEnabled && "t".equalsIgnoreCase(input.getIsEncrypted())) {
@@ -119,7 +119,7 @@ public class PostProcessingExecutorAction implements IActionExecution {
         }
     }
 
-    private void handleMultiValue(PostProcessingExecutorInput input, InticsIntegrity crypt, boolean encryptEnabled) {
+    void handleMultiValue(PostProcessingExecutorInput input, InticsIntegrity crypt, boolean encryptEnabled) {
         String[] parts = input.getExtractedValue().split(",");
         List<String> reEncrypted = java.util.Arrays.stream(parts)
                 .map(String::trim)
@@ -130,7 +130,7 @@ public class PostProcessingExecutorAction implements IActionExecution {
         input.setExtractedValue(String.join(",", reEncrypted));
     }
 
-    private void executeBatchInsert(Handle handle, List<PostProcessingExecutorInput> rows) {
+    void executeBatchInsert(Handle handle, List<PostProcessingExecutorInput> rows) {
         String sql = buildInsertSQL();
         try (PreparedBatch batch = handle.prepareBatch(sql)) {
             rows.forEach(row -> {

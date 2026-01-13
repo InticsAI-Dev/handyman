@@ -1,14 +1,38 @@
 package in.handyman.raven.lib;
 
+import in.handyman.raven.core.encryption.InticsDataEncryptionApi;
+import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.core.enums.EncryptionConstants;
+import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.PostProcessingExecutor;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.core.result.ResultIterable;
+import org.jdbi.v3.core.statement.Query;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
+import java.sql.SQLException;
+import java.util.List;
+
+import static org.mockito.Mockito.*;
 
 @Slf4j
-class PostProcessingExecutorActionTest {
+public class PostProcessingExecutorActionTest {
 
+    PostProcessingExecutor executor = new PostProcessingExecutor();
+    Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(executor.getResourceConn());
+
+    @Mock
+    ActionExecutionAudit action;
+
+    @Mock
+    Query query;
+
+    @Mock
+    ResultIterable<PostProcessingExecutorAction.PostProcessingExecutorInput> resultIterable;
+
+    PostProcessingExecutorAction actionUnderTest;
     @Test
     void execute() throws Exception {
 
@@ -258,4 +282,78 @@ class PostProcessingExecutorActionTest {
         PostProcessingExecutorAction postProcessingExecutorAction = new PostProcessingExecutorAction(action, log, postProcessingExecutor);
         postProcessingExecutorAction.execute();
     }
+
+    @Test
+    void fetchAndDecryptInputs_AES256_DecryptionEnabled() throws SQLException {
+
+        // Arrange
+        PostProcessingExecutorAction.PostProcessingExecutorInput input = new PostProcessingExecutorAction.PostProcessingExecutorInput();
+        PostProcessingExecutorAction postProcessingExecutorAction = new PostProcessingExecutorAction(action, log, executor );
+        InticsDataEncryptionApi encryptionApi = mock(InticsDataEncryptionApi.class);
+        InticsIntegrity integrity = new InticsIntegrity(encryptionApi);
+        Boolean encryptEnabled = true;
+        input.setIsEncrypted("t");
+        input.setExtractedValue("ENCRYPTED_VALUE");
+        input.setSorItemName("member_id");
+        input.setExtractedValue("Sri");
+        input.setVqaScore(20.0);
+        input.setSorItemName("auth_id");
+        input.setEncryptionPolicy("AES256");
+        postProcessingExecutorAction.processEncryption( input, integrity, encryptEnabled);
+
+    }
+
+    @Test
+    void handleMultiValue() throws SQLException {
+
+        // Arrange
+
+        PostProcessingExecutorAction.PostProcessingExecutorInput input = new PostProcessingExecutorAction.PostProcessingExecutorInput();
+        PostProcessingExecutorAction postProcessingExecutorAction = new PostProcessingExecutorAction(action, log, executor );
+        InticsDataEncryptionApi encryptionApi = mock(InticsDataEncryptionApi.class);
+        InticsIntegrity integrity = new InticsIntegrity(encryptionApi);
+        Boolean encryptEnabled = true;
+        input.setIsEncrypted("t");
+        input.setExtractedValue("ENCRYPTED_VALUE");
+        input.setSorItemName("member_id");
+        input.setExtractedValue("Sri");
+        input.setVqaScore(20.0);
+        input.setSorItemName("auth_id");
+        input.setEncryptionPolicy("AES256");
+        postProcessingExecutorAction.handleMultiValue(input, integrity, encryptEnabled);
+
+    }
+
+    @Test
+    public void  executeBatchInsertTest() throws Exception {
+        PostProcessingExecutor executor = new PostProcessingExecutor();
+        Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(executor.getResourceConn());
+        PostProcessingExecutor postProcessingExecutor = PostProcessingExecutor.builder()
+                .name("Post Processing executor")
+                .batchId("BATCH-24_0")
+                .groupId("2014")
+                .condition(true)
+                .outputTable("score.aggregation_evaluator")
+                .resourceConn("intics_zio_db_conn").build();
+
+        ActionExecutionAudit action = ActionExecutionAudit.builder()
+                .build();
+
+        PostProcessingExecutorAction.PostProcessingExecutorInput input = new PostProcessingExecutorAction.PostProcessingExecutorInput();
+        input.setIsEncrypted("t");
+        input.setExtractedValue("ENCRYPTED_VALUE");
+        input.setSorItemName("member_id");
+        input.setExtractedValue("Sri");
+        input.setVqaScore(20.0);
+        input.setSorItemName("auth_id");
+        input.setEncryptionPolicy("AES256");
+        PostProcessingExecutorAction postProcessingExecutorAction = new PostProcessingExecutorAction(action, log, postProcessingExecutor);
+        postProcessingExecutorAction.execute();
+        jdbi.useHandle(handle -> {
+            // use handle here
+            postProcessingExecutorAction.executeBatchInsert(handle, List.of(input));
+        });
+
+    }
 }
+
