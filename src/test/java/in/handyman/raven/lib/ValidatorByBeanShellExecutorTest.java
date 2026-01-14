@@ -59,7 +59,15 @@ class ValidatorByBeanShellExecutorTest {
 
     @Test
     public void processPageTest() {
-        ValidatorByBeanShellExecutor validatorByBeanShellExecutor = new ValidatorByBeanShellExecutor(inputs, actionExecutionAudit, log, 1);
+        ActionExecutionAudit ac = new ActionExecutionAudit();
+        ac.setRootPipelineId(1234L);
+        ac.setActionId(1234L);
+        ac.setProcessId(123L);
+        ac.getContext().put("Radon.kvp.consumer.API.count", "1");
+        ac.getContext().put("outbound.mapper.multi.bsh.class.order", "DiagnosisServiceCodeValidator,AuthIdValidator,LOCValidator,LOSValidator");
+        ac.getContext().put("DiagnosisServiceCodeValidator", sourceCode);
+
+        ValidatorByBeanShellExecutor validatorByBeanShellExecutor = new ValidatorByBeanShellExecutor(inputs, ac, log, 1);
         final List<PostProcessingExecutorAction.PostProcessingExecutorInput> pageInputs = inputList();
         final String originId = "OriginId_1";
         final Integer pageNo = 1;
