@@ -81,20 +81,20 @@ public class ValidatorByBeanShellExecutor {
         log.info("START validation for origin {} page {}", originId, pageNo);
         long start = System.currentTimeMillis();
 
-        Map<String, String> initialMap = createMap(pageInputs);
+        Map<String, PostProcessingExecutorAction.PostProcessingExecutorInput> initialMap = createMap(pageInputs);
         List<String> scriptClasses = loadScriptOrder(pageInputs);
 
-        Map<String, String> resultMap = executeScripts(scriptClasses, initialMap);
+        Map<String, PostProcessingExecutorAction.PostProcessingExecutorInput> resultMap = executeScripts(scriptClasses, initialMap);
         updateInputs(pageInputs, resultMap);
 
         long duration = System.currentTimeMillis() - start;
         log.info("END validation for origin {} page {} ({} ms)", originId, pageNo, duration);
     }
 
-    private Map<String, String> createMap(List<PostProcessingExecutorAction.PostProcessingExecutorInput> pageInputs) {
-        Map<String, String> map = new HashMap<>();
+    private Map<String, PostProcessingExecutorAction.PostProcessingExecutorInput> createMap(List<PostProcessingExecutorAction.PostProcessingExecutorInput> pageInputs) {
+        Map<String, PostProcessingExecutorAction.PostProcessingExecutorInput> map = new HashMap<>();
         for (PostProcessingExecutorAction.PostProcessingExecutorInput input : pageInputs) {
-            map.put(input.getSorItemName(), input.getExtractedValue());
+            map.put(input.getSorItemName(), input);
         }
         return map;
     }
@@ -111,8 +111,8 @@ public class ValidatorByBeanShellExecutor {
         return classes;
     }
 
-    private Map<String, String> executeScripts(List<String> classes, Map<String, String> currentMap) {
-        Map<String, String> updatedMap = new HashMap<>(currentMap);
+    private Map<String, PostProcessingExecutorAction.PostProcessingExecutorInput> executeScripts(List<String> classes, Map<String, PostProcessingExecutorAction.PostProcessingExecutorInput> currentMap) {
+        Map<String, PostProcessingExecutorAction.PostProcessingExecutorInput> updatedMap = new HashMap<>(currentMap);
         Long pipelineId = actionExecutionAudit.getRootPipelineId();
 
         for (String className : classes) {
@@ -123,7 +123,7 @@ public class ValidatorByBeanShellExecutor {
         return updatedMap;
     }
 
-    private void getPostProcessedValidatorMap(String className, String sourceCode, Map<String, String> updatedPostProcessingDetailsMap, Long rootPipelineId) {
+    private void getPostProcessedValidatorMap(String className, String sourceCode, Map<String, PostProcessingExecutorAction.PostProcessingExecutorInput> updatedPostProcessingDetailsMap, Long rootPipelineId) {
         try {
             Interpreter interpreter = new Interpreter();
             interpreter.eval(sourceCode);
@@ -158,13 +158,13 @@ public class ValidatorByBeanShellExecutor {
         }
     }
 
-    private void processValidatorResult(Object validatorResultObject, Map<String, String> updatedPostProcessingDetailsMap) {
+    private void processValidatorResult(Object validatorResultObject, Map<String, PostProcessingExecutorAction.PostProcessingExecutorInput> updatedPostProcessingDetailsMap) {
         try {
             Method getMappedDataMethod = validatorResultObject.getClass().getMethod("getMappedData");
             Object mappedData = getMappedDataMethod.invoke(validatorResultObject);
 
             if (mappedData instanceof Map<?, ?>) {
-                Map<String, String> mappedDataResult = getMappedDataResult((Map<?, ?>) mappedData);
+                Map<String, PostProcessingExecutorAction.PostProcessingExecutorInput> mappedDataResult = getMappedDataResult((Map<?, ?>) mappedData);
                 updatedPostProcessingDetailsMap.putAll(mappedDataResult);
             }
         } catch (Exception e) {
@@ -173,12 +173,12 @@ public class ValidatorByBeanShellExecutor {
     }
 
     @NotNull
-    private Map<String, String> getMappedDataResult(Map<?, ?> mappedData) {
-        Map<String, String> mappedDataResult = new HashMap<>();
+    private Map<String, PostProcessingExecutorAction.PostProcessingExecutorInput> getMappedDataResult(Map<?, ?> mappedData) {
+        Map<String, PostProcessingExecutorAction.PostProcessingExecutorInput> mappedDataResult = new HashMap<>();
 
         for (Map.Entry<?, ?> entry : mappedData.entrySet()) {
-            if (entry.getKey() instanceof String && entry.getValue() instanceof String) {
-                mappedDataResult.put((String) entry.getKey(), (String) entry.getValue());
+            if (entry.getKey() instanceof String && entry.getValue() instanceof PostProcessingExecutorAction.PostProcessingExecutorInput) {
+                mappedDataResult.put((String) entry.getKey(), (PostProcessingExecutorAction.PostProcessingExecutorInput) entry);
             } else {
                 log.error("Expected mappedData to be a Map, but got: {}", mappedData.getClass().getName());
             }
@@ -186,28 +186,28 @@ public class ValidatorByBeanShellExecutor {
         return mappedDataResult;
     }
 
-    private void updateInputs(List<PostProcessingExecutorAction.PostProcessingExecutorInput> inputs, Map<String, String> resultMap) {
+    private void updateInputs(List<PostProcessingExecutorAction.PostProcessingExecutorInput> inputs, Map<String, PostProcessingExecutorAction.PostProcessingExecutorInput> resultMap) {
         Map<String, PostProcessingExecutorAction.PostProcessingExecutorInput> postProcessingExecutorInputMap =
                 inputs.stream()
                         .collect(Collectors.toMap(
                                 PostProcessingExecutorAction.PostProcessingExecutorInput::getSorItemName,
                                 Function.identity()));
 
-        resultMap.forEach((sorItem, sorItemValue) -> {
+        resultMap.forEach((sorItem, PostProcessingExecutorOutput) -> {
             PostProcessingExecutorAction.PostProcessingExecutorInput postProcessingExecutorInput = postProcessingExecutorInputMap.get(sorItem);
             if (postProcessingExecutorInput != null) {
                 log.info("PostProcessing input exists for sorItem {}, updating value", sorItem);
-                if(Objects.equals(postProcessingExecutorInput.getExtractedValue(), sorItemValue)){
+                if(Objects.equals(postProcessingExecutorInput.getExtractedValue(), PostProcessingExecutorOutput.getExtractedValue())){
                     log.info("Extracted value and the PostProcessing value are same for the sorItem {}, so no record has been updated.", sorItem);
-                } else if (!Objects.equals(sorItemValue, "")) {
+                } else if (!Objects.equals(PostProcessingExecutorOutput.getExtractedValue(), "")) {
                     log.info("Value has been changed after doing PostProcessing for the sorItem {}, so the PostProcessed record will be updated in place for the current record.", sorItem);
-                    postProcessingExecutorInput.setExtractedValue(sorItemValue);
+                    postProcessingExecutorInput.setExtractedValue(PostProcessingExecutorOutput.getExtractedValue());
                 } else {
                     log.info("Value has been emptied after doing PostProcessing for the sorItem {}, so the PostProcessed record will be updated in place for the current record. Where the confidence score and b-box will be updated as zeros.", sorItem);
                     postProcessingExecutorInput.setBbox("{}");
                     postProcessingExecutorInput.setVqaScore(0);
                     postProcessingExecutorInput.setAggregatedScore(0);
-                    postProcessingExecutorInput.setExtractedValue(sorItemValue);
+                    postProcessingExecutorInput.setExtractedValue(PostProcessingExecutorOutput.getExtractedValue());
                 }
             } else {
                 log.info("PostProcessing input does exists for sorItem {},", sorItem);
