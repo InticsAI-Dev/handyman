@@ -179,7 +179,10 @@ public class PostProcessingExecutorAction implements IActionExecution {
         private String sorItemName;
         private String documentId;
         private Long accTransactionId;
-        private String bbox;
+        private String label;
+        private String sectionAlias;
+        private Long score;
+        private String bBox;
         private Long rootPipelineId;
         private Long frequency;
         private Long questionId;
