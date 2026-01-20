@@ -102,10 +102,7 @@ public class ValidatorByBeanShellExecutor {
     }
 
     private List<String> loadScriptOrder(List<PostProcessingExecutorAction.PostProcessingExecutorInput> pageInputs) {
-        boolean multi = pageInputs.stream().anyMatch(i -> "multi_value".equals(i.getLineItemType()));
-        String key = multi ? "outbound.mapper.multi.bsh.class.order" : "outbound.mapper.bsh.class.order";
-        String order = actionExecutionAudit.getContext().get(key);
-        if (order == null || order.isEmpty()) return Collections.emptyList();
+        String order = null;
         if(MULTI_LINE_ITEM_ACTIVATOR){
             order = actionExecutionAudit.getContext().get("multi.line.item.bsh.class.order");
         }
@@ -113,6 +110,8 @@ public class ValidatorByBeanShellExecutor {
                 .map(String::trim)
                 .collect(Collectors.toList());
         log.info("Loaded {} script classes", classes.size());
+
+        if (order == null || order.isEmpty()) {return Collections.emptyList();}
         return classes;
     }
 
