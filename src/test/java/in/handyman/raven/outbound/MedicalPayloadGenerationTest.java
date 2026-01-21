@@ -300,6 +300,26 @@ public class MedicalPayloadGenerationTest {
         predictions.add(createPrediction(31L, "servicing_provider_zipcode", "60601", "single_value",
                 "SERVICING_PROVIDER_DETAILS", "1", 0.90, 3, 270, 350, 340, 370));
 
+
+        // Provider information - single_value
+        predictions.add(createPrediction(24L, "ordering_provider_first_name", "Jane", "single_value",
+                "ORDERING_PROVIDER_DETAILS", "1", 0.91, 3, 100, 100, 200, 120));
+        predictions.add(createPrediction(25L, "ordering_provider_last_name", "Smith", "single_value",
+                "ORDERING_PROVIDER_DETAILS", "1", 0.90, 3, 100, 150, 200, 170));
+        predictions.add(createPrediction(26L, "ordering_provider_npi", "1234567890", "single_value",
+                "ORDERING_PROVIDER_DETAILS", "1", 0.93, 3, 100, 200, 250, 220));
+        predictions.add(createPrediction(27L, "ordering_provider_tin", "12-3456789", "single_value",
+                "ORDERING_PROVIDER_DETAILS", "1", 0.89, 3, 100, 250, 230, 270));
+        predictions.add(createPrediction(28L, "ordering_provider_address_line1", "456 Medical Plaza",
+                "single_value",
+                "ORDERING_PROVIDER_DETAILS", "1", 0.87, 3, 100, 300, 280, 320));
+        predictions.add(createPrediction(29L, "ordering_provider_city", "Chicago", "single_value",
+                "ORDERING_PROVIDER_DETAILS", "1", 0.88, 3, 100, 350, 200, 370));
+        predictions.add(createPrediction(30L, "ordering_provider_state", "IL", "single_value",
+                "ORDERING_PROVIDER_DETAILS", "1", 0.92, 3, 220, 350, 250, 370));
+        predictions.add(createPrediction(31L, "ordering_provider_zipcode", "60601", "single_value",
+                "ORDERING_PROVIDER_DETAILS", "1", 0.90, 3, 270, 350, 340, 370));
+
         return predictions;
     }
 
