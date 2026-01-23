@@ -5,7 +5,7 @@ import bsh.EvalError;
 import bsh.Interpreter;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lib.PostProcessingExecutorAction;
+import in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
@@ -17,16 +17,16 @@ import java.util.stream.Collectors;
 
 public class ValidatorByBeanShellExecutor {
 
-    private final List<PostProcessingExecutorAction.PostProcessingExecutorInput> postProcessingExecutorInputs;
+    private final List<PostProcessingFieldsInput> postProcessingExecutorInputs;
 
-    private final List<PostProcessingExecutorAction.PostProcessingExecutorInput> updatedPostProcessingExecutorInputs = new ArrayList<>();
+    private final List<PostProcessingFieldsInput> updatedPostProcessingExecutorInputs = new ArrayList<>();
 
     private final ActionExecutionAudit actionExecutionAudit;
     private final Logger log;
     private final ExecutorService executor;
 
 
-    public ValidatorByBeanShellExecutor(List<PostProcessingExecutorAction.PostProcessingExecutorInput> postProcessingExecutorInputs,
+    public ValidatorByBeanShellExecutor(List<PostProcessingFieldsInput> postProcessingExecutorInputs,
                                         ActionExecutionAudit actionExecutionAudit,
                                         final Logger log,
                                         int threadPoolSize) {
@@ -37,15 +37,15 @@ public class ValidatorByBeanShellExecutor {
     }
 
 
-    public List<PostProcessingExecutorAction.PostProcessingExecutorInput> doRowWiseValidator() throws InterruptedException, ExecutionException {
+    public List<PostProcessingFieldsInput> doRowWiseValidator() throws InterruptedException, ExecutionException {
         int inputSize = postProcessingExecutorInputs.size();
         log.info("Starting row-wise validation for {} inputs", inputSize);
-        List<PostProcessingExecutorAction.PostProcessingExecutorInput> multiValuePostProcessing = postProcessingExecutorInputs.stream().filter(item -> "multi_value".equals(item.getLineItemType())).collect(Collectors.toList());
-        List<PostProcessingExecutorAction.PostProcessingExecutorInput> singleValuePostProcessing = postProcessingExecutorInputs.stream().filter(item -> "single_value".equals(item.getLineItemType())).collect(Collectors.toList());
+        List<PostProcessingFieldsInput> multiValuePostProcessing = postProcessingExecutorInputs.stream().filter(item -> "multi_value".equals(item.getLineItemType())).collect(Collectors.toList());
+        List<PostProcessingFieldsInput> singleValuePostProcessing = postProcessingExecutorInputs.stream().filter(item -> "single_value".equals(item.getLineItemType())).collect(Collectors.toList());
 
         if(!multiValuePostProcessing.isEmpty()) {
 
-            Map<String, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> byOrigin = groupByOriginAndContainerInstanceMultiLine(multiValuePostProcessing);
+            Map<String, List<PostProcessingFieldsInput>> byOrigin = groupByOriginAndContainerInstanceMultiLine(multiValuePostProcessing);
             List<CompletableFuture<Void>> originFutures = new ArrayList<>();
 
             byOrigin.forEach((origin, originInputs) -> originFutures.add(
@@ -59,7 +59,7 @@ public class ValidatorByBeanShellExecutor {
             log.info("Completed all validations for post processing inputs.");
         }
         if(!singleValuePostProcessing.isEmpty()){
-            Map<String, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> byOrigin = groupByOrigin(singleValuePostProcessing);
+            Map<String, List<PostProcessingFieldsInput>> byOrigin = groupByOrigin(singleValuePostProcessing);
             List<CompletableFuture<Void>> originFutures = new ArrayList<>();
 
             byOrigin.forEach((origin, originInputs) -> originFutures.add(
@@ -76,14 +76,14 @@ public class ValidatorByBeanShellExecutor {
         return postProcessingExecutorInputs;
     }
 
-    private Map<String, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> groupByOrigin(List<PostProcessingExecutorAction.PostProcessingExecutorInput> inputs) {
+    private Map<String, List<PostProcessingFieldsInput>> groupByOrigin(List<PostProcessingFieldsInput> inputs) {
         log.info("Grouping inputs by origin");
         return inputs.stream()
-                .collect(Collectors.groupingBy(PostProcessingExecutorAction.PostProcessingExecutorInput::getOriginId));
+                .collect(Collectors.groupingBy(PostProcessingFieldsInput::getOriginId));
     }
 
 
-    private Map<String, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> groupByOriginAndContainerInstance(List<PostProcessingExecutorAction.PostProcessingExecutorInput> inputs) {
+    private Map<String, List<PostProcessingFieldsInput>> groupByOriginAndContainerInstance(List<PostProcessingFieldsInput> inputs) {
         log.info("Grouping inputs by origin and paper no.");
         return inputs.stream()
                 .collect(Collectors.groupingBy(
@@ -92,7 +92,7 @@ public class ValidatorByBeanShellExecutor {
     }
 
 
-    private Map<String, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> groupByOriginAndContainerInstanceMultiLine(List<PostProcessingExecutorAction.PostProcessingExecutorInput> inputs) {
+    private Map<String, List<PostProcessingFieldsInput>> groupByOriginAndContainerInstanceMultiLine(List<PostProcessingFieldsInput> inputs) {
         log.info("Grouping inputs by origin and container instance for multi line items ");
         return inputs.stream()
                 .collect(Collectors.groupingBy(
@@ -100,22 +100,22 @@ public class ValidatorByBeanShellExecutor {
                 ));
     }
 
-    private void processOrigin(String originId, List<PostProcessingExecutorAction.PostProcessingExecutorInput> originInputs) {
+    private void processOrigin(String originId, List<PostProcessingFieldsInput> originInputs) {
         log.info("Processing origin {} with {} inputs", originId, originInputs.size());
-        Map<Integer, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> byPage = groupByPage(originInputs);
+        Map<Integer, List<PostProcessingFieldsInput>> byPage = groupByPage(originInputs);
 
         byPage.forEach((pageNo, pageInputs) ->
                 CompletableFuture.runAsync(() -> processPage(originId, pageNo, pageInputs), executor)
         );
     }
 
-    private Map<Integer, List<PostProcessingExecutorAction.PostProcessingExecutorInput>> groupByPage(List<PostProcessingExecutorAction.PostProcessingExecutorInput> inputs) {
+    private Map<Integer, List<PostProcessingFieldsInput>> groupByPage(List<PostProcessingFieldsInput> inputs) {
         log.info("Grouping inputs by page");
         return inputs.stream()
-                .collect(Collectors.groupingBy(PostProcessingExecutorAction.PostProcessingExecutorInput::getPaperNo));
+                .collect(Collectors.groupingBy(PostProcessingFieldsInput::getPaperNo));
     }
 
-    private void processPage(String originId, Integer pageNo, List<PostProcessingExecutorAction.PostProcessingExecutorInput> pageInputs) {
+    private void processPage(String originId, Integer pageNo, List<PostProcessingFieldsInput> pageInputs) {
         log.info("START validation for origin {} page {}", originId, pageNo);
         long start = System.currentTimeMillis();
 
@@ -129,15 +129,15 @@ public class ValidatorByBeanShellExecutor {
         log.info("END validation for origin {} page {} ({} ms)", originId, pageNo, duration);
     }
 
-    private Map<String, String> createMap(List<PostProcessingExecutorAction.PostProcessingExecutorInput> pageInputs) {
+    private Map<String, String> createMap(List<PostProcessingFieldsInput> pageInputs) {
         Map<String, String> map = new HashMap<>();
-        for (PostProcessingExecutorAction.PostProcessingExecutorInput input : pageInputs) {
-            map.put(input.getSorItemName(), input.getExtractedValue());
+        for (PostProcessingFieldsInput input : pageInputs) {
+            map.put(input.getSorItemName(), input.getAnswer());
         }
         return map;
     }
 
-    private List<String> loadScriptOrder(List<PostProcessingExecutorAction.PostProcessingExecutorInput> pageInputs) {
+    private List<String> loadScriptOrder(List<PostProcessingFieldsInput> pageInputs) {
         boolean multi = pageInputs.stream().anyMatch(i -> "multi_value".equals(i.getLineItemType()));
         String key = multi ? "outbound.mapper.multi.bsh.class.order" : "outbound.mapper.bsh.class.order";
         String order = actionExecutionAudit.getContext().get(key);
@@ -224,28 +224,28 @@ public class ValidatorByBeanShellExecutor {
         return mappedDataResult;
     }
 
-    private void updateInputs(List<PostProcessingExecutorAction.PostProcessingExecutorInput> inputs, Map<String, String> resultMap) {
-        Map<String, PostProcessingExecutorAction.PostProcessingExecutorInput> postProcessingExecutorInputMap =
+    private void updateInputs(List<PostProcessingFieldsInput> inputs, Map<String, String> resultMap) {
+        Map<String, PostProcessingFieldsInput> postProcessingExecutorInputMap =
                 inputs.stream()
                         .collect(Collectors.toMap(
-                                PostProcessingExecutorAction.PostProcessingExecutorInput::getSorItemName,
+                                PostProcessingFieldsInput::getSorItemName,
                                 Function.identity()));
 
         resultMap.forEach((sorItem, sorItemValue) -> {
-            PostProcessingExecutorAction.PostProcessingExecutorInput postProcessingExecutorInput = postProcessingExecutorInputMap.get(sorItem);
+            PostProcessingFieldsInput postProcessingExecutorInput = postProcessingExecutorInputMap.get(sorItem);
             if (postProcessingExecutorInput != null) {
                 log.info("PostProcessing input exists for sorItem {}, updating value", sorItem);
-                if(Objects.equals(postProcessingExecutorInput.getExtractedValue(), sorItemValue)){
+                if(Objects.equals(postProcessingExecutorInput.getAnswer(), sorItemValue)){
                     log.info("Extracted value and the PostProcessing value are same for the sorItem {}, so no record has been updated.", sorItem);
                 } else if (!Objects.equals(sorItemValue, "")) {
                     log.info("Value has been changed after doing PostProcessing for the sorItem {}, so the PostProcessed record will be updated in place for the current record.", sorItem);
-                    postProcessingExecutorInput.setExtractedValue(sorItemValue);
+                    postProcessingExecutorInput.setAnswer(sorItemValue);
                 } else {
                     log.info("Value has been emptied after doing PostProcessing for the sorItem {}, so the PostProcessed record will be updated in place for the current record. Where the confidence score and b-box will be updated as zeros.", sorItem);
-                    postProcessingExecutorInput.setBbox("{}");
-                    postProcessingExecutorInput.setVqaScore(0);
-                    postProcessingExecutorInput.setAggregatedScore(0);
-                    postProcessingExecutorInput.setExtractedValue(sorItemValue);
+                    postProcessingExecutorInput.setBBox("{}");
+                    postProcessingExecutorInput.setVqaScore(0.0);
+                    postProcessingExecutorInput.setAggregatedScore(0.0);
+                    postProcessingExecutorInput.setAnswer(sorItemValue);
                 }
             } else {
                 log.info("PostProcessing input does exists for sorItem {},", sorItem);

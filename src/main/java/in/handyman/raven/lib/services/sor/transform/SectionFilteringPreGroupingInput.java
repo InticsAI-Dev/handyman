@@ -1,15 +1,16 @@
-package in.handyman.raven.lib.services.sor.transaction;
+package in.handyman.raven.lib.services.sor.transform;
 
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
+import org.jdbi.v3.sqlobject.config.RegisterBeanMapper;
 
-import java.sql.Timestamp;
-
-@Builder
+@Data
 @AllArgsConstructor
 @NoArgsConstructor
+@SuperBuilder
+@EqualsAndHashCode(callSuper = true)
+@RegisterBeanMapper(SectionFilteringPreGroupingInput.class)
 public class SectionFilteringPreGroupingInput extends VqaTransactionOutput {
     private String sectionFilteringId;
     private String blacklistedLabels;

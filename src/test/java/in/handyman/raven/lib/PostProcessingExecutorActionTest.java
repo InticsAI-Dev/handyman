@@ -6,6 +6,9 @@ import in.handyman.raven.lib.model.PostProcessingExecutor;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
+import java.io.File;
+import java.nio.file.Files;
+
 @Slf4j
 class PostProcessingExecutorActionTest {
 
@@ -249,6 +252,95 @@ class PostProcessingExecutorActionTest {
                 "    }\n" +
                 "}");
         action.getContext().put("MedicaidMemberIdValidator", "");
+        String encryptionUrl = "http://localhost:8189/vulcan/api/encryption/encrypt";
+        String decryptionUrl = "http://localhost:8189/vulcan/api/encryption/decrypt";
+        action.setRootPipelineId(929L);
+        action.getContext().put("pipeline.encryption.default.holder", "PROTEGRITY_API_ENC");
+        action.getContext().put("protegrity.enc.api.url",encryptionUrl);
+        action.getContext().put("protegrity.dec.api.url",decryptionUrl);
+        PostProcessingExecutorAction postProcessingExecutorAction = new PostProcessingExecutorAction(action, log, postProcessingExecutor);
+        postProcessingExecutorAction.execute();
+    }
+
+
+    @Test
+    void executeTest() throws Exception {
+
+        File bshCode = new File("/Users/anandh.andrews/intics-workspace/git-reposit/handyman/src/main/resources/lambda/AumiGenderMapper.java");
+        String bshCodeContent = new String(Files.readAllBytes(bshCode.toPath()));
+
+        PostProcessingExecutor postProcessingExecutor = PostProcessingExecutor.builder()
+                .name("Post Processing executor")
+                .batchId("BATCH-24_0")
+                .groupId("2014")
+                .condition(true)
+                .outputTable("sor_transform.vqa_transaction_post_processing_output")
+                .resourceConn("intics_zio_db_conn")
+                .querySet("SELECT\n" +
+                        "a.post_processing_field_id,\n" +
+                        "a.transaction_id,\n" +
+                        "a.created_on,\n" +
+                        "a.created_user_id,\n" +
+                        "a.last_updated_on,\n" +
+                        "a.last_updated_user_id,\n" +
+                        "a.root_pipeline_id,\n" +
+                        "a.tenant_id,\n" +
+                        "a.document_id,\n" +
+                        "a.group_id,\n" +
+                        "a.batch_id,\n" +
+                        "a.origin_id,\n" +
+                        "a.paper_no,\n" +
+                        "a.truth_id,\n" +
+                        "a.status,\n" +
+                        "a.stage,\n" +
+                        "a.message,\n" +
+                        "a.version,\n" +
+                        "a.extracted_image_unit,\n" +
+                        "a.image_dpi,\n" +
+                        "a.image_height,\n" +
+                        "a.image_width,\n" +
+                        "a.section_priority_after_filter,\n" +
+                        "a.sor_container_id,\n" +
+                        "a.sor_container_name,\n" +
+                        "a.sor_container_instance,\n" +
+                        "a.sor_item_name,\n" +
+                        "a.sor_item_id,\n" +
+                        "a.sor_item_attribution_id,\n" +
+                        "a.model_id,\n" +
+                        "a.model_info,\n" +
+                        "a.model_registry,\n" +
+                        "a.model_registry_id,\n" +
+                        "a.answer,\n" +
+                        "a.vqa_score,\n" +
+                        "a.score,\n" +
+                        "a.b_box,\n" +
+                        "a.label,\n" +
+                        "a.section_alias,\n" +
+                        "a.synonym_id,\n" +
+                        "a.sor_synonym,\n" +
+                        "a.question_id,\n" +
+                        "a.sor_question,\n" +
+                        "a.weight,\n" +
+                        "a.category,\n" +
+                        "a.line_item_type,\n" +
+                        "a.is_multi_entity_enabled,\n" +
+                        "a.encryption_policy,\n" +
+                        "a.is_encrypted,\n" +
+                        "a.post_processing_code,\n" +
+                        "a.post_processing_key,\n" +
+                        "a.aggregated_score\n" +
+                        "FROM sor_transform.vqa_transaction_post_processing_input a")
+                .build();
+
+        final ActionExecutionAudit action = ActionExecutionAudit.builder()
+                .build();
+        action.getContext().put("tenant_id", "1");
+        action.getContext().put("group_id", "2014");
+        action.getContext().put("batch_id", "BATCH-24_0");
+        action.getContext().put("created_user_id", "1");
+        action.getContext().put("outbound.mapper.bsh.class.order", "AumiGenderMapper");
+        action.getContext().put(EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION, "true");
+        action.getContext().put("AumiGenderMapper", bshCodeContent);
         String encryptionUrl = "http://localhost:8189/vulcan/api/encryption/encrypt";
         String decryptionUrl = "http://localhost:8189/vulcan/api/encryption/decrypt";
         action.setRootPipelineId(929L);

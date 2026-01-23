@@ -1,12 +1,15 @@
-package in.handyman.raven.lib.services.sor.transaction;
+package in.handyman.raven.lib.services.sor.transform;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
+import org.jdbi.v3.sqlobject.config.RegisterBeanMapper;
 
-@Builder
+@Data
 @AllArgsConstructor
 @NoArgsConstructor
+@SuperBuilder
+@EqualsAndHashCode(callSuper = true)
+@RegisterBeanMapper(OcrTextComparisonInput.class)
 public class OcrTextComparisonInput extends VqaTransactionOutput {
     private Integer ocrFieldId;
     private Boolean isOcrFieldComparable;
@@ -18,4 +21,5 @@ public class OcrTextComparisonInput extends VqaTransactionOutput {
     private String candidatesList;
     private Long mismatchCount;
     private String matchStatus;
+    private String allowedAdapter;
 }

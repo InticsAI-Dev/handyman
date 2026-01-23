@@ -1,14 +1,17 @@
-package in.handyman.raven.lib.services.sor.transaction;
+package in.handyman.raven.lib.services.sor.transform;
 
 
 import lombok.*;
+import lombok.experimental.SuperBuilder;
+import org.jdbi.v3.sqlobject.config.RegisterBeanMapper;
 
 @Data
-@Builder
 @AllArgsConstructor
 @NoArgsConstructor
+@SuperBuilder
 @EqualsAndHashCode(callSuper = true)
-public class VqaTransactionOutput extends VqaTransactionBase {
+@RegisterBeanMapper(VqaTransactionOutput.class)
+public class VqaTransactionOutput extends VqaTransactionBase  {
     private Long vqaId;
     private Long sorContainerId;
     private String sorContainerName;
@@ -36,4 +39,9 @@ public class VqaTransactionOutput extends VqaTransactionBase {
     private String isMultiEntityEnabled;
     private String encryptionPolicy;
     private boolean isEncrypted;
+
+
+    private String buildLoggerOutput() {
+        return this.buildLoggerBaseInput().concat( " | Container name " + this.sorContainerName).concat( " | Container instance name " + this.sorContainerInstance).concat(" | Sor Item Name " + this.sorItemName);
+    }
 }

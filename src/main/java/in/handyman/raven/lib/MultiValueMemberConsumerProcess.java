@@ -5,9 +5,9 @@ import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.MultiValueMemberMapper;
-import in.handyman.raven.lib.model.multi.member.indicator.MultiValueMemberMapperOutputTable;
 import in.handyman.raven.lib.model.multi.member.indicator.MultiValueMemberMapperTransformInputTable;
 import in.handyman.raven.lib.model.multi.member.indicator.extractedSorItemList;
+import in.handyman.raven.lib.services.sor.transform.MultiMemberIndicatorInput;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -59,12 +59,12 @@ public class MultiValueMemberConsumerProcess {
         this.multiValueMemberMapper = multiValueMemberMapper;
     }
 
-    public List<MultiValueMemberMapperOutputTable> doMultiMemberValidation() throws Exception {
+    public List<MultiMemberIndicatorInput> doMultiMemberValidation() throws Exception {
         log.info(marker, "Starting MultiValueMemberMapper process for tenantId={} actionId={}", tenantId, action.getActionId());
 
         final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(multiValueMemberMapper.getResourceConn());
 
-        List<MultiValueMemberMapperOutputTable> finalOutput = Collections.synchronizedList(new ArrayList<>());
+        List<MultiMemberIndicatorInput> finalOutput = Collections.synchronizedList(new ArrayList<>());
 
         String PROCESSING_SOR_ITEM_NAME = "multi.member.indicator.fields";
         String processingSorItemName = action.getContext().get(PROCESSING_SOR_ITEM_NAME);
@@ -100,7 +100,7 @@ public class MultiValueMemberConsumerProcess {
                         } else {
                             result = evaluateMultivaluePresenceAndUniquenessVersion2(inputTable, targetSorItems, nameSimilarityThreshold, idSimilarityThreshold, log);
                         }
-                        MultiValueMemberMapperOutputTable outputRow = outputTableCreation(inputTable, result.getOutput());
+                        MultiMemberIndicatorInput outputRow = outputTableCreation(inputTable, result.getOutput());
                         finalOutput.add(outputRow);
 
                         jdbi.useTransaction(handle -> {
@@ -429,7 +429,7 @@ public class MultiValueMemberConsumerProcess {
         return canonicalFullNames;
     }
 
-    private MultiValueMemberMapperOutputTable outputTableCreation(MultiValueMemberMapperTransformInputTable multiValueMemberMapperTransformInputTable, String extractedValue) {
+    private MultiMemberIndicatorInput outputTableCreation(MultiValueMemberMapperTransformInputTable multiValueMemberMapperTransformInputTable, String extractedValue) {
         Optional<extractedSorItemList> mmIndicatorRowOpt = multiValueMemberMapperTransformInputTable.getSorItemList()
                 .stream()
                 .filter(row -> "multiple_member_indicator".equalsIgnoreCase(row.getSorItemName()))
@@ -450,30 +450,56 @@ public class MultiValueMemberConsumerProcess {
         Long defaultConfidenceScore = Long.valueOf(action.getContext().get(DEFAULT_CONFIDENCE_SCORE));
 
         assert mmIndicatorRow != null;
-        return MultiValueMemberMapperOutputTable.builder()
+        return MultiMemberIndicatorInput.builder()
+                .transactionId(mmIndicatorRow.getTransactionId())
                 .createdOn(LocalDateTime.now())
                 .createdUserId(mmIndicatorRow.getTenantId())
                 .lastUpdatedOn(LocalDateTime.now())
                 .lastUpdatedUserId(mmIndicatorRow.getTenantId())
-                .status("ACTIVE")
-                .version(1)
-                .frequency(mmIndicatorRow.getFrequency())
-                .bBox("")
-                .confidenceScore(defaultConfidenceScore)
-                .extractedValue(extractedValue)
-                .filterScore(0L)
+                .rootPipelineId(mmIndicatorRow.getRootPipelineId())
+                .tenantId(mmIndicatorRow.getTenantId())
+                .documentId("")
                 .groupId(mmIndicatorRow.getGroupId())
-                .maximumScore(defaultConfidenceScore)
+                .batchId(mmIndicatorRow.getBatchId())
                 .originId(multiValueMemberMapperTransformInputTable.getOriginId())
                 .paperNo(mmIndicatorRow.getPaperNo())
-                .questionId(mmIndicatorRow.getQuestionId())
-                .rootPipelineId(mmIndicatorRow.getRootPipelineId())
-                .sorItemName("multiple_member_indicator")
-                .synonymId(mmIndicatorRow.getSynonymId())
-                .tenantId(mmIndicatorRow.getTenantId())
-                .modelRegistry(mmIndicatorRow.getModelRegistry())
-                .batchId(mmIndicatorRow.getBatchId())
+                .truthId(mmIndicatorRow.getTruthId())
+                .status("ACTIVE")
+                .stage("MULTI_MEMBER_INDICATOR")
+                .message(mmIndicatorRow.getMessage())
+                .version(1)
+                .extractedImageUnit("")
+                .imageDpi(72L)
+                .imageHeight(0L)
+                .imageWidth(0L)
+                .sectionPriorityAfterFilter("")
+                .vqaId(0L)
+                .sorContainerId(0L)
+                .sorContainerName("")
                 .sorContainerInstance(mmIndicatorRow.getSorContainerInstance())
+                .sorItemName("multiple_member_indicator")
+                .sorItemId(0L)
+                .sorItemAttributionId(0)
+                .modelId(0L)
+                .modelInfo("")
+                .modelRegistry(mmIndicatorRow.getModelRegistry())
+                .modelRegistryId(0L)
+                .answer(extractedValue)
+                .vqaScore(0.0)
+                .score(defaultConfidenceScore)
+                .bBox("")
+                .label("")
+                .sectionAlias("")
+                .synonymId(mmIndicatorRow.getSynonymId())
+                .sorSynonym("")
+                .questionId(mmIndicatorRow.getQuestionId())
+                .sorQuestion("")
+                .weight(150)
+                .category("")
+                .lineItemType("")
+                .isMultiEntityEnabled("")
+                .encryptionPolicy("")
+                .isEncrypted(false)
                 .build();
     }
 
@@ -499,12 +525,83 @@ public class MultiValueMemberConsumerProcess {
                         .bind(13, rows.getComments());
                 batch.add();
             }
+
             int[] counts = batch.execute();
-            log.info(marker, "[{}] Audit insert complete. {} records inserted.", originId, counts.length);
+            log.info(marker, "[{}] MMI audit insert complete. {} records inserted.", originId, counts.length);
+
         } catch (Exception e) {
-            log.error(marker, "[{}] Batch insert failed: {}", originId, e.getMessage(), e);
-            HandymanException.insertException("Error in batch insert into " + TABLE_NAME, new HandymanException(e), action);
+            log.error(marker, "[{}] MMI audit insert failed", originId, e);
+            HandymanException.insertException(
+                    "Error in MMI audit insert into " + TABLE_NAME,
+                    new HandymanException(e),
+                    action
+            );
         }
+    }
+
+
+
+    public static String getInsertIntoValuesUpdated(){
+        return  "VALUES (" +
+                "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, " +     // 0–9
+                "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, " +     // 10–19
+                "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, " +     // 20–29
+                "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, " +     // 30–39
+                "?, ?, ?, ?, ?, ?, ?, ?, ?" +          // 40–48
+                ")";
+
+    }
+    public static String getColumnNamesForInsert() {
+        return "transaction_id, " +                 // 0
+                "created_on, " +                     // 1
+                "created_user_id, " +                // 2
+                "last_updated_on, " +                // 3
+                "last_updated_user_id, " +            // 4
+                "root_pipeline_id, " +                // 5
+                "tenant_id, " +                      // 6
+                "document_id, " +                    // 7
+                "group_id, " +                       // 8
+                "batch_id, " +                       // 9
+                "origin_id, " +                      // 10
+                "paper_no, " +                       // 11
+                "truth_id, " +                       // 12
+                "status, " +                         // 13
+                "stage, " +                          // 14
+                "message, " +                        // 15
+                "version, " +                        // 16
+                "extracted_image_unit, " +            // 17
+                "image_dpi, " +                      // 18
+                "image_height, " +                   // 19
+                "image_width, " +                    // 20
+                "section_priority_after_filter, " +  // 21
+                "vqa_id, " +                          // 22
+                "sor_container_id, " +                // 23
+                "sor_container_name, " +              // 24
+                "sor_container_instance, " +          // 25
+                "sor_item_name, " +                   // 26
+                "sor_item_id, " +                     // 27
+                "sor_item_attribution_id, " +          // 28
+                "model_id, " +                        // 29
+                "model_info, " +                      // 30
+                "model_registry, " +                  // 31
+                "model_registry_id, " +               // 32
+                "answer, " +                          // 33
+                "vqa_score, " +                       // 34
+                "score, " +                           // 35
+                "b_box, " +                           // 36
+                "label, " +                           // 37
+                "section_alias, " +                   // 38
+                "synonym_id, " +                      // 39
+                "sor_synonym, " +                     // 40
+                "question_id, " +                     // 41
+                "sor_question, " +                    // 42
+                "weight, " +                          // 43
+                "category, " +                        // 44
+                "line_item_type, " +                  // 45
+                "is_multi_entity_enabled, " +          // 46
+                "encryption_policy, " +               // 47
+                "is_encrypted";                       // 48
+
     }
 
     @AllArgsConstructor

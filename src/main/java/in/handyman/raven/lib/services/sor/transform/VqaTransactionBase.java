@@ -1,17 +1,15 @@
-package in.handyman.raven.lib.services.sor.transaction;
+package in.handyman.raven.lib.services.sor.transform;
 
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
 
 @Data
-@Builder
 @AllArgsConstructor
 @NoArgsConstructor
+@SuperBuilder
 public class VqaTransactionBase {
     private String transactionId;
     private LocalDateTime createdOn;
@@ -34,4 +32,12 @@ public class VqaTransactionBase {
     private Long imageDpi;
     private Long imageHeight;
     private Long imageWidth;
+    private String sectionPriorityAfterFilter;
+
+    public String buildLoggerBaseInput() {
+        return "Root pipeline Id " + this.rootPipelineId +
+                " | Batch Id " + this.batchId +
+                " | Origin Id " + this.originId +
+                " | Paper No " + this.paperNo;
+    }
 }
