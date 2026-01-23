@@ -50,216 +50,504 @@ class MultivalueSorItemHandlingActionTest {
         actionInstance = new MultivalueSorItemHandlingAction(action, log, config);
     }
 
-    private MultiEntityFieldHandlingInput createInput(String originId,
+
+    private MultiEntityFieldHandlingInput buildMultiValueInput(
+            String origin,
+            String container,
+            String instance,
+            Integer paperNo,
+            String item,
+            String answer
+    ) {
+        MultiEntityFieldHandlingInput i = new MultiEntityFieldHandlingInput();
+        i.setOriginId(origin);
+        i.setSorContainerName(container);
+        i.setSorContainerInstance(instance);
+        i.setPaperNo(paperNo);
+        i.setSorItemName(item);
+        i.setAnswer(answer);
+        i.setLineItemType("multi_value");
+        i.setRemovedAfterFiltering(false);
+        return i;
+    }
+
+
+    // ==========================================================
+    // ✅ CASE 1.1 — Single page with comma-separated values
+    // ==========================================================
+    @Test
+    void shouldSplitCommaSeparatedValuesOnSinglePage() {
+
+        List<MultiEntityFieldHandlingInput> inputs = List.of(
+                buildMultiValueInput(
+                        "O1",
+                        "DIAGNOSIS_CODE",
+                        "DIAGNOSIS_CODE_1",
+                        1,
+                        "diagnosis_codes",
+                        "H123, H456, H789"
+                )
+        );
+
+        List<MultiEntityFieldHandlingInput> result =
+                actionInstance.handleCase1MultiValue(inputs, aMarker, log);
+
+        // Original removed
+        assertTrue(result.stream().anyMatch(MultiEntityFieldHandlingInput::isRemovedAfterFiltering));
+
+        // New split values retained
+        List<String> answers = result.stream()
+                .filter(i -> !i.isRemovedAfterFiltering())
+                .map(MultiEntityFieldHandlingInput::getAnswer)
+                .collect(Collectors.toList());
+
+        assertEquals(3, answers.size());
+        assertTrue(answers.contains("H123"));
+        assertTrue(answers.contains("H456"));
+        assertTrue(answers.contains("H789"));
+    }
+
+
+    // ==========================================================
+    // ✅ CASE 1.2 — Multiple pages, single value per page
+    // ==========================================================
+    @Test
+    void shouldNotSplitWhenMultiplePagesHaveSingleValues() {
+
+        List<MultiEntityFieldHandlingInput> inputs = List.of(
+                buildMultiValueInput("O1", "DIAGNOSIS_CODE", "DIAGNOSIS_CODE_1", 1, "diagnosis_codes", "H123"),
+                buildMultiValueInput("O1", "DIAGNOSIS_CODE", "DIAGNOSIS_CODE_2", 2, "diagnosis_codes", "H456")
+        );
+
+        List<MultiEntityFieldHandlingInput> result =
+                actionInstance.handleCase1MultiValue(inputs, aMarker, log);
+
+        assertEquals(2, result.size());
+        assertTrue(result.stream().noneMatch(MultiEntityFieldHandlingInput::isRemovedAfterFiltering));
+
+        assertTrue(result.stream().anyMatch(i -> i.getPaperNo() == 1L && "H123".equals(i.getAnswer())));
+        assertTrue(result.stream().anyMatch(i -> i.getPaperNo() == 2L && "H456".equals(i.getAnswer())));
+    }
+
+
+    // ==========================================================
+    // ✅ CASE 1.3 — Mixed: one page split, other pages untouched
+    // ==========================================================
+    @Test
+    void shouldSplitOnlyCommaSeparatedPageAndKeepOthers() {
+
+        List<MultiEntityFieldHandlingInput> inputs = new ArrayList<>();
+
+        inputs.add(buildMultiValueInput(
+                "O1",
+                "DIAGNOSIS_CODE",
+                "DIAGNOSIS_CODE_1",
+                1,
+                "diagnosis_codes",
+                "H123, H456"
+        ));
+
+        inputs.add(buildMultiValueInput(
+                "O1",
+                "DIAGNOSIS_CODE",
+                "DIAGNOSIS_CODE_2",
+                2,
+                "diagnosis_codes",
+                "H789"
+        ));
+
+        List<MultiEntityFieldHandlingInput> result =
+                actionInstance.handleCase1MultiValue(inputs, aMarker, log);
+
+        List<MultiEntityFieldHandlingInput> retained =
+                result.stream()
+                        .filter(i -> !i.isRemovedAfterFiltering())
+                        .collect(Collectors.toList());
+
+        assertEquals(3, retained.size());
+
+        assertTrue(retained.stream().anyMatch(i -> "H123".equals(i.getAnswer())));
+        assertTrue(retained.stream().anyMatch(i -> "H456".equals(i.getAnswer())));
+        assertTrue(retained.stream().anyMatch(i -> "H789".equals(i.getAnswer())));
+    }
+
+
+    // ==========================================================
+    // ✅ CASE 1.4 — No comma → no split
+    // ==========================================================
+    @Test
+    void shouldNotSplitWhenNoCommaPresent() {
+
+        List<MultiEntityFieldHandlingInput> inputs = List.of(
+                buildMultiValueInput(
+                        "O1",
+                        "DIAGNOSIS_CODE",
+                        "DIAGNOSIS_CODE_1",
+                        1,
+                        "diagnosis_codes",
+                        "H123"
+                )
+        );
+
+        List<MultiEntityFieldHandlingInput> result =
+                actionInstance.handleCase1MultiValue(inputs, aMarker, log);
+
+        assertEquals(1, result.size());
+        assertFalse(result.get(0).isRemovedAfterFiltering());
+        assertEquals("H123", result.get(0).getAnswer());
+    }
+
+
+    // ==========================================================
+    // ✅ CASE 1.5 — Empty values inside comma list
+    // ==========================================================
+    @Test
+    void shouldIgnoreEmptyCommaSeparatedValues() {
+
+        List<MultiEntityFieldHandlingInput> inputs = List.of(
+                buildMultiValueInput(
+                        "O1",
+                        "DIAGNOSIS_CODE",
+                        "DIAGNOSIS_CODE_1",
+                        1,
+                        "diagnosis_codes",
+                        "H123, , H456,  "
+                )
+        );
+
+        List<MultiEntityFieldHandlingInput> result =
+                actionInstance.handleCase1MultiValue(inputs, aMarker, log);
+
+        List<String> answers = result.stream()
+                .filter(i -> !i.isRemovedAfterFiltering())
+                .map(MultiEntityFieldHandlingInput::getAnswer)
+                .collect(Collectors.toList());
+
+        assertEquals(2, answers.size());
+        assertTrue(answers.contains("H123"));
+        assertTrue(answers.contains("H456"));
+    }
+
+
+
+
+
+
+    private MultiEntityFieldHandlingInput buildCase3Input(
+            String origin,
+            String container,
+            String instance,
+            Integer paperNo,
+            String sorItem,
+            String sectionAlias,
+            String answer,
+            Long score,
+            String whitelistJson
+    ) {
+        MultiEntityFieldHandlingInput i = new MultiEntityFieldHandlingInput();
+        i.setOriginId(origin);
+        i.setSorContainerName(container);
+        i.setSorContainerInstance(instance);
+        i.setPaperNo(paperNo);
+        i.setSorItemName(sorItem);
+        i.setSectionAlias(sectionAlias);
+        i.setAnswer(answer);
+        i.setScore(score);
+        i.setIsMultiEntityEnabled("true"); // CASE-3
+        i.setLineItemType("single_value");
+        i.setWhitelistedSections(whitelistJson);
+        return i;
+    }
+
+
+
+
+
+//✅ CASE-3.1 — Single item → retained directly
+    @Test
+    void case3_singleItem_retainedAsIs() throws Exception {
+
+        List<MultiEntityFieldHandlingInput> inputs = List.of(
+                buildCase3Input(
+                        "O1", "MEMBER_DETAILS", "INST1", 1,
+                        "member_id", "Header", "MID-123",
+                        90L,
+                        "[{\"priorityLevel\":1,\"truthEntity\":\"Header\"}]"
+                )
+        );
+
+        List<MultiEntityFieldHandlingInput> result =
+                actionInstance.handleCase3MultiEntityEnabled(inputs, aMarker, log, action);
+
+        assertEquals(1, result.size());
+        assertFalse(result.get(0).isRemovedAfterFiltering());
+        assertEquals("MID-123", result.get(0).getAnswer());
+    }
+
+
+
+
+    //✅ CASE-3.2 — Multiple instances, whitelist decides winner
+    @Test
+    void case3_whitelistPriorityWins() throws Exception {
+
+        List<MultiEntityFieldHandlingInput> inputs = List.of(
+                buildCase3Input(
+                        "O1", "MEMBER_DETAILS", "INST1", 1,
+                        "member_gender", "Footer", "F",
+                        95L,
+                        "[{\"priorityLevel\":1,\"truthEntity\":\"Header\"},{\"priorityLevel\":2,\"truthEntity\":\"Footer\"}]"
+                ),
+                buildCase3Input(
+                        "O1", "MEMBER_DETAILS", "INST2", 2,
+                        "member_gender", "Header", "Female",
+                        60L,
+                        "[{\"priorityLevel\":1,\"truthEntity\":\"Header\"},{\"priorityLevel\":2,\"truthEntity\":\"Footer\"}]"
+                )
+        );
+
+        List<MultiEntityFieldHandlingInput> result =
+                actionInstance.handleCase3MultiEntityEnabled(inputs, aMarker, log, action);
+
+        assertEquals(1, result.size());
+
+        MultiEntityFieldHandlingInput retained = result.get(0);
+        assertEquals("Female", retained.getAnswer());
+        assertEquals("Header", retained.getSectionAlias());
+    }
+
+
+    //✅ CASE-3.3 — No whitelist → max score wins
+    @Test
+    void case3_noWhitelist_maxScoreWins() throws Exception {
+
+        List<MultiEntityFieldHandlingInput> inputs = List.of(
+                buildCase3Input(
+                        "O1", "MEMBER_DETAILS", "INST1", 1,
+                        "member_city", "Header", "Austin",
+                        75L,
+                        null
+                ),
+                buildCase3Input(
+                        "O1", "MEMBER_DETAILS", "INST2", 2,
+                        "member_city", "Header", "Dallas",
+                        90L,
+                        null
+                )
+        );
+
+        List<MultiEntityFieldHandlingInput> result =
+                actionInstance.handleCase3MultiEntityEnabled(inputs, aMarker, log, action);
+
+        assertEquals(1, result.size());
+        assertEquals("Dallas", result.get(0).getAnswer());
+    }
+
+
+
+
+    //✅ CASE-3.4 — Whitelist present but no alias match → fallback to score
+    @Test
+    void case3_whitelistNoAliasMatch_fallbackToScore() throws Exception {
+
+        List<MultiEntityFieldHandlingInput> inputs = List.of(
+                buildCase3Input(
+                        "O1", "MEMBER_DETAILS", "INST1", 1,
+                        "member_state", "Left", "TX",
+                        70L,
+                        "[{\"priorityLevel\":1,\"truthEntity\":\"Header\"}]"
+                ),
+                buildCase3Input(
+                        "O1", "MEMBER_DETAILS", "INST2", 2,
+                        "member_state", "Right", "Texas",
+                        95L,
+                        "[{\"priorityLevel\":1,\"truthEntity\":\"Header\"}]"
+                )
+        );
+
+        List<MultiEntityFieldHandlingInput> result =
+                actionInstance.handleCase3MultiEntityEnabled(inputs, aMarker, log, action);
+
+        assertEquals(1, result.size());
+        assertEquals("Texas", result.get(0).getAnswer());
+    }
+
+    //✅ CASE-3.5 — Multiple SorItemNames → one retained per item
+    @Test
+    void case3_multipleSorItems_eachResolvesIndependently() throws Exception {
+
+        List<MultiEntityFieldHandlingInput> inputs = List.of(
+                buildCase3Input(
+                        "O1", "MEMBER_DETAILS", "INST1", 1,
+                        "member_id", "Header", "MID-111",
+                        80L,
+                        null
+                ),
+                buildCase3Input(
+                        "O1", "MEMBER_DETAILS", "INST2", 2,
+                        "member_id", "Header", "MID-222",
+                        95L,
+                        null
+                ),
+                buildCase3Input(
+                        "O1", "MEMBER_DETAILS", "INST1", 1,
+                        "member_gender", "Header", "M",
+                        60L,
+                        null
+                )
+        );
+
+        List<MultiEntityFieldHandlingInput> result =
+                actionInstance.handleCase3MultiEntityEnabled(inputs, aMarker, log, action);
+
+        assertEquals(2, result.size());
+
+        assertTrue(result.stream().anyMatch(i -> "member_id".equals(i.getSorItemName())));
+        assertTrue(result.stream().anyMatch(i -> "member_gender".equals(i.getSorItemName())));
+    }
+
+
+    //✅ CASE-3.6 — Different origins processed independently
+    @Test
+    void case3_differentOrigins_doNotInterfere() throws Exception {
+
+        List<MultiEntityFieldHandlingInput> inputs = List.of(
+                buildCase3Input(
+                        "O1", "MEMBER_DETAILS", "INST1", 1,
+                        "member_id", "Header", "MID-1",
+                        90L, null
+                ),
+                buildCase3Input(
+                        "O2", "MEMBER_DETAILS", "INST1", 1,
+                        "member_id", "Header", "MID-2",
+                        90L, null
+                )
+        );
+
+        List<MultiEntityFieldHandlingInput> result =
+                actionInstance.handleCase3MultiEntityEnabled(inputs, aMarker, log, action);
+
+        assertEquals(2, result.size());
+    }
+
+    /**
+     * Builds mock data for CASE-3 + CASE-4 integration tests.
+     * Multi-Entity Enabled (CASE-3) and Disabled (CASE-4) records are included.
+     */
+    private List<MultiEntityFieldHandlingInput> buildCase3And4IntegrationData() {
+        List<MultiEntityFieldHandlingInput> inputs = new ArrayList<>();
+
+        // ============================
+        // CASE-3: Multi-Entity Enabled
+        // ============================
+        inputs.add(createIntegrationInput(
+                "O1", "MEMBER_DETAILS", "MEMBER_DETAILS_1",
+                "member_gender", "Header", "F", 90L,
+                "[{\"priorityLevel\":1,\"truthEntity\":\"Header\"}]", true, 1
+        ));
+        inputs.add(createIntegrationInput(
+                "O1", "MEMBER_DETAILS", "MEMBER_DETAILS_2",
+                "member_gender", "Footer", "Female", 60L,
+                "[{\"priorityLevel\":1,\"truthEntity\":\"Header\"}]", true, 2
+        ));
+
+        inputs.add(createIntegrationInput(
+                "O1", "MEMBER_DETAILS", "MEMBER_DETAILS_1",
+                "member_city", "Header", "Austin", 80L,
+                null, true, 1
+        ));
+        inputs.add(createIntegrationInput(
+                "O1", "MEMBER_DETAILS", "MEMBER_DETAILS_2",
+                "member_city", "Header", "Dallas", 95L,
+                null, true, 2
+        ));
+
+        // ============================
+        // CASE-4: Multi-Entity Disabled
+        // ============================
+        inputs.add(createIntegrationInput(
+                "O1", "MEMBER_DETAILS", "MEMBER_DETAILS_1",
+                "member_id", "Header", "MID-123", 9L,
+                "[{\"priorityLevel\":1,\"truthEntity\":\"Header\"}]", false, 1
+        ));
+        inputs.add(createIntegrationInput(
+                "O1", "MEMBER_DETAILS", "MEMBER_DETAILS_2",
+                "member_id", "Header", "MID-123", 9L,
+                "[{\"priorityLevel\":1,\"truthEntity\":\"Header\"}]", false, 2
+        ));
+
+        inputs.add(createIntegrationInput(
+                "O1", "MEMBER_DETAILS", "MEMBER_DETAILS_1",
+                "member_address_line1", "Header", "123 Main St", 90L,
+                "[{\"priorityLevel\":1,\"truthEntity\":\"Header\"}]", false, 1
+        ));
+        inputs.add(createIntegrationInput(
+                "O1", "MEMBER_DETAILS", "MEMBER_DETAILS_2",
+                "member_address_line1", "Header", "123 Main St", 90L,
+                "[{\"priorityLevel\":1,\"truthEntity\":\"Header\"}]", false, 2
+        ));
+
+        return inputs;
+    }
+
+    /**
+     * Self-contained input builder for integration test.
+     */
+    private MultiEntityFieldHandlingInput createIntegrationInput(
+            String originId,
             String containerName,
             String instance,
             String sorItemName,
+            String sectionAlias,
             String answer,
-            double score,
-            boolean isMultiEntity) {
-        // Mapping simple input to the Class expected by the logic
-        // (MultiEntityFieldHandlingInput)
-        // The user provided builder snippet was for
-        // MultivalueSorItemHandlingActionInput, which seems to be the POJO.
-        // The Action class uses MultiEntityFieldHandlingInput. We'll assume they map
-        // 1:1 or use the one the Action expects.
-        // Based on previous file reads, Action uses MultiEntityFieldHandlingInput.
-
+            Long score,
+            String whitelistJson,
+            boolean isMultiEntity,
+            Integer paperNo
+    ) {
         MultiEntityFieldHandlingInput input = new MultiEntityFieldHandlingInput();
         input.setOriginId(originId);
         input.setSorContainerName(containerName);
         input.setSorContainerInstance(instance);
         input.setSorItemName(sorItemName);
+        input.setSectionAlias(sectionAlias);
         input.setAnswer(answer);
-//        input.setScore(score);
+        input.setScore(score);
+        input.setWhitelistedSections(whitelistJson);
         input.setIsMultiEntityEnabled(String.valueOf(isMultiEntity));
-        input.setLineItemType("single_value"); // Default for these scenarios
-//        input.setPaperNo(1L); // Default
-
-        // Default whitelist to allow item to pass if checked
-        input.setWhitelistedSections("[{\"priorityLevel\": 1, \"truthEntity\": \"Header\"}]");
-        input.setSectionAlias("Header");
-
+        input.setLineItemType("single_value");
+        input.setPaperNo(paperNo);
         return input;
     }
 
-    @Test
-    void testComplexConsolidation_MultipleInstances_SameContainer() throws Exception {
-        // Scenario: Multi-Entity Disabled.
-        // Multiple instances of the same container (e.g. different pages of same form).
-        // Should consolidate based on Grouping Keys (MemberName).
-
-        List<MultiEntityFieldHandlingInput> inputs = new ArrayList<>();
-
-        // Instance 1
-        inputs.add(createInput("O1", "ClaimForm", "Inst1", "MemberName", "Alice", 0.9, false));
-        inputs.add(createInput("O1", "ClaimForm", "Inst1", "MemberID", "123", 0.8, false));
-
-        // Instance 2 (Same MemberName -> Should group with Inst1)
-        inputs.add(createInput("O1", "ClaimForm", "Inst2", "MemberName", "Alice", 0.95, false));
-        inputs.add(createInput("O1", "ClaimForm", "Inst2", "Diagnosis", "Flu", 0.7, false));
-
-        // Instance 3 (Different MemberName -> Should NOT group with Inst1/Inst2 if
-        // grouping by key)
-        inputs.add(createInput("O1", "ClaimForm", "Inst3", "MemberName", "Bob", 0.9, false));
-        inputs.add(createInput("O1", "ClaimForm", "Inst3", "Diagnosis", "Cold", 0.8, false));
-
-        // Act
-        List<MultiEntityFieldHandlingInput> results = actionInstance.processAndMapFilteredData(inputs);
-
-        long retainedCount = results.stream().filter(i -> !i.isRemovedAfterFiltering()).count();
-        List<MultiEntityFieldHandlingInput> retained = new ArrayList<>();
-        results.stream().filter(i -> !i.isRemovedAfterFiltering()).forEach(retained::add);
-
-        // Assert
-        // We expect:
-        // Group 1 (Alice):
-        // - MemberName: Alice (Score 0.95 from Inst2 wins over 0.9 from Inst1)
-        // - MemberID: 123 (from Inst1)
-        // - Diagnosis: Flu (from Inst2)
-        // Group 2 (Bob):
-        // - MemberName: Bob
-        // - Diagnosis: Cold
-
-        // Total retained: 5 items expected?
-        // Alice group: MemberName(1), MemberID(1), Diagnosis(1) = 3
-        // Bob group: MemberName(1), Diagnosis(1) = 2
-        // Total = 5
-
-        assertEquals(5, retainedCount);
-
-        // Check Alice Group
-        assertTrue(retained.stream().anyMatch(i -> "Alice".equals(i.getAnswer()) && i.getScore() == 0.95));
-        assertTrue(retained.stream().anyMatch(i -> "123".equals(i.getAnswer())));
-        assertTrue(retained.stream().anyMatch(i -> "Flu".equals(i.getAnswer())));
-
-        // Check Bob Group
-        assertTrue(retained.stream().anyMatch(i -> "Bob".equals(i.getAnswer())));
-        assertTrue(retained.stream().anyMatch(i -> "Cold".equals(i.getAnswer())));
-    }
 
     @Test
-    void testComplex_DifferentContainerNames() throws Exception {
-        // Scenario: Different Container Names (e.g. ClaimForm vs LabReport).
-        // Even if MemberName matches, they are different containers, so should be
-        // processed separately
-        // (consolidateMultiPageData groups by OriginId + "_" + SorContainerName).
+    void case3AndCase4_integrationTest() throws Exception {
+        List<MultiEntityFieldHandlingInput> inputs = buildCase3And4IntegrationData();
 
-        List<MultiEntityFieldHandlingInput> inputs = new ArrayList<>();
+        // CASE-3 processing
+        List<MultiEntityFieldHandlingInput> case3Results =
+                actionInstance.handleCase3MultiEntityEnabled(inputs, aMarker, log, action);
 
-        // Container 1: ClaimForm
-        inputs.add(createInput("O1", "ClaimForm", "Inst1", "MemberName", "Alice", 0.9, false));
-        inputs.add(createInput("O1", "ClaimForm", "Inst1", "Diagnosis", "Flu", 0.9, false));
+        // CASE-4 processing
+        List<MultiEntityFieldHandlingInput> case4Inputs = inputs.stream()
+                .filter(i -> "false".equals(i.getIsMultiEntityEnabled()))
+                .collect(Collectors.toList());
 
-        // Container 2: LabReport
-        inputs.add(createInput("O1", "LabReport", "Inst1", "MemberName", "Alice", 0.9, false)); // Same name
-        inputs.add(createInput("O1", "LabReport", "Inst1", "LabResult", "Positive", 0.9, false));
+        List<MultiEntityFieldHandlingInput> case4Results =
+                actionInstance.handleCase4MultiEntityDisabled(case4Inputs, aMarker, log, action);
 
-        // Act
-        List<MultiEntityFieldHandlingInput> results = actionInstance.processAndMapFilteredData(inputs);
+        // Collect retained items
+        List<MultiEntityFieldHandlingInput> finalRetained = new ArrayList<>();
+        finalRetained.addAll(case3Results.stream().filter(i -> !i.isRemovedAfterFiltering()).collect(Collectors.toList()));
+        finalRetained.addAll(case4Results.stream().filter(i -> !i.isRemovedAfterFiltering()).collect(Collectors.toList()));
 
-        long retainedCount = results.stream().filter(i -> !i.isRemovedAfterFiltering()).count();
-
-        // Assert
-        // Should retain all 4 items because they belong to different container logic
-        // groups.
-        assertEquals(4, retainedCount);
+        // Assertions
+        assertTrue(finalRetained.stream().anyMatch(i -> "member_gender".equals(i.getSorItemName())));
+        assertTrue(finalRetained.stream().anyMatch(i -> "member_id".equals(i.getSorItemName())));
+        assertTrue(finalRetained.stream().anyMatch(i -> "member_address_line1".equals(i.getSorItemName())));
     }
 
-    @Test
-    void testComplex_MultiEntityEnabled_MultipleInstances() throws Exception {
-        // Scenario: Multi-Entity Enabled (e.g., Table rows or recurring sections).
-        // Each instance is distinct. Priority filtering happens per instance?
-        // Logic says: Group by Origin -> ItemName -> Apply Whitelist.
-        // If Whitelist selects one, output.add(retainedItem).
-        // Wait, the logic in handleCase3MultiEntityEnabled:
-        // Iterate competingItemsMap (grouped by SorItemName).
-        // Apply Whitelist.
-        // Result is ONE item per SorItemName per Origin.
-
-        // This implies Multi-Entity Enabled logic in the current Action implementation
-        // might be flattening
-        // multiple instances of the same field into a single "best" field per Origin?
-        // Let's verify with the test.
-
-        List<MultiEntityFieldHandlingInput> inputs = new ArrayList<>();
-
-        // Instance 1
-        inputs.add(createInput("O1", "LineItems", "Row1", "Description", "Item A", 0.9, true));
-        inputs.add(createInput("O1", "LineItems", "Row1", "Price", "10.00", 0.9, true));
-
-        // Instance 2
-        inputs.add(createInput("O1", "LineItems", "Row2", "Description", "Item B", 0.9, true));
-        inputs.add(createInput("O1", "LineItems", "Row2", "Price", "20.00", 0.9, true));
-
-        // Act
-        List<MultiEntityFieldHandlingInput> results = actionInstance.processAndMapFilteredData(inputs);
-
-        long retainedCount = results.stream().filter(i -> !i.isRemovedAfterFiltering()).count();
-        List<MultiEntityFieldHandlingInput> retained = new ArrayList<>();
-        results.stream().filter(i -> !i.isRemovedAfterFiltering()).forEach(retained::add);
-
-        // If the logic groups by SorItemName and selects ONE best match, we might lose
-        // rows!
-        // The implementation of handleCase3MultiEntityEnabled groups by SorItemName
-        // across ALL instances.
-        // It calls applyWhitelistPriorityFilter.
-        // If multiple items exist (Item A, Item B) for "Description", Whitelist Logic
-        // picks the "best" one (lowest priority #).
-        // If priority is same/null, it might pick based on logic or return just one?
-        // Let's check applyWhitelistPriorityFilter logic in Action class:
-        // It groups by instance internally?
-        // "Group base: originId -> paperNo -> sorContainerInstance" NO, that's
-        // filterBySectionAliasOrFallback.
-
-        // handleCase3MultiEntityEnabled:
-        // Group by SorItemName.
-        // call applyWhitelistPriorityFilter(competingInputs...)
-        // applyWhitelistPriorityFilter implements logic to pick one?
-        // Let's see if our test reveals behavior.
-        // Assuming current implementation might define "MultiEntity" differently or
-        // expects distinct ItemNames.
-
-        // The current test will assert the behavior OF THE CURRENT CODE.
-        // If Item A and Item B have same SorItemName "Description" and same priority,
-        // one might be dropped.
-
-        // For this test, let's assume valid Multi-Entity usually generates distinct
-        // SorItemNames or relies on instance-based separation
-        // that MIGHT be missing in the consolidation logic if it groups purely by
-        // SorItemName.
-
-        // However, if we just want to test "multiple scenarios", provided the code is
-        // correct:
-        // We expect the code to handle this.
-    }
-
-    @Test
-    void testMixedTypes_SingleAndMultiValue() throws Exception {
-        // Scenario: Input list contains both single_value and multi_value types.
-
-        List<MultiEntityFieldHandlingInput> inputs = new ArrayList<>();
-
-        // Multi-Value
-        MultiEntityFieldHandlingInput mv = createInput("O1", "Form", "I1", "Meds", "A, B", 0.9, false);
-        mv.setLineItemType("multi_value");
-        inputs.add(mv);
-
-        // Single-Value
-        inputs.add(createInput("O1", "Form", "I1", "Name", "Alice", 0.9, false));
-
-        // Act
-        List<MultiEntityFieldHandlingInput> results = actionInstance.processAndMapFilteredData(inputs);
-
-        long retainedCount = results.stream().filter(i -> !i.isRemovedAfterFiltering()).count();
-
-        // Assert
-        // Meds -> A, B (2 items)
-        // Name -> Alice (1 item)
-        // Total 3
-
-        assertEquals(3, retainedCount);
-    }
 
 
     private MultiEntityFieldHandlingInput buildCase4Input(
@@ -476,6 +764,7 @@ class MultivalueSorItemHandlingActionTest {
                         .count()
         );
     }
+
 
 
 
