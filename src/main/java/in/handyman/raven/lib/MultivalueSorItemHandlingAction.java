@@ -377,7 +377,7 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
         return finalFilteredOutput;
     }
 
-    private List<MultiEntityFieldHandlingInput> handleCase1MultiValue(List<MultiEntityFieldHandlingInput> multiValueInputs, Marker aMarker, Logger log) {
+    public List<MultiEntityFieldHandlingInput> handleCase1MultiValue(List<MultiEntityFieldHandlingInput> multiValueInputs, Marker aMarker, Logger log) {
         log.info(aMarker, "CASE 1: Processing {} multi_value records.", multiValueInputs.size());
 
         List<MultiEntityFieldHandlingInput> normalizedList = new ArrayList<>();
@@ -480,7 +480,7 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
         return clone;
     }
 
-    private List<MultiEntityFieldHandlingInput> handleCase3MultiEntityEnabled(List<MultiEntityFieldHandlingInput> inputs, Marker aMarker, Logger log, ActionExecutionAudit action) throws HandymanException {
+    public List<MultiEntityFieldHandlingInput> handleCase3MultiEntityEnabled(List<MultiEntityFieldHandlingInput> inputs, Marker aMarker, Logger log, ActionExecutionAudit action) throws HandymanException {
         log.info(aMarker, "CASE 3: Processing {} multi-entity enabled single_value records.", inputs.size());
 
         Map<String, List<MultiEntityFieldHandlingInput>> groupedByOrigin = inputs.stream().collect(Collectors.groupingBy(MultiEntityFieldHandlingInput::getOriginId));
