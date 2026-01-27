@@ -1,5 +1,3 @@
-package com.intics.script.MultiLineItem;
-
 import org.slf4j.Logger;
 
 import java.util.List;

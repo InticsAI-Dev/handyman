@@ -1,47 +1,48 @@
-package com.intics.script.MultiLineItem;
-
 import org.slf4j.Logger;
 
 import java.util.List;
 import java.util.Map;
 
-public class NewbornGenderMapper {
+public class AumiGenderMapper {
 
     private Logger logger;
 
-    public NewbornGenderMapper(Logger logger) { this.logger = logger; }
+    public AumiGenderMapper(Logger logger) {
+        this.logger = logger;
+    }
 
     public MappingResult doCustomPredictionMapping(Map predictionKeyMap, Long rootPipelineId) {
-        String logMsg = "[RootPipelineID: " + rootPipelineId + "] Entered NewbornGenderMapper doCustomPredictionMapping method";
+        String logMsg = "[RootPipelineID: " + rootPipelineId + "] Entered AumiGenderMapper doCustomPredictionMapping method";
         logger.info(logMsg);
 
-        Object newbornGenderObj = predictionKeyMap.get("newborn_gender");
+        Object genderObj = predictionKeyMap.get("member_gender");
 
-        if (newbornGenderObj instanceof List) {
-            List newbornGenderList = (List) newbornGenderObj;
+        if(genderObj instanceof List)
+        {
+            List genderList = (List) genderObj;
 
-            for (int i = 0; i < newbornGenderList.size(); i++) {
-                Object obj = newbornGenderList.get(i);
-                if (obj instanceof PostProcessingExecutorInput) {
-                    PostProcessingExecutorInput newbornGenderInput = (PostProcessingExecutorInput) obj;
-                    String validatedGenderValue = genderValidation(newbornGenderInput.getExtractedValue(), rootPipelineId);
-                    newbornGenderInput.setExtractedValue(validatedGenderValue);
+            for(int i = 0; i<genderList.size(); i++)
+            {
+                Object obj = genderList.get(i);
+                if(obj instanceof PostProcessingExecutorInput)
+                {
+                    PostProcessingExecutorInput genderInput = (PostProcessingExecutorInput) obj;
+                    String validatedGenderValue = genderValidation(genderInput.getExtractedValue(), rootPipelineId);
+                    genderInput.setExtractedValue(validatedGenderValue);
                 }
             }
-            predictionKeyMap.put("newborn_gender", newbornGenderList);
+            predictionKeyMap.put("member_gender", genderList);
         }
         return new MappingResult(predictionKeyMap);
     }
 
-    public String genderValidation(String newbornGender, Long rootPipelineId) {
-        logger.info("[RootPipelineID: " + rootPipelineId + "] Entered NewbornGenderMapper genderValidation method");
-        return normalizeGender(newbornGender);
+    public String genderValidation(String memberGender, Long rootPipelineId) {
+        logger.info("[RootPipelineID: " + rootPipelineId + "] Entered AumiGenderMapper genderValidation method");
+        return normalizeGender(memberGender);
     }
 
     public String normalizeGender(String gender) {
-
         gender = gender.trim().toLowerCase();
-
         switch (gender) {
             case "m":
             case "male":

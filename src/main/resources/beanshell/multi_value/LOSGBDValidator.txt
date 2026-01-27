@@ -1,14 +1,11 @@
-package com.intics.script.MultiLineItem;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
-public class LOSValidator {
+public class LOSGBDValidator {
 
     private static Set URGENT_KEYWORDS;
-    private static Set LOS_KEYWORDS;
     private static Set BLACKLIST_KEYWORDS;
 
     static {
@@ -18,15 +15,7 @@ public class LOSValidator {
         URGENT_KEYWORDS.add("rush");
         URGENT_KEYWORDS.add("expedite");
         URGENT_KEYWORDS.add("stat");
-        URGENT_KEYWORDS.add("2nd request");
-        URGENT_KEYWORDS.add("second request");
-        URGENT_KEYWORDS.add("emergency");
-        URGENT_KEYWORDS.add("er");
         URGENT_KEYWORDS.add("expedited");
-
-        LOS_KEYWORDS = new HashSet();
-        LOS_KEYWORDS.add("notice of admission");
-        LOS_KEYWORDS.add("notification of admission");
 
         BLACKLIST_KEYWORDS = new HashSet();
         BLACKLIST_KEYWORDS.add("dont rush me");
@@ -45,29 +34,30 @@ public class LOSValidator {
         BLACKLIST_KEYWORDS.add("non-expeditiously");
         BLACKLIST_KEYWORDS.add("non expeditiously");
         BLACKLIST_KEYWORDS.add("don't rush me");
+
     }
 
     private Logger logger;
 
-    public LOSValidator(Logger logger) {
-        this.logger = (logger != null) ? logger : LoggerFactory.getLogger(LOSValidator.class);
+    public LOSGBDValidator(Logger logger) {
+        this.logger = (logger != null) ? logger : LoggerFactory.getLogger(LOSGBDValidator.class);
     }
 
-    public MappingResult doCustomPredictionMapping(Map data, Long rootPipelineId) {
+    public LOSValidator.MappingResult doCustomPredictionMapping(Map data, Long rootPipelineId) {
         logInfo(rootPipelineId, "Starting Level of Service validation process");
 
         if (data == null) {
             logInfo(rootPipelineId, "Input map is null");
-            return new MappingResult(data);
+            return new LOSValidator.MappingResult(data);
         }
 
         processLevelOfService(data, rootPipelineId);
-        return new MappingResult(data);
+        return new LOSValidator.MappingResult(data);
     }
 
     private void processLevelOfService(Map data, Long rootPipelineId) {
         Object levelOfServiceObj = data.get("level_of_service");
-        
+
         if (!(levelOfServiceObj instanceof List)) {
             logWarn(rootPipelineId, "level_of_service is not a List: " + levelOfServiceObj);
             return;
@@ -80,14 +70,14 @@ public class LOSValidator {
         }
 
         for (Object obj : levelOfServiceList) {
-            if (!(obj instanceof PostProcessingExecutorInput)) {
+            if (!(obj instanceof LOSValidator.PostProcessingExecutorInput)) {
                 logWarn(rootPipelineId, "level_of_service list contains non-PostProcessingExecutorInput object: " + obj);
                 continue;
             }
 
-            PostProcessingExecutorInput input = (PostProcessingExecutorInput) obj;
+            LOSValidator.PostProcessingExecutorInput input = (LOSValidator.PostProcessingExecutorInput) obj;
             String extractedValue = input.getExtractedValue();
-            
+
             if (extractedValue == null || extractedValue.trim().isEmpty()) {
                 input.setExtractedValue("");
                 input.setLabel("");
@@ -107,37 +97,13 @@ public class LOSValidator {
                     break;
                 }
             }
-            if (!blacklistFound && levelOfServicetoLower.matches("\\b(er|ER)(\\s|$|-).*")) {
-                isUrgent = true;
-                logInfo(rootPipelineId,
-                        "Valid level_of_service, setting to Urgent due to exact match");
-            } else {
-                for (Object keyword : URGENT_KEYWORDS) {
-                    if (!keyword.equals("er") && !blacklistFound
-                            && levelOfServicetoLower.contains((String) keyword)) {
-                        isUrgent = true;
-                        logInfo(rootPipelineId,
-                                "Valid level_of_service, setting to Urgent due to keyword match");
-                        break;
-                    }
-                }
-            }
-            
-            if (!isUrgent && !blacklistFound) {
-                for (Object keyword : LOS_KEYWORDS) {
-                    if (levelOfServicetoLower.contains((String) keyword)) {
-                        boolean hasOneAuthId = hasOneAuthIdValue(data, rootPipelineId);
-                        if (hasOneAuthId) {
-                            isUrgent = false;
-                            logInfo(rootPipelineId,
-                                    "Valid level_of_service, UM Id has one value. Setting Urgent = false");
-                        } else {
-                            isUrgent = true;
-                            logInfo(rootPipelineId,
-                                    "Valid level_of_service, UM Id does not have one value. Setting Urgent = true");
-                        }
-                        break;
-                    }
+            for (Object keyword : URGENT_KEYWORDS) {
+                if (!keyword.equals("er") && !blacklistFound
+                        && levelOfServicetoLower.contains((String) keyword)) {
+                    isUrgent = true;
+                    logInfo(rootPipelineId,
+                            "Valid level_of_service, setting to Urgent due to keyword match");
+                    break;
                 }
             }
 
@@ -149,7 +115,7 @@ public class LOSValidator {
                 input.setBBox("");
             }
         }
-        
+
         data.put("level_of_service", levelOfServiceList);
     }
 
@@ -162,12 +128,12 @@ public class LOSValidator {
         List authIdList = (List) authIdObj;
         int validCount = 0;
         for (Object obj : authIdList) {
-            if (!(obj instanceof PostProcessingExecutorInput)) {
+            if (!(obj instanceof LOSValidator.PostProcessingExecutorInput)) {
                 logWarn(rootPipelineId, "auth_id list contains non-PostProcessingExecutorInput object: " + obj);
                 continue;
             }
-            
-            PostProcessingExecutorInput input = (PostProcessingExecutorInput) obj;
+
+            LOSValidator.PostProcessingExecutorInput input = (LOSValidator.PostProcessingExecutorInput) obj;
             String value = input.getExtractedValue();
             if (value != null && !value.trim().isEmpty()) {
                 validCount++;

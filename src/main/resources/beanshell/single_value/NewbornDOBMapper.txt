@@ -1,5 +1,3 @@
-package com.intics.script.MultiLineItem;
-
 import org.slf4j.Logger;
 
 import java.text.ParseException;
@@ -7,79 +5,41 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.util.*;
 
-public class MemberDOBandServiceFromDateMapper {
+public class NewbornDOBMapper {
 
     private Logger logger;
 
-    public MemberDOBandServiceFromDateMapper(Logger logger) {
-        this.logger = logger;
-    }
+    public NewbornDOBMapper(Logger logger) { this.logger = logger; }
 
     public MappingResult doCustomPredictionMapping(Map predictionKeyMap, Long rootPipelineId) {
         String logPrefix = "[RootPipelineID: " + rootPipelineId + "] ";
-        logger.info(logPrefix + "Entered MemberDOBMapper.doCustomPredictionMapping method.");
-        
+        logger.info(logPrefix + "Entered newbornDOBMapper.doCustomPredictionMapping method.");
+
         if (predictionKeyMap == null) {
-            return new MappingResult(new HashMap());
-        }
-        
-        Object dobObj = predictionKeyMap.get("member_date_of_birth");
-        if (dobObj instanceof List) {
-            List dobList = (List) dobObj;
-
-            for (int i = 0; i < dobList.size(); i++) {
-                Object obj = dobList.get(i);
-                if (obj instanceof PostProcessingExecutorInput) {
-
-                    PostProcessingExecutorInput dobInput =
-                            (PostProcessingExecutorInput) obj;
-
-                    String validatedDob =
-                            dateValidator(dobInput.getExtractedValue(),
-                                    rootPipelineId,
-                                    true);
-
-                    dobInput.setExtractedValue(validatedDob);
-                    if(validatedDob.isEmpty()){
-                        dobInput.setLabel("");
-                        dobInput.setSectionAlias("");
-                        dobInput.setBBox("");
-                    }
-                }
-            }
-            predictionKeyMap.put("member_date_of_birth", dobList);
+            return new MappingResult(new java.util.HashMap());
         }
 
-        Object serviceObj = predictionKeyMap.get("service_from_date");
-        if (serviceObj instanceof List) {
-            List serviceList = (List) serviceObj;
+        Object newbornDobObj = predictionKeyMap.get("newborn_date_of_birth");
 
-            for (int i = 0; i < serviceList.size(); i++) {
-                Object obj = serviceList.get(i);
-                if (obj instanceof PostProcessingExecutorInput) {
-
-                    PostProcessingExecutorInput serviceInput =
-                            (PostProcessingExecutorInput) obj;
-
-                    String validatedServiceDate =
-                            dateValidator(serviceInput.getExtractedValue(),
-                                    rootPipelineId,
-                                    false);
-
-                    serviceInput.setExtractedValue(validatedServiceDate);
-                    if(validatedServiceDate.isEmpty()){
-                        serviceInput.setLabel("");
-                        serviceInput.setSectionAlias("");
-                        serviceInput.setBBox("");
-                    }
+        if(newbornDobObj instanceof List)
+        {
+            List newbornDobList = (List) newbornDobObj;
+            for(int i = 0; i<newbornDobList.size(); i++)
+            {
+                Object obj = newbornDobList.get(i);
+                if(obj instanceof PostProcessingExecutorInput)
+                {
+                    PostProcessingExecutorInput newbornDobInput = (PostProcessingExecutorInput) obj;
+                    String validatedDob = DateValidator(newbornDobInput.getExtractedValue(), rootPipelineId, true);
+                    newbornDobInput.setExtractedValue(validatedDob);
                 }
             }
-            predictionKeyMap.put("service_from_date", serviceList);
+            predictionKeyMap.put("newborn_date_of_birth", newbornDobList);
         }
         return new MappingResult(predictionKeyMap);
     }
 
-    public String dateValidator(Object dateValue,Long rootPipelineId ,boolean isDOB)
+    public String DateValidator(Object dateValue,Long rootPipelineId ,boolean isDOB)
     {
         String logPrefix = "[RootPipelineID: " + rootPipelineId + "] ";
         if (dateValue instanceof String) {
@@ -124,7 +84,7 @@ public class MemberDOBandServiceFromDateMapper {
                         return "";
                     }
                 } else {
-                    logger.warn(logPrefix + "Date mapping failed for 'member_date_of_birth'. Removed based on configuration.");
+                    logger.warn(logPrefix + "Date mapping failed for 'newborn_date_of_birth'. Removed based on configuration.");
                     return "";
                 }
             } else {
@@ -149,7 +109,7 @@ public class MemberDOBandServiceFromDateMapper {
         if (parsedYear > currentYear) {
             calendar.add(Calendar.YEAR, -100);
             inputDate = calendar.getTime();
-            logger.info(logPrefix + "'member_date_of_birth' deducted 100 years.");
+            logger.info(logPrefix + "'newborn_date_of_birth' deducted 100 years.");
         }
 
         return inputDate;
@@ -337,24 +297,8 @@ public class MemberDOBandServiceFromDateMapper {
         private String isEncrypted;
         private String lineItemType;
 
-        public String getExtractedValue() {
-            return extractedValue;
-        }
+        public String getExtractedValue() { return extractedValue; }
 
-        public void setExtractedValue(String extractedValue) {
-            this.extractedValue = extractedValue;
-        }
-
-        public void setLabel(String label) { this.label = label; }
-
-        public void setSectionAlias(String sectionAlias) { this.sectionAlias = sectionAlias; }
-
-        public void setBBox(String bBox) { this.bBox = bBox; }
-
-        public String getLabel() { return label; }
-
-        public String getSectionAlias() { return sectionAlias; }
-
-        public String getBBox() { return bBox; }
+        public void setExtractedValue(String extractedValue) { this.extractedValue = extractedValue; }
     }
 }

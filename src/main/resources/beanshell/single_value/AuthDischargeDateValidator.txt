@@ -1,5 +1,3 @@
-package com.intics.script.MultiLineItem;
-
 import org.slf4j.Logger;
 
 import java.text.ParseException;
@@ -7,50 +5,50 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.util.*;
 
-public class ServiceToDateMapper {
+public class AuthDischargeDateValidator {
 
     private Logger logger;
 
-    public ServiceToDateMapper(Logger logger) {
+    public AuthDischargeDateValidator(Logger logger) {
         this.logger = logger;
     }
 
     public MappingResult doCustomPredictionMapping(Map predictionKeyMap, Long rootPipelineId) {
         String logPrefix = "[RootPipelineID: " + rootPipelineId + "] ";
-        logger.info(logPrefix + "Entered MemberDOBMapper.doCustomPredictionMapping method.");
+        logger.info(logPrefix + "Entered AuthDischargeDateValidator.doCustomPredictionMapping method.");
 
         if (predictionKeyMap == null) {
             return new MappingResult(new HashMap());
         }
 
-        Object serviceObj = predictionKeyMap.get("service_to_date");
-        if (serviceObj instanceof List) {
-            List serviceList = (List) serviceObj;
+        Object serviceDateObj = predictionKeyMap.get("auth_discharge_date");
+        if (serviceDateObj instanceof List) {
+            List serviceList = (List) serviceDateObj;
 
             for (int i = 0; i < serviceList.size(); i++) {
                 Object obj = serviceList.get(i);
-                if (obj instanceof ServiceToDateMapper.PostProcessingExecutorInput) {
+                if (obj instanceof AuthDischargeDateValidator.PostProcessingExecutorInput) {
 
-                    ServiceToDateMapper.PostProcessingExecutorInput serviceToDate =
-                            (ServiceToDateMapper.PostProcessingExecutorInput) obj;
-                    if (!serviceToDate.getExtractedValue().isEmpty()) {
-                        String validatedServiceToDate =
-                                DateValidator(serviceToDate.getExtractedValue(),
+                    AuthDischargeDateValidator.PostProcessingExecutorInput authDischargeDate =
+                            (AuthDischargeDateValidator.PostProcessingExecutorInput) obj;
+                    if (authDischargeDate.getExtractedValue() != null && !authDischargeDate.getExtractedValue().isEmpty()) {
+                        String validatedAuthDischargeDate =
+                                DateValidator(authDischargeDate.getExtractedValue(),
                                         rootPipelineId,
                                         false);
 
-                        serviceToDate.setExtractedValue(validatedServiceToDate);
-                        if (validatedServiceToDate.isEmpty()) {
-                            serviceToDate.setLabel("");
-                            serviceToDate.setSectionAlias("");
-                            serviceToDate.setBBox("");
+                        authDischargeDate.setExtractedValue(validatedAuthDischargeDate);
+                        if (validatedAuthDischargeDate.isEmpty()) {
+                            authDischargeDate.setLabel("");
+                            authDischargeDate.setSectionAlias("");
+                            authDischargeDate.setBBox("");
                         }
                     }
                 }
             }
-            predictionKeyMap.put("service_to_date", serviceList);
+            predictionKeyMap.put("auth_discharge_date", serviceList);
         } else {
-            logger.warn(logPrefix + "'service_to_date' is not a List. Skipping processing.");
+            logger.warn(logPrefix + "'auth_discharge_date' is not a List. Skipping processing.");
         }
         return new MappingResult(predictionKeyMap);
     }
@@ -100,7 +98,7 @@ public class ServiceToDateMapper {
                         return "";
                     }
                 } else {
-                    logger.warn(logPrefix + "Date mapping failed for 'member_date_of_birth'. Removed based on configuration.");
+                    logger.warn(logPrefix + "Date mapping failed for 'AuthDischargeDateValidator'. Removed based on configuration.");
                     return "";
                 }
             } else {
@@ -217,7 +215,6 @@ public class ServiceToDateMapper {
                 Date parsedDate = formatter.parse(dateStr);
                 return parsedDate;
             } catch (ParseException e) {
-                // Silent catch to reduce logging noise
             }
         }
         logger.warn("Failed to parse date:");
@@ -267,16 +264,15 @@ public class ServiceToDateMapper {
             int pivot = (currentYear % 100) + 10; // Adjust pivot to assume years within 10 years future or 90 years past
             int century = currentYear / 100;
             if (yy <= pivot) {
-                // Interpret e.g., "30" when pivot is 35 (2025) -> 2030
+                // Interpret e.g., "30" when pivot is 35 (2025) → 2030
                 cal.set(Calendar.YEAR, century * 100 + yy);
             } else {
-                // Interpret e.g., "30" when pivot is 25 (2025) -> 1930
+                // Interpret e.g., "30" when pivot is 25 (2025) → 1930
                 cal.set(Calendar.YEAR, (century - 1) * 100 + yy);
             }
             logger.info(logPrefix + "Two-digit year mapped to full year ");
         }
 
-        // Additional check to ensure the date is not in the future
         Calendar currentCal = Calendar.getInstance();
         if (cal.after(currentCal)) {
             cal.add(Calendar.YEAR, -100);
