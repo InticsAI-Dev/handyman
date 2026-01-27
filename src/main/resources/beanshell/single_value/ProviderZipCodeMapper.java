@@ -1,0 +1,143 @@
+package com.intics.script.MultiLineItem;
+
+import org.slf4j.Logger;
+
+import java.util.List;
+import java.util.Map;
+
+public class ProviderZipCodeMapper {
+
+    private Logger logger;
+
+    public ProviderZipCodeMapper(Logger logger) { this.logger = logger; }
+
+    public MappingResult doCustomPredictionMapping(Map predictionKeyMap, Long rootPipelineId) {
+        logger.info("[RootPipelineID: " + rootPipelineId + "] Entered ProviderZipCodeMapper doCustomPredictionMapping method");
+
+        if (shouldProcess(predictionKeyMap)) {
+            zipcodeValidation(predictionKeyMap, rootPipelineId);
+        } else {
+            logger.info("[RootPipelineID: " + rootPipelineId + "] No zipcode fields to process.");
+        }
+
+        return new MappingResult(predictionKeyMap);
+    }
+
+    private boolean shouldProcess(Map predictionKeyMap) {
+        return predictionKeyMap != null && (
+                (predictionKeyMap.containsKey("undefined_provider_zipcode") && predictionKeyMap.get("undefined_provider_zipcode") != null) ||
+                        (predictionKeyMap.containsKey("servicing_provider_zipcode") && predictionKeyMap.get("servicing_provider_zipcode") != null) ||
+                        (predictionKeyMap.containsKey("referring_provider_zipcode") && predictionKeyMap.get("referring_provider_zipcode") != null) ||
+                        (predictionKeyMap.containsKey("servicing_facility_zipcode") && predictionKeyMap.get("servicing_facility_zipcode") != null) ||
+                        (predictionKeyMap.containsKey("ordering_provider_zipcode") && predictionKeyMap.get("ordering_provider_zipcode") != null)
+        );
+    }
+
+    public void zipcodeValidation(Map extractedZipcode, Long rootPipelineId) {
+        if (extractedZipcode == null || extractedZipcode.isEmpty()) {
+            logger.info("[RootPipelineID: " + rootPipelineId + "] No value found for the zipcode fields.");
+            return;
+        }
+
+        String[] zipcodeFields = {
+                "undefined_provider_zipcode",
+                "servicing_provider_zipcode",
+                "referring_provider_zipcode",
+                "servicing_facility_zipcode",
+                "ordering_provider_zipcode"
+        };
+
+        for (int i = 0; i < zipcodeFields.length; i++) {
+            String field = zipcodeFields[i];
+            if (extractedZipcode.containsKey(field) && extractedZipcode.get(field) != null) {
+                Object zipcodeObj = extractedZipcode.get(field);
+                if (zipcodeObj instanceof List) {
+                    List zipcodeList = (List) zipcodeObj;
+
+                    for (int j = 0; j < zipcodeList.size(); j++) {
+                        Object obj = zipcodeList.get(j);
+                        if (obj instanceof PostProcessingExecutorInput) {
+                            PostProcessingExecutorInput zipcodeInput = (PostProcessingExecutorInput) obj;
+                            String validatedZipcodeValue = zipcodeValidation(zipcodeInput.getExtractedValue(), rootPipelineId, field);
+                            zipcodeInput.setExtractedValue(validatedZipcodeValue);
+                        }
+                    }
+                    extractedZipcode.put(field, zipcodeList);
+                }
+            }
+        }
+    }
+    public String zipcodeValidation(String extractedZipcode, Long rootPipelineId, String field)
+    {
+        if (extractedZipcode == null || extractedZipcode.trim().isEmpty()) {
+            logger.info("[RootPipelineID: " + rootPipelineId + "] " + field + " is empty after trim. Setting to empty string.");
+            return "";
+        }
+
+        String cleanedZip = extractedZipcode.replaceAll("[^0-9-]", "");
+        if (!cleanedZip.equals(extractedZipcode)) {
+            logger.info("[RootPipelineID: " + rootPipelineId + "] " + field + " contained non-numeric characters.");
+        }
+
+        if (cleanedZip.length() == 0) {
+            logger.warn("[RootPipelineID: " + rootPipelineId + "] Cleaned " + field + " is empty after removing non-digit characters.");
+            return "";
+        }
+
+        String digitsOnly = cleanedZip.replaceAll("[^0-9]", "");
+        if (digitsOnly.length() < 5 || digitsOnly.length() >= 10) {
+            logger.warn("[RootPipelineID: " + rootPipelineId + "] Field '" + field
+                    + "' contains " + digitsOnly.length()
+                    + " digits, Expected 5–9 digits. Setting value to empty.");
+            return "";
+        }
+        return cleanedZip;
+    }
+
+    public static class MappingResult {
+        private Map mappedData;
+
+        public MappingResult(Map mappedData) {
+            this.mappedData = mappedData;
+        }
+
+        public Map getMappedData() {
+            return mappedData;
+        }
+    }
+    public static class PostProcessingExecutorInput {
+
+        private Long tenantId;
+        private double aggregatedScore;
+        private double maskedScore;
+        private String originId;
+        private Integer paperNo;
+        private String extractedValue;
+        private double vqaScore;
+        private Integer rank;
+        private Integer sorItemAttributionId;
+        private String sorItemName;
+        private String documentId;
+        private Long accTransactionId;
+        private String label;
+        private String sectionAlias;
+        private Long score;
+        private String bBox;
+        private Long rootPipelineId;
+        private Long frequency;
+        private Long questionId;
+        private Long synonymId;
+        private String modelRegistry;
+        private String encryptionPolicy;
+        private String isEncrypted;
+        private String lineItemType;
+
+        public String getExtractedValue() {
+            return extractedValue;
+        }
+
+        public void setExtractedValue(String extractedValue) {
+            this.extractedValue = extractedValue;
+        }
+    }
+}

@@ -1,0 +1,458 @@
+package com.intics.script.MultiLineItem;
+
+import org.slf4j.Logger;
+
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+public class ProviderAddressMapper {
+
+    private Logger logger;
+    String[] PROVIDER_TYPES = {
+            "servicing_provider", "servicing_facility", "referring_provider","ordering_provider"
+    };
+
+    private static final String ENDING_ADDRESS_PATTERN_STRING =
+            "(.+?)\\s*(?:,\\s*|\\s+)\\s*([A-Za-z]{2})\\s*(?:,\\s*|\\s+)\\s*(\\d{5}(?:-\\d{4})?)\\s*$";
+    private static final Pattern ENDING_ADDRESS_PATTERN = Pattern.compile(ENDING_ADDRESS_PATTERN_STRING);
+
+    private static final String SIMPLE_CITY_STATE_ZIP_PATTERN_STRING =
+            "^([\\w\\s\\(\\)''.\\-]+?)(?:,\\s*|\\.\\s*|\\s+)([A-Za-z]{2})(?:,\\s*|\\.\\s*|\\s+)(\\d{5}(?:-\\d{4})?)\\s*$";
+    private static final Pattern SIMPLE_CITY_STATE_ZIP_PATTERN = Pattern.compile(SIMPLE_CITY_STATE_ZIP_PATTERN_STRING);
+
+    private static final String CITY_STATE_PATTERN_STRING =
+            "(.+?)(?:,\\s*|\\.\\s*|\\s+)([\\w\\s\\(\\)''.\\-]+?)(?:,\\s*|\\.\\s*|\\s+)([A-Za-z]{2})(?:\\s*,\\s*|\\s*\\.|\\s+)?$";
+    private static final Pattern CITY_STATE_PATTERN = Pattern.compile(CITY_STATE_PATTERN_STRING);
+
+    private static final Pattern ZIP_CODE_PATTERN = Pattern.compile("\\b\\d{5}(?:-\\d{4})?\\b$");
+
+    private static final Set VALID_US_STATES = new HashSet();
+    static {
+        VALID_US_STATES.add("AL");
+        VALID_US_STATES.add("AK");
+        VALID_US_STATES.add("AZ");
+        VALID_US_STATES.add("AR");
+        VALID_US_STATES.add("CA");
+        VALID_US_STATES.add("CO");
+        VALID_US_STATES.add("CT");
+        VALID_US_STATES.add("DE");
+        VALID_US_STATES.add("FL");
+        VALID_US_STATES.add("GA");
+        VALID_US_STATES.add("HI");
+        VALID_US_STATES.add("ID");
+        VALID_US_STATES.add("IL");
+        VALID_US_STATES.add("IN");
+        VALID_US_STATES.add("IA");
+        VALID_US_STATES.add("KS");
+        VALID_US_STATES.add("KY");
+        VALID_US_STATES.add("LA");
+        VALID_US_STATES.add("ME");
+        VALID_US_STATES.add("MD");
+        VALID_US_STATES.add("MA");
+        VALID_US_STATES.add("MI");
+        VALID_US_STATES.add("MN");
+        VALID_US_STATES.add("MS");
+        VALID_US_STATES.add("MO");
+        VALID_US_STATES.add("MT");
+        VALID_US_STATES.add("NE");
+        VALID_US_STATES.add("NV");
+        VALID_US_STATES.add("NH");
+        VALID_US_STATES.add("NJ");
+        VALID_US_STATES.add("NM");
+        VALID_US_STATES.add("NY");
+        VALID_US_STATES.add("NC");
+        VALID_US_STATES.add("ND");
+        VALID_US_STATES.add("OH");
+        VALID_US_STATES.add("OK");
+        VALID_US_STATES.add("OR");
+        VALID_US_STATES.add("PA");
+        VALID_US_STATES.add("RI");
+        VALID_US_STATES.add("SC");
+        VALID_US_STATES.add("SD");
+        VALID_US_STATES.add("TN");
+        VALID_US_STATES.add("TX");
+        VALID_US_STATES.add("UT");
+        VALID_US_STATES.add("VT");
+        VALID_US_STATES.add("VA");
+        VALID_US_STATES.add("WA");
+        VALID_US_STATES.add("WV");
+        VALID_US_STATES.add("WI");
+        VALID_US_STATES.add("WY");
+        VALID_US_STATES.add("DC");
+        VALID_US_STATES.add("GU");
+        VALID_US_STATES.add("PR");
+        VALID_US_STATES.add("VI");
+        VALID_US_STATES.add("AS");
+        VALID_US_STATES.add("MP");
+    }
+
+    public ProviderAddressMapper(Logger logger) {
+        this.logger = logger;
+    }
+
+    public MappingResult doCustomPredictionMapping(Map predictionKeyMap, Long rootPipelineId) {
+        if (predictionKeyMap == null) {
+            return new MappingResult(new HashMap());
+        }
+        String logPrefix = "[RootPipelineID: " + rootPipelineId + "] ";
+        logger.info(logPrefix + "Entered ProviderAddressMapper.doCustomPredictionMapping method.");
+
+        Map resultMap = new HashMap(predictionKeyMap);
+        boolean addressProcessed = false;
+
+        for (String providerType : PROVIDER_TYPES) {
+            final String addressKey = providerType + "_address_line1";
+            final String cityKey = providerType + "_city";
+            final String stateKey = providerType + "_state";
+            final String zipcodeKey = providerType + "_zipcode";
+            // typecast the value
+
+            final PostProcessingExecutorInput addressKeyInput = (PostProcessingExecutorInput) iterateInputObj(addressKey, resultMap) !=null? (PostProcessingExecutorInput) iterateInputObj(addressKey, resultMap): new PostProcessingExecutorInput();
+            final PostProcessingExecutorInput cityKeyInput = (PostProcessingExecutorInput) iterateInputObj(cityKey, resultMap) !=null? (PostProcessingExecutorInput) iterateInputObj(cityKey, resultMap): new PostProcessingExecutorInput();
+            final PostProcessingExecutorInput stateKeyInput = (PostProcessingExecutorInput) iterateInputObj(stateKey, resultMap) !=null? (PostProcessingExecutorInput) iterateInputObj(stateKey, resultMap): new PostProcessingExecutorInput() ;
+            final PostProcessingExecutorInput zipcodeKeyInput = (PostProcessingExecutorInput) iterateInputObj(zipcodeKey, resultMap) !=null? (PostProcessingExecutorInput) iterateInputObj(zipcodeKey, resultMap): new PostProcessingExecutorInput();
+
+            final String inputAddress = addressKeyInput.getExtractedValue() != null ? addressKeyInput.getExtractedValue() : "";
+            final String city = cityKeyInput.getExtractedValue() != null ? cityKeyInput.getExtractedValue(): "";
+            final String state = stateKeyInput.getExtractedValue() != null ?  stateKeyInput.getExtractedValue()  : "";
+            final String zipcode = zipcodeKeyInput.getExtractedValue() != null ? zipcodeKeyInput.getExtractedValue() : "";
+
+
+            if (!inputAddress.isEmpty()) {
+                logger.info(logPrefix + "Processing  field (Input type: String).");
+
+                AddressComponents parsedAddress = parseAddress(inputAddress);
+                if (parsedAddress != null) {
+                    addressKeyInput.setExtractedValue(parsedAddress.getAddressLine1());
+                    cityKeyInput.setExtractedValue(city.isEmpty() ? parsedAddress.getCity() : city);
+                    stateKeyInput.setExtractedValue(state.isEmpty() ? parsedAddress.getState() : state);
+                    zipcodeKeyInput.setExtractedValue(zipcode.isEmpty() ? parsedAddress.getZipcode() : zipcode);
+                    logger.info(logPrefix + "Address fields successfully mapped and updated for " + providerType + ".");
+                    addressProcessed = true;
+                } else {
+                    logger.warn(logPrefix + "Address parsing failed for Keeping original address.");
+                    addressKeyInput.setExtractedValue(inputAddress);
+                    cityKeyInput.setExtractedValue( city);
+                    stateKeyInput.setExtractedValue( state);
+                    zipcodeKeyInput.setExtractedValue( zipcode);
+                }
+            } else {
+                logger.info(logPrefix + "Input  field is empty or null. Setting address_line1 to empty.");
+
+                if(addressKeyInput.getSorItemName() != null){
+                    addressKeyInput.setExtractedValue("");
+                }else{
+                    logger.info(logPrefix + "Input  field is empty or null.");
+                }
+                if(cityKeyInput.getSorItemName() != null){
+                    cityKeyInput.setExtractedValue( city);
+                }
+                else {
+                    logger.info(logPrefix + "Input  field is empty or null.");
+                }
+                if(stateKeyInput.getSorItemName() != null){
+                    stateKeyInput.setExtractedValue( state);
+                }else{
+                    logger.info(logPrefix + "Input  field is empty or null.");
+                }
+                if(zipcodeKeyInput.getSorItemName() != null){
+                    zipcodeKeyInput.setExtractedValue( zipcode);
+                }else{
+                    logger.info(logPrefix + "Input  field is empty or null.");
+                }
+            }
+        }
+
+        if (!addressProcessed) {
+            logger.info(logPrefix + "No valid address fields processed for any provider type.");
+        }
+
+        return new MappingResult(resultMap);
+    }
+
+
+    public AddressComponents parseAddress(String fullAddress) {
+        if (fullAddress == null || fullAddress.trim().isEmpty()) {
+            return new AddressComponents("", "", "", "");
+        }
+
+        String cleanedAddress = fullAddress.trim()
+                .replaceAll("\\s+,", ",")
+                .replaceAll(",\\s*", ",")
+                .replaceAll("\\s+\\.", ".")
+                .replaceAll("\\.\\s*", ".")
+                .replaceAll("\\s+", " ")
+                .replaceAll(">\\s*", "")
+                .replaceAll("\\(City\\)", "")
+                .replaceAll("P\\.O\\. BOX", "PO BOX")
+                .trim();
+
+        if (cleanedAddress.isEmpty()) {
+            return new AddressComponents("", "", "", "");
+        }
+
+        // Check for valid ZIP code at the end
+        Matcher zipMatcher = ZIP_CODE_PATTERN.matcher(cleanedAddress);
+        if (!zipMatcher.find()) {
+            logger.info("No valid ZIP code found at the end of address: ");
+            return new AddressComponents(cleanedAddress, "", "", "");
+        }
+        String zipCode = zipMatcher.group(0);
+        String addressWithoutZip = cleanedAddress.substring(0, zipMatcher.start()).trim();
+
+        Matcher matcher = ENDING_ADDRESS_PATTERN.matcher(cleanedAddress);
+        if (matcher.find()) {
+            String cityOrCombined = matcher.group(1).trim().replaceAll("\\(City\\)", "").trim();
+            String state = matcher.group(2).trim();
+            String parsedZip = matcher.group(3).trim();
+
+            String addressLine1 = cityOrCombined;
+            String city = "";
+
+            int lastCommaIndex = cityOrCombined.lastIndexOf(',');
+            if (lastCommaIndex != -1) {
+                city = cityOrCombined.substring(lastCommaIndex + 1).trim();
+                addressLine1 = cityOrCombined.substring(0, lastCommaIndex).trim();
+            } else {
+                String[] tokens = cityOrCombined.split(" ");
+                if (tokens.length >= 2) {
+                    city = tokens[tokens.length - 1].trim();
+
+                    StringBuilder sb = new StringBuilder();
+                    for (int i = 0; i < tokens.length - 1; i++) {
+                        sb.append(tokens[i]);
+                        if (i < tokens.length - 2) {
+                            sb.append(" ");
+                        }
+                    }
+                    addressLine1 = sb.toString().trim();
+                }
+            }
+
+            addressLine1 = addressLine1.replaceAll(",", ", ").replaceAll("\\s+", " ").trim();
+
+            if (VALID_US_STATES.contains(state.toUpperCase())) {
+                return new AddressComponents(addressLine1, city, state, parsedZip);
+            }
+        }
+
+        Matcher simpleMatcher = SIMPLE_CITY_STATE_ZIP_PATTERN.matcher(cleanedAddress);
+        if (simpleMatcher.find()) {
+            String city = simpleMatcher.group(1).trim().replaceAll("\\(City\\)", "").trim();
+            String state = simpleMatcher.group(2).trim();
+            String parsedZip = simpleMatcher.group(3).trim();
+            if (VALID_US_STATES.contains(state.toUpperCase())) {
+                return new AddressComponents("", city, state, parsedZip);
+            }
+        }
+
+        Matcher cityStateMatcher = CITY_STATE_PATTERN.matcher(addressWithoutZip);
+        if (cityStateMatcher.find()) {
+            String potentialState = cityStateMatcher.group(3).trim();
+            if (VALID_US_STATES.contains(potentialState.toUpperCase())) {
+                String city = cityStateMatcher.group(2).trim().replaceAll("\\(City\\)", "").trim();
+                String addressLine1 = cityStateMatcher.group(1).trim();
+                if (addressLine1.endsWith(",")) {
+                    addressLine1 = addressLine1.substring(0, addressLine1.length() - 1).trim();
+                }
+                addressLine1 = addressLine1.replaceAll(",", ", ").replaceAll("\\s+", " ").trim();
+                return new AddressComponents(addressLine1, city, potentialState, zipCode);
+            }
+        }
+
+        Pattern stateZipAtEndPattern = Pattern.compile("(.+?)(?:,\\s*|\\.\\s*|\\s+)([A-Za-z]{2})(?:,\\s*|\\.\\s*|\\s+)(\\d{5}(?:-\\d{4})?)\\s*$");
+        Matcher stateZipMatcher = stateZipAtEndPattern.matcher(cleanedAddress);
+        if (stateZipMatcher.find()) {
+            String state = stateZipMatcher.group(2).trim();
+            String parsedZip = stateZipMatcher.group(3).trim();
+            String potentialAddressAndCity = stateZipMatcher.group(1).trim();
+
+            String city = "";
+            String addressLine1 = potentialAddressAndCity;
+
+            int lastCommaIndex = potentialAddressAndCity.lastIndexOf(',');
+            if (lastCommaIndex != -1) {
+                String partAfterComma = potentialAddressAndCity.substring(lastCommaIndex + 1).trim();
+                if (!partAfterComma.matches("\\d+.*") &&
+                        !partAfterComma.matches("(?i).*(st|ave|rd|ln|ct|pl|dr).*") &&
+                        partAfterComma.length() > 2) {
+                    city = partAfterComma.replaceAll("\\(City\\)", "").trim();
+                    addressLine1 = potentialAddressAndCity.substring(0, lastCommaIndex).trim();
+                }
+            }
+
+            addressLine1 = addressLine1.replaceAll(",", ", ").replaceAll("\\s+", " ").trim();
+
+            if (VALID_US_STATES.contains(state.toUpperCase())) {
+                return new AddressComponents(addressLine1, city, state, parsedZip);
+            }
+        }
+
+        AddressComponents spaceSeparated = parseSpaceSeparated(cleanedAddress);
+        if (spaceSeparated != null && !spaceSeparated.getAddressLine1().isEmpty()) {
+            return new AddressComponents(
+                    spaceSeparated.getAddressLine1(),
+                    spaceSeparated.getCity(),
+                    spaceSeparated.getState(),
+                    spaceSeparated.getZipcode()
+            );
+        }
+
+        String addressLine1 = cleanedAddress.endsWith(",") ?
+                cleanedAddress.substring(0, cleanedAddress.length() - 1).trim() : cleanedAddress;
+        return new AddressComponents(addressLine1, "", "", "");
+    }
+
+    private AddressComponents parseSpaceSeparated(String addressStr) {
+        String[] parts = addressStr.split(" ");
+        if (parts.length < 4) {
+            return null;
+        }
+
+        String zipcode = "";
+        String state = "";
+        String city = "";
+        String addressLine1 = "";
+
+        int lastIndex = parts.length - 1;
+
+        Pattern zipPattern = Pattern.compile("^\\d{5}(-\\d{4})?$");
+        String potentialZip = parts[lastIndex];
+        if (!zipPattern.matcher(potentialZip).matches()) {
+            logger.info("No valid ZIP code found in space-separated address: ");
+            return null;
+        }
+        zipcode = potentialZip;
+        lastIndex--;
+
+        if (lastIndex >= 0) {
+            Pattern statePattern = Pattern.compile("^[A-Z]{2}$");
+            String potentialState = parts[lastIndex];
+            if (statePattern.matcher(potentialState).matches() && VALID_US_STATES.contains(potentialState.toUpperCase())) {
+                state = potentialState;
+                lastIndex--;
+            } else {
+                return null;
+            }
+        } else {
+            return null;
+        }
+
+        StringBuilder cityBuilder = new StringBuilder();
+        for (int i = lastIndex; i >= 0; i--) {
+            String part = parts[i];
+            if (part.matches("(?i).*(st|ave|rd|ln|ct|pl|dr).*") || part.matches("\\d+.*")) {
+                break;
+            }
+            cityBuilder.insert(0, part + " ");
+        }
+        city = cityBuilder.toString().trim().replaceAll("\\(City\\)", "").trim();
+
+        StringBuilder addressBuilder = new StringBuilder();
+        for (int i = 0; i <= lastIndex && !parts[i].equals(city.split(" ")[0]); i++) {
+            if (i > 0) {
+                addressBuilder.append(" ");
+            }
+            addressBuilder.append(parts[i]);
+        }
+        addressLine1 = addressBuilder.toString().trim();
+        addressLine1 = addressLine1.replaceAll(",", ", ").replaceAll("\\s+", " ").trim();
+
+        return new AddressComponents(addressLine1, city, state, zipcode);
+    }
+
+
+    public Object iterateInputObj(String fieldName, Map resultMap) {
+
+        Object valueObj = resultMap.get(fieldName);
+
+        if (valueObj instanceof List) {
+            List objList = (List) valueObj;
+
+            for (int i = 0; i < objList.size(); i++) {
+                Object obj = objList.get(i);
+
+                if (obj instanceof PostProcessingExecutorInput) {
+                    return obj;
+                }
+            }
+        }
+        return null;
+    }
+
+
+    public class AddressComponents {
+        private String addressLine1;
+        private String city;
+        private String state;
+        private String zipcode;
+
+        public AddressComponents(String addressLine1, String city, String state, String zipcode) {
+            this.addressLine1 = addressLine1 != null ? addressLine1.replaceAll("[\"\\n\\r]", "") : "";
+            this.city = city != null ? city : "";
+            this.state = state != null ? state : "";
+            this.zipcode = zipcode != null ? zipcode : "";
+        }
+
+        public String getAddressLine1() { return addressLine1; }
+        public String getCity() { return city; }
+        public String getState() { return state; }
+        public String getZipcode() { return zipcode; }
+    }
+
+    public class MappingResult {
+        private Map mappedData;
+
+        public MappingResult(Map mappedData) {
+            this.mappedData = mappedData;
+        }
+
+        public Map getMappedData() {
+            return mappedData;
+        }
+    }
+
+    public static class PostProcessingExecutorInput {
+
+        private Long tenantId;
+        private double aggregatedScore;
+        private double maskedScore;
+        private String originId;
+        private Integer paperNo;
+        private String extractedValue;
+        private double vqaScore;
+        private Integer rank;
+        private Integer sorItemAttributionId;
+        private String sorItemName;
+        private String documentId;
+        private Long accTransactionId;
+        private String label;
+        private String sectionAlias;
+        private Long score;
+        private String bBox;
+        private Long rootPipelineId;
+        private Long frequency;
+        private Long questionId;
+        private Long synonymId;
+        private String modelRegistry;
+        private String encryptionPolicy;
+        private String isEncrypted;
+        private String lineItemType;
+
+        public String getExtractedValue() {
+            return extractedValue;
+        }
+        public String getSorItemName() {
+            return sorItemName;
+        }
+
+        public void setExtractedValue(String extractedValue) {
+            this.extractedValue = extractedValue;
+        }
+        public void setSorItemName(String sorItemName) {
+            this.sorItemName = sorItemName;
+        }
+    }
+
+}

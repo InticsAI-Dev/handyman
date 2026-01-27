@@ -1,0 +1,129 @@
+package com.intics.script.MultiLineItem;
+
+import org.slf4j.Logger;
+
+import java.util.List;
+import java.util.Map;
+
+public class AumiMultiMemberMapper {
+
+    private Logger logger;
+
+    public AumiMultiMemberMapper(Logger logger) {
+        this.logger = logger;
+    }
+
+    public MappingResult doCustomPredictionMapping(Map predictionKeyMap, Long rootPipelineId) {
+        String logMsg = "[RootPipelineID: " + rootPipelineId + "] Entered AumiMultiMemberMapper doCustomPredictionMapping method";
+        logger.info(logMsg);
+        Object valueObj = predictionKeyMap.get("multiple_member_indicator");
+        if (valueObj instanceof List) {
+            List objList = (List) valueObj;
+            for (int i = 0; i < objList.size(); i++) {
+                Object obj = objList.get(i);
+                if (obj instanceof PostProcessingExecutorInput) {
+                    PostProcessingExecutorInput aumiMultiMember = (PostProcessingExecutorInput) obj;
+                    String aumiMultiMemberVal = aumiMultiMember.getExtractedValue();
+                    if (shouldProcess(aumiMultiMemberVal)) {
+                        String updatedMultiMemberValue = multimemberValidation(aumiMultiMemberVal, rootPipelineId);
+                        aumiMultiMember.setExtractedValue(updatedMultiMemberValue);
+                    } else {
+                        logMsg = "[RootPipelineID: " + rootPipelineId + "] No Multi Member fields to process.";
+                        logger.info(logMsg);
+                    }
+                }
+            }
+        }
+        return new MappingResult(predictionKeyMap);
+    }
+
+
+    public boolean shouldProcess(String aumiMultiMemberVal) {
+         if (aumiMultiMemberVal == null) {
+            return false;
+        }
+
+        return !aumiMultiMemberVal.trim().isEmpty();
+    }
+
+
+    public String multimemberValidation(String extractedMultiMember, Long rootPipelineId) {
+        if (extractedMultiMember == null || extractedMultiMember.isEmpty()) {
+            String logMsg = "[RootPipelineID: " + rootPipelineId + "] No value found for the Multi Member field. ";
+            logger.info(logMsg);
+            return "";
+        }
+        String formattedExtractedMultiMember = normalizeVoting(extractedMultiMember);
+        return formattedExtractedMultiMember;
+    }
+
+    public String normalizeVoting(String multiMember) {
+
+        multiMember = multiMember.trim().toLowerCase();
+
+        switch (multiMember) {
+            case "true":
+            case "yes":
+                return "Y";
+            case "false":
+            case "no":
+                return "N";
+            default:
+                return "";
+        }
+    }
+
+    public class MappingResult {
+        private Map mappedData;
+
+        public MappingResult(Map mappedData) {
+            this.mappedData = mappedData;
+        }
+
+        public Map getMappedData() {
+            return mappedData;
+        }
+    }
+
+    public static class PostProcessingExecutorInput {
+
+        private Long tenantId;
+        private double aggregatedScore;
+        private double maskedScore;
+        private String originId;
+        private Integer paperNo;
+        private String extractedValue;
+        private double vqaScore;
+        private Integer rank;
+        private Integer sorItemAttributionId;
+        private String sorItemName;
+        private String documentId;
+        private Long accTransactionId;
+        private String label;
+        private String sectionAlias;
+        private Long score;
+        private String bBox;
+        private Long rootPipelineId;
+        private Long frequency;
+        private Long questionId;
+        private Long synonymId;
+        private String modelRegistry;
+        private String encryptionPolicy;
+        private String isEncrypted;
+        private String lineItemType;
+
+        public String getExtractedValue() {
+            return extractedValue;
+        }
+        public String getSorItemName() {
+            return sorItemName;
+        }
+
+        public void setExtractedValue(String extractedValue) {
+            this.extractedValue = extractedValue;
+        }
+        public void setSorItemName(String sorItemName) {
+            this.sorItemName = sorItemName;
+        }
+    }
+}

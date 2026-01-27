@@ -1,0 +1,306 @@
+package com.intics.script.MultiLineItem;
+
+import org.slf4j.Logger;
+
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+public class MedicaidMemberIdValidator {
+
+    private Long rootPipelineId;
+
+    private static final Pattern UM_PATTERN = Pattern.compile("^[uU][mM]\\d{8}$");
+    private static final Pattern UM_INVALID_PATTERN = Pattern.compile("^[uU][mM][0-9]*$");
+    private static final Pattern WITH_PARENTHESES = Pattern.compile("^([a-zA-Z0-9]+)(?:\\([^)]*\\))?$");
+    private static final Pattern REGEX_ALL_ALPHA_PATTERN = Pattern.compile("^[A-Za-z]+$");
+
+    private Logger logger;
+    private List authIdCandidates;
+    private List additionalAuthCandidates;
+
+    public MedicaidMemberIdValidator(Logger logger) {
+        this.logger = logger;
+        this.authIdCandidates = new ArrayList();
+        this.additionalAuthCandidates = new ArrayList();
+    }
+
+    public MappingResult doCustomPredictionMapping(Map predictionKeyMap, Long rootPipelineId) {
+        this.rootPipelineId = rootPipelineId;
+        if (logger != null) logger.info("[RootPipelineID: " + rootPipelineId + "] Entered doCustomPredictionMapping method");
+
+        if (predictionKeyMap == null) {
+            if (logger != null) logger.error("[RootPipelineID: " + rootPipelineId + "] Input map is null for medicaid member id validator");
+            return new MappingResult(predictionKeyMap);
+        }
+
+        Map resultMap = new Hashtable(predictionKeyMap);
+
+        processField(resultMap, "member_id");
+        processField(resultMap, "medicaid_id");
+
+        mapAuthIdAndAdditionalProperties(resultMap, predictionKeyMap);
+
+        if (logger != null) logger.info("[RootPipelineID: " + rootPipelineId + "] Completed doCustomPredictionMapping method");
+        return new MappingResult(resultMap);
+    }
+
+    private void processField(Map resultMap, String fieldName) {
+        Object valueObj = resultMap.get(fieldName);
+        
+        if (valueObj instanceof List) {
+            List objList = (List) valueObj;
+
+            for (int i = 0; i < objList.size(); i++) {
+                Object obj = objList.get(i);
+                if (obj instanceof PostProcessingExecutorInput) {
+                    PostProcessingExecutorInput medicaidIdInput = (PostProcessingExecutorInput) obj;
+
+                    String value = medicaidIdInput.getExtractedValue() != null ? medicaidIdInput.getExtractedValue().toString().trim() : "";
+
+                    if (value.length() == 0) {
+                        medicaidIdInput.setExtractedValue("");
+                        return;
+                    }
+
+                    if (idSplitter(resultMap, medicaidIdInput, fieldName, value)) continue;
+
+                    // Single value processing
+                    value = cleanString(value);
+                    valueCheck(resultMap, medicaidIdInput, fieldName, value);
+                }
+            }
+        }
+            
+
+    }
+
+    private boolean idSplitter(Map resultMap, PostProcessingExecutorInput idInput, String fieldName, String value) {
+        // Split multiple IDs on /, :, -
+        String[] parts = value.split("[/:]");
+        if (parts.length > 1) {
+            String firstPart = cleanString(parts[0]);
+            String secondPart = cleanString(parts[1]);
+
+            // First part check
+            if (firstPart.toUpperCase().startsWith("UM")) {
+                if (UM_PATTERN.matcher(firstPart).matches()) {
+//                    resultMap.put("auth_id", firstPart);
+                    objAuthIdListAdd(resultMap, idInput, firstPart, "auth_id");
+
+//                    authIdCandidates.add(firstPart);
+                    idInput.setExtractedValue("");
+                }else if (UM_INVALID_PATTERN.matcher(secondPart).matches()) {
+//                    additionalAuthCandidates.add(secondPart);
+                    objAuthIdListAdd(resultMap, idInput, secondPart, "auth_id");
+
+                }else {
+                    idInput.setExtractedValue("");
+                }
+            } else {
+                valueCheck(resultMap, idInput, fieldName, firstPart);
+                idInput.setExtractedValue(firstPart);
+            }
+
+            // Second part check
+            if (secondPart.toUpperCase().startsWith("UM")) {
+                if (UM_PATTERN.matcher(secondPart).matches()) {
+                    objAuthIdListAdd(resultMap, idInput, secondPart, "auth_id");
+
+//                    resultMap.put("auth_id", secondPart);
+                    authIdCandidates.add(secondPart);
+                    objAuthIdListAdd(resultMap, idInput, "", "auth_id");
+//                    idInput.setExtractedValue("");
+                }else if (UM_INVALID_PATTERN.matcher(secondPart).matches()) {
+//                    additionalAuthCandidates.add(secondPart);
+                    objAuthIdListAdd(resultMap, idInput, secondPart, "auth_id");
+
+                }else {
+                    valueCheck(resultMap, idInput, fieldName, secondPart);
+                    idInput.setExtractedValue("");
+                }
+            } else {
+                updateMemberIdObj(resultMap,"medicaid_id", firstPart);
+            }
+
+            return true;
+        }
+        return false;
+    }
+
+    private void valueCheck(Map resultMap, PostProcessingExecutorInput medicaidIdInput, String fieldName, String value) {
+        Matcher parenMatcher = WITH_PARENTHESES.matcher(value);
+        if (parenMatcher.find()) {
+            value = parenMatcher.group(1);
+        }
+
+        if (value.toUpperCase().startsWith("UM")) {
+            if (UM_PATTERN.matcher(value).matches()) {
+                objAuthIdListAdd(resultMap, medicaidIdInput, value, "auth_id");
+//                resultMap.put("auth_id", value);
+//                authIdCandidates.add(value);
+            } else if (UM_INVALID_PATTERN.matcher(value).matches()) {
+//                additionalAuthCandidates.add(value);
+                objAuthIdListAdd(resultMap, medicaidIdInput, value, "auth_id");
+
+            }
+            medicaidIdInput.setExtractedValue( "");
+            return;
+        }
+
+        if (value.length() > 20 && !REGEX_ALL_ALPHA_PATTERN.matcher(value).matches()) {
+            medicaidIdInput.setExtractedValue(value.substring(0, 20));
+        }
+        else if (REGEX_ALL_ALPHA_PATTERN.matcher(value).matches()) {
+            medicaidIdInput.setExtractedValue("");
+        } else {
+            medicaidIdInput.setExtractedValue(value);
+        }
+    }
+
+    private void mapAuthIdAndAdditionalProperties(Map resultMap, Map inputMap) {
+        Object authIdObj = inputMap.get("auth_id"); // extracting the list of object
+        if (authIdObj instanceof List) {            // check whether the input is of type list
+            List authIdList = (List) authIdObj;
+            for (int row = 0; row < authIdList.size(); row++) { // iterate each row
+                Object obj = authIdList.get(row);
+                if (obj instanceof PostProcessingExecutorInput) {
+                    PostProcessingExecutorInput authIdInput =
+                            (PostProcessingExecutorInput) obj; // type cast to PostProcessingExecutorInput pojo
+                    String authId = authIdInput.getExtractedValue() != null ? cleanString(authIdInput.getExtractedValue()) : null;
+                    if (authId != null && authId.length() != 0) {
+                        if (UM_PATTERN.matcher(authId).matches()) {
+                            authIdCandidates.add(authId);
+                            String logMsg = "[RootPipelineID: " + rootPipelineId + "] auth_id field validated as auth_id";
+                            logger.info(logMsg);
+                        } else if (UM_INVALID_PATTERN.matcher(authId).matches()) {
+                            additionalAuthCandidates.add(authId);
+                            String logMsg = "[RootPipelineID: " + rootPipelineId + "] auth_id field validated as additional_auth_properties";
+                            logger.info(logMsg);
+                        }
+                    }
+
+                    List allAdditionalAuth = new ArrayList(additionalAuthCandidates);
+                    if (!authIdCandidates.isEmpty()) {
+                        String firstAuthId = (String) authIdCandidates.get(0);
+                        objAuthIdListAdd(resultMap, authIdInput, firstAuthId, "auth_id");
+
+//                        resultMap.put("auth_id", firstAuthId);
+                        String logMsg = "[RootPipelineID: " + rootPipelineId + "] Assigned first valid UM value to auth_id";
+                        logger.info(logMsg);
+                        if (authIdCandidates.size() > 1) {
+                            for (int i = 1; i < authIdCandidates.size(); i++) {
+                                objAuthIdListAdd(resultMap, authIdInput, authIdCandidates.get(i).toString(), "auth_id");
+//                                allAdditionalAuth.add(authIdCandidates.get(i));
+                            }
+                        }
+                    } else {
+                        String logMsg = "[RootPipelineID: " + rootPipelineId + "] No valid UM values found, setting auth_id to empty";
+                        logger.info(logMsg);
+//                        resultMap.put("auth_id", "");
+                        objAuthIdListAdd(resultMap, authIdInput, "", "auth_id");
+
+                    }
+
+                    if (!allAdditionalAuth.isEmpty()) {
+                        StringBuffer additionalAuthIds = new StringBuffer();
+                        Iterator it = allAdditionalAuth.iterator();
+                        while (it.hasNext()) {
+                            additionalAuthIds.append((String) it.next());
+                            if (it.hasNext()) {
+                                additionalAuthIds.append(",");
+                            }
+                        }
+                        objAuthIdListAdd(resultMap, authIdInput, additionalAuthIds.toString(), "additional_auth_properties");
+//                        resultMap.put("additional_auth_properties", additionalAuthIds.toString());
+                        String logMsg = "[RootPipelineID: " + rootPipelineId + "] Appended UM values to additional_auth_properties";
+                        logger.info(logMsg);
+                    } else {
+                        objAuthIdListAdd(resultMap, authIdInput, "", "additional_auth_properties");
+//                        resultMap.put("additional_auth_properties", "");
+                    }
+
+                }
+            }
+        }
+    }
+
+    private String cleanString(String str) {
+        if (str == null || str.trim().length() == 0) return "";
+        str = str.trim();
+        int parantheseIndex = str.indexOf('(');
+        if (parantheseIndex != -1) str = str.substring(0, parantheseIndex);
+        return str.replaceAll("[^a-zA-Z0-9]", "");
+    }
+
+    private void updateMemberIdObj(Map resultMap, String fieldName, String value) {
+        Object ValueObjs = resultMap.get(fieldName);
+        List valueObjList = (List) ValueObjs;
+        for(int memVal=0; memVal<=valueObjList.size(); memVal++){
+            PostProcessingExecutorInput inputValueObj = (PostProcessingExecutorInput) valueObjList.get(memVal);
+            inputValueObj.setExtractedValue(value);
+        }
+    }
+
+    private void objAuthIdListAdd(Map resultMap, PostProcessingExecutorInput medicaidIdInput, String firstPart, String fieldName) {
+        Object authValueObj = resultMap.get(fieldName);
+        // update the value
+        medicaidIdInput.setExtractedValue(firstPart);
+        medicaidIdInput.setSorItemName(fieldName);
+        List authValueObjList = (List) authValueObj;
+        authValueObjList.add(medicaidIdInput);
+    }
+
+    public static class MappingResult {
+        private Map mappedData;
+
+        public MappingResult(Map mappedData) {
+            this.mappedData = mappedData;
+        }
+
+        public Map getMappedData() {
+            return mappedData;
+        }
+    }
+
+    public static class PostProcessingExecutorInput {
+
+        private Long tenantId;
+        private double aggregatedScore;
+        private double maskedScore;
+        private String originId;
+        private Integer paperNo;
+        private String extractedValue;
+        private double vqaScore;
+        private Integer rank;
+        private Integer sorItemAttributionId;
+        private String sorItemName;
+        private String documentId;
+        private Long accTransactionId;
+        private String label;
+        private String sectionAlias;
+        private Long score;
+        private String bBox;
+        private Long rootPipelineId;
+        private Long frequency;
+        private Long questionId;
+        private Long synonymId;
+        private String modelRegistry;
+        private String encryptionPolicy;
+        private String isEncrypted;
+        private String lineItemType;
+
+        public String getExtractedValue() {
+            return extractedValue;
+        }
+
+        public void setExtractedValue(String extractedValue) {
+            this.extractedValue = extractedValue;
+        }
+        public void setSorItemName(String sorItemName) {
+            this.sorItemName = sorItemName;
+        }
+
+    }
+}
+

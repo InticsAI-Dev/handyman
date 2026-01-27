@@ -1,0 +1,167 @@
+package com.intics.script.MultiLineItem;
+
+import org.slf4j.Logger;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public class ClinicalPresentProcessor {
+
+    private Logger logger;
+
+    public ClinicalPresentProcessor(Logger logger) { this.logger = logger; }
+
+    int clinicalPresentThreshold = 3;
+
+    public MappingResult doCustomPredictionMapping(Map data, Long rootPipelineId) {
+        logger.info("[RootPipelineID: " + rootPipelineId + "] Starting Clinical Present validation process");
+
+        if (data == null) {
+            logger.info("[RootPipelineID: " + rootPipelineId + "] Input map is null");
+            Map result = new HashMap();
+            PostProcessingExecutorInput clinicalPresent = new PostProcessingExecutorInput();
+            clinicalPresent.setExtractedValue("N");
+            List clinicalPresentProcessorList = new ArrayList();
+            clinicalPresentProcessorList.add(clinicalPresent);
+            result.put("clinical_present", clinicalPresentProcessorList);
+            return new MappingResult(result);
+        }
+
+        processClinicalPresent(data, rootPipelineId);
+        return new MappingResult(data);
+    }
+
+    private void processClinicalPresent(Map data, Long rootPipelineId) {
+
+        if (data.containsKey("clinical_present") && data.get("clinical_present") != null)
+        {
+            Object clinicalPresentObj = data.get("clinical_present");
+            if (clinicalPresentObj instanceof List) {
+                List clinicalPresentList = (List) clinicalPresentObj;
+                for (int i = 0; i < clinicalPresentList.size(); i++) {
+                    Object obj = clinicalPresentList.get(i);
+                    if (obj instanceof PostProcessingExecutorInput) {
+                        PostProcessingExecutorInput clinicalPresentInput = (PostProcessingExecutorInput) obj;
+                        String value = clinicalPresentValidation(clinicalPresentInput.getExtractedValue(), rootPipelineId);
+                        clinicalPresentInput.setExtractedValue(value);
+                    }
+                }
+            }
+
+        }
+    }
+
+    private String clinicalPresentValidation(String inputValue, Long rootPipelineId)
+    {
+        if (!inputValue.equals("")) {
+            boolean isValid = hasMinimumThreeY(inputValue, rootPipelineId);
+
+            if (isValid) {
+                logger.info(
+                        "[RootPipelineID: " + rootPipelineId + "] Clinical Present condition satisfied "
+                                + "(non-Y count exceeds threshold)"
+                );
+//                data.put("clinical_present", "Y");
+                return "Y";
+            } else {
+                logger.info(
+                        "[RootPipelineID: " + rootPipelineId + "] Clinical Present condition NOT satisfied "
+                                + "(non-Y count does not exceed threshold)"
+                );
+//                data.put("clinical_present", "N");
+                return "N";
+            }
+        } else {
+            logger.info(
+                    "[RootPipelineID: " + rootPipelineId + "] Empty or null clinical_present value"
+            );
+//            data.put("clinical_present", "N");
+            return "N";
+        }
+
+    }
+
+    private boolean hasMinimumThreeY(String value, Long rootPipelineId) {
+        if (isEmpty(value, rootPipelineId)) {
+            return false;
+        }
+
+        String[] values = value.split(",");
+        int totalCount = values.length;
+        int yCount = 0;
+
+        for (int i = 0; i < values.length; i++) {
+            if ("Y".equalsIgnoreCase(values[i].trim())) {
+                yCount++;
+            }
+        }
+
+        int nonYCount = totalCount - yCount;
+
+        logger.info(
+                "[RootPipelineID: " + rootPipelineId + "] totalCount=" + totalCount
+                        + ", yCount=" + yCount
+                        + ", nonYCount=" + nonYCount
+        );
+
+        return nonYCount > clinicalPresentThreshold;
+    }
+
+
+    private boolean isEmpty(String value, Long rootPipelineId) {
+        boolean result = value == null || value.trim().equals("");
+        logger.info("[RootPipelineID: " + rootPipelineId + "] Empty check performed. Result: " + result);
+        return result;
+    }
+
+    public static class MappingResult {
+        private Map mappedData;
+
+        public MappingResult(Map mappedData) {
+            this.mappedData = mappedData != null ? mappedData : new HashMap();
+        }
+
+        public Map getMappedData() {
+            return mappedData;
+        }
+    }
+
+    public static class PostProcessingExecutorInput {
+
+        private Long tenantId;
+        private double aggregatedScore;
+        private double maskedScore;
+        private String originId;
+        private Integer paperNo;
+        private String extractedValue;
+        private double vqaScore;
+        private Integer rank;
+        private Integer sorItemAttributionId;
+        private String sorItemName;
+        private String documentId;
+        private Long accTransactionId;
+        private String label;
+        private String sectionAlias;
+        private Long score;
+        private String bBox;
+        private Long rootPipelineId;
+        private Long frequency;
+        private Long questionId;
+        private Long synonymId;
+        private String modelRegistry;
+        private String encryptionPolicy;
+        private String isEncrypted;
+        private String lineItemType;
+
+        public String getExtractedValue() {
+            return extractedValue;
+        }
+
+        public void setExtractedValue(String extractedValue) {
+            this.extractedValue = extractedValue;
+        }
+    }
+}
+

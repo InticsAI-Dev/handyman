@@ -1,0 +1,111 @@
+package com.intics.script.MultiLineItem;
+
+import org.slf4j.Logger;
+
+import java.util.List;
+import java.util.Map;
+
+public class MemberZipcodeMapper {
+
+    private Logger logger;
+
+    public MemberZipcodeMapper(Logger logger) { this.logger = logger; }
+
+    public MappingResult doCustomPredictionMapping(Map predictionKeyMap, Long rootPipelineId) {
+        logger.info("[RootPipelineID: {}] Entered MemberZipcodeMapper doCustomPredictionMapping method", rootPipelineId);
+
+        Object zipCodeObj = predictionKeyMap.get("member_zipcode");
+
+        if(zipCodeObj instanceof List)
+        {
+            List zipCodeList = (List) zipCodeObj;
+
+            for(int i = 0; i<zipCodeList.size(); i++)
+            {
+                Object obj = zipCodeList.get(i);
+                if(obj instanceof PostProcessingExecutorInput)
+                {
+                    PostProcessingExecutorInput zipCodeInput = (PostProcessingExecutorInput) obj;
+                    String validatedZipCodeValue = zipcodeValidation(zipCodeInput.getExtractedValue(), rootPipelineId);
+                    zipCodeInput.setExtractedValue(validatedZipCodeValue);
+
+
+                }
+            }
+            predictionKeyMap.put("member_zipcode", zipCodeList);
+        }
+        return new MappingResult(predictionKeyMap);
+    }
+
+    public String zipcodeValidation(String memberZipcode, Long rootPipelineId) {
+        if (memberZipcode == null) {
+            logger.info("[RootPipelineID: {}] member_zipcode is null.", rootPipelineId);
+            return "";
+        }
+
+        String cleanedZip = memberZipcode.replaceAll("[^0-9-]", ""); // Keeps hyphens and numbers. Removes remaing characters
+
+        String digitsOnly = cleanedZip.replaceAll("-", "");// Phone number patterns (10-digit or 3-3-4 pattern)
+        if (digitsOnly.length() >= 10) {
+            logger.info("[RootPipelineID: {}] Detected phone number format in zipcode field", rootPipelineId);
+            return "";
+        }
+
+        if (!cleanedZip.equals(memberZipcode)) {
+            logger.info("[RootPipelineID: {}] Zipcode contained non-numeric characters. Cleaned: {}", rootPipelineId);
+        }
+
+        if (cleanedZip.isEmpty()) {
+            logger.warn("[RootPipelineID: {}] Cleaned zipcode is empty after removing non-digit characters.", rootPipelineId);
+            return "";
+        }
+        return cleanedZip;
+    }
+
+    public class MappingResult {
+        private Map mappedData;
+
+        public MappingResult(Map mappedData) {
+            this.mappedData = mappedData;
+        }
+
+        public Map getMappedData() {
+            return mappedData;
+        }
+    }
+    public static class PostProcessingExecutorInput {
+
+        private Long tenantId;
+        private double aggregatedScore;
+        private double maskedScore;
+        private String originId;
+        private Integer paperNo;
+        private String extractedValue;
+        private double vqaScore;
+        private Integer rank;
+        private Integer sorItemAttributionId;
+        private String sorItemName;
+        private String documentId;
+        private Long accTransactionId;
+        private String label;
+        private String sectionAlias;
+        private Long score;
+        private String bBox;
+        private Long rootPipelineId;
+        private Long frequency;
+        private Long questionId;
+        private Long synonymId;
+        private String modelRegistry;
+        private String encryptionPolicy;
+        private String isEncrypted;
+        private String lineItemType;
+
+        public String getExtractedValue() {
+            return extractedValue;
+        }
+
+        public void setExtractedValue(String extractedValue) {
+            this.extractedValue = extractedValue;
+        }
+    }
+}

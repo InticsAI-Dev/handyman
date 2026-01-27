@@ -1,0 +1,187 @@
+package com.intics.script.MultiLineItem;
+
+import org.slf4j.Logger;
+
+import java.util.Hashtable;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+public class ProviderNpiTinValidator {
+    private Long rootPipelineId;
+//    private static List logMessages = new ArrayList();
+    private static final Pattern NPI_PATTERN = Pattern.compile("^\\d{10}$");
+    private static final Pattern TIN_PATTERN = Pattern.compile("^\\d{2}-\\d{7}$|^\\d{5}-\\d{4}$|^(?=.*[0-9])[a-zA-Z0-9]+$");
+//    private static final Pattern TIN_FORMATTED_PATTERN = Pattern.compile("^\\d{2}-\\d{7}$|^\\d{5}-\\d{4}$|^(?=.*[0-9])[a-zA-Z0-9]+$");
+//    private static final Pattern TIN_GENERAL_PATTERN = Pattern.compile("^\\d{2}-\\d{7}$|^\\d{5}-\\d{4}$|^(?=.*[0-9])[a-zA-Z0-9]+$");
+//    private static final Pattern COMBINED_FIELD = Pattern.compile("([a-zA-Z0-9:-]+)\\s*[/–,:\\|\\\\]\\s*([a-zA-Z0-9:-]+)");
+    private static final Pattern NPI_PREFIX = Pattern.compile("^(?:npi:\\s*|npi\\s+)(\\d{10})$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern TIN_PREFIX = Pattern.compile("^(?:tin:\\s*|tin\\s+)([\\d-]*)$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern ALPHA_NUMERIC_ONLY = Pattern.compile("^(?=.*[0-9])[a-zA-Z0-9]+$");
+    private Logger logger;
+
+    public ProviderNpiTinValidator(Logger logger) { this.logger = logger; }
+
+    public MappingResult doCustomPredictionMapping(Map predictionKeyMap, Long rootPipelineId) {
+        this.rootPipelineId = rootPipelineId;
+        String logMsg = "[RootPipelineID: " + rootPipelineId + "] Entered ProviderNpiTinValidator doIdValidationAndMapping method";
+        logger.info(logMsg);
+//        logMessages.add(logMsg);
+
+        if (predictionKeyMap == null) {
+            String msgLog = "[RootPipelineID: " + rootPipelineId + "] Input map is null";
+            logger.error(msgLog);
+//            logMessages.add(msgLog);
+            return new MappingResult(predictionKeyMap);
+        }
+
+        Map resultMap = new Hashtable(predictionKeyMap);
+        validateAndMapIds(resultMap);
+        return new MappingResult(resultMap);
+    }
+
+    private void validateAndMapIds(Map resultMap) {
+        String[] idFields = {
+                "servicing_provider_tin", "referring_provider_tin", "servicing_facility_tin","ordering_provider_tin","undefined_provider_tin",
+                "servicing_provider_npi", "referring_provider_npi", "servicing_facility_npi","ordering_provider_npi","undefined_provider_npi"
+        };
+        for (String field : idFields) {
+            Object valueObj = resultMap.get(field);
+            if(valueObj instanceof List)
+            {
+                List valueList = (List) valueObj;
+
+                for(int i = 0; i<valueList.size(); i++)
+                {
+                    Object obj = valueList.get(i);
+                    if(obj instanceof PostProcessingExecutorInput)
+                    {
+                        PostProcessingExecutorInput input = (PostProcessingExecutorInput) obj;
+                        String validatedValue = processMap(input.getExtractedValue(), rootPipelineId, field);
+                        input.setExtractedValue(validatedValue);
+
+                    }
+                }
+            }
+        }
+    }
+
+    private String processMap(String extractedValue, Long rootPipelineId, String field) {
+
+        if (extractedValue == null || extractedValue.trim().isEmpty()) {
+            return "";
+        }
+
+        String originalValue = extractedValue.trim();
+        String value = originalValue;
+
+        // Handle NPI prefix
+        Matcher npiPrefixMatcher = NPI_PREFIX.matcher(value);
+        if (npiPrefixMatcher.matches()) {
+            value = npiPrefixMatcher.group(1);
+        }
+
+        // Handle TIN prefix
+        Matcher tinPrefixMatcher = TIN_PREFIX.matcher(value);
+        if (tinPrefixMatcher.matches()) {
+            value = tinPrefixMatcher.group(1);
+        }
+
+        // Normalize value
+        String numericValue = value.replaceAll("[\\s-]", "");
+
+        // Validate alphanumeric
+        if (!ALPHA_NUMERIC_ONLY.matcher(numericValue).matches()) {
+            logInvalid(field, originalValue, "non-alphanumeric");
+            return "";
+        }
+
+        // ---------- NPI FIELD ----------
+        if (isNpiField(field)) {
+            if (NPI_PATTERN.matcher(numericValue).matches()) {
+                return numericValue;
+            } else {
+                logInvalid(field, originalValue, "invalid NPI");
+                return "";
+            }
+        }
+
+        // ---------- TIN FIELD ----------
+        if (isTinField(field)) {
+//            if (numericValue.length() == 9) {
+            if (TIN_PATTERN.matcher(value).matches()) {
+                return numericValue;
+            } else {
+                logInvalid(field, originalValue, "invalid TIN length");
+                return "";
+            }
+        }
+
+        return "";
+    }
+
+    private boolean isNpiField(String field) {
+        return field != null && field.endsWith("_npi");
+    }
+
+    private boolean isTinField(String field) {
+        return field != null && field.endsWith("_tin");
+    }
+
+    private void logInvalid(String field, String value, String reason) {
+        String logMsg = "[RootPipelineID: " + rootPipelineId +
+                "] Rejected value '" + value + "' for field " + field +
+                " due to " + reason;
+        logger.info(logMsg);
+//        logMessages.add(logMsg);
+    }
+
+    public static class MappingResult {
+        private Map mappedData;
+
+        public MappingResult(Map mappedData) {
+            this.mappedData = mappedData;
+        }
+
+        public Map getMappedData() {
+            return mappedData;
+        }
+    }
+
+    public static class PostProcessingExecutorInput {
+
+        private Long tenantId;
+        private double aggregatedScore;
+        private double maskedScore;
+        private String originId;
+        private Integer paperNo;
+        private String extractedValue;
+        private double vqaScore;
+        private Integer rank;
+        private Integer sorItemAttributionId;
+        private String sorItemName;
+        private String documentId;
+        private Long accTransactionId;
+        private String label;
+        private String sectionAlias;
+        private Long score;
+        private String bBox;
+        private Long rootPipelineId;
+        private Long frequency;
+        private Long questionId;
+        private Long synonymId;
+        private String modelRegistry;
+        private String encryptionPolicy;
+        private String isEncrypted;
+        private String lineItemType;
+
+        public String getExtractedValue() {
+            return extractedValue;
+        }
+
+        public void setExtractedValue(String extractedValue) {
+            this.extractedValue = extractedValue;
+        }
+    }
+}

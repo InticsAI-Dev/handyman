@@ -1,0 +1,337 @@
+package com.intics.script.MultiLineItem;
+
+import org.slf4j.Logger;
+
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.util.*;
+
+public class ServiceToDateMapper {
+
+    private Logger logger;
+
+    public ServiceToDateMapper(Logger logger) {
+        this.logger = logger;
+    }
+
+    public MappingResult doCustomPredictionMapping(Map predictionKeyMap, Long rootPipelineId) {
+        String logPrefix = "[RootPipelineID: " + rootPipelineId + "] ";
+        logger.info(logPrefix + "Entered MemberDOBMapper.doCustomPredictionMapping method.");
+
+        if (predictionKeyMap == null) {
+            return new MappingResult(new HashMap());
+        }
+
+        Object serviceObj = predictionKeyMap.get("service_to_date");
+        if (serviceObj instanceof List) {
+            List serviceList = (List) serviceObj;
+
+            for (int i = 0; i < serviceList.size(); i++) {
+                Object obj = serviceList.get(i);
+                if (obj instanceof ServiceToDateMapper.PostProcessingExecutorInput) {
+
+                    ServiceToDateMapper.PostProcessingExecutorInput serviceToDate =
+                            (ServiceToDateMapper.PostProcessingExecutorInput) obj;
+                    if (!serviceToDate.getExtractedValue().isEmpty()) {
+                        String validatedServiceToDate =
+                                DateValidator(serviceToDate.getExtractedValue(),
+                                        rootPipelineId,
+                                        false);
+
+                        serviceToDate.setExtractedValue(validatedServiceToDate);
+                        if (validatedServiceToDate.isEmpty()) {
+                            serviceToDate.setLabel("");
+                            serviceToDate.setSectionAlias("");
+                            serviceToDate.setBBox("");
+                        }
+                    }
+                }
+            }
+            predictionKeyMap.put("service_to_date", serviceList);
+        } else {
+            logger.warn(logPrefix + "'service_to_date' is not a List. Skipping processing.");
+        }
+        return new MappingResult(predictionKeyMap);
+    }
+
+    public String DateValidator(Object dateValue,Long rootPipelineId ,boolean isDOB)
+    {
+        String logPrefix = "[RootPipelineID: " + rootPipelineId + "] ";
+        if (dateValue instanceof String) {
+            String inputDate = ((String) dateValue).trim();
+            if (!inputDate.isEmpty()) {
+                logger.info(logPrefix + "Processing 'date' field (Input type: String).");
+
+                int currentYear = LocalDate.now().getYear();
+                boolean isTwoDigitYear = inputDate.matches("\\d{1,2}[-/:. ]\\d{1,2}[-/:. ]\\d{2}(?!\\d)");
+                logger.debug(logPrefix + "isTwoDigitYear: ");
+
+                Date parsedDate = parseDate(inputDate);
+                logger.debug(logPrefix + "Parsed date from parseDate: ");
+
+                if (parsedDate != null) {
+                    if (isTwoDigitYear) {
+                        logger.info(logPrefix + "Detected two-digit year in Date:");
+                        parsedDate = convertTwoDigitYearToFourDigit(inputDate, currentYear, logPrefix);
+                        logger.debug(logPrefix + "Date after convertTwoDigitYearToFourDigit:");
+                    }
+
+                    if (parsedDate != null) {
+                        Calendar parsedCal = Calendar.getInstance();
+                        parsedCal.setTime(parsedDate);
+                        Calendar currentCal = Calendar.getInstance();
+                        logger.debug(logPrefix + "Comparing parsed date with current date");
+
+                        if (parsedCal.after(currentCal)&& isDOB) {
+                            if(isTwoDigitYear){
+                                return futureDateFormatter(parsedDate,currentYear,logPrefix);}
+                            else{
+                                return "";
+                            }
+                        } else {
+                            SimpleDateFormat outputFormatter = new SimpleDateFormat("yyyy-MM-dd");
+                            String formattedDOB = outputFormatter.format(parsedDate);
+                            logger.info(logPrefix + "date is formated successfully  ");
+                            return formattedDOB;
+                        }
+                    } else {
+                        logger.warn(logPrefix + "Date mapping failed after two-digit year conversion. Removed based on configuration.");
+                        return "";
+                    }
+                } else {
+                    logger.warn(logPrefix + "Date mapping failed for 'member_date_of_birth'. Removed based on configuration.");
+                    return "";
+                }
+            } else {
+                logger.info(logPrefix + "Input is null or empty. Skipping processing.");
+            }
+        } else if (dateValue == null) {
+            logger.info(logPrefix + "Input is null. Skipping processing.");
+            return "";
+        } else {
+            logger.info(logPrefix + "date is not a String (Type: {}). Skipping processing.", dateValue.getClass().getName());
+            return "";
+        }
+        return "";
+    }
+    public Date deductCentury(Date inputDate, int currentYear, String logPrefix) {
+        if (inputDate == null) return null;
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(inputDate);
+
+        int parsedYear = calendar.get(Calendar.YEAR);
+
+        if (parsedYear > currentYear) {
+            calendar.add(Calendar.YEAR, -100);
+            inputDate = calendar.getTime();
+            logger.info(logPrefix + "'date deducted 100 years.");
+        }
+
+        return inputDate;
+    }
+    public String futureDateFormatter(Date parsedDate, int currentYear, String logPrefix)
+    {
+        parsedDate = deductCentury(parsedDate, currentYear, logPrefix);
+        if (parsedDate == null) {
+            logger.warn(logPrefix + "Date mapping failed after century deduction. Removed based on configuration.");
+            return "";
+        } else {
+            SimpleDateFormat outputFormatter = new SimpleDateFormat("yyyy-MM-dd");
+            String formattedDOB = outputFormatter.format(parsedDate);
+            logger.info(logPrefix + "date is formated successfully ");
+            return formattedDOB;
+        }
+    }
+    private Date parseDate(String dateStr) {
+        dateStr = normalizeDateString(dateStr);
+
+        String[] datePatterns = {
+                "M/d/yy",     // 6/5/24
+                "M.d.yy",     // 6.5.24
+                "M-d-yy",     // 6-5-24
+                "M d yy",     // 6 5 24
+                "MM/dd/yy",   // 06/05/24
+                "MM/d/yy",    // 06/5/24
+                "dd/MM/yy",   // 05/06/24
+                "d/MM/yy",    // 5/06/24
+                "MM.dd.yy",   // 06.05.24
+                "MM.d.yy",    // 06.5.24
+                "MM dd yy",   // 06 05 24
+                "MM d yy",    // 06 5 24
+                "dd-MM-yy",
+                "MM-dd-yy",
+                "yy-MM-dd",
+                "yyyy-MM-dd",
+                "yyyy.MM.dd",
+                "yyyy/MM/dd",
+                "yyyy MM dd",
+                "yyyy-MM-d",
+                "yyyy.MM.d",
+                "yyyy/MM/d",
+                "yyyy MM d",
+                "yyyy-M-dd",
+                "yyyy.M.dd",
+                "yyyy/M/dd",
+                "yyyy M dd",
+                "yyyy-M-d",
+                "yyyy.M.d",
+                "yyyy/M/d",
+                "yyyy M d",
+                "d MMMM yyyy",    // 5 February 2024
+                "dd MMMM yyyy",   // 05 February 2024
+                "d MMM yyyy",     // 5 Feb 2024
+                "dd MMM yyyy",
+                "MM dd yyyy",     // 06 05 2024
+                "d MMM, yyyy",    // 5 Feb, 2024
+                "d MMMM, yyyy",   // 5 February, 2024
+                "dd MMMM, yyyy",   // 05 February, 2024
+                "MMM d, yyyy",    // Feb 5, 2024
+                "MMM dd, yyyy",   // Feb 05, 2024
+                "MMM d yyyy",     // Feb 5 2024
+                "MMM dd yyyy",    // Feb 05 2024
+                "d-MMMM-yyyy",    // 5-February-2024
+                "d-MMM-yyyy",     // 5-Feb-2024
+                "MM/dd/yyyy",
+                "M/d/yyyy",
+                "MM-dd-yyyy",
+                "M-d-yyyy",
+                "MM.dd.yyyy",
+                "M.d.yyyy",
+                "d/MMM/yyyy",
+                "dd/MM/yyyy",
+                "d/M/yyyy",
+                "dd-MM-yyyy",
+                "d-M-yyyy",
+                "dd.MM.yyyy",
+                "dd.MMM.yyyy",
+                "d.M.yyyy",
+                "MM dd yyyy",
+                "MMM dd,yyyy"     // Feb 05,2024
+        };
+
+        for (String pattern : datePatterns) {
+            try {
+                SimpleDateFormat formatter = new SimpleDateFormat(pattern, Locale.ENGLISH);
+                formatter.setLenient(false);
+                Date parsedDate = formatter.parse(dateStr);
+                return parsedDate;
+            } catch (ParseException e) {
+                // Silent catch to reduce logging noise
+            }
+        }
+        logger.warn("Failed to parse date:");
+        return null;
+    }
+
+    private String normalizeDateString(String dateStr) {
+        if (dateStr == null) return null;
+        return dateStr.replaceAll("[^a-zA-Z0-9/\\- .]", "").trim();
+    }
+
+    public class MappingResult {
+        private Map mappedData;
+
+        public MappingResult(Map mappedData) {
+            this.mappedData = mappedData;
+        }
+
+        public Map getMappedData() {
+            return mappedData;
+        }
+    }
+
+    private Date convertTwoDigitYearToFourDigit(String dob, int currentYear, String logPrefix) {
+        String[] patterns = {"MM/dd/yy", "dd/MM/yy", "MM dd yy", "dd MM yy", "MM-dd-yy", "MM.dd.yy"};
+        Date parsed = null;
+
+        for (String pattern : patterns) {
+            try {
+                SimpleDateFormat fmt = new SimpleDateFormat(pattern, Locale.ENGLISH);
+                fmt.setLenient(false);
+                parsed = fmt.parse(dob);
+                logger.debug(logPrefix + "Parse");
+                break;
+            } catch (ParseException ignored) {}
+        }
+        if (parsed == null) {
+            logger.error(logPrefix + "Unable to parse DOB: ");
+            return null;
+        }
+
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(parsed);
+        int yy = cal.get(Calendar.YEAR);
+
+        if (yy < 100) {
+            int pivot = (currentYear % 100) + 10; // Adjust pivot to assume years within 10 years future or 90 years past
+            int century = currentYear / 100;
+            if (yy <= pivot) {
+                // Interpret e.g., "30" when pivot is 35 (2025) -> 2030
+                cal.set(Calendar.YEAR, century * 100 + yy);
+            } else {
+                // Interpret e.g., "30" when pivot is 25 (2025) -> 1930
+                cal.set(Calendar.YEAR, (century - 1) * 100 + yy);
+            }
+            logger.info(logPrefix + "Two-digit year mapped to full year ");
+        }
+
+        // Additional check to ensure the date is not in the future
+        Calendar currentCal = Calendar.getInstance();
+        if (cal.after(currentCal)) {
+            cal.add(Calendar.YEAR, -100);
+            logger.info(logPrefix + "Adjusted future year to past: ");
+        }
+
+        logger.debug(logPrefix + "Final converted date: ");
+        return cal.getTime();
+    }
+    public static class PostProcessingExecutorInput {
+
+        private Long tenantId;
+        private double aggregatedScore;
+        private double maskedScore;
+        private String originId;
+        private Integer paperNo;
+        private String extractedValue;
+        private double vqaScore;
+        private Integer rank;
+        private Integer sorItemAttributionId;
+        private String sorItemName;
+        private String documentId;
+        private Long accTransactionId;
+        private String label;
+        private String sectionAlias;
+        private Long score;
+        private String bBox;
+        private Long rootPipelineId;
+        private Long frequency;
+        private Long questionId;
+        private Long synonymId;
+        private String modelRegistry;
+        private String encryptionPolicy;
+        private String isEncrypted;
+        private String lineItemType;
+
+        public String getExtractedValue() {
+            return extractedValue;
+        }
+
+        public void setExtractedValue(String extractedValue) {
+            this.extractedValue = extractedValue;
+        }
+
+        public void setLabel(String label) { this.label = label; }
+
+        public void setSectionAlias(String sectionAlias) { this.sectionAlias = sectionAlias; }
+
+        public void setBBox(String bBox) { this.bBox = bBox; }
+
+        public String getLabel() { return label; }
+
+        public String getSectionAlias() { return sectionAlias; }
+
+        public String getBBox() { return bBox; }
+
+    }
+}
