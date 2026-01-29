@@ -1,8 +1,8 @@
-import org.slf4j.Logger;
-
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import org.slf4j.Logger;
 
 public class ProviderAddressMapper {
 
@@ -123,9 +123,29 @@ public class ProviderAddressMapper {
                 AddressComponents parsedAddress = parseAddress(inputAddress);
                 if (parsedAddress != null) {
                     addressKeyInput.setExtractedValue(parsedAddress.getAddressLine1());
-                    cityKeyInput.setExtractedValue(city.isEmpty() ? parsedAddress.getCity() : city);
-                    stateKeyInput.setExtractedValue(state.isEmpty() ? parsedAddress.getState() : state);
-                    zipcodeKeyInput.setExtractedValue(zipcode.isEmpty() ? parsedAddress.getZipcode() : zipcode);
+
+                    // Track which fields were empty before parsing
+                    boolean cityWasEmpty = city.isEmpty();
+                    boolean stateWasEmpty = state.isEmpty();
+                    boolean zipcodeWasEmpty = zipcode.isEmpty();
+
+                    // Set extracted values
+                    cityKeyInput.setExtractedValue(cityWasEmpty ? parsedAddress.getCity() : city);
+                    stateKeyInput.setExtractedValue(stateWasEmpty ? parsedAddress.getState() : state);
+                    zipcodeKeyInput.setExtractedValue(zipcodeWasEmpty ? parsedAddress.getZipcode() : zipcode);
+
+                    // Copy dependent fields (label, sectionAlias, bBox) from address_line1 to city/state/zipcode
+                    // Only if those fields were empty and got values from parsing
+                    if (cityWasEmpty && !parsedAddress.getCity().isEmpty()) {
+                        copyDependentFields(addressKeyInput, cityKeyInput);
+                    }
+                    if (stateWasEmpty && !parsedAddress.getState().isEmpty()) {
+                        copyDependentFields(addressKeyInput, stateKeyInput);
+                    }
+                    if (zipcodeWasEmpty && !parsedAddress.getZipcode().isEmpty()) {
+                        copyDependentFields(addressKeyInput, zipcodeKeyInput);
+                    }
+
                     logger.info(logPrefix + "Address fields successfully mapped and updated for " + providerType + ".");
                     addressProcessed = true;
                 } else {
@@ -379,6 +399,26 @@ public class ProviderAddressMapper {
         return null;
     }
 
+    /**
+     * Copy dependent fields (label, sectionAlias, bBox) from source to target
+     *
+     * @param from Source PostProcessingExecutorInput
+     * @param to Target PostProcessingExecutorInput
+     */
+    private void copyDependentFields(PostProcessingExecutorInput from, PostProcessingExecutorInput to) {
+        if (from != null && to != null) {
+            if (from.getLabel() != null) {
+                to.setLabel(from.getLabel());
+            }
+            if (from.getSectionAlias() != null) {
+                to.setSectionAlias(from.getSectionAlias());
+            }
+            if (from.getBBox() != null) {
+                to.setBBox(from.getBBox());
+            }
+        }
+    }
+
 
     public class AddressComponents {
         private String addressLine1;
@@ -399,11 +439,11 @@ public class ProviderAddressMapper {
         public String getZipcode() { return zipcode; }
     }
 
-    public class MappingResult {
+    public static class MappingResult {
         private Map mappedData;
 
         public MappingResult(Map mappedData) {
-            this.mappedData = mappedData;
+            this.mappedData = mappedData != null ? mappedData : new java.util.HashMap();
         }
 
         public Map getMappedData() {
@@ -450,6 +490,30 @@ public class ProviderAddressMapper {
         }
         public void setSorItemName(String sorItemName) {
             this.sorItemName = sorItemName;
+        }
+
+        public String getLabel() {
+            return label;
+        }
+
+        public void setLabel(String label) {
+            this.label = label;
+        }
+
+        public String getSectionAlias() {
+            return sectionAlias;
+        }
+
+        public void setSectionAlias(String sectionAlias) {
+            this.sectionAlias = sectionAlias;
+        }
+
+        public String getBBox() {
+            return bBox;
+        }
+
+        public void setBBox(String bBox) {
+            this.bBox = bBox;
         }
     }
 

@@ -1,5 +1,4 @@
 import org.slf4j.Logger;
-
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -34,6 +33,14 @@ public class MemberIdValidator {
 
         Map resultMap = new Hashtable(predictionKeyMap);
 
+        // Initialize lists for auth_id and additional_auth_properties if they don't exist or are null
+        if (!resultMap.containsKey("auth_id") || resultMap.get("auth_id") == null) {
+            resultMap.put("auth_id", new ArrayList());
+        }
+        if (!resultMap.containsKey("additional_auth_properties") || resultMap.get("additional_auth_properties") == null) {
+            resultMap.put("additional_auth_properties", new ArrayList());
+        }
+
         processField(resultMap, "member_id");
 
         mapAuthIdAndAdditionalProperties(resultMap, predictionKeyMap);
@@ -51,178 +58,275 @@ public class MemberIdValidator {
             for (int i = 0; i < objList.size(); i++) {
                 Object obj = objList.get(i);
                 if (obj instanceof PostProcessingExecutorInput) {
-                    PostProcessingExecutorInput medicaidIdInput = (PostProcessingExecutorInput) obj;
-
-                    String value = medicaidIdInput.getExtractedValue() != null ? medicaidIdInput.getExtractedValue().trim() : "";
+                    PostProcessingExecutorInput input = (PostProcessingExecutorInput) obj;
+                    String value = input.getExtractedValue() != null ? input.getExtractedValue().trim() : "";
 
                     if (value.length() == 0) {
-                        medicaidIdInput.setExtractedValue( "");
-                        return;
+                        input.setExtractedValue("");
+                        continue;
                     }
 
                     // Split multiple IDs on /, :, -
                     String[] parts = value.split("[/:]");
                     if (parts.length > 1) {
-                        String firstPart = cleanString(parts[0]);
-                        String secondPart = cleanString(parts[1]);
+                        String firstPart = parts[0] != null ? cleanString(parts[0]) : "";
+                        String secondPart = parts[1] != null ? cleanString(parts[1]) : "";
+
+                        boolean firstPartIsAuth = false;
+                        boolean secondPartIsAuth = false;
 
                         // First part check
-                        if (firstPart.toUpperCase().startsWith("UM")) {
+                        if (firstPart != null && !firstPart.isEmpty() && firstPart.toUpperCase().startsWith("UM")) {
                             if (UM_PATTERN.matcher(firstPart).matches()) {
-                                objAuthIdListAdd(resultMap, medicaidIdInput, firstPart, fieldName);
-                                updateMemberIdObj(resultMap,"member_id", "");
-
-                            } else {
-                                updateMemberIdObj(resultMap,"member_id", "");
+                                addAuthId(resultMap, input, firstPart);
+                                authIdCandidates.add(firstPart);
+                                firstPartIsAuth = true;
+                            } else if (UM_INVALID_PATTERN.matcher(firstPart).matches()) {
+                                addAdditionalAuth(resultMap, input, firstPart);
+                                additionalAuthCandidates.add(firstPart);
+                                firstPartIsAuth = true;
                             }
-                        } else {
-                            valueCheck(resultMap, medicaidIdInput, fieldName, firstPart);
-                            updateMemberIdObj(resultMap,"member_id", firstPart);
-
                         }
 
                         // Second part check
-                        if (secondPart.toUpperCase().startsWith("UM")) {
+                        if (secondPart != null && !secondPart.isEmpty() && secondPart.toUpperCase().startsWith("UM")) {
                             if (UM_PATTERN.matcher(secondPart).matches()) {
-//                                resultMap.put("auth_id", secondPart);
-                                objAuthIdListAdd(resultMap, medicaidIdInput, secondPart, "auth_id");
-
-//                                authIdCandidates.add(secondPart);
+                                addAuthId(resultMap, input, secondPart);
+                                authIdCandidates.add(secondPart);
+                                secondPartIsAuth = true;
                             } else if (UM_INVALID_PATTERN.matcher(secondPart).matches()) {
-//                                additionalAuthCandidates.add(secondPart);
-                                objAuthIdListAdd(resultMap, medicaidIdInput, secondPart, "auth_id");
-
+                                addAdditionalAuth(resultMap, input, secondPart);
+                                additionalAuthCandidates.add(secondPart);
+                                secondPartIsAuth = true;
                             }
                         }
-                        return;
-                    }
 
-                    // Single value processing
-                    value = cleanString(value);
-                    valueCheck(resultMap, medicaidIdInput, fieldName, value);
+                        // Update current input based on what was found
+                        if (firstPartIsAuth && secondPartIsAuth) {
+                            input.setExtractedValue("");
+                        } else if (firstPartIsAuth) {
+                            // First part moved to auth
+                             if (fieldName.equals("member_id")) {
+                                 // If member_id, first part is Auth, so member_id is cleared.
+                                 input.setExtractedValue("");
+                             }
+                        } else if (secondPartIsAuth) {
+                            // Second part moved to auth, first part remains
+                            valueCheck(input, firstPart);
+                        } else {
+                            // Neither is auth
+                            if (fieldName.equals("member_id")) {
+                                valueCheck(input, firstPart);
+                            }
+                        }
+
+                    } else {
+                        // Single value processing
+                        value = cleanString(value);
+
+                        if (value != null && !value.isEmpty() && value.toUpperCase().startsWith("UM")) {
+                            if (UM_PATTERN.matcher(value).matches()) {
+                                addAuthId(resultMap, input, value);
+                                authIdCandidates.add(value);
+                                input.setExtractedValue("");
+                            } else if (UM_INVALID_PATTERN.matcher(value).matches()) {
+                                addAdditionalAuth(resultMap, input, value);
+                                additionalAuthCandidates.add(value);
+                                input.setExtractedValue("");
+                            } else {
+                                // Starts with UM but not matching patterns? Treat as invalid/empty?
+                                // Original code: resultMap.put(fieldName, "");
+                                input.setExtractedValue("");
+                            }
+                        } else {
+                            valueCheck(input, value);
+                        }
+                    }
                 }
             }
         }
     }
 
-    private void updateMemberIdObj(Map resultMap, String fieldName, String value) {
-        Object ValueObjs = resultMap.get(fieldName);
-        List valueObjList = (List) ValueObjs;
-        for(int memVal=0; memVal<=valueObjList.size(); memVal++){
-            PostProcessingExecutorInput inputValueObj = (PostProcessingExecutorInput) valueObjList.get(memVal);
-            inputValueObj.setExtractedValue(value);
-        }
-    }
-
-    private void objAuthIdListAdd(Map resultMap, PostProcessingExecutorInput medicaidIdInput, String firstPart, String fieldName) {
-        Object authValueObj = resultMap.get(fieldName);
-        // update the value
-        medicaidIdInput.setExtractedValue(firstPart);
-        medicaidIdInput.setSorItemName(fieldName);
-        List authValueObjList = (List) authValueObj;
-        authValueObjList.add(medicaidIdInput);
-    }
-
-    private void valueCheck(Map resultMap, PostProcessingExecutorInput inputObj, String fieldName, String value) {
-        Matcher parenMatcher = WITH_PARENTHESES.matcher(value);
-        if (parenMatcher.find()) {
-            value = parenMatcher.group(1);
-        }
-
-        if (value.toUpperCase().startsWith("UM")) {
-            if (UM_PATTERN.matcher(value).matches()) {
-                objAuthIdListAdd(resultMap, inputObj, value, fieldName);
-
-//                authIdCandidates.add(value);
-            } else if (UM_INVALID_PATTERN.matcher(value).matches()) {
-//                additionalAuthCandidates.add(value);
-                objAuthIdListAdd(resultMap, inputObj, value, fieldName);
-
-            }
-            inputObj.setExtractedValue("");
+    private void valueCheck(PostProcessingExecutorInput input, String value) {
+        if (value == null || value.isEmpty()) {
+            input.setExtractedValue("");
             return;
         }
 
-        if (value.length() > 20 && !REGEX_ALL_ALPHA_PATTERN.matcher(value).matches()) {
-            inputObj.setExtractedValue(value.substring(0, 20));
+        Matcher parenMatcher = WITH_PARENTHESES.matcher(value);
+        if (parenMatcher.find()) {
+            value = parenMatcher.group(1);
+            if (value == null) {
+                value = "";
+            }
+        }
 
+        if (value.length() > 20 && !REGEX_ALL_ALPHA_PATTERN.matcher(value).matches()) {
+            input.setExtractedValue(value.substring(0, 20));
         }
         else if (REGEX_ALL_ALPHA_PATTERN.matcher(value).matches()) {
-            inputObj.setExtractedValue("");
+            input.setExtractedValue("");
         } else {
-            inputObj.setExtractedValue(value);
-
+            input.setExtractedValue(value);
         }
     }
 
+    private void addAuthId(Map resultMap, PostProcessingExecutorInput originalInput, String value) {
+        List authList = (List) resultMap.get("auth_id");
+        PostProcessingExecutorInput newInput = copyInput(originalInput);
+        newInput.setExtractedValue(value);
+        newInput.setSorItemName("auth_id");
+        authList.add(newInput);
+    }
+
+    private void addAdditionalAuth(Map resultMap, PostProcessingExecutorInput originalInput, String value) {
+        List addAuthList = (List) resultMap.get("additional_auth_properties");
+        PostProcessingExecutorInput newInput = copyInput(originalInput);
+        newInput.setExtractedValue(value);
+        newInput.setSorItemName("additional_auth_properties");
+        addAuthList.add(newInput);
+    }
+
+    private PostProcessingExecutorInput copyInput(PostProcessingExecutorInput input) {
+        if (input == null) {
+            return new PostProcessingExecutorInput();
+        }
+
+        PostProcessingExecutorInput newInput = new PostProcessingExecutorInput();
+        newInput.tenantId = input.tenantId;
+        newInput.aggregatedScore = input.aggregatedScore;
+        newInput.maskedScore = input.maskedScore;
+        newInput.originId = input.originId;
+        newInput.paperNo = input.paperNo;
+        newInput.vqaScore = input.vqaScore;
+        newInput.rank = input.rank;
+        newInput.sorItemAttributionId = input.sorItemAttributionId;
+        newInput.sorItemName = input.sorItemName;
+        newInput.documentId = input.documentId;
+        newInput.accTransactionId = input.accTransactionId;
+        newInput.label = input.label;
+        newInput.sectionAlias = input.sectionAlias;
+        newInput.score = input.score;
+        newInput.bBox = input.bBox;
+        newInput.rootPipelineId = input.rootPipelineId;
+        newInput.frequency = input.frequency;
+        newInput.questionId = input.questionId;
+        newInput.synonymId = input.synonymId;
+        newInput.modelRegistry = input.modelRegistry;
+        newInput.encryptionPolicy = input.encryptionPolicy;
+        newInput.isEncrypted = input.isEncrypted;
+        newInput.lineItemType = input.lineItemType;
+        return newInput;
+    }
+
     private void mapAuthIdAndAdditionalProperties(Map resultMap, Map inputMap) {
+        // This method was originally processing "auth_id" from inputMap.
+        // Since we are now building auth_id list dynamically in processField,
+        // we might need to process existing auth_id inputs if any.
+
         Object authIdObj = inputMap.get("auth_id");
-
-        if (authIdObj instanceof List) {            // check whether the input is of type list
+        if (authIdObj instanceof List) {
             List authIdList = (List) authIdObj;
-            for (int row = 0; row < authIdList.size(); row++) { // iterate each row
-                Object obj = authIdList.get(row);
-                if (obj instanceof PostProcessingExecutorInput) {
-                    PostProcessingExecutorInput authIdInput =
-                            (PostProcessingExecutorInput) obj; // type cast to PostProcessingExecutorInput pojo
+            // We need to iterate over a copy or use an iterator if we are modifying the list,
+            // but here we are just reading and potentially adding to candidates.
+            // However, the original logic was to validate them and potentially move them.
 
-                    String authId = authIdInput.getExtractedValue() != null ? cleanString(authIdInput.getExtractedValue()) : null;
+            // Since we are modifying the list in place in processField (by adding new items),
+            // we should be careful. But here we are processing the *original* input items.
+            // The items added by processField are new objects.
+
+            // Let's iterate and validate existing items
+            for (int i = 0; i < authIdList.size(); i++) {
+                Object obj = authIdList.get(i);
+                if (obj instanceof PostProcessingExecutorInput) {
+                    PostProcessingExecutorInput input = (PostProcessingExecutorInput) obj;
+                    // Skip items we just added (if any way to distinguish? maybe check if we processed them?)
+                    // For now, let's assume inputMap contains original items.
+
+                    String authId = input.getExtractedValue() != null ? cleanString(input.getExtractedValue()) : null;
+
                     if (authId != null && authId.length() != 0) {
                         if (UM_PATTERN.matcher(authId).matches()) {
-                            authIdInput.setExtractedValue(authId);
-                            String logMsg = "[RootPipelineID: " + rootPipelineId + "] auth_id field validated as auth_id";
-                            logger.info(logMsg);
+                            authIdCandidates.add(authId);
+                            input.setExtractedValue(authId); // Update with cleaned value
                         } else if (UM_INVALID_PATTERN.matcher(authId).matches()) {
-                            authIdInput.setExtractedValue(authId);
-                            String logMsg = "[RootPipelineID: " + rootPipelineId + "] auth_id field validated as additional_auth_properties";
-                            logger.info(logMsg);
+                            additionalAuthCandidates.add(authId);
+                            // Move to additional_auth_properties
+                            addAdditionalAuth(resultMap, input, authId);
+                            input.setExtractedValue(""); // Clear from auth_id
+                        } else {
                         }
-                    }
-
-                    List allAdditionalAuth = new ArrayList(additionalAuthCandidates);
-                    if (!authIdCandidates.isEmpty()) {
-                        String firstAuthId = (String) authIdCandidates.get(0);
-                        authIdInput.setExtractedValue(firstAuthId);
-                        String logMsg = "[RootPipelineID: " + rootPipelineId + "] Assigned first valid UM value to auth_id";
-                        logger.info(logMsg);
-                        if (authIdCandidates.size() > 1) {
-                            for (int i = 1; i < authIdCandidates.size(); i++) {
-                                allAdditionalAuth.add(authIdCandidates.get(i));
-                            }
-                        }
-                    } else {
-                        String logMsg = "[RootPipelineID: " + rootPipelineId + "] No valid UM values found, setting auth_id to empty";
-                        logger.info(logMsg);
-                        objAuthIdListAdd(resultMap, authIdInput, "", "auth_id");
-
-                    }
-
-                    if (!allAdditionalAuth.isEmpty()) {
-                        StringBuffer additionalAuthIds = new StringBuffer();
-                        Iterator it = allAdditionalAuth.iterator();
-                        while (it.hasNext()) {
-                            additionalAuthIds.append((String) it.next());
-                            if (it.hasNext()) {
-                                additionalAuthIds.append(",");
-                            }
-                        }
-                        objAuthIdListAdd(resultMap, authIdInput, additionalAuthIds.toString(), "additional_auth_properties");
-
-                        String logMsg = "[RootPipelineID: " + rootPipelineId + "] Appended UM values to additional_auth_properties";
-                        logger.info(logMsg);
-                    } else {
-                        objAuthIdListAdd(resultMap, authIdInput, "", "additional_auth_properties");
                     }
                 }
             }
-          }
         }
+
+        List finalAuthList = (List) resultMap.get("auth_id");
+        List finalAddAuthList = (List) resultMap.get("additional_auth_properties");
+
+
+        if (!authIdCandidates.isEmpty()) {
+
+             List validAuths = new ArrayList();
+             List invalidAuths = new ArrayList(); // Items that were in auth_id but are actually additional
+
+             // Separate items in finalAuthList
+             if (finalAuthList != null) {
+                 Iterator it = finalAuthList.iterator();
+                 while(it.hasNext()) {
+                     Object obj = it.next();
+                     if (obj instanceof PostProcessingExecutorInput) {
+                         PostProcessingExecutorInput input = (PostProcessingExecutorInput) obj;
+                         String val = input.getExtractedValue();
+                         if (val != null && !val.isEmpty()) {
+                             validAuths.add(input);
+                         } else {
+                             // Empty value? Remove it?
+                             it.remove();
+                         }
+                     }
+                 }
+             }
+
+             if (!validAuths.isEmpty()) {
+                 // Keep the first one
+                 PostProcessingExecutorInput primary = (PostProcessingExecutorInput) validAuths.get(0);
+
+                 // Move others
+                 for (int i = 1; i < validAuths.size(); i++) {
+                     PostProcessingExecutorInput extra = (PostProcessingExecutorInput) validAuths.get(i);
+                     // Remove from auth_id list (we'll clear and rebuild or remove specific)
+                     // Add to additional list
+                     extra.setSorItemName("additional_auth_properties");
+                     finalAddAuthList.add(extra);
+                 }
+
+                 // Clear auth_id list and add back only the primary
+                 finalAuthList.clear();
+                 finalAuthList.add(primary);
+             } else {
+                 if (finalAuthList.isEmpty()) {
+                 }
+             }
+
+        } else {
+            // No valid auth IDs found.
+            finalAuthList.clear();
+            // Maybe add an empty object if needed?
+        }
+
+
+    }
 
     private String cleanString(String str) {
         if (str == null || str.trim().length() == 0) return "";
         str = str.trim();
+        if (str == null || str.isEmpty()) return "";
         int parantheseIndex = str.indexOf('(');
-        if (parantheseIndex != -1) str = str.substring(0, parantheseIndex);
+        if (parantheseIndex != -1) {
+            str = str.substring(0, parantheseIndex);
+            if (str == null) str = "";
+        }
         return str.replaceAll("[^a-zA-Z0-9]", "");
     }
 
@@ -230,7 +334,7 @@ public class MemberIdValidator {
         private Map mappedData;
 
         public MappingResult(Map mappedData) {
-            this.mappedData = mappedData;
+            this.mappedData = mappedData != null ? mappedData : new HashMap();
         }
 
         public Map getMappedData() {
@@ -276,5 +380,4 @@ public class MemberIdValidator {
             this.sorItemName = sorItemName;
         }
     }
-
 }

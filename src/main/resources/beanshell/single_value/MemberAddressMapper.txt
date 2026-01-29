@@ -1,8 +1,7 @@
-import org.slf4j.Logger;
-
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.slf4j.Logger;
 
 public class MemberAddressMapper {
 
@@ -47,7 +46,7 @@ public class MemberAddressMapper {
         PostProcessingExecutorInput stateObj = getFirst(predictionKeyMap, "member_state");
         PostProcessingExecutorInput zipcodeObj = getFirst(predictionKeyMap, "member_zipcode");
 
-        String inputAddress = hasValue(addressLine1Obj) ? addressLine1Obj.getExtractedValue().trim() : 
+        String inputAddress = hasValue(addressLine1Obj) ? addressLine1Obj.getExtractedValue().trim() :
                 (addressLine1Obj != null && addressLine1Obj.getExtractedValue() == null ? null : "");
         String city = hasValue(cityObj) ? cityObj.getExtractedValue().trim() : "";
         String state = hasValue(stateObj) ? stateObj.getExtractedValue().trim() : "";
@@ -312,7 +311,7 @@ public class MemberAddressMapper {
         Pattern streetFullWordPattern = Pattern.compile("(?i).*(street|avenue|road|lane|court|place|drive|boulevard|parkway).*");
         Pattern streetAbbrPattern = Pattern.compile("(?i).*\\b(st|ave|rd|ln|ct|pl|dr)\\b.*|.*\\b(st|ave|rd|ln|ct|pl|dr)$");
         Pattern numericPattern = Pattern.compile("^\\d+.*");
-        
+
         for (int i = lastIndex; i >= 0; i--) {
             String part = parts[i];
             // Check full words first (more specific) - e.g., "Street", "Avenue"
@@ -368,7 +367,7 @@ public class MemberAddressMapper {
 
         return null;
     }
-    
+
     private class AddressComponents {
         private String addressLine1;
         private String city;
@@ -388,11 +387,11 @@ public class MemberAddressMapper {
         public String getZipcode() { return zipcode; }
     }
 
-    public class MappingResult {
+    public static class MappingResult {
         private Map mappedData;
 
         public MappingResult(Map mappedData) {
-            this.mappedData = mappedData;
+            this.mappedData = mappedData != null ? mappedData : new java.util.HashMap();
         }
 
         public Map getMappedData() {
