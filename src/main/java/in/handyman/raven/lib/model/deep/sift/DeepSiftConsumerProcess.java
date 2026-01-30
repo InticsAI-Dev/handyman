@@ -26,6 +26,8 @@ import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_DEEP_SIFT
 import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
 import static in.handyman.raven.core.enums.NetworkHandlerConstants.*;
 import static in.handyman.raven.exception.HandymanException.handymanRepo;
+import static in.handyman.raven.lib.DeepSiftAction.PAGE_CONTENT_MIN_LENGTH;
+import in.handyman.raven.lib.adapters.scalar.WordCountAdapter;
 
 public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<DeepSiftInputTable, DeepSiftOutputTable> {
     private static final String PROCESS_NAME = "DATA_EXTRACTION";
@@ -42,6 +44,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
     private final ObjectMapper objectMapper;
     private final CoproRetryService coproRetryService;
     private final String processBase64;
+    private final WordCountAdapter wordCountAdapter;
 
     public DeepSiftConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, Integer pageContentMinLength, FileProcessingUtils fileProcessingUtils, String processBase64) {
         this.log = log;
@@ -50,6 +53,7 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
         this.fileProcessingUtils = fileProcessingUtils;
         this.objectMapper = new ObjectMapper();
         this.processBase64 = processBase64;
+        this.wordCountAdapter = new WordCountAdapter();
         int connectTimeout = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_CLIENT_DEEP_SIFT_CONNECT_TIMEOUT, "100"));
         int writeTimeout = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_CLIENT_DEEP_SIFT_WRITE_TIMEOUT, "100"));
         int readTimeout = Integer.parseInt(this.action.getContext().getOrDefault(COPRO_CLIENT_DEEP_SIFT_READ_TIMEOUT, "100"));
@@ -182,7 +186,6 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
         }
     }
 
-
     private void requestExecutor(DeepSiftInputTable entity, Request request, List<DeepSiftOutputTable> parentObj,
                                  String dbJsonRequest, URL endpoint, long startTime) {
 
@@ -224,6 +227,25 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
 
                     if (modelResponse.isSuccess() && modelResponse.hasInferResponse()) {
                         String extractedContent = modelResponse.getInferResponse();
+
+                        // USE WordCountAdapter instead of custom method
+                        int wordCount = 0;
+                        try {
+                            wordCount = wordCountAdapter.getThresholdScore(extractedContent);
+                        } catch (Exception e) {
+                            log.error(aMarker, "Error computing word count for originId: {}, paperNo: {}",
+                                    entity.getOriginId(), entity.getPaperNo(), e);
+                            wordCount = 0;  // Default to 0 on error
+                        }
+
+                        int blankPageThreshold = Integer.parseInt(
+                                action.getContext().getOrDefault(PAGE_CONTENT_MIN_LENGTH, "10")
+                        );
+                        boolean isBlankPage = wordCount < blankPageThreshold;
+
+                        log.info(aMarker, "OriginId: {}, PaperNo: {}, WordCount: {}, Threshold: {}, IsBlank: {}",
+                                entity.getOriginId(), entity.getPaperNo(), wordCount, blankPageThreshold, isBlankPage);
+
                         String encryptSotPageContent = action.getContext().get(ENCRYPT_DEEP_SIFT_OUTPUT);
                         String finalExtractedContent = extractedContent;
                         if ("true".equals(encryptSotPageContent)) {
@@ -256,6 +278,8 @@ public class DeepSiftConsumerProcess implements CoproProcessor.ConsumerProcess<D
                                 .request(encryptRequestResponse(dbJsonRequest))
                                 .response(encryptRequestResponse(responseBody))
                                 .endpoint(String.valueOf(endpoint))
+                                .wordCount(wordCount)
+                                .isBlankPage(isBlankPage)
                                 .build());
                     }
                 }
