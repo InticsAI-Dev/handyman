@@ -26,6 +26,7 @@ import org.slf4j.MarkerFactory;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -66,7 +67,7 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
 
         final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(config.getResourceConn());
         InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
-
+        List<MultiEntityFieldHandlingInput> updatedTableInfos = new ArrayList<>();
         boolean pipelineEncryptionActive = Boolean.parseBoolean(action.getContext().get(EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION));
         boolean kvpEncryptionActive = Boolean.parseBoolean(action.getContext().get(EncryptionConstants.KVP_JSON_PARSER_ENCRYPTION));
 
@@ -89,7 +90,19 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
             }
 
             log.info(aMarker, "PROCESSING: Executing filtering and consolidation logic.");
-            List<MultiEntityFieldHandlingInput> updatedTableInfos = processAndMapFilteredData(tableInfos);
+             Map<String, List<MultiEntityFieldHandlingInput>> groupedOrigins =
+                    tableInfos.stream().collect(Collectors.groupingBy(
+                            MultiEntityFieldHandlingInput::getOriginId
+                    ));
+            groupedOrigins.forEach((s, multiEntityFieldHandlingInputs) -> {
+                try {
+                    log.info(aMarker, "Processing OriginId: {} with {} records", s, multiEntityFieldHandlingInputs.size());
+                    updatedTableInfos.addAll(processAndMapFilteredData(tableInfos));
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            });
+
             log.info(aMarker, "PROCESSING: Filtering and consolidation completed. Output size: {}", updatedTableInfos.size());
 
             if (pipelineEncryptionActive) {
@@ -120,6 +133,7 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
     public List<MultiEntityFieldHandlingInput> processAndMapFilteredData(List<MultiEntityFieldHandlingInput> inputList) throws Exception {
         log.info(aMarker, "====== PROCESS AND MAP FILTERED DATA STARTED ======");
         log.info(aMarker, "Starting core business logic filtering and consolidation. Input size: {}", inputList.size());
+        List<MultiEntityFieldHandlingInput> consolidatedInputs = new ArrayList<>();
 
         List<MultiEntityFieldHandlingInput> mmIndicatorInputs = inputList.stream()
                 .filter(item -> "multiple_member_indicator".equals(item.getSorItemName()))
@@ -134,83 +148,21 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
                 .filter(item -> "false".equals(item.getIsMultiEntityEnabled()))
                 .collect(Collectors.toList());
 
-        log.info(aMarker, "Partitioned inputs - Non-Indicator: {}, Indicator: {}", nonIndicatorInputs.size(), indicatorInputs.size());
-        List<MultiEntityFieldHandlingInput> consolidatedInputs = new ArrayList<>();
+        log.info(aMarker, "Partitioned inputs - Multi entity enabled: {}, Multi entity disabled: {}", multiEntityEnabledInputs.size(), multiEntityDisabledInputs.size());
 
-        // Case 1: Multi-Value Processing
-        log.info(aMarker, "--- Starting CASE 1: Multi-Value Processing ---");
-        List<MultiEntityFieldHandlingInput> case1Output = handleCase1MultiValue(multiValueInputs, aMarker, log);
-        consolidatedInputs.addAll(case1Output);
-        log.info(aMarker, "Processed Case 1 (Multi-Value). Input: {}, Output: {}", multiValueInputs.size(), case1Output.size());
-        logCaseOutput("CASE 1", case1Output);
 
-        if (!singleValueInputs.isEmpty()) {
-            log.info(aMarker, "--- Processing Single-Value Inputs ---");
+        handleMultiMemberIndicator(mmIndicatorInputs,consolidatedInputs);
 
-            // Section Alias Filter
-            log.info(aMarker, "Applying Section Alias or Fallback Filter");
-            List<MultiEntityFieldHandlingInput> maxSingleValueFilteredList = filterBySectionAliasOrFallback(singleValueInputs);
-            log.info(aMarker, "Section Alias Filter - Input: {}, Output: {}",
-                    singleValueInputs.size(), maxSingleValueFilteredList.size());
+        handleMultiEntityEnabled(multiEntityDisabledInputs,consolidatedInputs);
 
-            // Partition by multi-entity flag
-            Map<Boolean, List<MultiEntityFieldHandlingInput>> groupedByMultiEntity = maxSingleValueFilteredList.stream()
-                    .collect(Collectors.partitioningBy(item -> "true".equalsIgnoreCase(item.getIsMultiEntityEnabled())));
+        handleMultiEntityDisabled(multiEntityDisabledInputs,consolidatedInputs);
 
-            List<MultiEntityFieldHandlingInput> multiEntityEnabledList = groupedByMultiEntity.get(true);
-            List<MultiEntityFieldHandlingInput> multiEntityDisabledList = groupedByMultiEntity.get(false);
 
-            log.info(aMarker, "Multi-Entity Partitioning - Enabled: {}, Disabled: {}",
-                    multiEntityEnabledList.size(), multiEntityDisabledList.size());
 
-            // Case 3: Multi-Entity Enabled
-            log.info(aMarker, "--- Starting CASE 3: Multi-Entity Enabled Processing ---");
-            List<MultiEntityFieldHandlingInput> case3Output = handleCase3MultiEntityEnabled(multiEntityEnabledList, aMarker, log, action);
-            consolidatedInputs.addAll(case3Output);
-            log.info(aMarker, "Processed Case 3 (Multi-Entity Enabled). Input: {}, Output: {}",
-                    multiEntityEnabledList.size(), case3Output.size());
-            logCaseOutput("CASE 3", case3Output);
-
-            // Case 4: Multi-Entity Disabled
-            log.info(aMarker, "--- Starting CASE 4: Multi-Entity Disabled Processing ---");
-            List<MultiEntityFieldHandlingInput> case4Output = handleCase4MultiEntityDisabled(multiEntityDisabledList, aMarker, log, action);
-            consolidatedInputs.addAll(case4Output);
-            log.info(aMarker, "Processed Case 4 (Multi-Entity Disabled). Input: {}, Output: {}",
-                    multiEntityDisabledList.size(), case4Output.size());
-            logCaseOutput("CASE 4", case4Output);
-        }
-
-        // Handle indicators as simple single-value items
-        log.info(aMarker, "--- Processing Indicator Items ---");
-        handleSingleValueLineItems(indicatorInputs, false, null, consolidatedInputs);
-        log.info(aMarker, "Added {} indicator items to consolidated list", indicatorInputs.size());
-
-        log.info(aMarker, "Filtering and consolidation complete. Total consolidated inputs: {}", consolidatedInputs.size());
-
-        // Final filtering
-        List<MultiEntityFieldHandlingInput> finalOutput = new ArrayList<>();
-        int filteredCount = 0;
-        for (MultiEntityFieldHandlingInput inputItem : consolidatedInputs) {
-            if (!inputItem.isRemovedAfterFiltering()) {
-                finalOutput.add(inputItem);
-            } else {
-                filteredCount++;
-                log.debug(aMarker, "Filtered out item - SorItemName: {}, DocumentId: {}, GroupId: {}, BatchId: {}, Message: {}",
-                        inputItem.getSorItemName(), inputItem.getDocumentId(), inputItem.getGroupId(),
-                        inputItem.getBatchId(), inputItem.getMessage());
-            }
-        }
-
-        log.info(aMarker, "Final Filtering - Retained: {}, Removed: {}", finalOutput.size(), filteredCount);
-        log.info(aMarker, "====== PROCESS AND MAP FILTERED DATA COMPLETED ======");
-        logFinalOutputSummary(finalOutput);
-
-        return finalOutput;
+        return consolidatedInputs;
     }
 
     public void handleMultiEntityEnabled(List<MultiEntityFieldHandlingInput> inputList,
-                                           boolean pipelineEndToEndEncryptionActivator,
-                                           InticsIntegrity encryption,
                                            List<MultiEntityFieldHandlingInput> consolidatedInputs) {
 
         log.info(aMarker, "====== HANDLE SINGLE VALUE MULTI-ENTITY ITEMS STARTED ======");
@@ -220,14 +172,78 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
         }
         log.info(aMarker, "Processing {} single-value multi-entity items.", inputList.size());
 
+        List<MultiEntityFieldHandlingInput> singleValueLineItems = inputList.stream()
+                .filter(item -> "single_value".equals(item.getLineItemType()))
+                .collect(Collectors.toList());
+
+
+        List<MultiEntityFieldHandlingInput> multiValueLineItems = inputList.stream()
+                .filter(item -> "multi_value".equals(item.getLineItemType()))
+                .collect(Collectors.toList());
+
+
+
+        handleSingleValueLineItems(singleValueLineItems, consolidatedInputs);
+
+
+        Map<String, List<MultiEntityFieldHandlingInput>> groupedBySorItemInstance =
+                singleValueLineItems.stream().collect(Collectors.groupingBy(
+                        MultiEntityFieldHandlingInput::getSorContainerInstance
+                ));
+
+        groupedBySorItemInstance.forEach((s, multiEntityFieldHandlingInputs) -> {
+            handleMultiValueLineItems(multiEntityFieldHandlingInputs,consolidatedInputs);
+        });
+
+
 
 
     }
 
+
     public void handleMultiEntityDisabled(List<MultiEntityFieldHandlingInput> inputList,
-                                         boolean pipelineEndToEndEncryptionActivator,
-                                         InticsIntegrity encryption,
-                                         List<MultiEntityFieldHandlingInput> consolidatedInputs) {
+                                          List<MultiEntityFieldHandlingInput> consolidatedInputs) {
+
+        log.info(aMarker, "====== HANDLE SINGLE VALUE MULTI-ENTITY ITEMS STARTED ======");
+        if (inputList == null || inputList.isEmpty()) {
+            log.info(aMarker, "handleSingleValueMultiEntity received an empty list, skipping processing.");
+            return;
+        }
+
+        List<MultiEntityFieldHandlingInput> singleValueLineItems = inputList.stream()
+                .filter(item -> "single_value".equals(item.getLineItemType()))
+                .collect(Collectors.toList());
+
+
+        List<MultiEntityFieldHandlingInput> multiValueLineItems = inputList.stream()
+                .filter(item -> "multi_value".equals(item.getLineItemType()))
+                .collect(Collectors.toList());
+
+
+        log.info(aMarker, "Processing {} single-value multi-entity items.", inputList.size());
+
+
+        Map<String, List<MultiEntityFieldHandlingInput>> groupedBySorItemName =
+                singleValueLineItems.stream().collect(Collectors.groupingBy(
+                        MultiEntityFieldHandlingInput::getSorItemName
+                ));
+
+        groupedBySorItemName.forEach((s, multiEntityFieldHandlingInputs) -> {
+            handleSingleValueLineItems(multiEntityFieldHandlingInputs, consolidatedInputs);
+        });
+
+
+
+
+        handleMultiValueLineItems(multiValueLineItems,consolidatedInputs);
+
+
+    }
+
+
+
+    public void handleMultiMemberIndicator(List<MultiEntityFieldHandlingInput> inputList,
+                                           List<MultiEntityFieldHandlingInput> consolidatedInputs) {
 
         log.info(aMarker, "====== HANDLE SINGLE VALUE MULTI-ENTITY ITEMS STARTED ======");
         if (inputList == null || inputList.isEmpty()) {
@@ -236,13 +252,11 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
         }
         log.info(aMarker, "Processing {} single-value multi-entity items.", inputList.size());
 
-
+        consolidatedInputs.addAll(inputList);
 
     }
 
     public void handleSingleValueLineItems(List<MultiEntityFieldHandlingInput> inputList,
-                                           boolean pipelineEndToEndEncryptionActivator,
-                                           InticsIntegrity encryption,
                                            List<MultiEntityFieldHandlingInput> consolidatedInputs) {
 
         log.info(aMarker, "====== HANDLE SINGLE VALUE LINE ITEMS STARTED ======");
@@ -253,17 +267,15 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
         }
 
         log.info(aMarker, "Processing {} simple single-value items/indicators.", inputList.size());
-        log.info(aMarker, "Pipeline Encryption Active: {}", pipelineEndToEndEncryptionActivator);
 
         int processedCount = 0;
-        for (MultiEntityFieldHandlingInput inputItem : inputList) {
-            inputItem.setRemovedAfterFiltering(false);
-            inputItem.setMessage("Retained by simple single-value handling (e.g., indicator key).");
-            consolidatedInputs.add(inputItem);
-            processedCount++;
-
-            log.debug(aMarker, "Processed item #{} - SorItemName: {}, LineItemType: {}, Score: {}",
-                    processedCount, inputItem.getSorItemName(), inputItem.getLineItemType(), inputItem.getScore());
+        if (inputList.size()>1){
+            log.info(aMarker, "Multiple records found for single-value items. Applying section alias or fallback filtering.");
+            filterBySectionAliasOrFallback(inputList, consolidatedInputs);
+        }else {
+            log.info(aMarker, "Single record found for single-value items. Directly adding to consolidated inputs.");
+            consolidatedInputs.addAll(inputList);
+            processedCount = inputList.size();
         }
 
         log.info(aMarker, "Finished processing simple single-value items. Added {} records to consolidated inputs.", processedCount);
@@ -272,7 +284,8 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
 
 
 
-    public List<MultiEntityFieldHandlingInput> handleMultiValueLineItems(List<MultiEntityFieldHandlingInput> multiValueInputs, Marker aMarker, Logger log) {
+
+    public void handleMultiValueLineItems(List<MultiEntityFieldHandlingInput> multiValueInputs, List<MultiEntityFieldHandlingInput> consolidatedInputs) {
         log.info(aMarker, "====== CASE 1: MULTI-VALUE PROCESSING STARTED ======");
         log.info(aMarker, "Processing {} multi_value records.", multiValueInputs.size());
 
@@ -357,7 +370,7 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
                 finalOutput.size(), finalOutput.stream().filter(item -> !item.isRemovedAfterFiltering()).count());
         log.info(aMarker, "====== CASE 1: MULTI-VALUE PROCESSING COMPLETED ======");
 
-        return finalOutput;
+        consolidatedInputs.addAll(finalOutput);
     }
     public void outputBuilderAndInsert(Jdbi jdbi, String outputTable, List<MultiEntityFieldHandlingInput> outputs) {
         log.info(aMarker, "====== OUTPUT BUILDER AND INSERT STARTED ======");
@@ -469,8 +482,8 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
         return output;
     }
 
-    public List<MultiEntityFieldHandlingInput> filterBySectionAliasOrFallback(
-            List<MultiEntityFieldHandlingInput> inputs) {
+    public void filterBySectionAliasOrFallback(
+            List<MultiEntityFieldHandlingInput> inputs, List<MultiEntityFieldHandlingInput> consolidatedOutputs) {
 
         log.info(aMarker, "====== FILTER BY SECTION ALIAS OR FALLBACK STARTED ======");
         log.info(aMarker, "Input count: {}", inputs == null ? 0 : inputs.size());
@@ -479,7 +492,6 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
 
         if (inputs == null || inputs.isEmpty()) {
             log.info(aMarker, "filterBySectionAliasOrFallback: No inputs received");
-            return Collections.emptyList();
         }
 
         List<MultiEntityFieldHandlingInput> inputsWithoutSectionAlias = inputs.stream()
@@ -619,7 +631,6 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
             if (!finalOutput.isEmpty()) {
                 log.info(aMarker, "Returning {} filtered items from section alias matching", finalOutput.size());
                 log.info(aMarker, "====== FILTER BY SECTION ALIAS OR FALLBACK COMPLETED ======");
-                return finalOutput;
             }
 
             log.info(aMarker, "No matches found via section alias, applying fallback selection on {} inputs",
@@ -629,7 +640,8 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
 
         log.info(aMarker, "Final output size: {}", finalOutput.size());
         log.info(aMarker, "====== FILTER BY SECTION ALIAS OR FALLBACK COMPLETED ======");
-        return finalOutput;
+        consolidatedOutputs.addAll(finalOutput);
+
     }
 
 

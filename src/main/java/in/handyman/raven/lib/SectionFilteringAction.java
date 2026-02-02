@@ -101,16 +101,16 @@ public class SectionFilteringAction implements IActionExecution {
       }
       log.info(aMarker, "Decryption completed for fetched records {}", tableInfos.size());
 
-      // 3 Map input to adapter fields
+      // 3 Map input to blacklistAdapter fields
       List<ExtractedField> extractedFields = mapToExtractedFields(tableInfos,objectMapper);
 
       // 4 Pre-filter summary
       log.debug(aMarker, "Pre-filter Extracted Fields count: {}", extractedFields.size());
 
-      // 5 Apply adapter-based filtering
-      FieldSelectionAdapter adapter = FieldSelectionAdapterFactory.getAdapter("blacklist");
+      // 5 Apply blacklistAdapter-based filtering
+      FieldSelectionAdapter blacklistAdapter = FieldSelectionAdapterFactory.getAdapter("blacklist");
       FieldSelectionAdapter whiteListedAdapter = FieldSelectionAdapterFactory.getAdapter("whitelist");
-      List<ExtractedField> filteredExtractedFields = filterExtractedFields(adapter, extractedFields, whiteListedAdapter);
+      List<ExtractedField> filteredExtractedFields = filterExtractedFields(blacklistAdapter, extractedFields, whiteListedAdapter);
 
       // 6 Merge filtered results back into original list
       mergeFilteredResults(tableInfos, filteredExtractedFields);
@@ -218,6 +218,7 @@ public class SectionFilteringAction implements IActionExecution {
                         .blacklistedLabels(splitCsvToSet(row.getBlacklistedLabels()))
                         .blacklistedSections(splitCsvToSet(row.getBlacklistedSections()))
                         .whitelistedLabels(parseWhitelistConfig(row.getWhitelistedLabels(),objectMapper))
+                        .sorContainerInstance(row.getSorContainerInstance())
                         .build())
                 .collect(Collectors.toList());
     }
@@ -244,16 +245,16 @@ public class SectionFilteringAction implements IActionExecution {
     }
 
     /**
-     * Applies the blacklist adapter filtering logic
+     * Applies the blacklist blacklistAdapter filtering logic
      */
-    private List<ExtractedField> filterExtractedFields(FieldSelectionAdapter adapter, List<ExtractedField> fields, FieldSelectionAdapter whiteListedAdapter) {
-        if (adapter == null) {
-            log.warn(aMarker, "No adapter found. Skipping filtering step.");
+    private List<ExtractedField> filterExtractedFields(FieldSelectionAdapter blacklistAdapter, List<ExtractedField> fields, FieldSelectionAdapter whiteListedAdapter) {
+        if (blacklistAdapter == null) {
+            log.warn(aMarker, "No blacklistAdapter found. Skipping filtering step.");
             return fields;
         }
 
         try {
-            List<ExtractedField> filtered = adapter.filter(fields);
+            List<ExtractedField> filtered = blacklistAdapter.filter(fields);
             log.info(aMarker, "Adapter filtering completed. Original count: {}, Filtered count: {}",
                     fields.size(), filtered.size());
 

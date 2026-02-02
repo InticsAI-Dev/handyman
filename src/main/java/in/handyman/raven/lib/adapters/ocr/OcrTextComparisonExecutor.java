@@ -2,7 +2,6 @@ package in.handyman.raven.lib.adapters.ocr;
 
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lib.adapters.selections.models.AggregationEvaluatorInputModel;
 import in.handyman.raven.lib.services.sor.transform.MessageUtils;
 import in.handyman.raven.lib.services.sor.transform.OcrTextComparisonInput;
 import org.slf4j.Logger;

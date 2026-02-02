@@ -41,6 +41,7 @@ public class DeepSiftSearchAction implements IActionExecution {
           "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::timestamp, ?, ?, ?, ?, ?, ?)";
 
   public static final String DEEP_SIFT_SEARCH_CONSUMER_API_COUNT = "deep.sift.search.consumer.API.count";
+  public static final String PAGE_CONTENT_MIN_LENGTH = "clinical.present.page.content.min.length.threshold";
 
   private final ActionExecutionAudit action;
   private final Logger log;
@@ -97,6 +98,7 @@ public class DeepSiftSearchAction implements IActionExecution {
       Integer readBatchSize = Integer.parseInt(action.getContext().getOrDefault(DB_SELECT_READ_BATCH_SIZE, "10"));
       Integer consumerCount = Math.max(1, Integer.parseInt(action.getContext().getOrDefault(DEEP_SIFT_SEARCH_CONSUMER_API_COUNT, "1")));
       Integer writeBatchSize = Math.max(1, Integer.parseInt(action.getContext().getOrDefault(DB_INSERT_WRITE_BATCH_SIZE, "1")));
+      Integer pageContentMinLength = Integer.valueOf(action.getContext().get(PAGE_CONTENT_MIN_LENGTH));
 
       DeepSiftSearchConsumerProcess searchConsumerProcess =
               new DeepSiftSearchConsumerProcess(log, aMarker, action);
