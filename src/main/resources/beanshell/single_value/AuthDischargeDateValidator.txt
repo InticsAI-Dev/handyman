@@ -226,11 +226,11 @@ public class AuthDischargeDateValidator {
         return dateStr.replaceAll("[^a-zA-Z0-9/\\- .]", "").trim();
     }
 
-    public class MappingResult {
+    public static class MappingResult {
         private Map mappedData;
 
         public MappingResult(Map mappedData) {
-            this.mappedData = mappedData;
+            this.mappedData = mappedData != null ? mappedData : new java.util.HashMap();
         }
 
         public Map getMappedData() {

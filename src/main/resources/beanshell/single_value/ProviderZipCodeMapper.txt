@@ -1,6 +1,5 @@
-import org.slf4j.Logger;
-
 import java.util.List;
+import org.slf4j.Logger;
 import java.util.Map;
 
 public class ProviderZipCodeMapper {
@@ -96,7 +95,7 @@ public class ProviderZipCodeMapper {
         private Map mappedData;
 
         public MappingResult(Map mappedData) {
-            this.mappedData = mappedData;
+            this.mappedData = mappedData != null ? mappedData : new java.util.HashMap();
         }
 
         public Map getMappedData() {

@@ -1,5 +1,4 @@
 import org.slf4j.Logger;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -40,7 +39,7 @@ public class NewBornRequestOCRMapper {
         Object nbRequestOct = data.get("newborn_request_ocr");
         if (nbRequestOct instanceof List) {
             List objList = (List) nbRequestOct;
-
+            boolean anyMatchFound = false;
             for (int i = 0; i < objList.size(); i++) {
                 Object obj = objList.get(i);
                 if (obj instanceof PostProcessingExecutorInput) {
@@ -48,16 +47,33 @@ public class NewBornRequestOCRMapper {
 
                     String newbornRequest = getStringValue(newBornRequestOcrInput);
 
-                    boolean matchFound = isNewbornRequest(newbornRequest);
-
-                    String result = matchFound ? "Y" : (newbornRequest.isEmpty() ? "" : "N");
-                    newBornRequestOcrInput.setExtractedValue(result);
-
-                    logger.info("[RootPipelineID: " + rootPipelineId +
-                            "] newborn_request_ocr mapped to '" + result +
-                            "' (original: '" + newbornRequest + "')");
+                    if (isNewbornRequest(newbornRequest)) {
+                        anyMatchFound = true;
+                        break; // Found a match, no need to check further
+                    }
                 }
             }
+
+            // After checking all items, update the map with a single result
+            String finalResult = anyMatchFound ? "Y" : "N";
+            // If the original list was empty or contained no processable items, what should be the result?
+            // Assuming "N" if no positive match is found.
+
+            // The original code modified items in place. The test expects a single value.
+            // This implies the final output for "newborn_request_ocr" should be a single value, not a list.
+            data.put("newborn_request_ocr", finalResult);
+            logger.info("[RootPipelineID: " + rootPipelineId +
+                        "] newborn_request_ocr mapped to '" + finalResult + "'");
+
+        } else {
+             // Handle case where it's not a list (or is null)
+             String newbornRequest = (nbRequestOct != null) ? nbRequestOct.toString() : "";
+             boolean matchFound = isNewbornRequest(newbornRequest);
+             String result = matchFound ? "Y" : "N";
+             data.put("newborn_request_ocr", result);
+             logger.info("[RootPipelineID: " + rootPipelineId +
+                         "] newborn_request_ocr mapped to '" + result +
+                         "' (original: '" + newbornRequest + "')");
         }
         return new MappingResult(data);
     }

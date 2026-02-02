@@ -65,7 +65,7 @@ public class LOSValidator {
 
     private void processLevelOfService(Map data, Long rootPipelineId) {
         Object levelOfServiceObj = data.get("level_of_service");
-        
+
         if (!(levelOfServiceObj instanceof List)) {
             logWarn(rootPipelineId, "level_of_service is not a List: " + levelOfServiceObj);
             return;
@@ -85,7 +85,7 @@ public class LOSValidator {
 
             PostProcessingExecutorInput input = (PostProcessingExecutorInput) obj;
             String extractedValue = input.getExtractedValue();
-            
+
             if (extractedValue == null || extractedValue.trim().isEmpty()) {
                 input.setExtractedValue("");
                 input.setLabel("");
@@ -120,7 +120,7 @@ public class LOSValidator {
                     }
                 }
             }
-            
+
             if (!isUrgent && !blacklistFound) {
                 for (Object keyword : LOS_KEYWORDS) {
                     if (levelOfServicetoLower.contains((String) keyword)) {
@@ -147,7 +147,7 @@ public class LOSValidator {
                 input.setBBox("");
             }
         }
-        
+
         data.put("level_of_service", levelOfServiceList);
     }
 
@@ -164,7 +164,7 @@ public class LOSValidator {
                 logWarn(rootPipelineId, "auth_id list contains non-PostProcessingExecutorInput object: " + obj);
                 continue;
             }
-            
+
             PostProcessingExecutorInput input = (PostProcessingExecutorInput) obj;
             String value = input.getExtractedValue();
             if (value != null && !value.trim().isEmpty()) {
