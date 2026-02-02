@@ -108,7 +108,7 @@ public class ValidatorByBeanShellExecutor {
     }
 
     public void processPage(String originId, Integer pageNo, List<PostProcessingFieldsInput> pageInputs) {
-        log.info("START validation for origin {} page {}", originId, pageNo);
+        log.info("START validation for origin {} page {} page inputs {}", originId, pageNo, pageInputs.size());
         long start = System.currentTimeMillis();
 
         List<String> scriptClasses = loadScriptOrder(pageInputs);
@@ -125,8 +125,7 @@ public class ValidatorByBeanShellExecutor {
 
 
     public List<String> loadScriptOrder(List<PostProcessingFieldsInput> pageInputs) {
-        boolean multi = pageInputs.stream().anyMatch(i -> "multi_value".equals(i.getLineItemType()));
-        String key = multi ? "outbound.mapper.multi.bsh.class.order" : "outbound.mapper.bsh.class.order";
+        String key = "outbound.mapper.bsh.class.order";
         String order = actionExecutionAudit.getContext().get(key);
         if (order == null || order.isEmpty()) return Collections.emptyList();
         List<String> classes = Arrays.stream(order.split(","))
@@ -168,7 +167,7 @@ public class ValidatorByBeanShellExecutor {
             log.info("Completed execution of doCustomPredictionMapping for class {}", className);
 
             Object validatorResultObject = interpreter.get("validatorResultMap");
-            log.info("Retrieved validatorResultMap from interpreter context for class {}", validatorResultObject);
+//            log.info("Retrieved validatorResultMap from interpreter context for class {}", validatorResultObject);
             if(currentPostProcessingDetailsMap == null){
                 log.info("updatedPostProcessingDetailsMap is null");
             } else {
@@ -196,6 +195,8 @@ public class ValidatorByBeanShellExecutor {
         try {
 
             if (validatorResultObject instanceof List) {
+                log.info("validatorResultObject is a List");
+                @SuppressWarnings("unchecked")
                 List<PostProcessingFieldsInput> mappedDataResult = (List<PostProcessingFieldsInput>) validatorResultObject;
                 updatedPostProcessingDetailsMap.addAll(mappedDataResult);
             }

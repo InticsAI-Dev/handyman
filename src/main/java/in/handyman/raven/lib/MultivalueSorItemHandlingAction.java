@@ -148,12 +148,12 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
                 .filter(item -> "false".equals(item.getIsMultiEntityEnabled()))
                 .collect(Collectors.toList());
 
-        log.info(aMarker, "Partitioned inputs - Multi entity enabled: {}, Multi entity disabled: {}", multiEntityEnabledInputs.size(), multiEntityDisabledInputs.size());
+        log.info(aMarker, "Partitioned inputs - Multi entity enabled: {}, Multi entity disabled: {}, Multi member indicator: {}", multiEntityEnabledInputs.size(), multiEntityDisabledInputs.size(), mmIndicatorInputs.size());
 
 
         handleMultiMemberIndicator(mmIndicatorInputs,consolidatedInputs);
 
-        handleMultiEntityEnabled(multiEntityDisabledInputs,consolidatedInputs);
+        handleMultiEntityEnabled(multiEntityEnabledInputs,consolidatedInputs);
 
         handleMultiEntityDisabled(multiEntityDisabledInputs,consolidatedInputs);
 
@@ -187,7 +187,7 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
 
 
         Map<String, List<MultiEntityFieldHandlingInput>> groupedBySorItemInstance =
-                singleValueLineItems.stream().collect(Collectors.groupingBy(
+                multiValueLineItems.stream().collect(Collectors.groupingBy(
                         MultiEntityFieldHandlingInput::getSorContainerInstance
                 ));
 
@@ -229,6 +229,7 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
                 ));
 
         groupedBySorItemName.forEach((s, multiEntityFieldHandlingInputs) -> {
+            log.info(aMarker, "Processing SorItemName: {} with {} records", s, multiEntityFieldHandlingInputs.size());
             handleSingleValueLineItems(multiEntityFieldHandlingInputs, consolidatedInputs);
         });
 
@@ -261,6 +262,8 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
 
         log.info(aMarker, "====== HANDLE SINGLE VALUE LINE ITEMS STARTED ======");
 
+
+
         if (inputList == null || inputList.isEmpty()) {
             log.info(aMarker, "handleSingleValueLineItems received an empty list, skipping processing.");
             return;
@@ -271,8 +274,9 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
         int processedCount = 0;
         if (inputList.size()>1){
             log.info(aMarker, "Multiple records found for single-value items. Applying section alias or fallback filtering.");
-            filterBySectionAliasOrFallback(inputList, consolidatedInputs);
-        }else {
+
+            handleSingleValueEmptyAnswer(inputList, consolidatedInputs);
+        }else if (inputList.size()==1){
             log.info(aMarker, "Single record found for single-value items. Directly adding to consolidated inputs.");
             consolidatedInputs.addAll(inputList);
             processedCount = inputList.size();
@@ -282,6 +286,59 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
         log.info(aMarker, "====== HANDLE SINGLE VALUE LINE ITEMS COMPLETED ======");
     }
 
+    public void handleSingleValueEmptyAnswer(List<MultiEntityFieldHandlingInput> inputList,
+                                           List<MultiEntityFieldHandlingInput> consolidatedInputs) {
+
+        log.info(aMarker, "====== HANDLE SINGLE VALUE EMPTY ANSWER STARTED ======");
+
+
+        if (inputList == null || inputList.isEmpty()) {
+            log.info(aMarker, "handleSingleValueEmptyAnswer received an empty list, skipping processing.");
+        }
+
+        // Log all items once
+        inputList.forEach(item ->
+                log.debug(aMarker,
+                        "Item before selection - SorItemName: {}, SectionAlias: {}, DocumentId: {}, GroupId: {}, BatchId: {}, AnswerEmpty: {}",
+                        item.getSorItemName(),
+                        item.getSectionAlias(),
+                        item.getDocumentId(),
+                        item.getGroupId(),
+                        item.getBatchId(),
+                        item.getAnswer().isEmpty())
+        );
+
+        // Nodes with non-empty answers
+        List<MultiEntityFieldHandlingInput> nonEmptyAnswerNodes =
+                inputList.stream()
+                        .filter(item -> !item.getAnswer().isEmpty())
+                        .collect(Collectors.toList());
+
+        // Case 1: all answers are empty → return one node
+        if (nonEmptyAnswerNodes.isEmpty()) {
+            log.info(aMarker, "All items have empty answers. Selecting the first item as representative.");
+            consolidatedInputs.add(inputList.get(0));
+        }
+
+        // Case 2: exactly one node has answers → return that node
+        if (nonEmptyAnswerNodes.size() == 1) {
+            log.info(aMarker, "Exactly one item has a non-empty answer. Selecting that item.");
+            consolidatedInputs.addAll(nonEmptyAnswerNodes);
+        }
+
+        if (nonEmptyAnswerNodes.size() > 1) {
+            log.info(aMarker, "Multiple items have non-empty answers. Applying section alias based selection.");
+            // Extract unique section aliases from non-empty answer nodes and return one per unique alias as string
+            String uniqueSectionAliases = nonEmptyAnswerNodes.get(0).getWhitelistedSections();
+
+            MultiEntityFieldHandlingInput resolved =
+                    resolveBySectionAliasOrAnswerFallback(nonEmptyAnswerNodes, uniqueSectionAliases);
+
+            consolidatedInputs.add(resolved);
+        }
+
+
+    }
 
 
 
@@ -482,171 +539,174 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
         return output;
     }
 
-    public void filterBySectionAliasOrFallback(
-            List<MultiEntityFieldHandlingInput> inputs, List<MultiEntityFieldHandlingInput> consolidatedOutputs) {
+    public MultiEntityFieldHandlingInput resolveBySectionAliasOrAnswerFallback(
+            List<MultiEntityFieldHandlingInput> inputs,
+            String sectionAliasJson) {
 
-        log.info(aMarker, "====== FILTER BY SECTION ALIAS OR FALLBACK STARTED ======");
+        log.info(aMarker, "====== RESOLVE BY SECTION ALIAS OR ANSWER FALLBACK STARTED ======");
         log.info(aMarker, "Input count: {}", inputs == null ? 0 : inputs.size());
 
-        List<MultiEntityFieldHandlingInput> finalOutput = new ArrayList<>();
-
         if (inputs == null || inputs.isEmpty()) {
-            log.info(aMarker, "filterBySectionAliasOrFallback: No inputs received");
+            return null;
         }
 
-        List<MultiEntityFieldHandlingInput> inputsWithoutSectionAlias = inputs.stream()
-                .filter(item -> (item.getSectionAlias() == null || item.getSectionAlias().isEmpty()))
-                .collect(Collectors.toList());
+        // 1️⃣ Partition by SectionAlias
+        List<MultiEntityFieldHandlingInput> withSectionAlias =
+                inputs.stream()
+                        .filter(i -> i.getSectionAlias() != null && !i.getSectionAlias().isEmpty())
+                        .collect(Collectors.toList());
 
-        List<MultiEntityFieldHandlingInput> inputsWithSectionAlias = inputs.stream()
-                .filter(item -> !(item.getSectionAlias() == null || item.getSectionAlias().isEmpty()))
-                .collect(Collectors.toList());
+        List<MultiEntityFieldHandlingInput> withoutSectionAlias =
+                inputs.stream()
+                        .filter(i -> i.getSectionAlias() == null || i.getSectionAlias().isEmpty())
+                        .collect(Collectors.toList());
 
-        log.info(aMarker, "Partitioned by SectionAlias - With Alias: {}, Without Alias: {}",
-                inputsWithSectionAlias.size(), inputsWithoutSectionAlias.size());
+        log.info(aMarker, "With SectionAlias: {}, Without SectionAlias: {}",
+                withSectionAlias.size(), withoutSectionAlias.size());
 
-        if (inputsWithSectionAlias.isEmpty()) {
-            log.info(aMarker, "filterBySectionAliasOrFallback: No inputs received for inputsWithSectionAlias.");
-        }
+        // 2️⃣ SectionAlias priority resolution
+        if (!withSectionAlias.isEmpty() && sectionAliasJson != null) {
+            MultiEntityFieldHandlingInput priorityWinner =
+                    resolveBySectionAliasPriority(withSectionAlias, sectionAliasJson);
 
-        if (inputsWithoutSectionAlias.isEmpty()) {
-            log.info(aMarker, "filterBySectionAliasOrFallback: No inputs received for inputsWithoutSectionAlias.");
-        }
-
-        if (!inputsWithoutSectionAlias.isEmpty()) {
-            log.info(aMarker, "Processing {} inputs without SectionAlias - applying maxCount node selection",
-                    inputsWithoutSectionAlias.size());
-            List<MultiEntityFieldHandlingInput> selectMaxCountNodes = selectMaxCountNodes(inputsWithoutSectionAlias);
-            finalOutput.addAll(selectMaxCountNodes);
-            log.info(aMarker, "Selected {} nodes from inputs without SectionAlias", selectMaxCountNodes.size());
-        }
-
-        if (!inputsWithSectionAlias.isEmpty()) {
-            log.info(aMarker, "Processing {} inputs with SectionAlias", inputsWithSectionAlias.size());
-
-            Map<String, Map<Integer, Map<String, List<MultiEntityFieldHandlingInput>>>> grouped =
-                    inputsWithSectionAlias.stream().collect(Collectors.groupingBy(
-                            MultiEntityFieldHandlingInput::getOriginId,
-                            Collectors.groupingBy(
-                                    MultiEntityFieldHandlingInput::getPaperNo,
-                                    Collectors.groupingBy(
-                                            MultiEntityFieldHandlingInput::getSorContainerInstance
-                                    )
-                            )
-                    ));
-
-            log.info(aMarker, "Grouped inputs - Origin count: {}", grouped.size());
-
-            int totalInstancesProcessed = 0;
-            int totalMatchesFound = 0;
-
-            for (Map.Entry<String, Map<Integer, Map<String, List<MultiEntityFieldHandlingInput>>>> originEntry
-                    : grouped.entrySet()) {
-
-                String originId = originEntry.getKey();
-                log.debug(aMarker, "Processing Origin: {} with {} papers", originId, originEntry.getValue().size());
-
-                for (Map.Entry<Integer, Map<String, List<MultiEntityFieldHandlingInput>>> paperEntry
-                        : originEntry.getValue().entrySet()) {
-
-                    Integer paperNo = paperEntry.getKey();
-                    log.debug(aMarker, "Processing Paper: {} with {} instances", paperNo, paperEntry.getValue().size());
-
-                    for (Map.Entry<String, List<MultiEntityFieldHandlingInput>> instanceEntry
-                            : paperEntry.getValue().entrySet()) {
-
-                        String instance = instanceEntry.getKey();
-                        List<MultiEntityFieldHandlingInput> instanceList = instanceEntry.getValue();
-                        totalInstancesProcessed++;
-
-                        log.debug(aMarker, "Processing Instance: {}, ItemCount: {}", instance, instanceList.size());
-
-                        int bestPriority = Integer.MAX_VALUE;
-                        List<MultiEntityFieldHandlingInput> bestMatches = new ArrayList<>();
-
-                        for (MultiEntityFieldHandlingInput item : instanceList) {
-                            String rawJson = item.getWhitelistedSections();
-                            String alias = item.getSectionAlias();
-
-                            if (rawJson == null || alias == null) {
-                                log.debug(aMarker, "Skipping item - SorItemName: {}, Reason: Missing metadata (WhitelistedSections or SectionAlias)",
-                                        item.getSorItemName());
-                                continue;
-                            }
-
-                            try {
-                                List<Map<String, Object>> parsed =
-                                        OBJECT_MAPPER.readValue(
-                                                rawJson,
-                                                new TypeReference<List<Map<String, Object>>>() {}
-                                        );
-
-                                log.debug(aMarker, "Parsed WhitelistedSections - SorItemName: {}, EntryCount: {}",
-                                        item.getSorItemName(), parsed.size());
-
-                                for (Map<String, Object> entry : parsed) {
-                                    String truthEntity = (String) entry.get("truthEntity");
-                                    Integer priority = (Integer) entry.get("priorityLevel");
-
-                                    if (truthEntity == null || priority == null) {
-                                        continue;
-                                    }
-
-                                    if (alias.toLowerCase().contains(truthEntity.toLowerCase())) {
-                                        log.debug(aMarker, "Match found - SorItemName: {}, SectionAlias: {}, TruthEntity: {}, Priority: {}",
-                                                item.getSorItemName(), alias, truthEntity, priority);
-
-                                        if (priority < bestPriority) {
-                                            bestPriority = priority;
-                                            bestMatches.clear();
-                                            bestMatches.add(item);
-                                            log.debug(aMarker, "New best priority found: {}", priority);
-                                        } else if (priority == bestPriority) {
-                                            bestMatches.add(item);
-                                            log.debug(aMarker, "Additional match with same priority: {}", priority);
-                                        }
-                                    }
-                                }
-
-                            } catch (Exception e) {
-                                log.warn(aMarker, "Failed to parse whitelistedSections JSON - SorItemName: {}, Error: {}",
-                                        item.getSorItemName(), e.getMessage(), e);
-                            }
-                        }
-
-                        if (!bestMatches.isEmpty()) {
-                            totalMatchesFound += bestMatches.size();
-                            log.info(aMarker, "Selected {} best matches with priority={}", bestMatches.size(), bestPriority);
-                            finalOutput.addAll(bestMatches);
-                        } else {
-                            log.debug(aMarker, "No matching section aliases found - Instance: {}", instance);
-                        }
-                    }
-                }
+            if (priorityWinner != null) {
+                log.info(aMarker, "Resolved using SectionAlias priority");
+                return priorityWinner;
             }
-
-            log.info(aMarker, "Section Alias Processing Complete - Instances Processed: {}, Total Matches: {}",
-                    totalInstancesProcessed, totalMatchesFound);
-
-            if (!finalOutput.isEmpty()) {
-                log.info(aMarker, "Returning {} filtered items from section alias matching", finalOutput.size());
-                log.info(aMarker, "====== FILTER BY SECTION ALIAS OR FALLBACK COMPLETED ======");
-            }
-
-            log.info(aMarker, "No matches found via section alias, applying fallback selection on {} inputs",
-                    inputsWithSectionAlias.size());
-            finalOutput.addAll(selectMaxCountNodes(inputsWithSectionAlias));
         }
 
-        log.info(aMarker, "Final output size: {}", finalOutput.size());
-        log.info(aMarker, "====== FILTER BY SECTION ALIAS OR FALLBACK COMPLETED ======");
-        consolidatedOutputs.addAll(finalOutput);
+        // 3️⃣ Highest occurring answer
+        Map<String, Long> answerFrequency =
+                inputs.stream()
+                        .filter(i -> !i.getAnswer().isEmpty())
+                        .collect(Collectors.groupingBy(
+                                MultiEntityFieldHandlingInput::getAnswer,
+                                Collectors.counting()
+                        ));
 
+        long maxFreq =
+                answerFrequency.values().stream()
+                        .mapToLong(Long::longValue)
+                        .max()
+                        .orElse(0);
+
+        List<MultiEntityFieldHandlingInput> freqWinners =
+                inputs.stream()
+                        .filter(i -> answerFrequency.getOrDefault(i.getAnswer(), 0L) == maxFreq)
+                        .collect(Collectors.toList());
+
+        if (freqWinners.size() == 1) {
+            log.info(aMarker, "Resolved using highest occurring answer");
+            return freqWinners.get(0);
+        }
+
+        // 4️⃣ Highest score fallback
+        MultiEntityFieldHandlingInput scoreWinner =
+                freqWinners.stream()
+                        .max(Comparator.comparingDouble(
+                                i -> Optional.ofNullable(i.getScore()).orElse(0L)))
+                        .orElse(null);
+
+        if (scoreWinner != null) {
+            log.info(aMarker, "Resolved using highest score");
+            return scoreWinner;
+        }
+
+        // 5️⃣ Absolute deterministic fallback
+        log.warn(aMarker, "Multiple ties remain, falling back to first deterministic node");
+        return inputs.get(0);
     }
 
 
 
 
+    private MultiEntityFieldHandlingInput resolveBySectionAliasPriority(
+            List<MultiEntityFieldHandlingInput> inputs,
+            String sectionAliasJson) {
+
+        try {
+            List<Map<String, Object>> parsed =
+                    OBJECT_MAPPER.readValue(
+                            sectionAliasJson,
+                            new TypeReference<List<Map<String, Object>>>() {}
+                    );
+
+            int bestPriority = Integer.MAX_VALUE;
+            List<MultiEntityFieldHandlingInput> bestMatches = new ArrayList<>();
+
+            for (MultiEntityFieldHandlingInput item : inputs) {
+                String alias = item.getSectionAlias();
+
+                for (Map<String, Object> entry : parsed) {
+                    String truthEntity = (String) entry.get("truthEntity");
+                    Integer priority = (Integer) entry.get("priorityLevel");
+
+                    if (truthEntity == null || priority == null) {
+                        continue;
+                    }
+
+                    if (alias.toLowerCase().contains(truthEntity.toLowerCase())) {
+                        if (priority < bestPriority) {
+                            bestPriority = priority;
+                            bestMatches.clear();
+                            bestMatches.add(item);
+                        } else if (priority == bestPriority) {
+                            bestMatches.add(item);
+                        }
+                    }
+                }
+            }
+
+            if (bestMatches.size() == 1) {
+                return bestMatches.get(0);
+            }
+
+            // Tie on priority → highest score
+            return bestMatches.stream()
+                    .max(Comparator.comparingDouble(
+                            i -> Optional.ofNullable(i.getScore()).orElse(0L)))
+                    .orElse(null);
+
+        } catch (Exception e) {
+            log.error(aMarker, "Failed to parse sectionAlias JSON", e);
+            return null;
+        }
+    }
+
+    private void preprocessBySorItemAnswer(
+            List<MultiEntityFieldHandlingInput> list, List<MultiEntityFieldHandlingInput> consolidatedOutputs) {
+        log.info(aMarker, "====== PREPROCESS BY SOR ITEM ANSWER STARTED ======");
+        if (list == null || list.isEmpty()) {
+            log.info(aMarker, "preprocessBySorItemAnswer received an empty list, skipping processing.");
+        }
+        Map<String, List<MultiEntityFieldHandlingInput>> bySorItem =
+                list.stream().collect(Collectors.groupingBy(
+                        MultiEntityFieldHandlingInput::getSorItemName
+                ));
+
+        List<MultiEntityFieldHandlingInput> result = new ArrayList<>();
+
+        for (Map.Entry<String, List<MultiEntityFieldHandlingInput>> entry : bySorItem.entrySet()) {
+            List<MultiEntityFieldHandlingInput> nodes = entry.getValue();
+
+            List<MultiEntityFieldHandlingInput> nonEmpty =
+                    nodes.stream()
+                            .filter(n -> !n.getAnswer().isEmpty())
+                            .collect(Collectors.toList());
+
+            // If non-empty exists → discard empties
+            if (!nonEmpty.isEmpty()) {
+                result.addAll(nonEmpty);
+            } else {
+                // All empty → keep as-is
+                result.addAll(nodes);
+            }
+        }
+
+        log.info(aMarker, "Preprocessing complete. Output size: {}", result.size());
+        log.info(aMarker, "====== PREPROCESS BY SOR ITEM ANSWER COMPLETED ======");
+        consolidatedOutputs.addAll(result);
+    }
 
     private MultiEntityFieldHandlingInput cloneInputItem(MultiEntityFieldHandlingInput original) {
         MultiEntityFieldHandlingInput clone = new MultiEntityFieldHandlingInput();
