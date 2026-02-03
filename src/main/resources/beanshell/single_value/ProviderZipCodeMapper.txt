@@ -53,8 +53,8 @@ public class ProviderZipCodeMapper {
 
                     for (int j = 0; j < zipcodeList.size(); j++) {
                         Object obj = zipcodeList.get(j);
-                        if (obj instanceof PostProcessingExecutorInput) {
-                            PostProcessingExecutorInput zipcodeInput = (PostProcessingExecutorInput) obj;
+                        if (obj instanceof in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) {
+                            in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput zipcodeInput = (in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) obj;
                             String validatedZipcodeValue = zipcodeValidation(zipcodeInput.getExtractedValue(), rootPipelineId, field);
                             zipcodeInput.setExtractedValue(validatedZipcodeValue);
                         }
@@ -102,39 +102,5 @@ public class ProviderZipCodeMapper {
             return mappedData;
         }
     }
-    public static class PostProcessingExecutorInput {
 
-        private Long tenantId;
-        private double aggregatedScore;
-        private double maskedScore;
-        private String originId;
-        private Integer paperNo;
-        private String extractedValue;
-        private double vqaScore;
-        private Integer rank;
-        private Integer sorItemAttributionId;
-        private String sorItemName;
-        private String documentId;
-        private Long accTransactionId;
-        private String label;
-        private String sectionAlias;
-        private Long score;
-        private String bBox;
-        private Long rootPipelineId;
-        private Long frequency;
-        private Long questionId;
-        private Long synonymId;
-        private String modelRegistry;
-        private String encryptionPolicy;
-        private String isEncrypted;
-        private String lineItemType;
-
-        public String getExtractedValue() {
-            return extractedValue;
-        }
-
-        public void setExtractedValue(String extractedValue) {
-            this.extractedValue = extractedValue;
-        }
-    }
 }

@@ -106,10 +106,10 @@ public class ProviderAddressMapper {
             final String zipcodeKey = providerType + "_zipcode";
             // typecast the value
 
-            final PostProcessingExecutorInput addressKeyInput = (PostProcessingExecutorInput) iterateInputObj(addressKey, resultMap) !=null? (PostProcessingExecutorInput) iterateInputObj(addressKey, resultMap): new PostProcessingExecutorInput();
-            final PostProcessingExecutorInput cityKeyInput = (PostProcessingExecutorInput) iterateInputObj(cityKey, resultMap) !=null? (PostProcessingExecutorInput) iterateInputObj(cityKey, resultMap): new PostProcessingExecutorInput();
-            final PostProcessingExecutorInput stateKeyInput = (PostProcessingExecutorInput) iterateInputObj(stateKey, resultMap) !=null? (PostProcessingExecutorInput) iterateInputObj(stateKey, resultMap): new PostProcessingExecutorInput() ;
-            final PostProcessingExecutorInput zipcodeKeyInput = (PostProcessingExecutorInput) iterateInputObj(zipcodeKey, resultMap) !=null? (PostProcessingExecutorInput) iterateInputObj(zipcodeKey, resultMap): new PostProcessingExecutorInput();
+            final in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput addressKeyInput = (PostProcessingExecutorInputin.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) iterateInputObj(addressKey, resultMap) !=null? (in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) iterateInputObj(addressKey, resultMap): new PostProcessingExecutorInput();
+            final in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput cityKeyInput = (in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) iterateInputObj(cityKey, resultMap) !=null? (in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) iterateInputObj(cityKey, resultMap): new PostProcessingExecutorInput();
+            final in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput stateKeyInput = (in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) iterateInputObj(stateKey, resultMap) !=null? (in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) iterateInputObj(stateKey, resultMap): new PostProcessingExecutorInput() ;
+            final in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput zipcodeKeyInput = (in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) iterateInputObj(zipcodeKey, resultMap) !=null? (in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) iterateInputObj(zipcodeKey, resultMap): new PostProcessingExecutorInput();
 
             final String inputAddress = addressKeyInput.getExtractedValue() != null ? addressKeyInput.getExtractedValue() : "";
             final String city = cityKeyInput.getExtractedValue() != null ? cityKeyInput.getExtractedValue(): "";
@@ -391,7 +391,7 @@ public class ProviderAddressMapper {
             for (int i = 0; i < objList.size(); i++) {
                 Object obj = objList.get(i);
 
-                if (obj instanceof PostProcessingExecutorInput) {
+                if (obj instanceof in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) {
                     return obj;
                 }
             }
@@ -405,7 +405,7 @@ public class ProviderAddressMapper {
      * @param from Source PostProcessingExecutorInput
      * @param to Target PostProcessingExecutorInput
      */
-    private void copyDependentFields(PostProcessingExecutorInput from, PostProcessingExecutorInput to) {
+    private void copyDependentFields(in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput from, in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput to) {
         if (from != null && to != null) {
             if (from.getLabel() != null) {
                 to.setLabel(from.getLabel());
@@ -448,72 +448,6 @@ public class ProviderAddressMapper {
 
         public Map getMappedData() {
             return mappedData;
-        }
-    }
-
-    public static class PostProcessingExecutorInput {
-
-        private Long tenantId;
-        private double aggregatedScore;
-        private double maskedScore;
-        private String originId;
-        private Integer paperNo;
-        private String extractedValue;
-        private double vqaScore;
-        private Integer rank;
-        private Integer sorItemAttributionId;
-        private String sorItemName;
-        private String documentId;
-        private Long accTransactionId;
-        private String label;
-        private String sectionAlias;
-        private Long score;
-        private String bBox;
-        private Long rootPipelineId;
-        private Long frequency;
-        private Long questionId;
-        private Long synonymId;
-        private String modelRegistry;
-        private String encryptionPolicy;
-        private String isEncrypted;
-        private String lineItemType;
-
-        public String getExtractedValue() {
-            return extractedValue;
-        }
-        public String getSorItemName() {
-            return sorItemName;
-        }
-
-        public void setExtractedValue(String extractedValue) {
-            this.extractedValue = extractedValue;
-        }
-        public void setSorItemName(String sorItemName) {
-            this.sorItemName = sorItemName;
-        }
-
-        public String getLabel() {
-            return label;
-        }
-
-        public void setLabel(String label) {
-            this.label = label;
-        }
-
-        public String getSectionAlias() {
-            return sectionAlias;
-        }
-
-        public void setSectionAlias(String sectionAlias) {
-            this.sectionAlias = sectionAlias;
-        }
-
-        public String getBBox() {
-            return bBox;
-        }
-
-        public void setBBox(String bBox) {
-            this.bBox = bBox;
         }
     }
 
