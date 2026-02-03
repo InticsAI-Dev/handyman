@@ -36,6 +36,8 @@ public class DeepSiftOutputTable implements CoproProcessor.Entity {
     private String request;
     private String response;
     private String endpoint;
+    private Integer wordCount;
+    private Boolean isBlankPage;
 
     @Override
     public List<Object> getRowData() {
@@ -57,7 +59,9 @@ public class DeepSiftOutputTable implements CoproProcessor.Entity {
                 this.status,
                 this.request,
                 this.response,
-                this.endpoint
+                this.endpoint,
+                this.wordCount,
+                this.isBlankPage
         ).collect(Collectors.toList());
     }
 
