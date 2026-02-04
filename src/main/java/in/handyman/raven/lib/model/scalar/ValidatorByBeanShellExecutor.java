@@ -107,16 +107,28 @@ public class ValidatorByBeanShellExecutor {
                 .collect(Collectors.groupingBy(PostProcessingFieldsInput::getPaperNo));
     }
 
+    public Map<String, List<PostProcessingFieldsInput>> groupBySorItemNames(List<PostProcessingFieldsInput> inputs) {
+        log.info("Grouping inputs by sor item names");
+        return inputs.stream()
+                .collect(Collectors.groupingBy(PostProcessingFieldsInput::getSorItemName));
+    }
+
     public void processPage(String originId, Integer pageNo, List<PostProcessingFieldsInput> pageInputs) {
         log.info("START validation for origin {} page {} page inputs {}", originId, pageNo, pageInputs.size());
         long start = System.currentTimeMillis();
 
         List<String> scriptClasses = loadScriptOrder(pageInputs);
+        Map<String, List<PostProcessingFieldsInput>> groupedItems = groupBySorItemNames(pageInputs);
 
-        List<PostProcessingFieldsInput> resultMap = executeScripts(scriptClasses, pageInputs);
-//        buildUpdatedResults(pageInputs, resultMap);
+        Map<String, List<PostProcessingFieldsInput>> resultMap = executeScripts(scriptClasses, groupedItems);
+
+        List<PostProcessingFieldsInput> flatList =
+                resultMap.values()
+                        .stream()
+                        .flatMap(List::stream)
+                        .collect(Collectors.toList());
+        flatList.addAll(pageInputs);
         pageInputs.clear();
-        pageInputs.addAll(resultMap);
 
         long duration = System.currentTimeMillis() - start;
         log.info("END validation for origin {} page {} ({} ms)", originId, pageNo, duration);
@@ -135,8 +147,8 @@ public class ValidatorByBeanShellExecutor {
         return classes;
     }
 
-    public List<PostProcessingFieldsInput> executeScripts(List<String> classes, List<PostProcessingFieldsInput> currentMap) {
-        List<PostProcessingFieldsInput> updatedMap = new ArrayList<>();
+    public Map<String, List<PostProcessingFieldsInput>> executeScripts(List<String> classes, Map<String, List<PostProcessingFieldsInput>> currentMap) {
+        Map<String, List<PostProcessingFieldsInput>> updatedMap = new HashMap<>();
         Long pipelineId = actionExecutionAudit.getRootPipelineId();
 
         for (String className : classes) {
@@ -147,7 +159,7 @@ public class ValidatorByBeanShellExecutor {
         return updatedMap;
     }
 
-    public void getPostProcessedValidatorMap(String className, String sourceCode, List<PostProcessingFieldsInput> currentPostProcessingDetailsMap, Long rootPipelineId, List<PostProcessingFieldsInput> updatedPostProcessingDetailsMap) {
+    public void getPostProcessedValidatorMap(String className, String sourceCode, Map<String, List<PostProcessingFieldsInput>> currentPostProcessingDetailsMap, Long rootPipelineId, Map<String, List<PostProcessingFieldsInput>> updatedPostProcessingDetailsMap) {
         try {
             Interpreter interpreter = new Interpreter();
             interpreter.eval(sourceCode);
@@ -191,14 +203,15 @@ public class ValidatorByBeanShellExecutor {
     }
 
 
-    public void processValidatorListResult(Object validatorResultObject, List<PostProcessingFieldsInput> updatedPostProcessingDetailsMap) {
+    public void processValidatorListResult(Object validatorResultObject, Map<String, List<PostProcessingFieldsInput>> updatedPostProcessingDetailsMap) {
         try {
 
-            if (validatorResultObject instanceof List) {
+            if (validatorResultObject instanceof Map) {
                 log.info("validatorResultObject is a List");
                 @SuppressWarnings("unchecked")
-                List<PostProcessingFieldsInput> mappedDataResult = (List<PostProcessingFieldsInput>) validatorResultObject;
-                updatedPostProcessingDetailsMap.addAll(mappedDataResult);
+                Map<String, List<PostProcessingFieldsInput>> mappedDataResult = (Map<String, List<PostProcessingFieldsInput>>) validatorResultObject;
+                updatedPostProcessingDetailsMap.putAll(mappedDataResult);
+
             }
         } catch (Exception e) {
             log.error("Error invoking methods via reflection: ", e);
