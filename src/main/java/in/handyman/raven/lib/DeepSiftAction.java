@@ -27,6 +27,13 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.ArrayList;
 
 import static in.handyman.raven.core.enums.DatabaseConstants.DB_INSERT_WRITE_BATCH_SIZE;
 import static in.handyman.raven.core.enums.DatabaseConstants.DB_SELECT_READ_BATCH_SIZE;
@@ -38,13 +45,12 @@ import static in.handyman.raven.core.enums.FileProcessConstants.COPRO_API_FILE_I
 @ActionExecution(actionName = "DeepSift")
 public class DeepSiftAction implements IActionExecution {
 
-    public static final String INSERT_COLUMNS =
-            "origin_id, group_id, input_file_path, created_on, created_by, root_pipeline_id, " +
-                    "tenant_id, batch_id, extracted_text, paper_no, source_document_type, model_id, " +
-                    "model_name, timetaken_ms, status, request, response, endpoint, word_count, is_blank_page";
+    public static final String INSERT_COLUMNS = "origin_id, group_id, input_file_path, created_on, created_by, root_pipeline_id, "
+            +
+            "tenant_id, batch_id, extracted_text, paper_no, source_document_type, model_id, " +
+            "model_name, timetaken_ms, status, request, response, endpoint, word_count, is_blank_page";
     public static final String INSERT_INTO = "INSERT INTO ";
-    public static final String INSERT_INTO_VALUES =
-            "VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    public static final String INSERT_INTO_VALUES = "VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     public static final String DEEP_SIFT_CONSUMER_API_COUNT = "deep.sift.consumer.API.count";
     public static final String PAGE_CONTENT_MIN_LENGTH = "deep.sift.page.content.min.length.threshold";
     private final ActionExecutionAudit action;
@@ -59,7 +65,8 @@ public class DeepSiftAction implements IActionExecution {
         this.DeepSift = (DeepSift) DeepSift;
         this.action = action;
         this.log = log;
-        this.processBase64 = action.getContext().getOrDefault(COPRO_API_FILE_INPUT_FORMAT, ProcessFileFormatE.BASE64.name());
+        this.processBase64 = action.getContext().getOrDefault(COPRO_API_FILE_INPUT_FORMAT,
+                ProcessFileFormatE.BASE64.name());
 
         this.aMarker = MarkerFactory.getMarker(" DeepSift:" + this.DeepSift.getName());
     }
@@ -74,27 +81,36 @@ public class DeepSiftAction implements IActionExecution {
             log.info(aMarker, "Deep Sift Action for {} has been started", DeepSift.getName());
 
             String outputTableName = DeepSift.getResultTable();
-            final String insertQuery = INSERT_INTO + outputTableName + " ( " + INSERT_COLUMNS + " ) " + INSERT_INTO_VALUES;
-            final List<URL> urls = Optional.ofNullable(DeepSift.getEndPoint()).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
-                try {
-                    return new URL(s1);
-                } catch (MalformedURLException e) {
-                    log.error("Error in processing the URL ", e);
-                    throw new HandymanException("Error in processing the URL", e, action);
-                }
-            }).collect(Collectors.toList())).orElse(Collections.emptyList());
+            final String insertQuery = INSERT_INTO + outputTableName + " ( " + INSERT_COLUMNS + " ) "
+                    + INSERT_INTO_VALUES;
+            final List<URL> urls = Optional.ofNullable(DeepSift.getEndPoint())
+                    .map(s -> Arrays.stream(s.split(",")).map(s1 -> {
+                        try {
+                            return new URL(s1);
+                        } catch (MalformedURLException e) {
+                            log.error("Error in processing the URL ", e);
+                            throw new HandymanException("Error in processing the URL", e, action);
+                        }
+                    }).collect(Collectors.toList())).orElse(Collections.emptyList());
 
-            final CoproProcessor<DeepSiftInputTable, DeepSiftOutputTable> coproProcessor = new CoproProcessor<>(new LinkedBlockingQueue<>(), DeepSiftOutputTable.class, DeepSiftInputTable.class, DeepSift.getResourceConn(), log, new DeepSiftInputTable(), urls, action);
+            final CoproProcessor<DeepSiftInputTable, DeepSiftOutputTable> coproProcessor = new CoproProcessor<>(
+                    new LinkedBlockingQueue<>(), DeepSiftOutputTable.class, DeepSiftInputTable.class,
+                    DeepSift.getResourceConn(), log, new DeepSiftInputTable(), urls, action);
 
             Integer readBatchSize = Integer.valueOf(action.getContext().get(DB_SELECT_READ_BATCH_SIZE));
-            final int consumerApiCount = Optional.ofNullable(DeepSift.getForkBatchSize()).map(Integer::valueOf).orElse(0);
+            final int consumerApiCount = Optional.ofNullable(DeepSift.getForkBatchSize()).map(Integer::valueOf)
+                    .orElse(0);
             Integer writeBatchSize = Integer.valueOf(action.getContext().get(DB_INSERT_WRITE_BATCH_SIZE));
             Integer pageContentMinLength = Integer.valueOf(action.getContext().get(PAGE_CONTENT_MIN_LENGTH));
-            DeepSiftConsumerProcess DeepSiftConsumerProcess = new DeepSiftConsumerProcess(log, aMarker, action, pageContentMinLength, fileProcessingUtils, processBase64);
+            DeepSiftConsumerProcess DeepSiftConsumerProcess = new DeepSiftConsumerProcess(log, aMarker, action,
+                    pageContentMinLength, fileProcessingUtils, processBase64);
 
             coproProcessor.startProducer(DeepSift.getQuerySet(), readBatchSize);
             Thread.sleep(1000);
             coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, DeepSiftConsumerProcess);
+
+            performDeepSearchInputGeneration(jdbi, outputTableName);
+
             log.info(aMarker, " Deep Sift Action has been completed {}  ", DeepSift.getName());
         } catch (Exception e) {
             action.getContext().put(DeepSift.getName() + ".isSuccessful", "false");
@@ -104,10 +120,186 @@ public class DeepSiftAction implements IActionExecution {
 
     }
 
-
     @Override
     public boolean executeIf() throws Exception {
         return DeepSift.getCondition();
+    }
+
+    private void performDeepSearchInputGeneration(Jdbi jdbi, String outputTableName) {
+        String inputTableName = outputTableName.replace("deep_sift_output", "deep_search_input");
+        log.info(aMarker, "Starting Deep Search Input generation. Source: {}, Target: {}", outputTableName,
+                inputTableName);
+
+        try {
+            // 1. Fetch all output data
+            List<DeepSiftOutputTable> outputData = jdbi
+                    .withHandle(handle -> handle.createQuery("SELECT * FROM " + outputTableName)
+                            .mapToBean(DeepSiftOutputTable.class)
+                            .list());
+
+            if (outputData.isEmpty()) {
+                log.info(aMarker, "No data in output table, skipping Deep Search Input generation.");
+                return;
+            }
+
+            // 2. Group by Tenant and Document Type to fetch Meta Data
+            Map<String, List<DeepSiftOutputTable>> groupedByTenantAndType = outputData.stream()
+                    .collect(Collectors.groupingBy(d -> d.getTenantId() + "#" + d.getSourceDocumentType()));
+
+            List<Map<String, Object>> recordsToInsert = new ArrayList<>();
+
+            for (Map.Entry<String, List<DeepSiftOutputTable>> entry : groupedByTenantAndType.entrySet()) {
+                Long tenantId = entry.getValue().get(0).getTenantId();
+                String documentType = entry.getValue().get(0).getSourceDocumentType();
+
+                // 3. Fetch Metadata
+                List<DeepSiftInputGenerationContext> distinctConfigs = jdbi.withHandle(handle -> handle
+                        .createQuery("SELECT DISTINCT " +
+                                "si.sor_item_id, si.sor_item_name, si.page_range, si.paper_count, si.consider_blank_pages, "
+                                +
+                                "sc.sor_container_id, sc.sor_container_name, " +
+                                "scg.search_id, scg.search_name, " +
+                                "STRING_AGG(DISTINCT tep.truth_entity_placeholder_value, ', ') AS keywords " +
+                                "FROM sor_meta.sor_item si " +
+                                "JOIN sor_meta.sor_container sc ON si.sor_container_id = sc.sor_container_id " +
+                                "JOIN sor_meta.search_config scg ON si.search_id = scg.search_id " +
+                                "JOIN sor_meta.truth_entity te ON te.sor_container_id = sc.sor_container_id " +
+                                "JOIN sor_meta.truth_entity_placeholder tep ON tep.truth_entity_id = te.truth_entity_id "
+                                +
+                                "WHERE si.status = 'ACTIVE' AND te.status = 'ACTIVE' AND tep.status = 'ACTIVE' " +
+                                "AND si.tenant_id = :tenantId AND sc.tenant_id = :tenantId AND sc.document_type = :documentType "
+                                +
+                                "GROUP BY si.sor_item_id, si.sor_item_name, si.page_range, si.paper_count, si.consider_blank_pages, "
+                                +
+                                "sc.sor_container_id, sc.sor_container_name, scg.search_id, scg.search_name")
+                        .bind("tenantId", tenantId)
+                        .bind("documentType", documentType)
+                        .mapToBean(DeepSiftInputGenerationContext.class)
+                        .list());
+
+                // 4. Process each group (Origin + Group ID)
+                Map<String, List<DeepSiftOutputTable>> groupedByOriginGroup = entry.getValue().stream()
+                        .collect(Collectors.groupingBy(d -> d.getOriginId() + "#" + d.getGroupId()));
+
+                for (List<DeepSiftOutputTable> groupPages : groupedByOriginGroup.values()) {
+                    List<DeepSiftCompensationLogic.ProcessedPage> processedPages = groupPages.stream()
+                            .map(p -> new DeepSiftCompensationLogic.ProcessedPage(p.getPaperNo(),
+                                    Boolean.TRUE.equals(p.getIsBlankPage())))
+                            .collect(Collectors.toList());
+
+                    // Creates a map for easy lookup of full page object by paperNo
+                    Map<Integer, DeepSiftOutputTable> pageLookup = groupPages.stream()
+                            .collect(Collectors.toMap(DeepSiftOutputTable::getPaperNo, p -> p, (a, b) -> a));
+
+                    for (DeepSiftInputGenerationContext config : distinctConfigs) {
+                        if (config.getPageRange() == null || config.getPageRange().isEmpty())
+                            continue;
+
+                        List<DeepSiftCompensationLogic.RangeConfig> ranges = parsePageRange(config.getPageRange());
+
+                        List<Integer> selectedPageNumbers = DeepSiftCompensationLogic.selectPages(
+                                processedPages,
+                                ranges,
+                                config.getPaperCount() != null ? config.getPaperCount() : 10000,
+                                Boolean.TRUE.equals(config.getConsiderBlankPages()));
+
+                        for (Integer paperNo : selectedPageNumbers) {
+                            DeepSiftOutputTable pageData = pageLookup.get(paperNo);
+                            if (pageData != null) {
+                                Map<String, Object> row = new HashMap<>();
+                                row.put("origin_id", pageData.getOriginId());
+                                row.put("group_id", pageData.getGroupId());
+                                row.put("created_on", pageData.getCreatedOn());
+                                row.put("created_by", pageData.getCreatedBy());
+                                row.put("extracted_text", pageData.getExtractedText());
+                                row.put("root_pipeline_id", pageData.getRootPipelineId());
+                                row.put("tenant_id", pageData.getTenantId());
+                                row.put("batch_id", pageData.getBatchId());
+                                row.put("paper_no", pageData.getPaperNo());
+                                row.put("source_document_type", pageData.getSourceDocumentType());
+                                row.put("sor_container_id", config.getSorContainerId());
+                                row.put("sor_container_name", config.getSorContainerName());
+                                row.put("sor_item_id", config.getSorItemId());
+                                row.put("sor_item_name", config.getSorItemName());
+                                row.put("search_id", config.getSearchId());
+                                row.put("search_name", config.getSearchName());
+                                row.put("keywords", config.getKeywords());
+                                row.put("field_paper_count", config.getPaperCount());
+                                row.put("field_consider_blank_pages", config.getConsiderBlankPages());
+                                row.put("is_blank_page", pageData.getIsBlankPage());
+                                row.put("page_range", config.getPageRange());
+                                recordsToInsert.add(row);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 5. Batch Insert
+            if (!recordsToInsert.isEmpty()) {
+                String insertSql = "INSERT INTO " + inputTableName + " (origin_id, group_id, created_on, created_by, " +
+                        "extracted_text, root_pipeline_id, tenant_id, batch_id, paper_no, source_document_type, " +
+                        "sor_container_id, sor_container_name, sor_item_id, sor_item_name, search_id, search_name, " +
+                        "keywords, field_paper_count, field_consider_blank_pages, is_blank_page, page_range) " +
+                        "VALUES (:origin_id, :group_id, :created_on, :created_by, :extracted_text, :root_pipeline_id, "
+                        +
+                        ":tenant_id, :batch_id, :paper_no, :source_document_type, :sor_container_id, :sor_container_name, "
+                        +
+                        ":sor_item_id, :sor_item_name, :search_id, :search_name, :keywords, :field_paper_count, " +
+                        ":field_consider_blank_pages, :is_blank_page, :page_range)";
+
+                jdbi.useHandle(handle -> {
+                    org.jdbi.v3.core.statement.PreparedBatch batch = handle.prepareBatch(insertSql);
+                    for (Map<String, Object> record : recordsToInsert) {
+                        batch.bindMap(record);
+                    }
+                    batch.execute();
+
+                });
+                log.info(aMarker, "Inserted {} records into {}", recordsToInsert.size(), inputTableName);
+            }
+
+        } catch (Exception e) {
+            log.error(aMarker, "Error during Deep Search Input generation", e);
+            throw new HandymanException("Error during Deep Search Input generation", e, action);
+        }
+    }
+
+    private List<DeepSiftCompensationLogic.RangeConfig> parsePageRange(String pageRange) {
+        List<DeepSiftCompensationLogic.RangeConfig> ranges = new ArrayList<>();
+        if (pageRange != null) {
+            String[] parts = pageRange.split(",");
+            for (int i = 0; i < parts.length; i++) {
+                String part = parts[i].trim();
+                String[] rangeParts = part.split("-");
+                if (rangeParts.length == 2) {
+                    try {
+                        int start = Integer.parseInt(rangeParts[0].trim());
+                        int end = Integer.parseInt(rangeParts[1].trim());
+                        ranges.add(new DeepSiftCompensationLogic.RangeConfig(start, end, i));
+                    } catch (NumberFormatException e) {
+                        log.warn(aMarker, "Invalid range format in: {}", part);
+                    }
+                }
+            }
+        }
+        return ranges;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class DeepSiftInputGenerationContext {
+        private Long sorItemId;
+        private String sorItemName;
+        private String pageRange;
+        private Integer paperCount;
+        private Boolean considerBlankPages;
+        private Long sorContainerId;
+        private String sorContainerName;
+        private Long searchId;
+        private String searchName;
+        private String keywords;
     }
 
 }
