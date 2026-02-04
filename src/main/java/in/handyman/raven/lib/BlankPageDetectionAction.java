@@ -10,8 +10,13 @@ import nu.pattern.OpenCV;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDResources;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
+
+import java.io.IOException;
+import java.io.InputStream;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;
@@ -42,9 +47,15 @@ public class BlankPageDetectionAction implements IActionExecution {
     }
 
     private static final double BLANK_INK_RATIO_THRESHOLD = 0.005; // 0.5%
+    private static final int MIN_SIGNIFICANT_CONTENT = 50;
     private static final int BINARY_THRESHOLD_VALUE = 230;
     private static final int GAUSSIAN_BLUR_SIZE = 5;
     private static final int PDF_RENDER_DPI = 72;
+    private static final String PHOTON_BLANK_PAGE_DETECTION_ACTIVATOR = "photon.blank.page.detection.activator";
+    private static final String PHOTON_NAME = "PHOTON";
+    private static final String NEON_NAME = "NEON";
+    private static final String PHOTON_VERSION = "4.7.0";
+    private static final String NEON_VERSION = "1.0.0";
 
     private static final String INSERT_COLUMNS = "origin_id,group_id,tenant_id,template_id,processed_file_path,paper_no,"
             +
@@ -225,23 +236,117 @@ public class BlankPageDetectionAction implements IActionExecution {
         final long rootPipelineId = Long.parseLong(String.valueOf(rootPipelineIdObj));
 
         try (PDDocument document = Loader.loadPDF(new java.io.File(pdfPath))) {
-            final PDFRenderer renderer = new PDFRenderer(document);
             final int totalPages = document.getNumberOfPages();
 
             for (int pageIndex = 0; pageIndex < totalPages; pageIndex++) {
                 final long startTime = System.currentTimeMillis();
 
-                final BufferedImage pageImage = renderer.renderImageWithDPI(pageIndex, PDF_RENDER_DPI,
-                        ImageType.GRAY);
-                final Mat mat = bufferedImageToMat(pageImage);
-                final boolean isBlank = isBlankPage(mat);
-                mat.release();
+                final String activator = this.action.getContext().getOrDefault(PHOTON_BLANK_PAGE_DETECTION_ACTIVATOR,
+                        "FALSE");
+                final boolean usePhoton = "TRUE".equalsIgnoreCase(activator);
+
+                final boolean isBlank;
+                final String modelName;
+                final String modelVersion;
+
+                if (usePhoton) {
+                    final PDFRenderer renderer = new PDFRenderer(document);
+                    final BufferedImage pageImage = renderer.renderImageWithDPI(pageIndex, PDF_RENDER_DPI,
+                            ImageType.GRAY);
+                    final Mat mat = bufferedImageToMat(pageImage);
+                    isBlank = isBlankPage(mat);
+                    mat.release();
+                    modelName = PHOTON_NAME;
+                    modelVersion = PHOTON_VERSION;
+                } else {
+                    isBlank = isPageBlankUltraFast(document.getPage(pageIndex));
+                    modelName = NEON_NAME;
+                    modelVersion = NEON_VERSION;
+                }
+
                 final long execMs = System.currentTimeMillis() - startTime;
 
                 insertResult(handle, insertQuery, originId, groupId, tenantId, pdfPath,
-                        pageIndex + 1, isBlank, processId, rootPipelineId, batchId, execMs);
+                        pageIndex + 1, isBlank, processId, rootPipelineId, batchId, execMs, modelName, modelVersion,
+                        "PDF");
             }
         }
+    }
+
+    private boolean isPageBlankUltraFast(final PDPage page) throws IOException {
+        // 1. Check if Images/XObjects Exist
+        final PDResources resources = page.getResources();
+        if (resources != null) {
+            if (resources.getXObjectNames().iterator().hasNext()) {
+                return false; // Not blank
+            }
+        }
+
+        // 2. Check Content Stream Bytes
+        try (InputStream stream = page.getContents()) {
+            if (stream == null) {
+                return true;
+            }
+
+            final byte[] buffer = new byte[4096];
+            int totalRead = 0;
+            int bytesRead;
+
+            boolean hasText = false;
+            boolean hasImage = false;
+            boolean hasDraw = false;
+
+            while ((bytesRead = stream.read(buffer)) != -1) {
+                totalRead += bytesRead;
+
+                for (int i = 0; i < bytesRead - 1; i++) {
+                    final byte b1 = buffer[i];
+                    final byte b2 = buffer[i + 1];
+
+                    // Text Operators (Tj / TJ)
+                    if ((b1 == 'T' && b2 == 'j') ||
+                            (b1 == 'T' && b2 == 'J')) {
+                        hasText = true;
+                        break;
+                    }
+
+                    // Image Operators (Do / BI)
+                    if ((b1 == 'D' && b2 == 'o') ||
+                            (b1 == 'B' && b2 == 'I')) {
+                        hasImage = true;
+                        break;
+                    }
+
+                    // Drawing Operators (S / f / B)
+                    if (isWhitespace(b2)) {
+                        if (b1 == 'S' || b1 == 's' ||
+                                b1 == 'f' || b1 == 'F' ||
+                                b1 == 'B' || b1 == 'b') {
+                            hasDraw = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (hasText || hasImage || hasDraw) {
+                    break;
+                }
+            }
+
+            if (hasText || hasImage) {
+                return false;
+            }
+
+            if (hasDraw && totalRead > MIN_SIGNIFICANT_CONTENT) {
+                return false;
+            }
+
+            return totalRead < MIN_SIGNIFICANT_CONTENT;
+        }
+    }
+
+    private static boolean isWhitespace(final byte b) {
+        return b == ' ' || b == '\n' || b == '\r' || b == '\t';
     }
 
     private void processImage(final org.jdbi.v3.core.Handle handle,
@@ -271,7 +376,7 @@ public class BlankPageDetectionAction implements IActionExecution {
         final long execMs = System.currentTimeMillis() - startTime;
 
         insertResult(handle, insertQuery, originId, groupId, tenantId, filePath,
-                pageNo, isBlank, processId, rootPipelineId, batchId, execMs);
+                pageNo, isBlank, processId, rootPipelineId, batchId, execMs, PHOTON_NAME, PHOTON_VERSION, "IMAGE");
     }
 
     private void insertResult(final org.jdbi.v3.core.Handle handle,
@@ -285,10 +390,14 @@ public class BlankPageDetectionAction implements IActionExecution {
             final long processId,
             final long rootPipelineId,
             final String batchId,
-            final long execMs) {
+            final long execMs,
+            final String modelName,
+            final String modelVersion,
+            final String fileType) {
 
         final String status = isBlank ? "BLANK" : "CONTENT";
-        final String message = isBlank ? "Page is blank" : "Page has content";
+        final String message = String.format("Page is %s detected by %s for %s file",
+                isBlank ? "blank" : "having content", modelName, fileType);
         final Timestamp now = new Timestamp(System.currentTimeMillis());
 
         handle.createUpdate(insertQuery)
@@ -304,8 +413,8 @@ public class BlankPageDetectionAction implements IActionExecution {
                 .bind(9, now)
                 .bind(10, processId)
                 .bind(11, rootPipelineId)
-                .bind(12, "OPENCV")
-                .bind(13, "4.7.0")
+                .bind(12, modelName)
+                .bind(13, modelVersion)
                 .bind(14, batchId)
                 .bind(15, now)
                 .bind(16, "")
