@@ -25,8 +25,8 @@ public class NewBornRequestMapper {
 
             for (int i = 0; i < newbornRequestList.size(); i++) {
                 Object obj = newbornRequestList.get(i);
-                if (obj instanceof PostProcessingExecutorInput) {
-                    PostProcessingExecutorInput newbornRequestInput = (PostProcessingExecutorInput) obj;
+                if (obj instanceof in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) {
+                    in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput newbornRequestInput = (in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) obj;
 
                     String promptValue = getExtractedValueFromList(data.get("newborn_request_prompt"), i);
                     String ocrValue = getExtractedValueFromList(data.get("newborn_request_ocr"), i);
@@ -60,8 +60,8 @@ public class NewBornRequestMapper {
             List list = (List) listObj;
             if (index < list.size()) {
                 Object item = list.get(index);
-                if (item instanceof PostProcessingExecutorInput) {
-                    String value = ((PostProcessingExecutorInput) item).getExtractedValue();
+                if (item instanceof in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) {
+                    String value = ((in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) item).getExtractedValue();
                     return (value != null) ? value : "";
                 }
             }
@@ -78,42 +78,6 @@ public class NewBornRequestMapper {
 
         public Map getMappedData() {
             return mappedData;
-        }
-    }
-
-    public static class PostProcessingExecutorInput {
-
-        private Long tenantId;
-        private double aggregatedScore;
-        private double maskedScore;
-        private String originId;
-        private Integer paperNo;
-        private String extractedValue;
-        private double vqaScore;
-        private Integer rank;
-        private Integer sorItemAttributionId;
-        private String sorItemName;
-        private String documentId;
-        private Long accTransactionId;
-        private String label;
-        private String sectionAlias;
-        private Long score;
-        private String bBox;
-        private Long rootPipelineId;
-        private Long frequency;
-        private Long questionId;
-        private Long synonymId;
-        private String modelRegistry;
-        private String encryptionPolicy;
-        private String isEncrypted;
-        private String lineItemType;
-
-        public String getExtractedValue() {
-            return extractedValue;
-        }
-
-        public void setExtractedValue(String extractedValue) {
-            this.extractedValue = extractedValue;
         }
     }
 }

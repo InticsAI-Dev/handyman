@@ -34,4 +34,16 @@ public class PostProcessingExecutorInput {
     public void setExtractedValue(String extractedValue) {
         this.extractedValue = extractedValue;
     }
+
+    public void setLabel(String label) { this.label = label; }
+
+    public void setSectionAlias(String sectionAlias) { this.sectionAlias = sectionAlias; }
+
+    public void setBBox(String bBox) { this.bBox = bBox; }
+
+    public String getLabel() { return label; }
+
+    public String getSectionAlias() { return sectionAlias; }
+
+    public String getBBox() { return bBox; }
 }

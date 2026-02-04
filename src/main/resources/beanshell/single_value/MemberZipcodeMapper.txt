@@ -21,9 +21,9 @@ public class MemberZipcodeMapper {
             for(int i = 0; i<zipCodeList.size(); i++)
             {
                 Object obj = zipCodeList.get(i);
-                if(obj instanceof PostProcessingExecutorInput)
+                if(obj instanceof in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput)
                 {
-                    PostProcessingExecutorInput zipCodeInput = (PostProcessingExecutorInput) obj;
+                    in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput zipCodeInput = (in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) obj;
                     String validatedZipCodeValue = zipcodeValidation(zipCodeInput.getExtractedValue(), rootPipelineId);
                     zipCodeInput.setExtractedValue(validatedZipCodeValue);
 
@@ -69,41 +69,6 @@ public class MemberZipcodeMapper {
 
         public Map getMappedData() {
             return mappedData;
-        }
-    }
-    public static class PostProcessingExecutorInput {
-
-        private Long tenantId;
-        private double aggregatedScore;
-        private double maskedScore;
-        private String originId;
-        private Integer paperNo;
-        private String extractedValue;
-        private double vqaScore;
-        private Integer rank;
-        private Integer sorItemAttributionId;
-        private String sorItemName;
-        private String documentId;
-        private Long accTransactionId;
-        private String label;
-        private String sectionAlias;
-        private Long score;
-        private String bBox;
-        private Long rootPipelineId;
-        private Long frequency;
-        private Long questionId;
-        private Long synonymId;
-        private String modelRegistry;
-        private String encryptionPolicy;
-        private String isEncrypted;
-        private String lineItemType;
-
-        public String getExtractedValue() {
-            return extractedValue;
-        }
-
-        public void setExtractedValue(String extractedValue) {
-            this.extractedValue = extractedValue;
         }
     }
 }

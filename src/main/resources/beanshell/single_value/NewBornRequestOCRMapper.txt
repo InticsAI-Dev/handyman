@@ -42,8 +42,8 @@ public class NewBornRequestOCRMapper {
             boolean anyMatchFound = false;
             for (int i = 0; i < objList.size(); i++) {
                 Object obj = objList.get(i);
-                if (obj instanceof PostProcessingExecutorInput) {
-                    PostProcessingExecutorInput newBornRequestOcrInput = (PostProcessingExecutorInput) obj;
+                if (obj instanceof in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) {
+                    in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput newBornRequestOcrInput = (in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) obj;
 
                     String newbornRequest = getStringValue(newBornRequestOcrInput);
 
@@ -79,7 +79,7 @@ public class NewBornRequestOCRMapper {
     }
 
 
-    public String getStringValue(PostProcessingExecutorInput map) {
+    public String getStringValue(in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput map) {
         String value = map.getExtractedValue();
         if (value == null) {
             return "";
@@ -128,37 +128,5 @@ public class NewBornRequestOCRMapper {
         public Map getMappedData() {
             return mappedData;
         }
-    }
-
-    public static class PostProcessingExecutorInput {
-
-        public Long tenantId;
-        public double aggregatedScore;
-        public double maskedScore;
-        public String originId;
-        public Integer paperNo;
-        public String extractedValue;
-        public double vqaScore;
-        public Integer rank;
-        public Integer sorItemAttributionId;
-        public String sorItemName;
-        public String documentId;
-        public Long accTransactionId;
-        public String label;
-        public String sectionAlias;
-        public Long score;
-        public String bBox;
-        public Long rootPipelineId;
-        public Long frequency;
-        public Long questionId;
-        public Long synonymId;
-        public String modelRegistry;
-        public String encryptionPolicy;
-        public String isEncrypted;
-        public String lineItemType;
-
-        public String getExtractedValue() { return extractedValue; }
-
-        public void setExtractedValue(String extractedValue) { this.extractedValue = extractedValue; }
     }
 }

@@ -3,9 +3,14 @@ package in.handyman.raven.lib.model.scalar;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 
@@ -20,7 +25,7 @@ class ValidatorByBeanShellExecutorTest {
     private Map<String, String> contextMap;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws IOException {
         inputList = new ArrayList<>();
         contextMap = new HashMap<>();
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
@@ -31,12 +36,32 @@ class ValidatorByBeanShellExecutorTest {
         actionExecutionAudit.getContext().put("multi.line.item.activator", ""); // To avoid NPE
         actionExecutionAudit.getContext().put("multi.line.item.activator", ""); // To avoid NPE
         actionExecutionAudit.getContext().put("multi.line.item.activator", ""); // To avoid NPE
-//        actionExecutionAudit.getContext().put("AumiMemberNameMapper", getAumiMemberNameMapper());
-//        actionExecutionAudit.getContext().put("AumiGenderMapper", getAumiMemberNameMapper());
-//        actionExecutionAudit.getContext().put("MemberIdValidator", getAumiMemberNameMapper());
-//        actionExecutionAudit.getContext().put("MemberAddressMapper", getMemberAddressMapper());
+//        actionExecutionAudit.getContext().put("ProviderZipCodeMapper", getProviderZipCodeMapper());
+//        actionExecutionAudit.getContext().put("ProviderNpiTinValidator", getProviderNpiTinValidator());
+//        actionExecutionAudit.getContext().put("ProviderAddressMapper", getProviderAddressMapper());
+//        actionExecutionAudit.getContext().put("ServiceToDateMapper", getServiceToDateMapper());
+//        actionExecutionAudit.getContext().put("NewBornRequestOCRMapper", getNewBornRequestOCRMapper());
+//        actionExecutionAudit.getContext().put("NewBornRequestMapper", getNewBornRequestMapper());
+//        actionExecutionAudit.getContext().put("NewbornNameMapper", getNewbornNameMapper());
+//        actionExecutionAudit.getContext().put("NewbornGenderMapper", getNewbornGenderMapper());
 //        actionExecutionAudit.getContext().put("NewbornDOBMapper", getNewbornDOBMapper());
-        actionExecutionAudit.getContext().put("ProviderNpiTinValidator", getProviderNpiTinValidator());
+//        actionExecutionAudit.getContext().put("MemberZipcodeMapper", getMemberZipcodeMapper());
+//        actionExecutionAudit.getContext().put("MemberIdValidator", getMemberIdValidator());
+//        actionExecutionAudit.getContext().put("MemberDOBandServiceFromDateMapper", getMemberDOBandServiceFromDateMapper());
+//        actionExecutionAudit.getContext().put("MemberAddressMapper", getMemberAddressMapper());
+//        actionExecutionAudit.getContext().put("MedicaidMemberIdValidator", getMedicaidMemberIdValidator());
+//        actionExecutionAudit.getContext().put("FaxFromDateMapper", getFaxFromDateMapper());
+//        actionExecutionAudit.getContext().put("ClinicalPresentProcessor", getClinicalPresentProcessor());
+//        actionExecutionAudit.getContext().put("AuthDischargeDateValidator", getAuthDischargeDateValidator());
+//        actionExecutionAudit.getContext().put("AumiMultiMemberMapper", getAumiMultiMemberMapper());
+//        actionExecutionAudit.getContext().put("AumiMemberNameMapper", getAumiMemberNameMapper());
+//        actionExecutionAudit.getContext().put("AumiGenderMapper", getAumiGenderMapper());
+//        actionExecutionAudit.getContext().put("LOSValidator", getLOSValidator());
+//          actionExecutionAudit.getContext().put("LOSGBDValidator", getLOSGBDValidator());
+//        actionExecutionAudit.getContext().put("DiagnosisServiceCodeValidator", getDiagnosisServiceCodeValidator());
+        actionExecutionAudit.getContext().put("AuthIdValidator", getAuthIdValidator());
+
+
 
         // Default Context
         contextMap.put("multi.line.item.activator", "true");
@@ -46,8 +71,8 @@ class ValidatorByBeanShellExecutorTest {
     }
 
     private PostProcessingFieldsInput createInput(Integer id, String originId, Integer paperNo, String lineItemType,
-            String sorContainerInstance, String sorItemName, String answer, String sectionAlias, String label,
-            Double vqaScore) {
+                                                  String sorContainerInstance, String sorItemName, String answer, String sectionAlias, String label,
+                                                  Double vqaScore) {
         PostProcessingFieldsInput input = new PostProcessingFieldsInput();
         input.setPostProcessingFieldId(id);
         input.setOriginId(originId);
@@ -1027,11 +1052,7 @@ class ValidatorByBeanShellExecutorTest {
 //    }
 
 
-
-
-
-
-        @Test
+    @Test
     void testExecuteScriptsMemberAddressMapper() {
 
         log.info("Test Scenario: Execute MemberAddressMapper BeanShell Script");
@@ -1039,9 +1060,9 @@ class ValidatorByBeanShellExecutorTest {
         List<PostProcessingFieldsInput> inputList = new ArrayList<>();
         Map<String, List<PostProcessingFieldsInput>> inputMap = new HashMap<>();
 
-        List<String> classes = Collections.singletonList("ProviderNpiTinValidator");
+        List<String> classes = Collections.singletonList("AuthIdValidator");
         inputList.add(createInput(1, "ORIGIN-1", 1,
-                "single_value", "PROVIDER_1", "servicing_provider_npi", "1234567890", "Provider", "provider npi", 0.95));
+                "multi_value", "PROVIDER_1", "member_id", "747U05007", "Provider", "provider npi", 0.95));
         // ---------- BEFORE ----------
         System.out.println("===== BEFORE PROVIDER NPI MAPPING =====");
         for (PostProcessingFieldsInput in : inputList) {
@@ -1055,9 +1076,9 @@ class ValidatorByBeanShellExecutorTest {
         }
 
 
-            inputMap.put("servicing_provider_npi",inputList);
+        inputMap.put("servicing_provider_npi", inputList);
         // ---------- EXECUTE ----------
-            Map<String, List<PostProcessingFieldsInput>> result = validator.executeScripts(classes, inputMap);
+        Map<String, List<PostProcessingFieldsInput>> result = validator.executeScripts(classes, inputMap);
 
         // ---------- AFTER ----------
         System.out.println("===== AFTER PROVIDER NPI MAPPING =====");
@@ -1074,156 +1095,173 @@ class ValidatorByBeanShellExecutorTest {
         });
     }
 
-    String getProviderNpiTinValidator(){
-        return "import org.slf4j.Logger;\n" +
-                "import java.util.ArrayList;\n" +
-                "import java.util.Hashtable;\n" +
-                "import java.util.List;\n" +
-                "import java.util.Map;\n" +
-                "import java.util.regex.Matcher;\n" +
-                "import java.util.regex.Pattern;\n" +
-                "\n" +
-                "public class ProviderNpiTinValidator {\n" +
-                "    private Long rootPipelineId;\n" +
-                "//    private static List logMessages = new ArrayList();\n" +
-                "    private static final Pattern NPI_PATTERN = Pattern.compile(\"^\\\\d{10}$\");\n" +
-                "    private static final Pattern TIN_PATTERN = Pattern.compile(\"^\\\\d{2}-\\\\d{7}$|^\\\\d{5}-\\\\d{4}$|^(?=.*[0-9])[a-zA-Z0-9]+$\");\n" +
-                "//    private static final Pattern TIN_FORMATTED_PATTERN = Pattern.compile(\"^\\\\d{2}-\\\\d{7}$|^\\\\d{5}-\\\\d{4}$|^(?=.*[0-9])[a-zA-Z0-9]+$\");\n" +
-                "//    private static final Pattern TIN_GENERAL_PATTERN = Pattern.compile(\"^\\\\d{2}-\\\\d{7}$|^\\\\d{5}-\\\\d{4}$|^(?=.*[0-9])[a-zA-Z0-9]+$\");\n" +
-                "//    private static final Pattern COMBINED_FIELD = Pattern.compile(\"([a-zA-Z0-9:-]+)\\\\s*[/–,:\\\\|\\\\\\\\]\\\\s*([a-zA-Z0-9:-]+)\");\n" +
-                "    private static final Pattern NPI_PREFIX = Pattern.compile(\"^(?:npi:\\\\s*|npi\\\\s+)(\\\\d{10})$\", Pattern.CASE_INSENSITIVE);\n" +
-                "    private static final Pattern TIN_PREFIX = Pattern.compile(\"^(?:tin:\\\\s*|tin\\\\s+)([\\\\d-]*)$\", Pattern.CASE_INSENSITIVE);\n" +
-                "    private static final Pattern ALPHA_NUMERIC_ONLY = Pattern.compile(\"^(?=.*[0-9])[a-zA-Z0-9]+$\");\n" +
-                "    private Logger logger;\n" +
-                "\n" +
-                "    public ProviderNpiTinValidator(Logger logger) { this.logger = logger; }\n" +
-                "\n" +
-                "    public MappingResult doCustomPredictionMapping(Map predictionKeyMap, Long rootPipelineId) {\n" +
-                "        this.rootPipelineId = rootPipelineId;\n" +
-                "        String logMsg = \"[RootPipelineID: \" + rootPipelineId + \"] Entered ProviderNpiTinValidator doIdValidationAndMapping method\";\n" +
-                "        logger.info(logMsg);\n" +
-                "//        logMessages.add(logMsg);\n" +
-                "\n" +
-                "        if (predictionKeyMap == null) {\n" +
-                "            String msgLog = \"[RootPipelineID: \" + rootPipelineId + \"] Input map is null\";\n" +
-                "            logger.error(msgLog);\n" +
-                "//            logMessages.add(msgLog);\n" +
-                "            return new MappingResult(predictionKeyMap);\n" +
-                "        }\n" +
-                "\n" +
-                "        Map resultMap = new Hashtable(predictionKeyMap);\n" +
-                "        validateAndMapIds(resultMap);\n" +
-                "        return new MappingResult(resultMap);\n" +
-                "    }\n" +
-                "\n" +
-                "    private void validateAndMapIds(Map resultMap) {\n" +
-                "        String[] idFields = {\n" +
-                "                \"servicing_provider_tin\", \"referring_provider_tin\", \"servicing_facility_tin\",\"ordering_provider_tin\",\"undefined_provider_tin\",\n" +
-                "                \"servicing_provider_npi\", \"referring_provider_npi\", \"servicing_facility_npi\",\"ordering_provider_npi\",\"undefined_provider_npi\"\n" +
-                "        };\n" +
-                "        for (String field : idFields) {\n" +
-                "            Object valueObj = resultMap.get(field);\n" +
-                "            if(valueObj instanceof List)\n" +
-                "            {\n" +
-                "                List valueList = (List) valueObj;\n" +
-                "\n" +
-                "                for(int i = 0; i<valueList.size(); i++)\n" +
-                "                {\n" +
-                "                    Object obj = valueList.get(i);\n" +
-                "                    if(obj instanceof in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput)\n" +
-                "                    {\n" +
-                "                        in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput input = (PostProcessingExecutorInputin.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) obj;\n" +
-                "                        String validatedValue = processMap(input.getExtractedValue(), rootPipelineId, field);\n" +
-                "                        input.setExtractedValue(validatedValue);\n" +
-                "\n" +
-                "                    }\n" +
-                "                }\n" +
-                "            }\n" +
-                "        }\n" +
-                "    }\n" +
-                "\n" +
-                "    private String processMap(String extractedValue, Long rootPipelineId, String field) {\n" +
-                "\n" +
-                "        if (extractedValue == null || extractedValue.trim().isEmpty()) {\n" +
-                "            return \"\";\n" +
-                "        }\n" +
-                "\n" +
-                "        String originalValue = extractedValue.trim();\n" +
-                "        String value = originalValue;\n" +
-                "\n" +
-                "        // Handle NPI prefix\n" +
-                "        Matcher npiPrefixMatcher = NPI_PREFIX.matcher(value);\n" +
-                "        if (npiPrefixMatcher.matches()) {\n" +
-                "            value = npiPrefixMatcher.group(1);\n" +
-                "        }\n" +
-                "\n" +
-                "        // Handle TIN prefix\n" +
-                "        Matcher tinPrefixMatcher = TIN_PREFIX.matcher(value);\n" +
-                "        if (tinPrefixMatcher.matches()) {\n" +
-                "            value = tinPrefixMatcher.group(1);\n" +
-                "        }\n" +
-                "\n" +
-                "        // Normalize value\n" +
-                "        String numericValue = value.replaceAll(\"[\\\\s-]\", \"\");\n" +
-                "\n" +
-                "        // Validate alphanumeric\n" +
-                "        if (!ALPHA_NUMERIC_ONLY.matcher(numericValue).matches()) {\n" +
-                "            logInvalid(field, originalValue, \"non-alphanumeric\");\n" +
-                "            return \"\";\n" +
-                "        }\n" +
-                "\n" +
-                "        // ---------- NPI FIELD ----------\n" +
-                "        if (isNpiField(field)) {\n" +
-                "            if (NPI_PATTERN.matcher(numericValue).matches()) {\n" +
-                "                return numericValue;\n" +
-                "            } else {\n" +
-                "                logInvalid(field, originalValue, \"invalid NPI\");\n" +
-                "                return \"\";\n" +
-                "            }\n" +
-                "        }\n" +
-                "\n" +
-                "        // ---------- TIN FIELD ----------\n" +
-                "        if (isTinField(field)) {\n" +
-                "//            if (numericValue.length() == 9) {\n" +
-                "            if (TIN_PATTERN.matcher(value).matches()) {\n" +
-                "                return numericValue;\n" +
-                "            } else {\n" +
-                "                logInvalid(field, originalValue, \"invalid TIN length\");\n" +
-                "                return \"\";\n" +
-                "            }\n" +
-                "        }\n" +
-                "\n" +
-                "        return \"\";\n" +
-                "    }\n" +
-                "\n" +
-                "    private boolean isNpiField(String field) {\n" +
-                "        return field != null && field.endsWith(\"_npi\");\n" +
-                "    }\n" +
-                "\n" +
-                "    private boolean isTinField(String field) {\n" +
-                "        return field != null && field.endsWith(\"_tin\");\n" +
-                "    }\n" +
-                "\n" +
-                "    private void logInvalid(String field, String value, String reason) {\n" +
-                "        String logMsg = \"[RootPipelineID: \" + rootPipelineId +\n" +
-                "                \"] Rejected value '\" + value + \"' for field \" + field +\n" +
-                "                \" due to \" + reason;\n" +
-                "        logger.info(logMsg);\n" +
-                "//        logMessages.add(logMsg);\n" +
-                "    }\n" +
-                "\n" +
-                "    public static class MappingResult {\n" +
-                "        private Map mappedData;\n" +
-                "\n" +
-                "        public MappingResult(Map mappedData) {\n" +
-                "            this.mappedData = mappedData != null ? mappedData : new java.util.HashMap();\n" +
-                "        }\n" +
-                "\n" +
-                "        public Map getMappedData() {\n" +
-                "            return mappedData;\n" +
-                "        }\n" +
-                "    }\n" +
-                "}\n";
-
+    String getProviderZipCodeMapper() throws IOException {
+        // read the code from a file
+        File file = new File("src/main/resources/beanshell/single_value/ProviderZipCodeMapper.txt");
+        return fileReader(file);
     }
+
+    String getProviderNpiTinValidator() throws IOException {
+        // read the code from a file
+        File file = new File("src/main/resources/beanshell/single_value/ProviderNpiTinValidator.txt");
+        return fileReader(file);
+    }
+
+
+    String getProviderAddressMapper() throws IOException {
+        // read the code from a file
+        File file = new File("src/main/resources/beanshell/single_value/ProviderAddressMapper.txt");
+        return fileReader(file);
+    }
+
+    String getServiceToDateMapper() throws IOException {
+        // read the code from a file
+        File file = new File("src/main/resources/beanshell/single_value/ServiceToDateMapper.txt");
+        return fileReader(file);
+    }
+
+    String getNewBornRequestOCRMapper() throws IOException {
+        // read the code from a file
+        File file = new File("src/main/resources/beanshell/single_value/NewBornRequestOCRMapper.txt");
+        return fileReader(file);
+    }
+
+    String getNewBornRequestMapper() throws IOException {
+        // read the code from a file
+        File file = new File("src/main/resources/beanshell/single_value/NewBornRequestMapper.txt");
+        return fileReader(file);
+    }
+
+    String getNewbornNameMapper() throws IOException {
+        // read the code from a file
+        File file = new File("src/main/resources/beanshell/single_value/NewbornNameMapper.txt");
+        return fileReader(file);
+    }
+
+
+    String getNewbornGenderMapper() throws IOException {
+        // read the code from a file
+        File file = new File("src/main/resources/beanshell/single_value/NewbornGenderMapper.txt");
+        return fileReader(file);
+    }
+
+    String getNewbornDOBMapper() throws IOException {
+        // read the code from a file
+        File file = new File("src/main/resources/beanshell/single_value/NewbornDOBMapper.txt");
+        return fileReader(file);
+    }
+
+    String getMemberZipcodeMapper() throws IOException {
+        // read the code from a file
+        File file = new File("src/main/resources/beanshell/single_value/MemberZipcodeMapper.txt");
+        return fileReader(file);
+    }
+
+    String getMemberIdValidator() throws IOException {
+        // read the code from a file
+        File file = new File("src/main/resources/beanshell/single_value/MemberIdValidator.txt");
+        return fileReader(file);
+    }
+
+    String getMemberDOBandServiceFromDateMapper() throws IOException {
+        // read the code from a file
+        File file = new File("src/main/resources/beanshell/single_value/MemberDOBandServiceFromDateMapper.txt");
+        return fileReader(file);
+    }
+
+    String getMemberAddressMapper() throws IOException {
+        // read the code from a file
+        File file = new File("src/main/resources/beanshell/single_value/MemberAddressMapper.txt");
+        return fileReader(file);
+    }
+
+    String getMedicaidMemberIdValidator() throws IOException {
+        // read the code from a file
+        File file = new File("src/main/resources/beanshell/single_value/MedicaidMemberIdValidator.txt");
+        return fileReader(file);
+    }
+
+    String getFaxFromDateMapper() throws IOException {
+        // read the code from a file
+        File file = new File("src/main/resources/beanshell/single_value/FaxFromDateMapper.txt");
+        return fileReader(file);
+    }
+
+    String getClinicalPresentProcessor() throws IOException {
+        // read the code from a file
+        File file = new File("src/main/resources/beanshell/single_value/ClinicalPresentProcessor.txt");
+        return fileReader(file);
+    }
+
+    String getAuthDischargeDateValidator() throws IOException {
+        // read the code from a file
+        File file = new File("src/main/resources/beanshell/single_value/AuthDischargeDateValidator.txt");
+        return fileReader(file);
+    }
+
+    String getAumiMultiMemberMapper() throws IOException {
+        // read the code from a file
+        File file = new File("src/main/resources/beanshell/single_value/AumiMultiMemberMapper.txt");
+        return fileReader(file);
+    }
+
+    String getAumiMemberNameMapper() throws IOException {
+        // read the code from a file
+        File file = new File("src/main/resources/beanshell/single_value/AumiMemberNameMapper.txt");
+        return fileReader(file);
+    }
+
+    String getAumiGenderMapper() throws IOException {
+        // read the code from a file
+        File file = new File("src/main/resources/beanshell/single_value/AumiGenderMapper.txt");
+        return fileReader(file);
+    }
+
+    String getLOSValidator() throws IOException {
+        // read the code from a file
+        File file = new File("src/main/resources/beanshell/multi_value/LOSValidator.txt");
+        return fileReader(file);
+    }
+
+    String getLOSGBDValidator() throws IOException {
+        // read the code from a file
+        File file = new File("src/main/resources/beanshell/multi_value/LOSGBDValidator.txt");
+        return fileReader(file);
+    }
+
+    String getDiagnosisServiceCodeValidator() throws IOException {
+        // read the code from a file
+        File file = new File("src/main/resources/beanshell/multi_value/DiagnosisServiceCodeValidator.txt");
+        return fileReader(file);
+    }
+
+    String getAuthIdValidator() throws IOException {
+        // read the code from a file
+        File file = new File("src/main/resources/beanshell/multi_value/AuthIdValidator.txt");
+        return fileReader(file);
+    }
+
+
+
+
+    @NotNull
+    private String fileReader(File file) throws IOException {
+        try {
+            BufferedReader br = new BufferedReader(new FileReader(file));
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = br.readLine()) != null) {
+                sb.append(line).append("\n");
+
+            }
+            br.close();
+            return sb.toString();
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw e;
+        }
+    }
+
+
+
 }

@@ -17,11 +17,11 @@ public class NewbornNameMapper {
             return new MappingResult(new HashMap());
         }
 
-        PostProcessingExecutorInput fullNameObj =
+        in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput fullNameObj =
                 getFirst(predictionKeyMap, "newborn_full_name");
-        PostProcessingExecutorInput firstNameObj =
+        in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput firstNameObj =
                 getFirst(predictionKeyMap, "newborn_first_name");
-        PostProcessingExecutorInput lastNameObj =
+        in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput lastNameObj =
                 getFirst(predictionKeyMap, "newborn_last_name");
 
         if (hasValue(fullNameObj)) {
@@ -55,7 +55,7 @@ public class NewbornNameMapper {
     }
 
     private void applyAll(Map map,
-                          PostProcessingExecutorInput source,
+                          in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput source,
                           String firstName,
                           String lastName,
                           String fullName) {
@@ -66,8 +66,8 @@ public class NewbornNameMapper {
     }
 
     private void applySimple(Map map,
-                             PostProcessingExecutorInput first,
-                             PostProcessingExecutorInput last) {
+                             in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput first,
+                             in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput last) {
 
         updateList(map, "newborn_first_name", first.getExtractedValue(), first);
         updateList(map, "newborn_last_name", last.getExtractedValue(), last);
@@ -77,7 +77,7 @@ public class NewbornNameMapper {
     private void updateList(Map map,
                             String key,
                             String value,
-                            PostProcessingExecutorInput source) {
+                            in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput source) {
 
         Object obj = map.get(key);
         if (!(obj instanceof List)) return;
@@ -85,8 +85,8 @@ public class NewbornNameMapper {
         List list = (List) obj;
 
         for (int i = 0; i < list.size(); i++) {
-            PostProcessingExecutorInput in =
-                    (PostProcessingExecutorInput) list.get(i);
+            in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput in =
+                    (in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) list.get(i);
 
             in.setExtractedValue(value);
 
@@ -99,14 +99,14 @@ public class NewbornNameMapper {
         map.put(key, list);
     }
 
-    private void clearDependentFields(PostProcessingExecutorInput in) {
+    private void clearDependentFields(in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput in) {
         in.setLabel("");
         in.setSectionAlias("");
         in.setBBox("");
     }
 
-    private void copyDependentFields(PostProcessingExecutorInput from,
-                                     PostProcessingExecutorInput to) {
+    private void copyDependentFields(in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput from,
+                                     in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput to) {
 
         to.setLabel(from.getLabel());
         to.setSectionAlias(from.getSectionAlias());
@@ -137,18 +137,18 @@ public class NewbornNameMapper {
         return new NameParts(first.toString().trim(), tokens[tokens.length - 1]);
     }
 
-    private PostProcessingExecutorInput getFirst(Map map, String key) {
+    private in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput getFirst(Map map, String key) {
         Object obj = map.get(key);
         if (obj instanceof List) {
             List list = (List) obj;
             if (!list.isEmpty()) {
-                return (PostProcessingExecutorInput) list.get(0);
+                return (in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) list.get(0);
             }
         }
         return null;
     }
 
-    private boolean hasValue(PostProcessingExecutorInput in) {
+    private boolean hasValue(in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput in) {
         return in != null && !isEmpty(in.getExtractedValue());
     }
 
@@ -183,44 +183,5 @@ public class NewbornNameMapper {
         }
     }
 
-    public static class PostProcessingExecutorInput {
-
-        private Long tenantId;
-        private double aggregatedScore;
-        private double maskedScore;
-        private String originId;
-        private Integer paperNo;
-        private String extractedValue;
-        private double vqaScore;
-        private Integer rank;
-        private Integer sorItemAttributionId;
-        private String sorItemName;
-        private String documentId;
-        private Long accTransactionId;
-        private String label;
-        private String sectionAlias;
-        private Long score;
-        private String bBox;
-        private Long rootPipelineId;
-        private Long frequency;
-        private Long questionId;
-        private Long synonymId;
-        private String modelRegistry;
-        private String encryptionPolicy;
-        private String isEncrypted;
-        private String lineItemType;
-
-        public String getExtractedValue() { return extractedValue; }
-        public void setExtractedValue(String extractedValue) { this.extractedValue = extractedValue; }
-
-        public String getLabel() { return label; }
-        public void setLabel(String label) { this.label = label; }
-
-        public String getSectionAlias() { return sectionAlias; }
-        public void setSectionAlias(String sectionAlias) { this.sectionAlias = sectionAlias; }
-
-        public String getBBox() { return bBox; }
-        public void setBBox(String bBox) { this.bBox = bBox; }
-    }
 }
 

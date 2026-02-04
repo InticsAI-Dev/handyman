@@ -55,8 +55,8 @@ public class ProviderZipCodeMapper {
                         Object obj = zipcodeList.get(j);
                         if (obj instanceof in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) {
                             in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput zipcodeInput = (in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) obj;
-                            String validatedZipcodeValue = zipcodeValidation(zipcodeInput.getExtractedValue(), rootPipelineId, field);
-                            zipcodeInput.setExtractedValue(validatedZipcodeValue);
+                            String validatedZipcodeValue = zipcodeValidation(zipcodeInput.getAnswer(), rootPipelineId, field);
+                            zipcodeInput.setAnswer(validatedZipcodeValue);
                         }
                     }
                     extractedZipcode.put(field, zipcodeList);

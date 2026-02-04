@@ -55,7 +55,7 @@ public class ProviderNpiTinValidator {
                     Object obj = valueList.get(i);
                     if(obj instanceof in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput)
                     {
-                        in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput input = (PostProcessingExecutorInputin.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) obj;
+                        in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput input = (in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) obj;
                         String validatedValue = processMap(input.getExtractedValue(), rootPipelineId, field);
                         input.setExtractedValue(validatedValue);
 
