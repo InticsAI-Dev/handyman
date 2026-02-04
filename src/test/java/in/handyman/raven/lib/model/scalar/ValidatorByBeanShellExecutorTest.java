@@ -14,55 +14,56 @@ import static org.mockito.Mockito.*;
 
 @Slf4j
 class ValidatorByBeanShellExecutorTest {
-//
-//    private ValidatorByBeanShellExecutor validator;
-//    private List<PostProcessingFieldsInput> inputList;
-//    private Map<String, String> contextMap;
-//
-//    @BeforeEach
-//    void setUp() {
-//        inputList = new ArrayList<>();
-//        contextMap = new HashMap<>();
-//        ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
-//        actionExecutionAudit.getContext().put("multi.line.item.activator", ""); // To avoid NPE
-//        actionExecutionAudit.getContext().put("multi.line.item.activator", ""); // To avoid NPE
-//        actionExecutionAudit.getContext().put("multi.line.item.activator", ""); // To avoid NPE
-//        actionExecutionAudit.getContext().put("multi.line.item.activator", ""); // To avoid NPE
-//        actionExecutionAudit.getContext().put("multi.line.item.activator", ""); // To avoid NPE
-//        actionExecutionAudit.getContext().put("multi.line.item.activator", ""); // To avoid NPE
-//        actionExecutionAudit.getContext().put("multi.line.item.activator", ""); // To avoid NPE
+
+    private ValidatorByBeanShellExecutor validator;
+    private List<PostProcessingFieldsInput> inputList;
+    private Map<String, String> contextMap;
+
+    @BeforeEach
+    void setUp() {
+        inputList = new ArrayList<>();
+        contextMap = new HashMap<>();
+        ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
+        actionExecutionAudit.getContext().put("multi.line.item.activator", ""); // To avoid NPE
+        actionExecutionAudit.getContext().put("multi.line.item.activator", ""); // To avoid NPE
+        actionExecutionAudit.getContext().put("multi.line.item.activator", ""); // To avoid NPE
+        actionExecutionAudit.getContext().put("multi.line.item.activator", ""); // To avoid NPE
+        actionExecutionAudit.getContext().put("multi.line.item.activator", ""); // To avoid NPE
+        actionExecutionAudit.getContext().put("multi.line.item.activator", ""); // To avoid NPE
+        actionExecutionAudit.getContext().put("multi.line.item.activator", ""); // To avoid NPE
 //        actionExecutionAudit.getContext().put("AumiMemberNameMapper", getAumiMemberNameMapper());
 //        actionExecutionAudit.getContext().put("AumiGenderMapper", getAumiMemberNameMapper());
 //        actionExecutionAudit.getContext().put("MemberIdValidator", getAumiMemberNameMapper());
 //        actionExecutionAudit.getContext().put("MemberAddressMapper", getMemberAddressMapper());
 //        actionExecutionAudit.getContext().put("NewbornDOBMapper", getNewbornDOBMapper());
-//
-//        // Default Context
-//        contextMap.put("multi.line.item.activator", "true");
-//
-//        // Initialize Validator with mocked logger
-//        validator = new ValidatorByBeanShellExecutor(inputList, actionExecutionAudit, log, 2);
-//    }
-//
-//    private PostProcessingFieldsInput createInput(Integer id, String originId, Integer paperNo, String lineItemType,
-//            String sorContainerInstance, String sorItemName, String answer, String sectionAlias, String label,
-//            Double vqaScore) {
-//        PostProcessingFieldsInput input = new PostProcessingFieldsInput();
-//        input.setPostProcessingFieldId(id);
-//        input.setOriginId(originId);
-//        input.setPaperNo(paperNo);
-//        input.setLineItemType(lineItemType);
-//        input.setSorContainerInstance(sorContainerInstance);
-//        input.setSorItemName(sorItemName);
-//        input.setAnswer(answer);
-//        input.setLabel(label);
-//        input.setSectionAlias(sectionAlias);
-//        input.setBBox("{}");
-//        input.setVqaScore(vqaScore);
-//        input.setAggregatedScore(0.95);
-//        return input;
-//    }
-//
+        actionExecutionAudit.getContext().put("ProviderNpiTinValidator", getProviderNpiTinValidator());
+
+        // Default Context
+        contextMap.put("multi.line.item.activator", "true");
+
+        // Initialize Validator with mocked logger
+        validator = new ValidatorByBeanShellExecutor(inputList, actionExecutionAudit, log, 2);
+    }
+
+    private PostProcessingFieldsInput createInput(Integer id, String originId, Integer paperNo, String lineItemType,
+            String sorContainerInstance, String sorItemName, String answer, String sectionAlias, String label,
+            Double vqaScore) {
+        PostProcessingFieldsInput input = new PostProcessingFieldsInput();
+        input.setPostProcessingFieldId(id);
+        input.setOriginId(originId);
+        input.setPaperNo(paperNo);
+        input.setLineItemType(lineItemType);
+        input.setSorContainerInstance(sorContainerInstance);
+        input.setSorItemName(sorItemName);
+        input.setAnswer(answer);
+        input.setLabel(label);
+        input.setSectionAlias(sectionAlias);
+        input.setBBox("{}");
+        input.setVqaScore(vqaScore);
+        input.setAggregatedScore(0.95);
+        return input;
+    }
+
 //    @Test
 //    void testExecuteScriptsMemberNameMapper() {
 //        log.info("Test Scenario: Execute BeanShell Scripts");
@@ -1024,4 +1025,205 @@ class ValidatorByBeanShellExecutorTest {
 //                "    }\n" +
 //                "}\n";
 //    }
+
+
+
+
+
+
+        @Test
+    void testExecuteScriptsMemberAddressMapper() {
+
+        log.info("Test Scenario: Execute MemberAddressMapper BeanShell Script");
+
+        List<PostProcessingFieldsInput> inputList = new ArrayList<>();
+        Map<String, List<PostProcessingFieldsInput>> inputMap = new HashMap<>();
+
+        List<String> classes = Collections.singletonList("ProviderNpiTinValidator");
+        inputList.add(createInput(1, "ORIGIN-1", 1,
+                "single_value", "PROVIDER_1", "servicing_provider_npi", "1234567890", "Provider", "provider npi", 0.95));
+        // ---------- BEFORE ----------
+        System.out.println("===== BEFORE PROVIDER NPI MAPPING =====");
+        for (PostProcessingFieldsInput in : inputList) {
+            System.out.println(
+                    "Origin: " + in.getOriginId() +
+                            " | Item: " + in.getSorItemName() +
+                            " | Answer: " + in.getAnswer() +
+                            " | Section: " + in.getSectionAlias() +
+                            " | Score: " + in.getVqaScore()
+            );
+        }
+
+
+            inputMap.put("servicing_provider_npi",inputList);
+        // ---------- EXECUTE ----------
+            Map<String, List<PostProcessingFieldsInput>> result = validator.executeScripts(classes, inputMap);
+
+        // ---------- AFTER ----------
+        System.out.println("===== AFTER PROVIDER NPI MAPPING =====");
+        result.forEach((s, postProcessingFieldsInputs) -> {
+            for (PostProcessingFieldsInput in : postProcessingFieldsInputs) {
+                System.out.println(
+                        "Origin: " + in.getOriginId() +
+                                " | Item: " + in.getSorItemName() +
+                                " | Answer: " + in.getAnswer() +
+                                " | Section: " + in.getSectionAlias() +
+                                " | Score: " + in.getVqaScore()
+                );
+            }
+        });
+    }
+
+    String getProviderNpiTinValidator(){
+        return "import org.slf4j.Logger;\n" +
+                "import java.util.ArrayList;\n" +
+                "import java.util.Hashtable;\n" +
+                "import java.util.List;\n" +
+                "import java.util.Map;\n" +
+                "import java.util.regex.Matcher;\n" +
+                "import java.util.regex.Pattern;\n" +
+                "\n" +
+                "public class ProviderNpiTinValidator {\n" +
+                "    private Long rootPipelineId;\n" +
+                "//    private static List logMessages = new ArrayList();\n" +
+                "    private static final Pattern NPI_PATTERN = Pattern.compile(\"^\\\\d{10}$\");\n" +
+                "    private static final Pattern TIN_PATTERN = Pattern.compile(\"^\\\\d{2}-\\\\d{7}$|^\\\\d{5}-\\\\d{4}$|^(?=.*[0-9])[a-zA-Z0-9]+$\");\n" +
+                "//    private static final Pattern TIN_FORMATTED_PATTERN = Pattern.compile(\"^\\\\d{2}-\\\\d{7}$|^\\\\d{5}-\\\\d{4}$|^(?=.*[0-9])[a-zA-Z0-9]+$\");\n" +
+                "//    private static final Pattern TIN_GENERAL_PATTERN = Pattern.compile(\"^\\\\d{2}-\\\\d{7}$|^\\\\d{5}-\\\\d{4}$|^(?=.*[0-9])[a-zA-Z0-9]+$\");\n" +
+                "//    private static final Pattern COMBINED_FIELD = Pattern.compile(\"([a-zA-Z0-9:-]+)\\\\s*[/–,:\\\\|\\\\\\\\]\\\\s*([a-zA-Z0-9:-]+)\");\n" +
+                "    private static final Pattern NPI_PREFIX = Pattern.compile(\"^(?:npi:\\\\s*|npi\\\\s+)(\\\\d{10})$\", Pattern.CASE_INSENSITIVE);\n" +
+                "    private static final Pattern TIN_PREFIX = Pattern.compile(\"^(?:tin:\\\\s*|tin\\\\s+)([\\\\d-]*)$\", Pattern.CASE_INSENSITIVE);\n" +
+                "    private static final Pattern ALPHA_NUMERIC_ONLY = Pattern.compile(\"^(?=.*[0-9])[a-zA-Z0-9]+$\");\n" +
+                "    private Logger logger;\n" +
+                "\n" +
+                "    public ProviderNpiTinValidator(Logger logger) { this.logger = logger; }\n" +
+                "\n" +
+                "    public MappingResult doCustomPredictionMapping(Map predictionKeyMap, Long rootPipelineId) {\n" +
+                "        this.rootPipelineId = rootPipelineId;\n" +
+                "        String logMsg = \"[RootPipelineID: \" + rootPipelineId + \"] Entered ProviderNpiTinValidator doIdValidationAndMapping method\";\n" +
+                "        logger.info(logMsg);\n" +
+                "//        logMessages.add(logMsg);\n" +
+                "\n" +
+                "        if (predictionKeyMap == null) {\n" +
+                "            String msgLog = \"[RootPipelineID: \" + rootPipelineId + \"] Input map is null\";\n" +
+                "            logger.error(msgLog);\n" +
+                "//            logMessages.add(msgLog);\n" +
+                "            return new MappingResult(predictionKeyMap);\n" +
+                "        }\n" +
+                "\n" +
+                "        Map resultMap = new Hashtable(predictionKeyMap);\n" +
+                "        validateAndMapIds(resultMap);\n" +
+                "        return new MappingResult(resultMap);\n" +
+                "    }\n" +
+                "\n" +
+                "    private void validateAndMapIds(Map resultMap) {\n" +
+                "        String[] idFields = {\n" +
+                "                \"servicing_provider_tin\", \"referring_provider_tin\", \"servicing_facility_tin\",\"ordering_provider_tin\",\"undefined_provider_tin\",\n" +
+                "                \"servicing_provider_npi\", \"referring_provider_npi\", \"servicing_facility_npi\",\"ordering_provider_npi\",\"undefined_provider_npi\"\n" +
+                "        };\n" +
+                "        for (String field : idFields) {\n" +
+                "            Object valueObj = resultMap.get(field);\n" +
+                "            if(valueObj instanceof List)\n" +
+                "            {\n" +
+                "                List valueList = (List) valueObj;\n" +
+                "\n" +
+                "                for(int i = 0; i<valueList.size(); i++)\n" +
+                "                {\n" +
+                "                    Object obj = valueList.get(i);\n" +
+                "                    if(obj instanceof in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput)\n" +
+                "                    {\n" +
+                "                        in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput input = (PostProcessingExecutorInputin.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) obj;\n" +
+                "                        String validatedValue = processMap(input.getExtractedValue(), rootPipelineId, field);\n" +
+                "                        input.setExtractedValue(validatedValue);\n" +
+                "\n" +
+                "                    }\n" +
+                "                }\n" +
+                "            }\n" +
+                "        }\n" +
+                "    }\n" +
+                "\n" +
+                "    private String processMap(String extractedValue, Long rootPipelineId, String field) {\n" +
+                "\n" +
+                "        if (extractedValue == null || extractedValue.trim().isEmpty()) {\n" +
+                "            return \"\";\n" +
+                "        }\n" +
+                "\n" +
+                "        String originalValue = extractedValue.trim();\n" +
+                "        String value = originalValue;\n" +
+                "\n" +
+                "        // Handle NPI prefix\n" +
+                "        Matcher npiPrefixMatcher = NPI_PREFIX.matcher(value);\n" +
+                "        if (npiPrefixMatcher.matches()) {\n" +
+                "            value = npiPrefixMatcher.group(1);\n" +
+                "        }\n" +
+                "\n" +
+                "        // Handle TIN prefix\n" +
+                "        Matcher tinPrefixMatcher = TIN_PREFIX.matcher(value);\n" +
+                "        if (tinPrefixMatcher.matches()) {\n" +
+                "            value = tinPrefixMatcher.group(1);\n" +
+                "        }\n" +
+                "\n" +
+                "        // Normalize value\n" +
+                "        String numericValue = value.replaceAll(\"[\\\\s-]\", \"\");\n" +
+                "\n" +
+                "        // Validate alphanumeric\n" +
+                "        if (!ALPHA_NUMERIC_ONLY.matcher(numericValue).matches()) {\n" +
+                "            logInvalid(field, originalValue, \"non-alphanumeric\");\n" +
+                "            return \"\";\n" +
+                "        }\n" +
+                "\n" +
+                "        // ---------- NPI FIELD ----------\n" +
+                "        if (isNpiField(field)) {\n" +
+                "            if (NPI_PATTERN.matcher(numericValue).matches()) {\n" +
+                "                return numericValue;\n" +
+                "            } else {\n" +
+                "                logInvalid(field, originalValue, \"invalid NPI\");\n" +
+                "                return \"\";\n" +
+                "            }\n" +
+                "        }\n" +
+                "\n" +
+                "        // ---------- TIN FIELD ----------\n" +
+                "        if (isTinField(field)) {\n" +
+                "//            if (numericValue.length() == 9) {\n" +
+                "            if (TIN_PATTERN.matcher(value).matches()) {\n" +
+                "                return numericValue;\n" +
+                "            } else {\n" +
+                "                logInvalid(field, originalValue, \"invalid TIN length\");\n" +
+                "                return \"\";\n" +
+                "            }\n" +
+                "        }\n" +
+                "\n" +
+                "        return \"\";\n" +
+                "    }\n" +
+                "\n" +
+                "    private boolean isNpiField(String field) {\n" +
+                "        return field != null && field.endsWith(\"_npi\");\n" +
+                "    }\n" +
+                "\n" +
+                "    private boolean isTinField(String field) {\n" +
+                "        return field != null && field.endsWith(\"_tin\");\n" +
+                "    }\n" +
+                "\n" +
+                "    private void logInvalid(String field, String value, String reason) {\n" +
+                "        String logMsg = \"[RootPipelineID: \" + rootPipelineId +\n" +
+                "                \"] Rejected value '\" + value + \"' for field \" + field +\n" +
+                "                \" due to \" + reason;\n" +
+                "        logger.info(logMsg);\n" +
+                "//        logMessages.add(logMsg);\n" +
+                "    }\n" +
+                "\n" +
+                "    public static class MappingResult {\n" +
+                "        private Map mappedData;\n" +
+                "\n" +
+                "        public MappingResult(Map mappedData) {\n" +
+                "            this.mappedData = mappedData != null ? mappedData : new java.util.HashMap();\n" +
+                "        }\n" +
+                "\n" +
+                "        public Map getMappedData() {\n" +
+                "            return mappedData;\n" +
+                "        }\n" +
+                "    }\n" +
+                "}\n";
+
+    }
 }

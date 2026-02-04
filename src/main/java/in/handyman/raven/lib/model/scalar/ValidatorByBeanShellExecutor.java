@@ -8,6 +8,7 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput;
 import org.slf4j.Logger;
 
+import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
@@ -203,20 +204,57 @@ public class ValidatorByBeanShellExecutor {
     }
 
 
-    public void processValidatorListResult(Object validatorResultObject, Map<String, List<PostProcessingFieldsInput>> updatedPostProcessingDetailsMap) {
+    public void processValidatorListResult(
+            Object validatorResultObject,
+            Map<String, List<PostProcessingFieldsInput>> updatedPostProcessingDetailsMap) {
+
         try {
-
-            if (validatorResultObject instanceof Map) {
-                log.info("validatorResultObject is a List");
-                @SuppressWarnings("unchecked")
-                Map<String, List<PostProcessingFieldsInput>> mappedDataResult = (Map<String, List<PostProcessingFieldsInput>>) validatorResultObject;
-                updatedPostProcessingDetailsMap.putAll(mappedDataResult);
-
+            if (validatorResultObject == null) {
+                log.warn("validatorResultObject is null");
+                return;
             }
+
+            Object mapCandidate = validatorResultObject;
+
+            // Case 1: validator directly returned Map
+            if (mapCandidate instanceof Map) {
+                log.info("validatorResultObject is Map");
+            }
+            // Case 2: validator returned MappingResult (not accessible) → extract via reflection
+            else {
+                try {
+                    Method getMappedDataMethod =
+                            validatorResultObject.getClass().getMethod("getMappedData");
+
+                    mapCandidate = getMappedDataMethod.invoke(validatorResultObject);
+
+                    log.info("Extracted mappedData via reflection from {}",
+                            validatorResultObject.getClass().getName());
+
+                } catch (NoSuchMethodException e) {
+                    log.warn("No getMappedData() method found on {}",
+                            validatorResultObject.getClass().getName());
+                    return;
+                }
+            }
+
+            // Final validation
+            if (mapCandidate instanceof Map) {
+                @SuppressWarnings("unchecked")
+                Map<String, List<PostProcessingFieldsInput>> mappedData =
+                        (Map<String, List<PostProcessingFieldsInput>>) mapCandidate;
+
+                updatedPostProcessingDetailsMap.putAll(mappedData);
+            } else {
+                log.warn("Extracted object is not a Map, actual type: {}",
+                        mapCandidate.getClass().getName());
+            }
+
         } catch (Exception e) {
-            log.error("Error invoking methods via reflection: ", e);
+            log.error("Error processing validator result", e);
         }
     }
+
 
     //
 //    public void processValidatorResult(Object validatorResultObject, List<PostProcessingFieldsInput> updatedPostProcessingDetailsMap) {
