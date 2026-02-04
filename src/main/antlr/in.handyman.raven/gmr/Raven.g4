@@ -109,6 +109,7 @@ action:
     |dataExtraction
     |deepSift
     |deepSiftSearch
+    |blankPageDetection
     |assetInfo
     |episodeOfCoverage
     |userRegistration
@@ -760,6 +761,14 @@ deepSiftSearch:
 	'copro-url' endPoint=STRING
 	'process-id' processId=STRING
 	'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ;
+
+blankPageDetection:
+    'blankPageDetection' 'as' name=STRING
+    'resource-conn' resourceConn=STRING
+    'result-table' resultTable=STRING
+    'copro-url' endPoint=STRING
+    'process-id' processId=STRING
+    'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ;
 
 episodeOfCoverage:
   'episodeOfCoverage' 'as' name=STRING

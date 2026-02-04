@@ -78,6 +78,12 @@
                     <artifactId>slf4j-api</artifactId>
                     <version>1.7.36</version>
                 </dependency>
+                <dependency>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-simple</artifactId>
+                    <version>1.7.36</version>
+                    <scope>test</scope>
+                </dependency>
         <!-- https://mvnrepository.com/artifact/org.mariadb.jdbc/mariadb-java-client -->
         <dependency>
             <groupId>org.mariadb.jdbc</groupId>
@@ -349,6 +355,19 @@
             <groupId>io.kubernetes</groupId>
             <artifactId>client-java</artifactId>
             <version>23.0.0</version>
+        </dependency>
+        <!-- OpenCV -->
+        <dependency>
+            <groupId>org.openpnp</groupId>
+            <artifactId>opencv</artifactId>
+            <version>4.7.0-0</version>
+        </dependency>
+
+        <!-- OpenCV Native Loader -->
+        <dependency>
+            <groupId>nu.pattern</groupId>
+            <artifactId>opencv</artifactId>
+            <version>2.4.9-7</version>
         </dependency>
     </dependencies>
 
