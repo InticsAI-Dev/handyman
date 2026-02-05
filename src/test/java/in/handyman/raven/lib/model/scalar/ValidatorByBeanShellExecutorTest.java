@@ -448,9 +448,9 @@ class ValidatorByBeanShellExecutorTest {
                                                         " | Score: " + in.getVqaScore());
                 }
 
-                inputMap.put("servicing_provider_npi", inputList);
+                Map<String, List<PostProcessingFieldsInput>> groupedSorItems = validator.groupBySorItemNames(inputList);
                 // ---------- EXECUTE ----------
-                Map<String, List<PostProcessingFieldsInput>> result = validator.executeScripts(classes, inputMap);
+                Map<String, List<PostProcessingFieldsInput>> result = validator.executeScripts(classes, groupedSorItems);
 
                 // ---------- AFTER ----------
                 System.out.println("===== AFTER PROVIDER NPI MAPPING =====");
@@ -495,9 +495,9 @@ class ValidatorByBeanShellExecutorTest {
                 inputList.add(createInput(1, "O1", 1, "single_value", "0", "member_gender", "male", "Patient", "gender",
                                 0.99));
 
-                inputMap.put("member_gender", inputList);
+                Map<String, List<PostProcessingFieldsInput>> groupedSorItems = validator.groupBySorItemNames(inputList);
 
-                Map<String, List<PostProcessingFieldsInput>> result = validator.executeScripts(classes, inputMap);
+                Map<String, List<PostProcessingFieldsInput>> result = validator.executeScripts(classes, groupedSorItems);
         }
 
         @Test
@@ -509,9 +509,9 @@ class ValidatorByBeanShellExecutorTest {
                 List<PostProcessingFieldsInput> fullList = new ArrayList<>();
                 fullList.add(createInput(1, "O1", 1, "single_value", "0", "member_full_name", "Doe, John", "Patient",
                                 "full name", 0.95));
-                inputMap.put("member_full_name", fullList);
+                Map<String, List<PostProcessingFieldsInput>> groupedSorItems = validator.groupBySorItemNames(inputList);
 
-                validator.executeScripts(classes, inputMap);
+                validator.executeScripts(classes, groupedSorItems);
         }
 
         @Test
@@ -523,9 +523,9 @@ class ValidatorByBeanShellExecutorTest {
                 List<PostProcessingFieldsInput> inputList = new ArrayList<>();
                 inputList.add(createInput(1, "O1", 1, "single_value", "0", "multiple_member_indicator", "Yes", "Header",
                                 "multi member", 0.95));
-                inputMap.put("multiple_member_indicator", inputList);
+                Map<String, List<PostProcessingFieldsInput>> groupedSorItems = validator.groupBySorItemNames(inputList);
 
-                validator.executeScripts(classes, inputMap);
+                validator.executeScripts(classes, groupedSorItems);
         }
 
         @Test
@@ -537,72 +537,68 @@ class ValidatorByBeanShellExecutorTest {
                 List<PostProcessingFieldsInput> inputList = new ArrayList<>();
                 inputList.add(createInput(1, "O1", 1, "single_value", "0", "auth_discharge_date", "12/31/2023", "Body",
                                 "discharge date", 0.95));
-                inputMap.put("auth_discharge_date", inputList);
+                Map<String, List<PostProcessingFieldsInput>> groupedSorItems = validator.groupBySorItemNames(inputList);
 
-                validator.executeScripts(classes, inputMap);
+                validator.executeScripts(classes, groupedSorItems);
         }
 
         @Test
         void testExecuteScriptsClinicalPresentProcessor() {
                 log.info("Test Scenario: Execute ClinicalPresentProcessor BeanShell Script");
-                Map<String, List<PostProcessingFieldsInput>> inputMap = new HashMap<>();
+
                 List<String> classes = Collections.singletonList("ClinicalPresentProcessor");
 
                 List<PostProcessingFieldsInput> inputList = new ArrayList<>();
                 inputList.add(createInput(1, "O1", 1, "single_value", "0", "clinical_present", "Yes", "Header",
                                 "clinical", 0.95));
-                inputMap.put("clinical_present", inputList);
+                Map<String, List<PostProcessingFieldsInput>> groupedSorItems = validator.groupBySorItemNames(inputList);
 
-                validator.executeScripts(classes, inputMap);
+                validator.executeScripts(classes, groupedSorItems);
         }
 
         @Test
         void testExecuteScriptsFaxFromDateMapper() {
                 log.info("Test Scenario: Execute FaxFromDateMapper BeanShell Script");
-                Map<String, List<PostProcessingFieldsInput>> inputMap = new HashMap<>();
+
                 List<String> classes = Collections.singletonList("FaxFromDateMapper");
 
                 List<PostProcessingFieldsInput> inputList = new ArrayList<>();
                 inputList.add(createInput(1, "O1", 1, "single_value", "0", "fax_received_date", "01/01/2023", "Header",
                                 "fax date", 0.95));
-                inputMap.put("fax_received_date", inputList);
+                Map<String, List<PostProcessingFieldsInput>> groupedSorItems = validator.groupBySorItemNames(inputList);
 
-                validator.executeScripts(classes, inputMap);
+                validator.executeScripts(classes, groupedSorItems);
         }
 
         @Test
         void testExecuteScriptsMedicaidMemberIdValidator() {
                 log.info("Test Scenario: Execute MedicaidMemberIdValidator BeanShell Script");
-                Map<String, List<PostProcessingFieldsInput>> inputMap = new HashMap<>();
+
                 List<String> classes = Collections.singletonList("MedicaidMemberIdValidator");
 
                 List<PostProcessingFieldsInput> idList = new ArrayList<>();
                 idList.add(createInput(1, "O1", 1, "single_value", "0", "medicaid_id", "123456789", "Body",
                                 "medicaid id", 0.95));
-                inputMap.put("medicaid_id", idList);
-                inputMap.put("auth_id", new ArrayList<>());
-                inputMap.put("additional_auth_properties", new ArrayList<>());
+                Map<String, List<PostProcessingFieldsInput>> groupedSorItems = validator.groupBySorItemNames(idList);
 
-                validator.executeScripts(classes, inputMap);
+                validator.executeScripts(classes, groupedSorItems);
         }
 
         @Test
         void testExecuteScriptsMemberDOBandServiceFromDateMapper() {
                 log.info("Test Scenario: Execute MemberDOBandServiceFromDateMapper BeanShell Script");
-                Map<String, List<PostProcessingFieldsInput>> inputMap = new HashMap<>();
+
                 List<String> classes = Collections.singletonList("MemberDOBandServiceFromDateMapper");
 
                 List<PostProcessingFieldsInput> dobList = new ArrayList<>();
                 dobList.add(createInput(1, "O1", 1, "single_value", "0", "member_date_of_birth", "01/01/1980", "Body",
                                 "dob", 0.95));
-                inputMap.put("member_date_of_birth", dobList);
 
-                List<PostProcessingFieldsInput> serviceList = new ArrayList<>();
-                serviceList.add(createInput(2, "O1", 1, "single_value", "0", "service_from_date", "01/01/2023", "Body",
+                dobList.add(createInput(2, "O1", 1, "single_value", "0", "service_from_date", "01/01/2023", "Body",
                                 "service date", 0.95));
-                inputMap.put("service_from_date", serviceList);
+                Map<String, List<PostProcessingFieldsInput>> groupedSorItems = validator.groupBySorItemNames(dobList);
 
-                validator.executeScripts(classes, inputMap);
+                validator.executeScripts(classes, groupedSorItems);
         }
 
         @Test
@@ -614,11 +610,9 @@ class ValidatorByBeanShellExecutorTest {
                 List<PostProcessingFieldsInput> idList = new ArrayList<>();
                 idList.add(createInput(1, "O1", 1, "single_value", "0", "member_id", "ABC123456", "Body", "member id",
                                 0.95));
-                inputMap.put("member_id", idList);
-                inputMap.put("auth_id", new ArrayList<>());
-                inputMap.put("additional_auth_properties", new ArrayList<>());
+                Map<String, List<PostProcessingFieldsInput>> groupedSorItems = validator.groupBySorItemNames(idList);
 
-                validator.executeScripts(classes, inputMap);
+                validator.executeScripts(classes, groupedSorItems);
         }
 
         @Test
@@ -630,9 +624,9 @@ class ValidatorByBeanShellExecutorTest {
                 List<PostProcessingFieldsInput> inputList = new ArrayList<>();
                 inputList.add(createInput(1, "O1", 1, "single_value", "0", "member_zipcode", "12345", "Body", "zip",
                                 0.95));
-                inputMap.put("member_zipcode", inputList);
+                Map<String, List<PostProcessingFieldsInput>> groupedSorItems = validator.groupBySorItemNames(inputList);
 
-                validator.executeScripts(classes, inputMap);
+                validator.executeScripts(classes, groupedSorItems);
         }
 
         @Test
@@ -644,19 +638,16 @@ class ValidatorByBeanShellExecutorTest {
                 List<PostProcessingFieldsInput> reqList = new ArrayList<>();
                 reqList.add(createInput(1, "O1", 1, "single_value", "0", "newborn_request", "Yes", "Body", "request",
                                 0.95));
-                inputMap.put("newborn_request", reqList);
 
-                List<PostProcessingFieldsInput> promptList = new ArrayList<>();
-                promptList.add(createInput(2, "O1", 1, "single_value", "0", "newborn_request_prompt", "Yes", "Body",
+                reqList.add(createInput(2, "O1", 1, "single_value", "0", "newborn_request_prompt", "Yes", "Body",
                                 "prompt", 0.95));
-                inputMap.put("newborn_request_prompt", promptList);
 
-                List<PostProcessingFieldsInput> ocrList = new ArrayList<>();
-                ocrList.add(createInput(3, "O1", 1, "single_value", "0", "newborn_request_ocr", "Yes", "Body", "ocr",
+                reqList.add(createInput(3, "O1", 1, "single_value", "0", "newborn_request_ocr", "Yes", "Body", "ocr",
                                 0.95));
-                inputMap.put("newborn_request_ocr", ocrList);
 
-                validator.executeScripts(classes, inputMap);
+
+                Map<String, List<PostProcessingFieldsInput>> groupedSorItems = validator.groupBySorItemNames(reqList);
+                validator.executeScripts(classes, groupedSorItems);
         }
 
         @Test
@@ -668,9 +659,9 @@ class ValidatorByBeanShellExecutorTest {
                 List<PostProcessingFieldsInput> ocrList = new ArrayList<>();
                 ocrList.add(createInput(1, "O1", 1, "single_value", "0", "newborn_request_ocr",
                                 "Some text containing keywords", "Body", "ocr", 0.95));
-                inputMap.put("newborn_request_ocr", ocrList);
+                Map<String, List<PostProcessingFieldsInput>> groupedSorItems = validator.groupBySorItemNames(ocrList);
 
-                validator.executeScripts(classes, inputMap);
+                validator.executeScripts(classes, groupedSorItems);
         }
 
         @Test
@@ -682,9 +673,9 @@ class ValidatorByBeanShellExecutorTest {
                 List<PostProcessingFieldsInput> dobList = new ArrayList<>();
                 dobList.add(createInput(1, "O1", 1, "single_value", "0", "newborn_date_of_birth", "01/01/2023", "Body",
                                 "dob", 0.95));
-                inputMap.put("newborn_date_of_birth", dobList);
+                Map<String, List<PostProcessingFieldsInput>> groupedSorItems = validator.groupBySorItemNames(dobList);
 
-                validator.executeScripts(classes, inputMap);
+                validator.executeScripts(classes, groupedSorItems);
         }
 
         @Test
@@ -696,9 +687,9 @@ class ValidatorByBeanShellExecutorTest {
                 List<PostProcessingFieldsInput> genderList = new ArrayList<>();
                 genderList.add(createInput(1, "O1", 1, "single_value", "0", "newborn_gender", "Male", "Body", "gender",
                                 0.95));
-                inputMap.put("newborn_gender", genderList);
+                Map<String, List<PostProcessingFieldsInput>> groupedSorItems = validator.groupBySorItemNames(genderList);
 
-                validator.executeScripts(classes, inputMap);
+                validator.executeScripts(classes, groupedSorItems);
         }
 
         @Test
@@ -710,11 +701,13 @@ class ValidatorByBeanShellExecutorTest {
                 List<PostProcessingFieldsInput> fullList = new ArrayList<>();
                 fullList.add(createInput(1, "O1", 1, "single_value", "0", "newborn_full_name", "Baby Doe", "Body",
                                 "full name", 0.95));
-                inputMap.put("newborn_full_name", fullList);
-                inputMap.put("newborn_first_name", new ArrayList<>());
-                inputMap.put("newborn_last_name", new ArrayList<>());
+                fullList.add(createInput(1, "O1", 1, "single_value", "0", "newborn_first_name", "", "",
+                        "full name", 0.95));
+                fullList.add(createInput(1, "O1", 1, "single_value", "0", "newborn_last_name", "", "",
+                        "full name", 0.95));
+                Map<String, List<PostProcessingFieldsInput>> groupedSorItems = validator.groupBySorItemNames(fullList);
 
-                validator.executeScripts(classes, inputMap);
+                validator.executeScripts(classes, groupedSorItems);
         }
 
         @Test
@@ -726,10 +719,11 @@ class ValidatorByBeanShellExecutorTest {
                 List<PostProcessingFieldsInput> addrList = new ArrayList<>();
                 addrList.add(createInput(1, "O1", 1, "single_value", "0", "servicing_provider_address_line1",
                                 "123 Main St", "Body", "address", 0.95));
-                inputMap.put("servicing_provider_address_line1", addrList);
-                inputMap.put("servicing_provider_city", new ArrayList<>());
+                addrList.add(createInput(1, "O1", 1, "single_value", "0", "servicing_provider_city",
+                        "", "", "", 0.95));
 
-                validator.executeScripts(classes, inputMap);
+                Map<String, List<PostProcessingFieldsInput>> groupedSorItems = validator.groupBySorItemNames(addrList);
+                validator.executeScripts(classes, groupedSorItems);
         }
 
         @Test
@@ -741,14 +735,15 @@ class ValidatorByBeanShellExecutorTest {
                 List<PostProcessingFieldsInput> npiList = new ArrayList<>();
                 npiList.add(createInput(1, "O1", 1, "single_value", "0", "servicing_provider_npi", "1234567890", "Body",
                                 "npi", 0.95));
-                inputMap.put("servicing_provider_npi", npiList);
 
-                List<PostProcessingFieldsInput> tinList = new ArrayList<>();
-                tinList.add(createInput(2, "O1", 1, "single_value", "0", "servicing_provider_tin", "12-3456789", "Body",
+
+
+                npiList.add(createInput(2, "O1", 1, "single_value", "0", "servicing_provider_tin", "12-3456789", "Body",
                                 "tin", 0.95));
-                inputMap.put("servicing_provider_tin", tinList);
 
-                validator.executeScripts(classes, inputMap);
+                Map<String, List<PostProcessingFieldsInput>> groupedSorItems = validator.groupBySorItemNames(npiList);
+
+                validator.executeScripts(classes, groupedSorItems);
         }
 
         @Test
@@ -760,9 +755,9 @@ class ValidatorByBeanShellExecutorTest {
                 List<PostProcessingFieldsInput> zipList = new ArrayList<>();
                 zipList.add(createInput(1, "O1", 1, "single_value", "0", "servicing_provider_zipcode", "12345", "Body",
                                 "zip", 0.95));
-                inputMap.put("servicing_provider_zipcode", zipList);
+                Map<String, List<PostProcessingFieldsInput>> groupedSorItems = validator.groupBySorItemNames(zipList);
 
-                validator.executeScripts(classes, inputMap);
+                validator.executeScripts(classes, groupedSorItems);
         }
 
         @Test
@@ -774,9 +769,9 @@ class ValidatorByBeanShellExecutorTest {
                 List<PostProcessingFieldsInput> dateList = new ArrayList<>();
                 dateList.add(createInput(1, "O1", 1, "single_value", "0", "service_to_date", "01/01/2023", "Body",
                                 "date", 0.95));
-                inputMap.put("service_to_date", dateList);
+                Map<String, List<PostProcessingFieldsInput>> groupedSorItems = validator.groupBySorItemNames(dateList);
 
-                validator.executeScripts(classes, inputMap);
+                validator.executeScripts(classes, groupedSorItems);
         }
 
         @Test
@@ -788,18 +783,19 @@ class ValidatorByBeanShellExecutorTest {
                 List<PostProcessingFieldsInput> svcList = new ArrayList<>();
                 svcList.add(createInput(1, "O1", 1, "multi_value", "0", "service_code", "99213", "Body", "service code",
                                 0.95));
-                inputMap.put("service_code", svcList);
 
-                List<PostProcessingFieldsInput> diagList = new ArrayList<>();
-                diagList.add(createInput(2, "O1", 1, "multi_value", "0", "diagnosis_code", "R05.9", "Body", "diag code",
+                svcList.add(createInput(2, "O1", 1, "multi_value", "0", "diagnosis_code", "R05.9", "Body", "diag code",
                                 0.95));
-                inputMap.put("diagnosis_code", diagList);
+                svcList.add(createInput(3, "O1", 1, "multi_value", "0", "service_quantity_units", "", "", "",
+                        0.95));
+                svcList.add(createInput(4, "O1", 1, "multi_value", "0", "service_quantity_visits", "", "", "",
+                        0.95));
+                svcList.add(createInput(5, "O1", 1, "multi_value", "0", "service_code_modifier", "", "", "",
+                        0.95));
 
-                inputMap.put("service_quantity_units", new ArrayList<>());
-                inputMap.put("service_quantity_visits", new ArrayList<>());
-                inputMap.put("service_code_modifier", new ArrayList<>());
+                Map<String, List<PostProcessingFieldsInput>> groupedSorItems = validator.groupBySorItemNames(svcList);
 
-                validator.executeScripts(classes, inputMap);
+                validator.executeScripts(classes, groupedSorItems);
         }
 
         @Test
@@ -811,11 +807,10 @@ class ValidatorByBeanShellExecutorTest {
                 List<PostProcessingFieldsInput> losList = new ArrayList<>();
                 losList.add(createInput(1, "O1", 1, "multi_value", "0", "level_of_service", "Urgent", "Header", "los",
                                 0.95));
-                inputMap.put("level_of_service", losList);
 
-                inputMap.put("auth_id", new ArrayList<>());
+                Map<String, List<PostProcessingFieldsInput>> groupedSorItems = validator.groupBySorItemNames(losList);
 
-                validator.executeScripts(classes, inputMap);
+                validator.executeScripts(classes, groupedSorItems);
         }
 
         @Test
@@ -827,9 +822,9 @@ class ValidatorByBeanShellExecutorTest {
                 List<PostProcessingFieldsInput> losList = new ArrayList<>();
                 losList.add(createInput(1, "O1", 1, "multi_value", "0", "level_of_service", "Urgent", "Header", "los",
                                 0.95));
-                inputMap.put("level_of_service", losList);
+                Map<String, List<PostProcessingFieldsInput>> groupedSorItems = validator.groupBySorItemNames(losList);
 
-                validator.executeScripts(classes, inputMap);
+                validator.executeScripts(classes, groupedSorItems);
         }
 
         @Test
@@ -841,12 +836,15 @@ class ValidatorByBeanShellExecutorTest {
                 List<PostProcessingFieldsInput> authList = new ArrayList<>();
                 authList.add(createInput(1, "O1", 1, "multi_value", "0", "auth_id", "UM12345678", "Body", "auth id",
                                 0.95));
-                inputMap.put("auth_id", authList);
 
-                inputMap.put("member_id", new ArrayList<>());
-                inputMap.put("additional_auth_properties", new ArrayList<>());
+                authList.add(createInput(1, "O1", 1, "single_value", "0", "member_id", "", "Body", "auth id",
+                        0.95));
 
-                validator.executeScripts(classes, inputMap);
+                authList.add(createInput(1, "O1", 1, "single _value", "0", "additional_auth_properties", "", "Body", "auth id",
+                        0.95));
+
+                Map<String, List<PostProcessingFieldsInput>> groupedSorItems = validator.groupBySorItemNames(authList);
+                validator.executeScripts(classes, groupedSorItems);
         }
 
         String getProviderZipCodeMapper() throws IOException {
