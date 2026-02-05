@@ -2,7 +2,8 @@ import org.slf4j.Logger;
 
 import java.util.List;
 import java.util.Map;
-import in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput;
+
+import in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput;
 
 public class AumiMultiMemberMapper {
 
@@ -20,12 +21,12 @@ public class AumiMultiMemberMapper {
             List objList = (List) valueObj;
             for (int i = 0; i < objList.size(); i++) {
                 Object obj = objList.get(i);
-                if (obj instanceof PostProcessingExecutorInput) {
-                    PostProcessingExecutorInput aumiMultiMember = (PostProcessingExecutorInput) obj;
-                    String aumiMultiMemberVal = aumiMultiMember.getExtractedValue();
+                if (obj instanceof PostProcessingFieldsInput) {
+                    PostProcessingFieldsInput aumiMultiMember = (PostProcessingFieldsInput) obj;
+                    String aumiMultiMemberVal = aumiMultiMember.getAnswer();
                     if (shouldProcess(aumiMultiMemberVal)) {
                         String updatedMultiMemberValue = multimemberValidation(aumiMultiMemberVal, rootPipelineId);
-                        aumiMultiMember.setExtractedValue(updatedMultiMemberValue);
+                        aumiMultiMember.setAnswer(updatedMultiMemberValue);
                     } else {
                         logMsg = "[RootPipelineID: " + rootPipelineId + "] No Multi Member fields to process.";
                         logger.info(logMsg);
