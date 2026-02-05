@@ -94,7 +94,7 @@ class ValidatorByBeanShellExecutorTest {
                 // But for generation purposes, this is the correct logic.
 
                 Map<String, List<PostProcessingFieldsInput>> currentMap = new HashMap<>();
-                List<String> classes = Collections.singletonList("AumiMemberNameMapper,AumiGenderMapper");
+                List<String> classes = Collections.singletonList("AumiMemberNameMapper");
 
                 inputList.add(createInput(1, "O1", 1, "single_value", "0", "member_full_name", "Exlsie, Noichole",
                                 "Patient Info", "full name", 100.0));
@@ -110,10 +110,9 @@ class ValidatorByBeanShellExecutorTest {
                                         " sectionAlias: " + postProcessingFieldsInput.getSectionAlias() +
                                         " answer: " + postProcessingFieldsInput.getAnswer());
                 });
+                Map<String, List<PostProcessingFieldsInput>> groupedSorItems = validator.groupBySorItemNames(inputList);
 
-                currentMap.put("member_name", inputList);
-
-                Map<String, List<PostProcessingFieldsInput>> result = validator.executeScripts(classes, currentMap);
+                Map<String, List<PostProcessingFieldsInput>> result = validator.executeScripts(classes, groupedSorItems);
 
                 result.forEach((s, postProcessingFieldsInputs) -> {
                         for (PostProcessingFieldsInput in : postProcessingFieldsInputs) {
