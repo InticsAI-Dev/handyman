@@ -4,6 +4,9 @@ import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 
+import in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput;
+
+
 public class ProviderAddressMapper {
 
     private Logger logger;
@@ -106,10 +109,10 @@ public class ProviderAddressMapper {
             final String zipcodeKey = providerType + "_zipcode";
             // typecast the value
 
-            final in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput addressKeyInput = (in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) iterateInputObj(addressKey, resultMap) !=null? (in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) iterateInputObj(addressKey, resultMap): new PostProcessingExecutorInput();
-            final in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput cityKeyInput = (in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) iterateInputObj(cityKey, resultMap) !=null? (in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) iterateInputObj(cityKey, resultMap): new PostProcessingExecutorInput();
-            final in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput stateKeyInput = (in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) iterateInputObj(stateKey, resultMap) !=null? (in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) iterateInputObj(stateKey, resultMap): new PostProcessingExecutorInput() ;
-            final in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput zipcodeKeyInput = (in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) iterateInputObj(zipcodeKey, resultMap) !=null? (in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) iterateInputObj(zipcodeKey, resultMap): new PostProcessingExecutorInput();
+            final PostProcessingExecutorInput addressKeyInput = (PostProcessingExecutorInput) iterateInputObj(addressKey, resultMap) !=null? (PostProcessingExecutorInput) iterateInputObj(addressKey, resultMap): new PostProcessingExecutorInput();
+            final PostProcessingExecutorInput cityKeyInput = (PostProcessingExecutorInput) iterateInputObj(cityKey, resultMap) !=null? (PostProcessingExecutorInput) iterateInputObj(cityKey, resultMap): new PostProcessingExecutorInput();
+            final PostProcessingExecutorInput stateKeyInput = (PostProcessingExecutorInput) iterateInputObj(stateKey, resultMap) !=null? (PostProcessingExecutorInput) iterateInputObj(stateKey, resultMap): new PostProcessingExecutorInput() ;
+            final PostProcessingExecutorInput zipcodeKeyInput = (PostProcessingExecutorInput) iterateInputObj(zipcodeKey, resultMap) !=null? (PostProcessingExecutorInput) iterateInputObj(zipcodeKey, resultMap): new PostProcessingExecutorInput();
 
             final String inputAddress = addressKeyInput.getExtractedValue() != null ? addressKeyInput.getExtractedValue() : "";
             final String city = cityKeyInput.getExtractedValue() != null ? cityKeyInput.getExtractedValue(): "";
@@ -391,7 +394,7 @@ public class ProviderAddressMapper {
             for (int i = 0; i < objList.size(); i++) {
                 Object obj = objList.get(i);
 
-                if (obj instanceof in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) {
+                if (obj instanceof PostProcessingExecutorInput) {
                     return obj;
                 }
             }
@@ -405,7 +408,7 @@ public class ProviderAddressMapper {
      * @param from Source PostProcessingExecutorInput
      * @param to Target PostProcessingExecutorInput
      */
-    private void copyDependentFields(in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput from, in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput to) {
+    private void copyDependentFields(PostProcessingExecutorInput from, PostProcessingExecutorInput to) {
         if (from != null && to != null) {
             if (from.getLabel() != null) {
                 to.setLabel(from.getLabel());

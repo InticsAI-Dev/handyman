@@ -46,4 +46,9 @@ public class PostProcessingExecutorInput {
     public String getSectionAlias() { return sectionAlias; }
 
     public String getBBox() { return bBox; }
+
+    public String getSorItemName() { return sorItemName; }
+
+    public void setSorItemName(String sorItemName) { this.sorItemName = sorItemName; }
+
 }
