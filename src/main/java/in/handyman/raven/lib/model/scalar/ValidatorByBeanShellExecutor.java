@@ -114,22 +114,33 @@ public class ValidatorByBeanShellExecutor {
                 .collect(Collectors.groupingBy(PostProcessingFieldsInput::getSorItemName));
     }
 
+    public Map<String, List<PostProcessingFieldsInput>> groupBySorContainerInstance(List<PostProcessingFieldsInput> inputs) {
+        log.info("Grouping inputs by sor container instances");
+        return inputs.stream()
+                .collect(Collectors.groupingBy(PostProcessingFieldsInput::getSorContainerInstance));
+    }
+
+
     public void processPage(String originId, Integer pageNo, List<PostProcessingFieldsInput> pageInputs) {
         log.info("START validation for origin {} page {} page inputs {}", originId, pageNo, pageInputs.size());
         long start = System.currentTimeMillis();
 
         List<String> scriptClasses = loadScriptOrder(pageInputs);
-        Map<String, List<PostProcessingFieldsInput>> groupedItems = groupBySorItemNames(pageInputs);
+        Map<String, List<PostProcessingFieldsInput>> groupBySorContainerInstance = groupBySorContainerInstance(pageInputs);
 
-        Map<String, List<PostProcessingFieldsInput>> resultMap = executeScripts(scriptClasses, groupedItems);
+        groupBySorContainerInstance.forEach((s, postProcessingFieldsInputs) -> {
+                log.info("Processing sor container instance {} with {} inputs for origin {} page {}", s, postProcessingFieldsInputs.size(), originId, pageNo);
+                Map<String, List<PostProcessingFieldsInput>> groupedBySorItemNames = groupBySorItemNames(postProcessingFieldsInputs);
+                Map<String, List<PostProcessingFieldsInput>> resultMap = executeScripts(scriptClasses, groupedBySorItemNames);
 
-        List<PostProcessingFieldsInput> flatList =
-                resultMap.values()
-                        .stream()
-                        .flatMap(List::stream)
-                        .collect(Collectors.toList());
-        flatList.addAll(pageInputs);
-        pageInputs.clear();
+                List<PostProcessingFieldsInput> flatList =
+                        resultMap.values()
+                                .stream()
+                                .flatMap(List::stream)
+                                .collect(Collectors.toList());
+                flatList.addAll(postProcessingFieldsInputs);
+                pageInputs.addAll(flatList);
+        });
 
         long duration = System.currentTimeMillis() - start;
         log.info("END validation for origin {} page {} ({} ms)", originId, pageNo, duration);
