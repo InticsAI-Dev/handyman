@@ -5,6 +5,7 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.util.*;
 import in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput;
+import in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput;
 
 public class AuthDischargeDateValidator {
 
@@ -28,17 +29,17 @@ public class AuthDischargeDateValidator {
 
             for (int i = 0; i < serviceList.size(); i++) {
                 Object obj = serviceList.get(i);
-                if (obj instanceof AuthDischargeDateValidator.PostProcessingExecutorInput) {
+                if (obj instanceof PostProcessingFieldsInput) {
 
-                    AuthDischargeDateValidator.PostProcessingExecutorInput authDischargeDate =
-                            (AuthDischargeDateValidator.PostProcessingExecutorInput) obj;
-                    if (authDischargeDate.getExtractedValue() != null && !authDischargeDate.getExtractedValue().isEmpty()) {
+                    PostProcessingFieldsInput authDischargeDate =
+                            (PostProcessingFieldsInput) obj;
+                    if (authDischargeDate.getAnswer() != null && !authDischargeDate.getAnswer().isEmpty()) {
                         String validatedAuthDischargeDate =
-                                DateValidator(authDischargeDate.getExtractedValue(),
+                                DateValidator(authDischargeDate.getAnswer(),
                                         rootPipelineId,
                                         false);
 
-                        authDischargeDate.setExtractedValue(validatedAuthDischargeDate);
+                        authDischargeDate.setAnswer(validatedAuthDischargeDate);
                         if (validatedAuthDischargeDate.isEmpty()) {
                             authDischargeDate.setLabel("");
                             authDischargeDate.setSectionAlias("");
