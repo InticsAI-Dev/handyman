@@ -4,7 +4,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput;
+
+import in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput;
 
 public class ClinicalPresentProcessor {
 
@@ -20,8 +21,8 @@ public class ClinicalPresentProcessor {
         if (data == null) {
             logger.info("[RootPipelineID: " + rootPipelineId + "] Input map is null");
             Map result = new HashMap();
-            PostProcessingExecutorInput clinicalPresent = new PostProcessingExecutorInput();
-            clinicalPresent.setExtractedValue("N");
+            PostProcessingFieldsInput clinicalPresent = new PostProcessingFieldsInput();
+            clinicalPresent.setAnswer("N");
             List clinicalPresentProcessorList = new ArrayList();
             clinicalPresentProcessorList.add(clinicalPresent);
             result.put("clinical_present", clinicalPresentProcessorList);
@@ -41,10 +42,10 @@ public class ClinicalPresentProcessor {
                 List clinicalPresentList = (List) clinicalPresentObj;
                 for (int i = 0; i < clinicalPresentList.size(); i++) {
                     Object obj = clinicalPresentList.get(i);
-                    if (obj instanceof PostProcessingExecutorInput) {
-                        PostProcessingExecutorInput clinicalPresentInput = (PostProcessingExecutorInput) obj;
-                        String value = clinicalPresentValidation(clinicalPresentInput.getExtractedValue(), rootPipelineId);
-                        clinicalPresentInput.setExtractedValue(value);
+                    if (obj instanceof PostProcessingFieldsInput) {
+                        PostProcessingFieldsInput clinicalPresentInput = (PostProcessingFieldsInput) obj;
+                        String value = clinicalPresentValidation(clinicalPresentInput.getAnswer(), rootPipelineId);
+                        clinicalPresentInput.setAnswer(value);
                     }
                 }
             }
