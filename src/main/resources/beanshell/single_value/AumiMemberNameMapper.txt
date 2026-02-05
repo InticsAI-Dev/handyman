@@ -3,7 +3,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput;
+import in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput;
 
 public class AumiMemberNameMapper {
 
@@ -19,23 +19,23 @@ public class AumiMemberNameMapper {
             return new MappingResult(new HashMap());
         }
 
-        PostProcessingExecutorInput fullNameObj =
+        PostProcessingFieldsInput fullNameObj =
                 getFirst(predictionKeyMap, "member_full_name");
-        PostProcessingExecutorInput firstNameObj =
+        PostProcessingFieldsInput firstNameObj =
                 getFirst(predictionKeyMap, "member_first_name");
-        PostProcessingExecutorInput lastNameObj =
+        PostProcessingFieldsInput lastNameObj =
                 getFirst(predictionKeyMap, "member_last_name");
 
         if (hasValue(fullNameObj)) {
 
-            NameParts parts = split(fullNameObj.getExtractedValue());
+            NameParts parts = split(fullNameObj.getAnswer());
 
             applyAll(
                     predictionKeyMap,
                     fullNameObj,
                     parts.firstName,
                     parts.lastName,
-                    fullNameObj.getExtractedValue()
+                    fullNameObj.getAnswer()
             );
             return new MappingResult(predictionKeyMap);
         }
@@ -46,10 +46,10 @@ public class AumiMemberNameMapper {
         }
 
         if (hasValue(firstNameObj)) {
-            NameParts parts = split(firstNameObj.getExtractedValue());
+            NameParts parts = split(firstNameObj.getAnswer());
             applyAll(predictionKeyMap, firstNameObj, parts.firstName, parts.lastName, "");
         } else if (hasValue(lastNameObj)) {
-            NameParts parts = split(lastNameObj.getExtractedValue());
+            NameParts parts = split(lastNameObj.getAnswer());
             applyAll(predictionKeyMap, lastNameObj, parts.firstName, parts.lastName, "");
         }
 
@@ -57,7 +57,7 @@ public class AumiMemberNameMapper {
     }
 
     private void applyAll(Map map,
-                          PostProcessingExecutorInput source,
+                          PostProcessingFieldsInput source,
                           String firstName,
                           String lastName,
                           String fullName) {
@@ -68,18 +68,18 @@ public class AumiMemberNameMapper {
     }
 
     private void applySimple(Map map,
-                             PostProcessingExecutorInput first,
-                             PostProcessingExecutorInput last) {
+                             PostProcessingFieldsInput first,
+                             PostProcessingFieldsInput last) {
 
-        updateList(map, "member_first_name", first.getExtractedValue(), first);
-        updateList(map, "member_last_name", last.getExtractedValue(), last);
+        updateList(map, "member_first_name", first.getAnswer(), first);
+        updateList(map, "member_last_name", last.getAnswer(), last);
         updateList(map, "member_full_name", "", null);
     }
 
     private void updateList(Map map,
                             String key,
                             String value,
-                            PostProcessingExecutorInput source) {
+                            PostProcessingFieldsInput source) {
 
         Object obj = map.get(key);
         if (!(obj instanceof List)) return;
@@ -87,10 +87,10 @@ public class AumiMemberNameMapper {
         List list = (List) obj;
 
         for (int i = 0; i < list.size(); i++) {
-            PostProcessingExecutorInput in =
-                    (PostProcessingExecutorInput) list.get(i);
+            PostProcessingFieldsInput in =
+                    (PostProcessingFieldsInput) list.get(i);
 
-            in.setExtractedValue(value);
+            in.setAnswer(value);
 
             if (isEmpty(value)) {
                 clearDependentFields(in);
@@ -101,14 +101,14 @@ public class AumiMemberNameMapper {
         map.put(key, list);
     }
 
-    private void clearDependentFields(PostProcessingExecutorInput in) {
+    private void clearDependentFields(PostProcessingFieldsInput in) {
         in.setLabel("");
         in.setSectionAlias("");
         in.setBBox("");
     }
 
-    private void copyDependentFields(PostProcessingExecutorInput from,
-                                     PostProcessingExecutorInput to) {
+    private void copyDependentFields(PostProcessingFieldsInput from,
+                                     PostProcessingFieldsInput to) {
 
         to.setLabel(from.getLabel());
         to.setSectionAlias(from.getSectionAlias());
@@ -139,19 +139,19 @@ public class AumiMemberNameMapper {
         return new NameParts(first.toString().trim(), tokens[tokens.length - 1]);
     }
 
-    private PostProcessingExecutorInput getFirst(Map map, String key) {
+    private PostProcessingFieldsInput getFirst(Map map, String key) {
         Object obj = map.get(key);
         if (obj instanceof List) {
             List list = (List) obj;
             if (!list.isEmpty()) {
-                return (PostProcessingExecutorInput) list.get(0);
+                return (PostProcessingFieldsInput) list.get(0);
             }
         }
         return null;
     }
 
-    private boolean hasValue(PostProcessingExecutorInput in) {
-        return in != null && !isEmpty(in.getExtractedValue());
+    private boolean hasValue(PostProcessingFieldsInput in) {
+        return in != null && !isEmpty(in.getAnswer());
     }
 
     private boolean isEmpty(String s) {
