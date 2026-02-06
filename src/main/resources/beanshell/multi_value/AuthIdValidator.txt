@@ -1,8 +1,7 @@
 import org.slf4j.Logger;
 import java.util.*;
 
-import in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput;
-
+import in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput;
 public class AuthIdValidator {
 
     private Logger logger;
@@ -38,7 +37,7 @@ public class AuthIdValidator {
         if(authIdObj instanceof List && memberIdObj instanceof List)
         {
             List authIdList = (List) authIdObj;
-            PostProcessingExecutorInput authIdInput = null;
+            PostProcessingFieldsInput authIdInput = null;
 
             for(int i = 0; i<authIdList.size(); i++)
             {
@@ -46,13 +45,13 @@ public class AuthIdValidator {
                 validAuthIds = new ArrayList();
 
                 Object obj = authIdList.get(i);
-                if(obj instanceof PostProcessingExecutorInput)
+                if(obj instanceof PostProcessingFieldsInput)
                 {
-                    authIdInput = (PostProcessingExecutorInput) obj;
-                    String authId = authIdInput.getExtractedValue();
+                    authIdInput = (PostProcessingFieldsInput) obj;
+                    String authId = authIdInput.getAnswer();
                     if (authId != null && !authId.equals("")) {
                         String validatedAuthId = processAuthIds(authId, uniqueAuthIds, validAuthIds, rootPipelineId);
-                        authIdInput.setExtractedValue(validatedAuthId);
+                        authIdInput.setAnswer(validatedAuthId);
                     }
                 }
             }
@@ -63,10 +62,10 @@ public class AuthIdValidator {
             for(int i = 0; i<memberIdList.size(); i++)
             {
                 Object obj = memberIdList.get(i);
-                if(obj instanceof PostProcessingExecutorInput)
+                if(obj instanceof PostProcessingFieldsInput)
                 {
-                    PostProcessingExecutorInput memberIdInput = (PostProcessingExecutorInput) obj;
-                    String memberId = memberIdInput.getExtractedValue();
+                    PostProcessingFieldsInput memberIdInput = (PostProcessingFieldsInput) obj;
+                    String memberId = memberIdInput.getAnswer();
 
                     if (memberId != null && !memberId.equals("")) {
                         processMemberIds(memberId, uniqueAuthIds, validAuthIds, rootPipelineId, validUmIds);
@@ -74,10 +73,10 @@ public class AuthIdValidator {
                             logger.info("[RootPipelineID: " + rootPipelineId + "] member_id starts with UM, reassigning to auth_id");
                             validAuthIds.addAll(validUmIds);
 
-                            authIdInput = new PostProcessingExecutorInput();
-                            authIdInput.setExtractedValue(validAuthIds.isEmpty() ? "" : join(validAuthIds, ","));
+                            authIdInput = new PostProcessingFieldsInput();
+                            authIdInput.setAnswer(validAuthIds.isEmpty() ? "" : join(validAuthIds, ","));
                             authIdList.add(authIdInput);
-                            memberIdInput.setExtractedValue("");
+                            memberIdInput.setAnswer("");
                         } else if (memberId != null && !memberId.toUpperCase().startsWith("UM")){
                             String validMemberId = "";
                             if (isValidMemberId(memberId)) {
@@ -85,11 +84,11 @@ public class AuthIdValidator {
                             } else {
                                 logger.info("[RootPipelineID: " + rootPipelineId + "] Invalid member_id (length 9-13 or non-alphanumeric)");
                             }
-                            memberIdInput.setExtractedValue(validMemberId);
+                            memberIdInput.setAnswer(validMemberId);
                         }
                     }
                     else {
-                        memberIdInput.setExtractedValue("");
+                        memberIdInput.setAnswer("");
                     }
                 }
             }
