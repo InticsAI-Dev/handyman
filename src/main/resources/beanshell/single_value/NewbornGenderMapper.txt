@@ -3,6 +3,8 @@ import org.slf4j.Logger;
 import java.util.List;
 import java.util.Map;
 
+import in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput;
+
 public class NewbornGenderMapper {
 
     private Logger logger;
@@ -20,10 +22,10 @@ public class NewbornGenderMapper {
 
             for (int i = 0; i < newbornGenderList.size(); i++) {
                 Object obj = newbornGenderList.get(i);
-                if (obj instanceof in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) {
-                    in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput newbornGenderInput = (in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) obj;
-                    String validatedGenderValue = genderValidation(newbornGenderInput.getExtractedValue(), rootPipelineId);
-                    newbornGenderInput.setExtractedValue(validatedGenderValue);
+                if (obj instanceof PostProcessingFieldsInput) {
+                    PostProcessingFieldsInput newbornGenderInput = (PostProcessingFieldsInput) obj;
+                    String validatedGenderValue = genderValidation(newbornGenderInput.getAnswer(), rootPipelineId);
+                    newbornGenderInput.setAnswer(validatedGenderValue);
                 }
             }
             predictionKeyMap.put("newborn_gender", newbornGenderList);

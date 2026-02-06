@@ -9,6 +9,8 @@ import java.util.Map;
 
 import java.util.List;
 
+import in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput;
+
 public class NewbornDOBMapper {
 
     private Logger logger;
@@ -31,11 +33,11 @@ public class NewbornDOBMapper {
             for(int i = 0; i<newbornDobList.size(); i++)
             {
                 Object obj = newbornDobList.get(i);
-                if(obj instanceof in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput)
+                if(obj instanceof PostProcessingFieldsInput)
                 {
-                    in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput newbornDobInput = (in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) obj;
-                    String validatedDob = DateValidator(newbornDobInput.getExtractedValue(), rootPipelineId, true);
-                    newbornDobInput.setExtractedValue(validatedDob);
+                    PostProcessingFieldsInput newbornDobInput = (PostProcessingFieldsInput) obj;
+                    String validatedDob = DateValidator(newbornDobInput.getAnswer(), rootPipelineId, true);
+                    newbornDobInput.setAnswer(validatedDob);
                 }
             }
             predictionKeyMap.put("newborn_date_of_birth", newbornDobList);
