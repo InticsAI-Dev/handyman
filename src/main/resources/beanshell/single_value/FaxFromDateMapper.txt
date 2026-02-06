@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.*;
 import org.slf4j.Logger;
 import in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput;
+import in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput;
 
 public class FaxFromDateMapper {
 
@@ -27,16 +28,16 @@ public class FaxFromDateMapper {
 
             for (int i = 0; i < faxDateList.size(); i++) {
                 Object obj = faxDateList.get(i);
-                if (obj instanceof FaxFromDateMapper.PostProcessingExecutorInput) {
+                if (obj instanceof PostProcessingFieldsInput) {
 
-                    FaxFromDateMapper.PostProcessingExecutorInput faxFromDate =
-                            (FaxFromDateMapper.PostProcessingExecutorInput) obj;
-                    if (faxFromDate.getExtractedValue() != null && !faxFromDate.getExtractedValue().isEmpty()) {
+                    PostProcessingFieldsInput faxFromDate =
+                            (PostProcessingFieldsInput) obj;
+                    if (faxFromDate.getAnswer() != null && !faxFromDate.getAnswer().isEmpty()) {
                         String validatedFaxFromDate =
-                                DateValidator(faxFromDate.getExtractedValue(),
+                                DateValidator(faxFromDate.getAnswer(),
                                         rootPipelineId);
 
-                        faxFromDate.setExtractedValue(validatedFaxFromDate);
+                        faxFromDate.setAnswer(validatedFaxFromDate);
                         if (validatedFaxFromDate.isEmpty()) {
                             faxFromDate.setLabel("");
                             faxFromDate.setSectionAlias("");
