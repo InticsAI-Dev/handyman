@@ -4,6 +4,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput;
 
+import in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput;
+
 public class MemberIdValidator {
 
     private Long rootPipelineId;
@@ -58,12 +60,12 @@ public class MemberIdValidator {
 
             for (int i = 0; i < objList.size(); i++) {
                 Object obj = objList.get(i);
-                if (obj instanceof PostProcessingExecutorInput) {
-                    PostProcessingExecutorInput input = (PostProcessingExecutorInput) obj;
-                    String value = input.getExtractedValue() != null ? input.getExtractedValue().trim() : "";
+                if (obj instanceof PostProcessingFieldsInput) {
+                    PostProcessingFieldsInput input = (PostProcessingFieldsInput) obj;
+                    String value = input.getAnswer() != null ? input.getAnswer().trim() : "";
 
                     if (value.length() == 0) {
-                        input.setExtractedValue("");
+                        input.setAnswer("");
                         continue;
                     }
 
@@ -104,12 +106,12 @@ public class MemberIdValidator {
 
                         // Update current input based on what was found
                         if (firstPartIsAuth && secondPartIsAuth) {
-                            input.setExtractedValue("");
+                            input.setAnswer("");
                         } else if (firstPartIsAuth) {
                             // First part moved to auth
                              if (fieldName.equals("member_id")) {
                                  // If member_id, first part is Auth, so member_id is cleared.
-                                 input.setExtractedValue("");
+                                 input.setAnswer("");
                              }
                         } else if (secondPartIsAuth) {
                             // Second part moved to auth, first part remains
@@ -129,15 +131,15 @@ public class MemberIdValidator {
                             if (UM_PATTERN.matcher(value).matches()) {
                                 addAuthId(resultMap, input, value);
                                 authIdCandidates.add(value);
-                                input.setExtractedValue("");
+                                input.setAnswer("");
                             } else if (UM_INVALID_PATTERN.matcher(value).matches()) {
                                 addAdditionalAuth(resultMap, input, value);
                                 additionalAuthCandidates.add(value);
-                                input.setExtractedValue("");
+                                input.setAnswer("");
                             } else {
                                 // Starts with UM but not matching patterns? Treat as invalid/empty?
                                 // Original code: resultMap.put(fieldName, "");
-                                input.setExtractedValue("");
+                                input.setAnswer("");
                             }
                         } else {
                             valueCheck(input, value);
@@ -148,9 +150,9 @@ public class MemberIdValidator {
         }
     }
 
-    private void valueCheck(PostProcessingExecutorInput input, String value) {
+    private void valueCheck(PostProcessingFieldsInput input, String value) {
         if (value == null || value.isEmpty()) {
-            input.setExtractedValue("");
+            input.setAnswer("");
             return;
         }
 
@@ -163,37 +165,37 @@ public class MemberIdValidator {
         }
 
         if (value.length() > 20 && !REGEX_ALL_ALPHA_PATTERN.matcher(value).matches()) {
-            input.setExtractedValue(value.substring(0, 20));
+            input.setAnswer(value.substring(0, 20));
         }
         else if (REGEX_ALL_ALPHA_PATTERN.matcher(value).matches()) {
-            input.setExtractedValue("");
+            input.setAnswer("");
         } else {
-            input.setExtractedValue(value);
+            input.setAnswer(value);
         }
     }
 
-    private void addAuthId(Map resultMap, PostProcessingExecutorInput originalInput, String value) {
+    private void addAuthId(Map resultMap, PostProcessingFieldsInput originalInput, String value) {
         List authList = (List) resultMap.get("auth_id");
-        PostProcessingExecutorInput newInput = copyInput(originalInput);
-        newInput.setExtractedValue(value);
+        PostProcessingFieldsInput newInput = copyInput(originalInput);
+        newInput.setAnswer(value);
         newInput.setSorItemName("auth_id");
         authList.add(newInput);
     }
 
-    private void addAdditionalAuth(Map resultMap, PostProcessingExecutorInput originalInput, String value) {
+    private void addAdditionalAuth(Map resultMap, PostProcessingFieldsInput originalInput, String value) {
         List addAuthList = (List) resultMap.get("additional_auth_properties");
-        PostProcessingExecutorInput newInput = copyInput(originalInput);
-        newInput.setExtractedValue(value);
+        PostProcessingFieldsInput newInput = copyInput(originalInput);
+        newInput.setAnswer(value);
         newInput.setSorItemName("additional_auth_properties");
         addAuthList.add(newInput);
     }
 
-    private PostProcessingExecutorInput copyInput(PostProcessingExecutorInput input) {
+    private PostProcessingFieldsInput copyInput(PostProcessingFieldsInput input) {
         if (input == null) {
-            return new PostProcessingExecutorInput();
+            return new PostProcessingFieldsInput();
         }
 
-        PostProcessingExecutorInput newInput = new PostProcessingExecutorInput();
+        PostProcessingFieldsInput newInput = new PostProcessingFieldsInput();
         newInput.tenantId = input.tenantId;
         newInput.aggregatedScore = input.aggregatedScore;
         newInput.maskedScore = input.maskedScore;
@@ -239,22 +241,22 @@ public class MemberIdValidator {
             // Let's iterate and validate existing items
             for (int i = 0; i < authIdList.size(); i++) {
                 Object obj = authIdList.get(i);
-                if (obj instanceof PostProcessingExecutorInput) {
-                    PostProcessingExecutorInput input = (PostProcessingExecutorInput) obj;
+                if (obj instanceof PostProcessingFieldsInput) {
+                    PostProcessingFieldsInput input = (PostProcessingFieldsInput) obj;
                     // Skip items we just added (if any way to distinguish? maybe check if we processed them?)
                     // For now, let's assume inputMap contains original items.
 
-                    String authId = input.getExtractedValue() != null ? cleanString(input.getExtractedValue()) : null;
+                    String authId = input.getAnswer() != null ? cleanString(input.getAnswer()) : null;
 
                     if (authId != null && authId.length() != 0) {
                         if (UM_PATTERN.matcher(authId).matches()) {
                             authIdCandidates.add(authId);
-                            input.setExtractedValue(authId); // Update with cleaned value
+                            input.setAnswer(authId); // Update with cleaned value
                         } else if (UM_INVALID_PATTERN.matcher(authId).matches()) {
                             additionalAuthCandidates.add(authId);
                             // Move to additional_auth_properties
                             addAdditionalAuth(resultMap, input, authId);
-                            input.setExtractedValue(""); // Clear from auth_id
+                            input.setAnswer(""); // Clear from auth_id
                         } else {
                         }
                     }
@@ -276,9 +278,9 @@ public class MemberIdValidator {
                  Iterator it = finalAuthList.iterator();
                  while(it.hasNext()) {
                      Object obj = it.next();
-                     if (obj instanceof PostProcessingExecutorInput) {
-                         PostProcessingExecutorInput input = (PostProcessingExecutorInput) obj;
-                         String val = input.getExtractedValue();
+                     if (obj instanceof PostProcessingFieldsInput) {
+                         PostProcessingFieldsInput input = (PostProcessingFieldsInput) obj;
+                         String val = input.getAnswer();
                          if (val != null && !val.isEmpty()) {
                              validAuths.add(input);
                          } else {
@@ -291,11 +293,11 @@ public class MemberIdValidator {
 
              if (!validAuths.isEmpty()) {
                  // Keep the first one
-                 PostProcessingExecutorInput primary = (PostProcessingExecutorInput) validAuths.get(0);
+                 PostProcessingFieldsInput primary = (PostProcessingFieldsInput) validAuths.get(0);
 
                  // Move others
                  for (int i = 1; i < validAuths.size(); i++) {
-                     PostProcessingExecutorInput extra = (PostProcessingExecutorInput) validAuths.get(i);
+                     PostProcessingFieldsInput extra = (PostProcessingFieldsInput) validAuths.get(i);
                      // Remove from auth_id list (we'll clear and rebuild or remove specific)
                      // Add to additional list
                      extra.setSorItemName("additional_auth_properties");
