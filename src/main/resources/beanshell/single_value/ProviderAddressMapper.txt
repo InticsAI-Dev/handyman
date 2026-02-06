@@ -4,7 +4,7 @@ import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 
-import in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput;
+import in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput;
 
 
 public class ProviderAddressMapper {
@@ -109,15 +109,15 @@ public class ProviderAddressMapper {
             final String zipcodeKey = providerType + "_zipcode";
             // typecast the value
 
-            final PostProcessingExecutorInput addressKeyInput = (PostProcessingExecutorInput) iterateInputObj(addressKey, resultMap) !=null? (PostProcessingExecutorInput) iterateInputObj(addressKey, resultMap): new PostProcessingExecutorInput();
-            final PostProcessingExecutorInput cityKeyInput = (PostProcessingExecutorInput) iterateInputObj(cityKey, resultMap) !=null? (PostProcessingExecutorInput) iterateInputObj(cityKey, resultMap): new PostProcessingExecutorInput();
-            final PostProcessingExecutorInput stateKeyInput = (PostProcessingExecutorInput) iterateInputObj(stateKey, resultMap) !=null? (PostProcessingExecutorInput) iterateInputObj(stateKey, resultMap): new PostProcessingExecutorInput() ;
-            final PostProcessingExecutorInput zipcodeKeyInput = (PostProcessingExecutorInput) iterateInputObj(zipcodeKey, resultMap) !=null? (PostProcessingExecutorInput) iterateInputObj(zipcodeKey, resultMap): new PostProcessingExecutorInput();
+            final PostProcessingFieldsInput addressKeyInput = (PostProcessingFieldsInput) iterateInputObj(addressKey, resultMap) !=null? (PostProcessingFieldsInput) iterateInputObj(addressKey, resultMap): new PostProcessingFieldsInput();
+            final PostProcessingFieldsInput cityKeyInput = (PostProcessingFieldsInput) iterateInputObj(cityKey, resultMap) !=null? (PostProcessingFieldsInput) iterateInputObj(cityKey, resultMap): new PostProcessingFieldsInput();
+            final PostProcessingFieldsInput stateKeyInput = (PostProcessingFieldsInput) iterateInputObj(stateKey, resultMap) !=null? (PostProcessingFieldsInput) iterateInputObj(stateKey, resultMap): new PostProcessingFieldsInput() ;
+            final PostProcessingFieldsInput zipcodeKeyInput = (PostProcessingFieldsInput) iterateInputObj(zipcodeKey, resultMap) !=null? (PostProcessingFieldsInput) iterateInputObj(zipcodeKey, resultMap): new PostProcessingFieldsInput();
 
-            final String inputAddress = addressKeyInput.getExtractedValue() != null ? addressKeyInput.getExtractedValue() : "";
-            final String city = cityKeyInput.getExtractedValue() != null ? cityKeyInput.getExtractedValue(): "";
-            final String state = stateKeyInput.getExtractedValue() != null ?  stateKeyInput.getExtractedValue()  : "";
-            final String zipcode = zipcodeKeyInput.getExtractedValue() != null ? zipcodeKeyInput.getExtractedValue() : "";
+            final String inputAddress = addressKeyInput.getAnswer() != null ? addressKeyInput.getAnswer() : "";
+            final String city = cityKeyInput.getAnswer() != null ? cityKeyInput.getAnswer(): "";
+            final String state = stateKeyInput.getAnswer() != null ?  stateKeyInput.getAnswer()  : "";
+            final String zipcode = zipcodeKeyInput.getAnswer() != null ? zipcodeKeyInput.getAnswer() : "";
 
 
             if (!inputAddress.isEmpty()) {
@@ -125,7 +125,7 @@ public class ProviderAddressMapper {
 
                 AddressComponents parsedAddress = parseAddress(inputAddress);
                 if (parsedAddress != null) {
-                    addressKeyInput.setExtractedValue(parsedAddress.getAddressLine1());
+                    addressKeyInput.setAnswer(parsedAddress.getAddressLine1());
 
                     // Track which fields were empty before parsing
                     boolean cityWasEmpty = city.isEmpty();
@@ -133,9 +133,9 @@ public class ProviderAddressMapper {
                     boolean zipcodeWasEmpty = zipcode.isEmpty();
 
                     // Set extracted values
-                    cityKeyInput.setExtractedValue(cityWasEmpty ? parsedAddress.getCity() : city);
-                    stateKeyInput.setExtractedValue(stateWasEmpty ? parsedAddress.getState() : state);
-                    zipcodeKeyInput.setExtractedValue(zipcodeWasEmpty ? parsedAddress.getZipcode() : zipcode);
+                    cityKeyInput.setAnswer(cityWasEmpty ? parsedAddress.getCity() : city);
+                    stateKeyInput.setAnswer(stateWasEmpty ? parsedAddress.getState() : state);
+                    zipcodeKeyInput.setAnswer(zipcodeWasEmpty ? parsedAddress.getZipcode() : zipcode);
 
                     // Copy dependent fields (label, sectionAlias, bBox) from address_line1 to city/state/zipcode
                     // Only if those fields were empty and got values from parsing
@@ -153,32 +153,32 @@ public class ProviderAddressMapper {
                     addressProcessed = true;
                 } else {
                     logger.warn(logPrefix + "Address parsing failed for Keeping original address.");
-                    addressKeyInput.setExtractedValue(inputAddress);
-                    cityKeyInput.setExtractedValue( city);
-                    stateKeyInput.setExtractedValue( state);
-                    zipcodeKeyInput.setExtractedValue( zipcode);
+                    addressKeyInput.setAnswer(inputAddress);
+                    cityKeyInput.setAnswer( city);
+                    stateKeyInput.setAnswer( state);
+                    zipcodeKeyInput.setAnswer( zipcode);
                 }
             } else {
                 logger.info(logPrefix + "Input  field is empty or null. Setting address_line1 to empty.");
 
                 if(addressKeyInput.getSorItemName() != null){
-                    addressKeyInput.setExtractedValue("");
+                    addressKeyInput.setAnswer("");
                 }else{
                     logger.info(logPrefix + "Input  field is empty or null.");
                 }
                 if(cityKeyInput.getSorItemName() != null){
-                    cityKeyInput.setExtractedValue( city);
+                    cityKeyInput.setAnswer( city);
                 }
                 else {
                     logger.info(logPrefix + "Input  field is empty or null.");
                 }
                 if(stateKeyInput.getSorItemName() != null){
-                    stateKeyInput.setExtractedValue( state);
+                    stateKeyInput.setAnswer( state);
                 }else{
                     logger.info(logPrefix + "Input  field is empty or null.");
                 }
                 if(zipcodeKeyInput.getSorItemName() != null){
-                    zipcodeKeyInput.setExtractedValue( zipcode);
+                    zipcodeKeyInput.setAnswer( zipcode);
                 }else{
                     logger.info(logPrefix + "Input  field is empty or null.");
                 }
@@ -394,7 +394,7 @@ public class ProviderAddressMapper {
             for (int i = 0; i < objList.size(); i++) {
                 Object obj = objList.get(i);
 
-                if (obj instanceof PostProcessingExecutorInput) {
+                if (obj instanceof PostProcessingFieldsInput) {
                     return obj;
                 }
             }
@@ -405,10 +405,10 @@ public class ProviderAddressMapper {
     /**
      * Copy dependent fields (label, sectionAlias, bBox) from source to target
      *
-     * @param from Source PostProcessingExecutorInput
-     * @param to Target PostProcessingExecutorInput
+     * @param from Source PostProcessingFieldsInput
+     * @param to Target PostProcessingFieldsInput
      */
-    private void copyDependentFields(PostProcessingExecutorInput from, PostProcessingExecutorInput to) {
+    private void copyDependentFields(PostProcessingFieldsInput from, PostProcessingFieldsInput to) {
         if (from != null && to != null) {
             if (from.getLabel() != null) {
                 to.setLabel(from.getLabel());

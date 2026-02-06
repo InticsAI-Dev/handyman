@@ -2,6 +2,8 @@ import java.util.List;
 import org.slf4j.Logger;
 import java.util.Map;
 
+import in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput;
+
 public class ProviderZipCodeMapper {
 
     private Logger logger;
@@ -53,8 +55,8 @@ public class ProviderZipCodeMapper {
 
                     for (int j = 0; j < zipcodeList.size(); j++) {
                         Object obj = zipcodeList.get(j);
-                        if (obj instanceof in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) {
-                            in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput zipcodeInput = (in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) obj;
+                        if (obj instanceof PostProcessingFieldsInput) {
+                            PostProcessingFieldsInput zipcodeInput = (PostProcessingFieldsInput) obj;
                             String validatedZipcodeValue = zipcodeValidation(zipcodeInput.getAnswer(), rootPipelineId, field);
                             zipcodeInput.setAnswer(validatedZipcodeValue);
                         }

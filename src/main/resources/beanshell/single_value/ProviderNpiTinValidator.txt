@@ -6,6 +6,8 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput;
+
 public class ProviderNpiTinValidator {
     private Long rootPipelineId;
 //    private static List logMessages = new ArrayList();
@@ -53,11 +55,11 @@ public class ProviderNpiTinValidator {
                 for(int i = 0; i<valueList.size(); i++)
                 {
                     Object obj = valueList.get(i);
-                    if(obj instanceof in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput)
+                    if(obj instanceof PostProcessingFieldsInput)
                     {
-                        in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput input = (in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) obj;
-                        String validatedValue = processMap(input.getExtractedValue(), rootPipelineId, field);
-                        input.setExtractedValue(validatedValue);
+                        PostProcessingFieldsInput input = (PostProcessingFieldsInput) obj;
+                        String validatedValue = processMap(input.getAnswer(), rootPipelineId, field);
+                        input.setAnswer(validatedValue);
 
                     }
                 }

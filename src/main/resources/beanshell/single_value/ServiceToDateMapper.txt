@@ -4,6 +4,8 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.util.*;
 
+import in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput;
+
 public class ServiceToDateMapper {
 
     private Logger logger;
@@ -26,17 +28,17 @@ public class ServiceToDateMapper {
 
             for (int i = 0; i < serviceList.size(); i++) {
                 Object obj = serviceList.get(i);
-                if (obj instanceof in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) {
+                if (obj instanceof PostProcessingFieldsInput) {
 
-                    in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput serviceToDate =
-                            (in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) obj;
-                    if (!serviceToDate.getExtractedValue().isEmpty()) {
+                    PostProcessingFieldsInput serviceToDate =
+                            (PostProcessingFieldsInput) obj;
+                    if (!serviceToDate.getAnswer().isEmpty()) {
                         String validatedServiceToDate =
-                                DateValidator(serviceToDate.getExtractedValue(),
+                                DateValidator(serviceToDate.getAnswer(),
                                         rootPipelineId,
                                         false);
 
-                        serviceToDate.setExtractedValue(validatedServiceToDate);
+                        serviceToDate.setAnswer(validatedServiceToDate);
                         if (validatedServiceToDate.isEmpty()) {
                             serviceToDate.setLabel("");
                             serviceToDate.setSectionAlias("");
