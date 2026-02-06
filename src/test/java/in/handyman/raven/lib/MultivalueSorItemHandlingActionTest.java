@@ -25,52 +25,254 @@ import static org.mockito.Mockito.*;
 
 @Slf4j
 class MultivalueSorItemHandlingActionTest {
+
+    private ActionExecutionAudit action;
+
+    private final MultivalueSorItemHandling config=new MultivalueSorItemHandling();
+
+    private InticsIntegrity encryption;
+
+    private MultivalueSorItemHandlingAction actionInstance;
+    private final Marker aMarker = MarkerFactory.getMarker(" MultivalueSorItemHandling test");
+
+    private static final String WHITELIST =
+            "[{\"priorityLevel\":1,\"truthEntity\":\"Header\"}," +
+                    "{\"priorityLevel\":2,\"truthEntity\":\"Body\"}]";
+
+
+    @BeforeEach
+    void setUp() {
+        config.setName("MultivalueSorItemHandlingAction");
+        config.setCondition(true);
+        config.setOutputTable("multivalue_sor_item_handling_output");
+        config.setResourceConn("intics_zio_db_conn");
+        config.setQuerySet("select 1");
+        actionInstance = new MultivalueSorItemHandlingAction(action, log, config);
+    }
+
+
+    private MultiEntityFieldHandlingInput buildCase3Input(
+            String origin,
+            String container,
+            String instance,
+            String isMultiEntityEnabled,
+            String lineItemType,
+            Integer paperNo,
+            String sorItem,
+            String sectionAlias,
+            String answer,
+            Long score,
+            String whitelistJson
+    ) {
+        MultiEntityFieldHandlingInput i = new MultiEntityFieldHandlingInput();
+        i.setOriginId(origin);
+        i.setSorContainerName(container);
+        i.setSorContainerInstance(instance);
+        i.setPaperNo(paperNo);
+        i.setSorItemName(sorItem);
+        i.setSectionAlias(sectionAlias);
+        i.setAnswer(answer);
+        i.setScore(score);
+        i.setIsMultiEntityEnabled(isMultiEntityEnabled); // CASE-3
+        i.setLineItemType(lineItemType);
+        i.setWhitelistedSections(whitelistJson);
+        return i;
+    }
+
+    @Test
+    void executeMethodTest(){
+        List<MultiEntityFieldHandlingInput> updatedTableInfos = new ArrayList<>();
+
+        List<MultiEntityFieldHandlingInput> inputs = new ArrayList<>(buildPostProcessingMockInputs());
+
+
+        Map<String, List<MultiEntityFieldHandlingInput>> groupedOrigins = actionInstance.getGroupedOrigins(inputs);
+
+        inputs.forEach(multiEntityFieldHandlingInput ->
+                System.out.println("Input Origin ID: " + multiEntityFieldHandlingInput.getOriginId() +
+                        ", Container Instance: " + multiEntityFieldHandlingInput.getSorContainerInstance() +
+                        ", Paper No: " + multiEntityFieldHandlingInput.getPaperNo() +
+                        ", Item Name: " + multiEntityFieldHandlingInput.getSorItemName() +
+                        ", Answer: " + multiEntityFieldHandlingInput.getAnswer())
+        );
+
+        groupedOrigins.forEach((s, multiEntityFieldHandlingInputs) -> {
+            try {
+                log.info(aMarker, "Processing OriginId: {} with {} records", s, multiEntityFieldHandlingInputs.size());
+                updatedTableInfos.addAll(actionInstance.processAndMapFilteredData(multiEntityFieldHandlingInputs));
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+        for (MultiEntityFieldHandlingInput updatedTableInfo : updatedTableInfos) {
+            System.out.println("Retained Origin ID: " + updatedTableInfo.getOriginId() +
+                    ", Container Instance: " + updatedTableInfo.getSorContainerInstance() +
+                    ", Paper No: " + updatedTableInfo.getPaperNo() +
+                    ", Item Name: " + updatedTableInfo.getSorItemName() +
+                    ", Answer: " + updatedTableInfo.getAnswer());
+        }
+
+    }
+
+
+
+    private List<MultiEntityFieldHandlingInput> buildPostProcessingMockInputs() {
+
+        List<MultiEntityFieldHandlingInput> inputs = new ArrayList<>();
+
+        Object[][] rows = {
+
+                // originId, containerName, containerInstance, paperNo, itemName, answer,
+                // lineItemType, isMultiEntityEnabled, score
+
+//                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_0", 2,
+//                        "member_last_name", "", "single_value", false, 50},
 //
-//    private ActionExecutionAudit action;
+//                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_0", 2,
+//                        "member_date_of_birth", "06/01/1985", "single_value", false, 0},
 //
-//    private final MultivalueSorItemHandling config=new MultivalueSorItemHandling();
+//                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_0", 2,
+//                        "member_gender", "Male", "single_value", false, 0},
 //
-//    private InticsIntegrity encryption;
+//                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_0", 2,
+//                        "member_address_line1", "601 E Kennedy Blvd", "single_value", false, 0},
 //
-//    private MultivalueSorItemHandlingAction actionInstance;
-//    private final Marker aMarker = MarkerFactory.getMarker(" MultivalueSorItemHandling test");
+//                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_0", 2,
+//                        "member_city", "", "single_value", false, 50},
 //
-//    private static final String WHITELIST =
-//            "[{\"priorityLevel\":1,\"truthEntity\":\"Header\"}," +
-//                    "{\"priorityLevel\":2,\"truthEntity\":\"Body\"}]";
+//                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_0", 2,
+//                        "member_zipcode", "", "single_value", false, 50},
 //
+//                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_0", 2,
+//                        "member_state", "", "single_value", false, 50},
 //
-//    @BeforeEach
-//    void setUp() {
-//        config.setName("MultivalueSorItemHandlingAction");
-//        config.setCondition(true);
-//        config.setOutputTable("multivalue_sor_item_handling_output");
-//        config.setResourceConn("intics_zio_db_conn");
-//        config.setQuerySet("select 1");
-//        actionInstance = new MultivalueSorItemHandlingAction(action, log, config);
-//    }
+//                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_0", 2,
+//                        "medicaid_id", "", "single_value", false, 50},
 //
+//                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_0", 2,
+//                        "member_first_name", "", "single_value", false, 50},
 //
-//    private MultiEntityFieldHandlingInput buildMultiValueInput(
-//            String origin,
-//            String container,
-//            String instance,
-//            Integer paperNo,
-//            String item,
-//            String answer
-//    ) {
-//        MultiEntityFieldHandlingInput i = new MultiEntityFieldHandlingInput();
-//        i.setOriginId(origin);
-//        i.setSorContainerName(container);
-//        i.setSorContainerInstance(instance);
-//        i.setPaperNo(paperNo);
-//        i.setSorItemName(item);
-//        i.setAnswer(answer);
-//        i.setLineItemType("multi_value");
-//        i.setRemovedAfterFiltering(false);
-//        return i;
-//    }
+//                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_0", 2,
+//                        "member_full_name", "HILLEN ILA", "single_value", false, 0},
+
+                {"ORIGIN-1949", "SERVICING_FACILITY_DETAILS", "SERVICING_FACILITY_DETAILS_0", 2,
+                        "servicing_facility_full_name", "", "single_value", true, 50},
+
+                {"ORIGIN-1949", "SERVICING_FACILITY_DETAILS", "SERVICING_FACILITY_DETAILS_0", 2,
+                        "servicing_facility_first_name", "", "single_value", true, 50},
+
+                {"ORIGIN-1949", "SERVICING_PROVIDER_DETAILS", "SERVICING_PROVIDER_DETAILS_0", 2,
+                        "servicing_provider_full_name", "Dronen Nancy", "single_value", true, 100},
+
+                {"ORIGIN-1949", "SERVICING_PROVIDER_DETAILS", "SERVICING_PROVIDER_DETAILS_0", 2,
+                        "servicing_provider_first_name", "Dronen", "single_value", true, 100},
 //
+//                {"ORIGIN-1949", "FAX_DETAILS", "FAX_DETAILS_0", 1,
+//                        "fax_received_date", "06/04/2025 06:19:02 PM ET", "single_value", false, 96},
+//
+//                {"ORIGIN-1949", "LEVEL_OF_SERVICE", "LEVEL_OF_SERVICE_0", 2,
+//                        "level_of_service", "Urgent", "multi_value", false, 98},
+
+//                {"ORIGIN-1949", "SERVICE_FROM_DATE", "SERVICE_FROM_DATE_0", 2,
+//                        "service_from_date", "6/3/2025", "single_value", false, 93},
+
+//                {"ORIGIN-1949", "DIAGNOSIS_CODE", "DIAGNOSIS_CODE_0", 2,
+//                        "diagnosis_code", "R07.9", "multi_value", false, 90},
+
+//                {"ORIGIN-1949", "AUTH_ID", "AUTH_ID_0", 2,
+//                        "auth_id", "", "multi_value", false, 50},
+
+                {"ORIGIN-1949", "SERVICING_PROVIDER_DETAILS", "SERVICING_PROVIDER_DETAILS_0", 2,
+                        "servicing_provider_city", "", "single_value", true, 50},
+
+                {"ORIGIN-1949", "SERVICING_PROVIDER_DETAILS", "SERVICING_PROVIDER_DETAILS_0", 2,
+                        "servicing_provider_state", "", "single_value", true, 50},
+
+                {"ORIGIN-1949", "SERVICING_PROVIDER_DETAILS", "SERVICING_PROVIDER_DETAILS_0", 2,
+                        "servicing_provider_last_name", "Nancy", "single_value", true, 100},
+
+                {"ORIGIN-1949", "SERVICING_PROVIDER_DETAILS", "SERVICING_PROVIDER_DETAILS_0", 2,
+                        "servicing_provider_npi", "1013083435", "single_value", true, 100},
+
+                {"ORIGIN-1949", "SERVICING_PROVIDER_DETAILS", "SERVICING_PROVIDER_DETAILS_0", 2,
+                        "servicing_provider_tin", "410883623", "single_value", true, 100},
+
+                {"ORIGIN-1949", "SERVICING_FACILITY_DETAILS", "SERVICING_FACILITY_DETAILS_0", 2,
+                        "servicing_facility_address_line1", "500 S Oakwood Rd", "single_value", true, 100},
+
+                {"ORIGIN-1949", "SERVICING_FACILITY_DETAILS", "SERVICING_FACILITY_DETAILS_0", 2,
+                        "servicing_facility_city", "", "single_value", true, 50},
+
+                {"ORIGIN-1949", "SERVICING_FACILITY_DETAILS", "SERVICING_FACILITY_DETAILS_0", 2,
+                        "servicing_facility_state", "", "single_value", true, 50},
+
+                {"ORIGIN-1949", "SERVICING_FACILITY_DETAILS", "SERVICING_FACILITY_DETAILS_0", 2,
+                        "servicing_facility_zipcode", "", "single_value", true, 50},
+
+                {"ORIGIN-1949", "SERVICING_FACILITY_DETAILS", "SERVICING_FACILITY_DETAILS_0", 2,
+                        "servicing_facility_last_name", "Mercv Medical Center", "single_value", true, 100},
+
+                {"ORIGIN-1949", "SERVICING_FACILITY_DETAILS", "SERVICING_FACILITY_DETAILS_0", 2,
+                        "servicing_facility_npi", "1023065356", "single_value", true, 100},
+
+                {"ORIGIN-1949", "SERVICING_FACILITY_DETAILS", "SERVICING_FACILITY_DETAILS_0", 2,
+                        "servicing_facility_tin", "390806268", "single_value", true, 100}
+        };
+
+        for (Object[] r : rows) {
+            inputs.add(buildInput(
+                    (String) r[0],
+                    (String) r[1],
+                    (String) r[2],
+                    (Integer) r[3],
+                    (String) r[4],
+                    (String) r[5],
+                    (String) r[6],
+                    (Boolean) r[7],
+                    (Integer) r[8]
+            ));
+        }
+
+        return inputs;
+    }
+
+
+
+
+    private MultiEntityFieldHandlingInput buildInput(
+            String originId,
+            String sorContainerName,
+            String sorContainerInstance,
+            int paperNo,
+            String sorItemName,
+            String answer,
+            String lineItemType,
+            boolean isMultiEntityEnabled,
+            Integer score
+    ) {
+
+        MultiEntityFieldHandlingInput input = new MultiEntityFieldHandlingInput();
+
+        input.setOriginId(originId);
+        input.setSorContainerName(sorContainerName);
+        input.setSorContainerInstance(sorContainerInstance);
+        input.setPaperNo(paperNo);
+
+        input.setSorItemName(sorItemName);
+        input.setAnswer(answer);
+
+        input.setLineItemType(lineItemType);
+        input.setIsMultiEntityEnabled(Boolean.toString(isMultiEntityEnabled));
+
+        input.setScore(Long.valueOf(score));
+        input.setStatus("COMPLETED");
+        input.setStage("SOR_TRANSACTION");
+
+        return input;
+    }
+
+
+
 //
 //    // ==========================================================
 //    // ✅ CASE 1.1 — Single page with comma-separated values
@@ -227,41 +429,7 @@ class MultivalueSorItemHandlingActionTest {
 //        assertTrue(answers.contains("H123"));
 //        assertTrue(answers.contains("H456"));
 //    }
-//
-//
-//
-//
-//
-//
-//    private MultiEntityFieldHandlingInput buildCase3Input(
-//            String origin,
-//            String container,
-//            String instance,
-//            Integer paperNo,
-//            String sorItem,
-//            String sectionAlias,
-//            String answer,
-//            Long score,
-//            String whitelistJson
-//    ) {
-//        MultiEntityFieldHandlingInput i = new MultiEntityFieldHandlingInput();
-//        i.setOriginId(origin);
-//        i.setSorContainerName(container);
-//        i.setSorContainerInstance(instance);
-//        i.setPaperNo(paperNo);
-//        i.setSorItemName(sorItem);
-//        i.setSectionAlias(sectionAlias);
-//        i.setAnswer(answer);
-//        i.setScore(score);
-//        i.setIsMultiEntityEnabled("true"); // CASE-3
-//        i.setLineItemType("single_value");
-//        i.setWhitelistedSections(whitelistJson);
-//        return i;
-//    }
-//
-//
-//
-//
+
 //
 ////✅ CASE-3.1 — Single item → retained directly
 //    @Test

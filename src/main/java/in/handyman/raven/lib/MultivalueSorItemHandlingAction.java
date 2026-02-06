@@ -20,14 +20,17 @@ import in.handyman.raven.util.CommonQueryUtil;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.result.ResultIterable;
 import org.jdbi.v3.core.statement.Query;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -90,10 +93,7 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
             }
 
             log.info(aMarker, "PROCESSING: Executing filtering and consolidation logic.");
-             Map<String, List<MultiEntityFieldHandlingInput>> groupedOrigins =
-                    tableInfos.stream().collect(Collectors.groupingBy(
-                            MultiEntityFieldHandlingInput::getOriginId
-                    ));
+            Map<String, List<MultiEntityFieldHandlingInput>> groupedOrigins = getGroupedOrigins(tableInfos);
             groupedOrigins.forEach((s, multiEntityFieldHandlingInputs) -> {
                 try {
                     log.info(aMarker, "Processing OriginId: {} with {} records", s, multiEntityFieldHandlingInputs.size());
@@ -125,6 +125,15 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
             HandymanException.insertException("Multi value concatenation failed ", handymanException, action);
             throw handymanException;
         }
+    }
+
+    @NotNull
+    public Map<String, List<MultiEntityFieldHandlingInput>> getGroupedOrigins(List<MultiEntityFieldHandlingInput> tableInfos) {
+        Map<String, List<MultiEntityFieldHandlingInput>> groupedOrigins =
+               tableInfos.stream().collect(Collectors.groupingBy(
+                       MultiEntityFieldHandlingInput::getOriginId
+               ));
+        return groupedOrigins;
     }
 
     /**
@@ -262,11 +271,27 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
 
         log.info(aMarker, "====== HANDLE SINGLE VALUE LINE ITEMS STARTED ======");
 
+        Map<String, List<MultiEntityFieldHandlingInput>> groupedSorItems= inputList.stream()
+                .collect(Collectors.groupingBy(
+                        VqaTransactionOutput::getSorItemName
+                ));
+        AtomicReference<Integer> processedCount = new AtomicReference<>();
+        groupedSorItems.forEach((s, multiEntityFieldHandlingInputs) -> {
+            log.info(aMarker, "Processing SorItemName: {} with {} records", s, multiEntityFieldHandlingInputs.size());
+            processedCount.set(getSeperateEntityFromInstances(multiEntityFieldHandlingInputs, consolidatedInputs));
 
+        });
+        if (processedCount.get() == null) return;
 
+        log.info(aMarker, "Finished processing simple single-value items. Added {} records to consolidated inputs.", processedCount);
+        log.info(aMarker, "====== HANDLE SINGLE VALUE LINE ITEMS COMPLETED ======");
+    }
+
+    @Nullable
+    private Integer getSeperateEntityFromInstances(List<MultiEntityFieldHandlingInput> inputList, List<MultiEntityFieldHandlingInput> consolidatedInputs) {
         if (inputList == null || inputList.isEmpty()) {
             log.info(aMarker, "handleSingleValueLineItems received an empty list, skipping processing.");
-            return;
+            return null;
         }
 
         log.info(aMarker, "Processing {} simple single-value items/indicators.", inputList.size());
@@ -281,16 +306,13 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
             consolidatedInputs.addAll(inputList);
             processedCount = inputList.size();
         }
-
-        log.info(aMarker, "Finished processing simple single-value items. Added {} records to consolidated inputs.", processedCount);
-        log.info(aMarker, "====== HANDLE SINGLE VALUE LINE ITEMS COMPLETED ======");
+        return processedCount;
     }
 
     public void handleSingleValueEmptyAnswer(List<MultiEntityFieldHandlingInput> inputList,
                                            List<MultiEntityFieldHandlingInput> consolidatedInputs) {
 
         log.info(aMarker, "====== HANDLE SINGLE VALUE EMPTY ANSWER STARTED ======");
-
 
         if (inputList == null || inputList.isEmpty()) {
             log.info(aMarker, "handleSingleValueEmptyAnswer received an empty list, skipping processing.");
@@ -486,8 +508,8 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
                         .bind("sorContainerInstance", output.getSorContainerInstance())
                         .bind("isRemovedAfterFiltering", output.isRemovedAfterFiltering())
                         .bind("message", output.getMessage())
-                        .bind("createdOn", java.time.LocalDateTime.now())
-                        .bind("lastUpdatedOn", java.time.LocalDateTime.now())
+                        .bind("createdOn", LocalDateTime.now())
+                        .bind("lastUpdatedOn", LocalDateTime.now())
                         .bind("label", output.getLabel())
                         .bind("sectionAlias", output.getSectionAlias())
                         .bind("sectionPriorityAfterFilter", output.getSectionPriorityAfterFilter())
