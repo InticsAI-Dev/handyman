@@ -2,6 +2,8 @@ import org.slf4j.Logger;
 import java.util.List;
 import java.util.Map;
 
+import in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput;
+
 public class NewBornRequestMapper {
 
     private Logger logger;
@@ -25,8 +27,8 @@ public class NewBornRequestMapper {
 
             for (int i = 0; i < newbornRequestList.size(); i++) {
                 Object obj = newbornRequestList.get(i);
-                if (obj instanceof in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) {
-                    in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput newbornRequestInput = (in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) obj;
+                if (obj instanceof PostProcessingFieldsInput) {
+                    PostProcessingFieldsInput newbornRequestInput = (PostProcessingFieldsInput) obj;
 
                     String promptValue = getExtractedValueFromList(data.get("newborn_request_prompt"), i);
                     String ocrValue = getExtractedValueFromList(data.get("newborn_request_ocr"), i);
@@ -43,7 +45,7 @@ public class NewBornRequestMapper {
 
                     String result = (isPromptY && isOcrY) ? "Y" : "";
 
-                    newbornRequestInput.setExtractedValue(result);
+                    newbornRequestInput.setAnswer(result);
 
                     logger.info("[RootPipelineID: " + rootPipelineId +
                             "] newborn_request index " + i + " mapped to '" + result +
@@ -60,8 +62,8 @@ public class NewBornRequestMapper {
             List list = (List) listObj;
             if (index < list.size()) {
                 Object item = list.get(index);
-                if (item instanceof in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) {
-                    String value = ((in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) item).getExtractedValue();
+                if (item instanceof PostProcessingFieldsInput) {
+                    String value = ((PostProcessingFieldsInput) item).getAnswer();
                     return (value != null) ? value : "";
                 }
             }

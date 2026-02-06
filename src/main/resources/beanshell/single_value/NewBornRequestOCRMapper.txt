@@ -4,6 +4,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput;
+
 public class NewBornRequestOCRMapper {
 
     public static final List EXACT_KEYWORDS = new ArrayList();
@@ -42,8 +44,8 @@ public class NewBornRequestOCRMapper {
             boolean anyMatchFound = false;
             for (int i = 0; i < objList.size(); i++) {
                 Object obj = objList.get(i);
-                if (obj instanceof in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) {
-                    in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput newBornRequestOcrInput = (in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput) obj;
+                if (obj instanceof PostProcessingFieldsInput) {
+                    PostProcessingFieldsInput newBornRequestOcrInput = (PostProcessingFieldsInput) obj;
 
                     String newbornRequest = getStringValue(newBornRequestOcrInput);
 
@@ -79,8 +81,8 @@ public class NewBornRequestOCRMapper {
     }
 
 
-    public String getStringValue(in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput map) {
-        String value = map.getExtractedValue();
+    public String getStringValue(PostProcessingFieldsInput map) {
+        String value = map.getAnswer();
         if (value == null) {
             return "";
         }
