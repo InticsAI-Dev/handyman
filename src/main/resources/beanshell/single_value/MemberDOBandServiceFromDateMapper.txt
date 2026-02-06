@@ -5,6 +5,8 @@ import java.util.*;
 import org.slf4j.Logger;
 import in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput;
 
+import in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput;
+
 public class MemberDOBandServiceFromDateMapper {
 
     private Logger logger;
@@ -27,17 +29,17 @@ public class MemberDOBandServiceFromDateMapper {
 
             for (int i = 0; i < dobList.size(); i++) {
                 Object obj = dobList.get(i);
-                if (obj instanceof PostProcessingExecutorInput) {
+                if (obj instanceof PostProcessingFieldsInput) {
 
-                    PostProcessingExecutorInput dobInput =
-                            (PostProcessingExecutorInput) obj;
+                    PostProcessingFieldsInput dobInput =
+                            (PostProcessingFieldsInput) obj;
 
                     String validatedDob =
-                            dateValidator(dobInput.getExtractedValue(),
+                            dateValidator(dobInput.getAnswer(),
                                     rootPipelineId,
                                     true);
 
-                    dobInput.setExtractedValue(validatedDob);
+                    dobInput.setAnswer(validatedDob);
                     if(validatedDob.isEmpty()){
                         dobInput.setLabel("");
                         dobInput.setSectionAlias("");
@@ -54,17 +56,17 @@ public class MemberDOBandServiceFromDateMapper {
 
             for (int i = 0; i < serviceList.size(); i++) {
                 Object obj = serviceList.get(i);
-                if (obj instanceof PostProcessingExecutorInput) {
+                if (obj instanceof PostProcessingFieldsInput) {
 
-                    PostProcessingExecutorInput serviceInput =
-                            (PostProcessingExecutorInput) obj;
+                    PostProcessingFieldsInput serviceInput =
+                            (PostProcessingFieldsInput) obj;
 
                     String validatedServiceDate =
-                            dateValidator(serviceInput.getExtractedValue(),
+                            dateValidator(serviceInput.getAnswer(),
                                     rootPipelineId,
                                     false);
 
-                    serviceInput.setExtractedValue(validatedServiceDate);
+                    serviceInput.setAnswer(validatedServiceDate);
                     if(validatedServiceDate.isEmpty()){
                         serviceInput.setLabel("");
                         serviceInput.setSectionAlias("");
