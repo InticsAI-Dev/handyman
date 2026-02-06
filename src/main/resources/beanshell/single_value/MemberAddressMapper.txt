@@ -4,6 +4,8 @@ import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput;
 
+import in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput;
+
 public class MemberAddressMapper {
 
     private Logger logger;
@@ -42,16 +44,16 @@ public class MemberAddressMapper {
             return new MappingResult(new HashMap());
         }
 
-        PostProcessingExecutorInput addressLine1Obj = getFirst(predictionKeyMap, "member_address_line1");
-        PostProcessingExecutorInput cityObj = getFirst(predictionKeyMap, "member_city");
-        PostProcessingExecutorInput stateObj = getFirst(predictionKeyMap, "member_state");
-        PostProcessingExecutorInput zipcodeObj = getFirst(predictionKeyMap, "member_zipcode");
+        PostProcessingFieldsInput addressLine1Obj = getFirst(predictionKeyMap, "member_address_line1");
+        PostProcessingFieldsInput cityObj = getFirst(predictionKeyMap, "member_city");
+        PostProcessingFieldsInput stateObj = getFirst(predictionKeyMap, "member_state");
+        PostProcessingFieldsInput zipcodeObj = getFirst(predictionKeyMap, "member_zipcode");
 
-        String inputAddress = hasValue(addressLine1Obj) ? addressLine1Obj.getExtractedValue().trim() :
-                (addressLine1Obj != null && addressLine1Obj.getExtractedValue() == null ? null : "");
-        String city = hasValue(cityObj) ? cityObj.getExtractedValue().trim() : "";
-        String state = hasValue(stateObj) ? stateObj.getExtractedValue().trim() : "";
-        String zipcode = hasValue(zipcodeObj) ? zipcodeObj.getExtractedValue().trim() : "";
+        String inputAddress = hasValue(addressLine1Obj) ? addressLine1Obj.getAnswer().trim() :
+                (addressLine1Obj != null && addressLine1Obj.getAnswer() == null ? null : "");
+        String city = hasValue(cityObj) ? cityObj.getAnswer().trim() : "";
+        String state = hasValue(stateObj) ? stateObj.getAnswer().trim() : "";
+        String zipcode = hasValue(zipcodeObj) ? zipcodeObj.getAnswer().trim() : "";
 
         // Track which fields were empty before parsing
         boolean cityWasEmpty = city.isEmpty();
@@ -59,7 +61,7 @@ public class MemberAddressMapper {
         boolean zipcodeWasEmpty = zipcode.isEmpty();
 
         if (inputAddress != null && !inputAddress.isEmpty()) {
-            logger.info(logPrefix + "Processing ''member_address_line1'' field (Input type: List<PostProcessingExecutorInput>).");
+            logger.info(logPrefix + "Processing ''member_address_line1'' field (Input type: List<PostProcessingFieldsInput>).");
 
             AddressComponents parsedAddress = parseAddress(inputAddress);
             if (parsedAddress != null) {
@@ -107,7 +109,7 @@ public class MemberAddressMapper {
     private void updateList(Map map,
                             String key,
                             String value,
-                            PostProcessingExecutorInput source) {
+                            PostProcessingFieldsInput source) {
 
         Object obj = map.get(key);
         if (!(obj instanceof List)) return;
@@ -115,10 +117,10 @@ public class MemberAddressMapper {
         List list = (List) obj;
 
         for (int i = 0; i < list.size(); i++) {
-            PostProcessingExecutorInput in =
-                    (PostProcessingExecutorInput) list.get(i);
+            PostProcessingFieldsInput in =
+                    (PostProcessingFieldsInput) list.get(i);
 
-            in.setExtractedValue(value);
+            in.setAnswer(value);
 
             if (value == null || isEmpty(value)) {
                 if (value == null) {
@@ -132,32 +134,32 @@ public class MemberAddressMapper {
         map.put(key, list);
     }
 
-    private void clearDependentFields(PostProcessingExecutorInput in) {
+    private void clearDependentFields(PostProcessingFieldsInput in) {
         in.setLabel("");
         in.setSectionAlias("");
         in.setBBox("");
     }
-    private void copyDependentFields(PostProcessingExecutorInput from,
-                                     PostProcessingExecutorInput to) {
+    private void copyDependentFields(PostProcessingFieldsInput from,
+                                     PostProcessingFieldsInput to) {
 
         to.setLabel(from.getLabel());
         to.setSectionAlias(from.getSectionAlias());
         to.setBBox(from.getBBox());
     }
 
-    private PostProcessingExecutorInput getFirst(Map map, String key) {
+    private PostProcessingFieldsInput getFirst(Map map, String key) {
         Object obj = map.get(key);
         if (obj instanceof List) {
             List list = (List) obj;
             if (!list.isEmpty()) {
-                return (PostProcessingExecutorInput) list.get(0);
+                return (PostProcessingFieldsInput) list.get(0);
             }
         }
         return null;
     }
 
-    private boolean hasValue(PostProcessingExecutorInput in) {
-        return in != null && !isEmpty(in.getExtractedValue());
+    private boolean hasValue(PostProcessingFieldsInput in) {
+        return in != null && !isEmpty(in.getAnswer());
     }
 
     private boolean isEmpty(String s) {
