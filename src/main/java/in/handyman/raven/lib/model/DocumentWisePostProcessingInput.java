@@ -97,7 +97,7 @@ public class DocumentWisePostProcessingInput {
     private Double upperPos;
     
     @ColumnName("is_encrypted")
-    private String isEncrypted;
+    private Boolean isEncrypted;
     
     // Additional fields that might be needed for processing
     @ColumnName("sor_item_name")

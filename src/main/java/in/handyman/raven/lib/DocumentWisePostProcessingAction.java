@@ -90,7 +90,7 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
       documentWisePostProcessingInputs.forEach(input -> {
         // Only decrypt if the value is marked as encrypted
         if (input.getPredictedValue() != null && !input.getPredictedValue().isEmpty() 
-            && "t".equalsIgnoreCase(input.getIsEncrypted())) {
+            && input.getIsEncrypted()) {
           try {
             String encryptionPolicy;
             if ("false".equalsIgnoreCase(scalarAdapterActivator)) {
@@ -119,7 +119,7 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
       });
       
       long decryptedCount = documentWisePostProcessingInputs.stream()
-          .filter(p -> "t".equalsIgnoreCase(p.getIsEncrypted()))
+          .filter(DocumentWisePostProcessingInput::getIsEncrypted)
           .count();
       log.info(aMarker, "Decrypted {} out of {} records", decryptedCount, documentWisePostProcessingInputs.size());
     }
@@ -128,7 +128,7 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
   private void processEncryption(DocumentWisePostProcessingInput input, InticsIntegrity crypt, boolean encryptEnabled) {
     // Only encrypt values that were originally encrypted (isEncrypted = 't')
     if (encryptEnabled && input.getPredictedValue() != null && !input.getPredictedValue().isEmpty()
-        && "t".equalsIgnoreCase(input.getIsEncrypted())) {
+        && input.getIsEncrypted()) {
       try {
         String encryptionPolicy = "AES256"; // Default policy, can be enhanced to fetch from sor_item if needed
         
