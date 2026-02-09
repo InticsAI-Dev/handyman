@@ -196,22 +196,17 @@ public class MemberIdValidator {
 
         PostProcessingFieldsInput newInput = new PostProcessingFieldsInput();
         newInput.tenantId = input.tenantId;
-        newInput.aggregatedScore = input.aggregatedScore;
-        newInput.maskedScore = input.maskedScore;
         newInput.originId = input.originId;
         newInput.paperNo = input.paperNo;
         newInput.vqaScore = input.vqaScore;
-        newInput.rank = input.rank;
         newInput.sorItemAttributionId = input.sorItemAttributionId;
         newInput.sorItemName = input.sorItemName;
         newInput.documentId = input.documentId;
-        newInput.accTransactionId = input.accTransactionId;
         newInput.label = input.label;
         newInput.sectionAlias = input.sectionAlias;
         newInput.score = input.score;
         newInput.bBox = input.bBox;
         newInput.rootPipelineId = input.rootPipelineId;
-        newInput.frequency = input.frequency;
         newInput.questionId = input.questionId;
         newInput.synonymId = input.synonymId;
         newInput.modelRegistry = input.modelRegistry;

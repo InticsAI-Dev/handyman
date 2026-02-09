@@ -174,12 +174,12 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
     public void handleMultiEntityEnabled(List<MultiEntityFieldHandlingInput> inputList,
                                            List<MultiEntityFieldHandlingInput> consolidatedInputs) {
 
-        log.info(aMarker, "====== HANDLE SINGLE VALUE MULTI-ENTITY ITEMS STARTED ======");
+        log.info(aMarker, "====== HANDLE MULTI-ENTITY ENABLED ITEMS STARTED ======");
         if (inputList == null || inputList.isEmpty()) {
-            log.info(aMarker, "handleSingleValueMultiEntity received an empty list, skipping processing.");
+            log.info(aMarker, "Handle Multi Entities received an empty list, skipping processing.");
             return;
         }
-        log.info(aMarker, "Processing {} single-value multi-entity items.", inputList.size());
+        log.info(aMarker, "Processing {} multi-entity items.", inputList.size());
 
         List<MultiEntityFieldHandlingInput> singleValueLineItems = inputList.stream()
                 .filter(item -> "single_value".equals(item.getLineItemType()))
@@ -189,19 +189,19 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
         List<MultiEntityFieldHandlingInput> multiValueLineItems = inputList.stream()
                 .filter(item -> "multi_value".equals(item.getLineItemType()))
                 .collect(Collectors.toList());
+        log.info(aMarker, "Multi-entity items partitioned - Single value line items: {}, Multi value line items: {}", singleValueLineItems.size(), multiValueLineItems.size());
 
 
+        handleMultiEntitySingleValueLineItems(singleValueLineItems, consolidatedInputs);
 
-        handleSingleValueLineItems(singleValueLineItems, consolidatedInputs);
 
-
-        Map<String, List<MultiEntityFieldHandlingInput>> groupedBySorItemInstance =
+        Map<String, List<MultiEntityFieldHandlingInput>> groupedBySorContainerInstance =
                 multiValueLineItems.stream().collect(Collectors.groupingBy(
                         MultiEntityFieldHandlingInput::getSorContainerInstance
                 ));
 
-        groupedBySorItemInstance.forEach((s, multiEntityFieldHandlingInputs) -> {
-            handleMultiValueLineItems(multiEntityFieldHandlingInputs,consolidatedInputs);
+        groupedBySorContainerInstance.forEach((s, multiEntityFieldHandlingInputs) -> {
+            handleMultiEntityMultiValueLineItems(multiEntityFieldHandlingInputs,consolidatedInputs);
         });
 
 
@@ -213,9 +213,9 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
     public void handleMultiEntityDisabled(List<MultiEntityFieldHandlingInput> inputList,
                                           List<MultiEntityFieldHandlingInput> consolidatedInputs) {
 
-        log.info(aMarker, "====== HANDLE SINGLE VALUE MULTI-ENTITY ITEMS STARTED ======");
+        log.info(aMarker, "====== HANDLE MULTI-ENTITY DISABLED ITEMS STARTED ======");
         if (inputList == null || inputList.isEmpty()) {
-            log.info(aMarker, "handleSingleValueMultiEntity received an empty list, skipping processing.");
+            log.info(aMarker, "Handle Multi entity disabled received an empty list, skipping processing.");
             return;
         }
 
@@ -239,13 +239,21 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
 
         groupedBySorItemName.forEach((s, multiEntityFieldHandlingInputs) -> {
             log.info(aMarker, "Processing SorItemName: {} with {} records", s, multiEntityFieldHandlingInputs.size());
-            handleSingleValueLineItems(multiEntityFieldHandlingInputs, consolidatedInputs);
+            handleSingleEntitySingleValueLineItems(multiEntityFieldHandlingInputs, consolidatedInputs);
         });
 
 
+        Map<String, List<MultiEntityFieldHandlingInput>> groupedBySorContainerInstances =
+                multiValueLineItems.stream().collect(Collectors.groupingBy(
+                        MultiEntityFieldHandlingInput::getSorContainerInstance
+                ));
 
+        //TODO need improvements in the Single Entity Multi Values
+        groupedBySorContainerInstances.forEach((s, multiEntityFieldHandlingInputs) -> {
+            log.info(aMarker, "Processing Sor Container Instance : {} with {} records", s, multiEntityFieldHandlingInputs.size());
+            handleSingleEntityMultiValueLineItems(multiEntityFieldHandlingInputs,consolidatedInputs);
+        });
 
-        handleMultiValueLineItems(multiValueLineItems,consolidatedInputs);
 
 
     }
@@ -266,10 +274,10 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
 
     }
 
-    public void handleSingleValueLineItems(List<MultiEntityFieldHandlingInput> inputList,
-                                           List<MultiEntityFieldHandlingInput> consolidatedInputs) {
+    public void handleSingleEntitySingleValueLineItems(List<MultiEntityFieldHandlingInput> inputList,
+                                                       List<MultiEntityFieldHandlingInput> consolidatedInputs) {
 
-        log.info(aMarker, "====== HANDLE SINGLE VALUE LINE ITEMS STARTED ======");
+        log.info(aMarker, "====== HANDLE SINGLE ENTITY SINGLE VALUE LINE ITEMS STARTED ======");
 
         Map<String, List<MultiEntityFieldHandlingInput>> groupedSorItems= inputList.stream()
                 .collect(Collectors.groupingBy(
@@ -278,17 +286,39 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
         AtomicReference<Integer> processedCount = new AtomicReference<>();
         groupedSorItems.forEach((s, multiEntityFieldHandlingInputs) -> {
             log.info(aMarker, "Processing SorItemName: {} with {} records", s, multiEntityFieldHandlingInputs.size());
-            processedCount.set(getSeperateEntityFromInstances(multiEntityFieldHandlingInputs, consolidatedInputs));
+            processedCount.set(selectSingleEntityFromInstances(multiEntityFieldHandlingInputs, consolidatedInputs));
 
         });
         if (processedCount.get() == null) return;
 
         log.info(aMarker, "Finished processing simple single-value items. Added {} records to consolidated inputs.", processedCount);
-        log.info(aMarker, "====== HANDLE SINGLE VALUE LINE ITEMS COMPLETED ======");
+        log.info(aMarker, "====== HANDLE SINGLE ENTITY SINGLE VALUE LINE ITEMS ======");
+    }
+
+    public void handleMultiEntitySingleValueLineItems(List<MultiEntityFieldHandlingInput> inputList,
+                                                      List<MultiEntityFieldHandlingInput> consolidatedInputs) {
+
+        log.info(aMarker, "====== HANDLE MULTI ENTITY SINGLE VALUE LINE ITEMS STARTED ======");
+
+        Map<String, List<MultiEntityFieldHandlingInput>> groupedSorContainerInstance= inputList.stream()
+                .collect(Collectors.groupingBy(
+                        VqaTransactionOutput::getSorContainerInstance
+                ));
+        AtomicReference<Integer> processedCount = new AtomicReference<>();
+        groupedSorContainerInstance.forEach((s, multiEntityFieldHandlingInputs) -> {
+            log.info(aMarker, "Processing Sor Container Instance : {} with {} records", s, multiEntityFieldHandlingInputs.size());
+            processedCount.set(multiEntityFieldHandlingInputs.size());
+            consolidatedInputs.addAll(multiEntityFieldHandlingInputs);
+
+        });
+        if (processedCount.get() == null) return;
+
+        log.info(aMarker, "Finished processing simple single-value items. Added {} records to consolidated inputs.", processedCount);
+        log.info(aMarker, "====== HANDLE MULTI ENTITY SINGLE VALUE LINE ITEMS COMPLETED ======");
     }
 
     @Nullable
-    private Integer getSeperateEntityFromInstances(List<MultiEntityFieldHandlingInput> inputList, List<MultiEntityFieldHandlingInput> consolidatedInputs) {
+    private Integer selectSingleEntityFromInstances(List<MultiEntityFieldHandlingInput> inputList, List<MultiEntityFieldHandlingInput> consolidatedInputs) {
         if (inputList == null || inputList.isEmpty()) {
             log.info(aMarker, "handleSingleValueLineItems received an empty list, skipping processing.");
             return null;
@@ -364,8 +394,8 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
 
 
 
-    public void handleMultiValueLineItems(List<MultiEntityFieldHandlingInput> multiValueInputs, List<MultiEntityFieldHandlingInput> consolidatedInputs) {
-        log.info(aMarker, "====== CASE 1: MULTI-VALUE PROCESSING STARTED ======");
+    public void handleSingleEntityMultiValueLineItems(List<MultiEntityFieldHandlingInput> multiValueInputs, List<MultiEntityFieldHandlingInput> consolidatedInputs) {
+        log.info(aMarker, "====== CASE 1: SINGLE ENTITY MULTI-VALUE PROCESSING STARTED ======");
         log.info(aMarker, "Processing {} multi_value records.", multiValueInputs.size());
 
         List<MultiEntityFieldHandlingInput> normalizedList = new ArrayList<>();
@@ -447,7 +477,95 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
         log.info(aMarker, "De-duplication Stats - Unique retained: {}, Duplicates removed: {}", uniquesRetained, duplicatesFound);
         log.info(aMarker, "CASE 1 Complete - Final output size: {}, Active records: {}",
                 finalOutput.size(), finalOutput.stream().filter(item -> !item.isRemovedAfterFiltering()).count());
-        log.info(aMarker, "====== CASE 1: MULTI-VALUE PROCESSING COMPLETED ======");
+        log.info(aMarker, "====== CASE 1: SINGLE ENTITY MULTI-VALUE PROCESSING COMPLETED ======");
+
+        consolidatedInputs.addAll(finalOutput);
+    }
+
+    public void handleMultiEntityMultiValueLineItems(List<MultiEntityFieldHandlingInput> multiValueInputs, List<MultiEntityFieldHandlingInput> consolidatedInputs) {
+        log.info(aMarker, "====== CASE 1: SINGLE ENTITY MULTI-VALUE PROCESSING STARTED ======");
+        log.info(aMarker, "Processing {} multi_value records.", multiValueInputs.size());
+
+        List<MultiEntityFieldHandlingInput> normalizedList = new ArrayList<>();
+        String delimiter = ",";
+        int totalSplits = 0;
+        int itemsWithMultipleValues = 0;
+
+        for (MultiEntityFieldHandlingInput item : multiValueInputs) {
+            String answer = item.getAnswer();
+
+            if (answer != null && answer.contains(delimiter)) {
+                itemsWithMultipleValues++;
+                String[] values = answer.split(delimiter);
+
+                log.debug(aMarker, "Splitting multi-value - SorItemName: {}, ValueCount: {}, DocumentId: {}, GroupId: {}, BatchId: {}",
+                        item.getSorItemName(), values.length, item.getDocumentId(), item.getGroupId(), item.getBatchId());
+
+                item.setRemovedAfterFiltering(true);
+                item.setMessage(String.format("Split and removed due to multiple values (%s). Individual values will be processed.", item.getSorItemName()));
+
+                int splitCount = 0;
+                for (String singleValue : values) {
+                    String trimmedValue = singleValue.trim();
+                    if (!trimmedValue.isEmpty()) {
+                        MultiEntityFieldHandlingInput newItem = cloneInputItem(item);
+                        newItem.setAnswer(trimmedValue);
+                        newItem.setRemovedAfterFiltering(false);
+                        newItem.setMessage(String.format("Normalized from a multi-value. Original item: %s", item.getSorItemName()));
+                        normalizedList.add(newItem);
+                        splitCount++;
+                        totalSplits++;
+                    }
+                }
+                log.debug(aMarker, "Split item {} into {} new records.", item.getSorItemName(), splitCount);
+            } else {
+                normalizedList.add(item);
+            }
+        }
+
+        log.info(aMarker, "Normalization Stats - Items with multiple values: {}, Total splits created: {}",
+                itemsWithMultipleValues, totalSplits);
+        log.info(aMarker, "List size expanded from {} to {}.", multiValueInputs.size(), normalizedList.size());
+
+        // De-duplication phase
+        List<MultiEntityFieldHandlingInput> finalOutput = new ArrayList<>();
+        Set<String> uniqueKeys = new HashSet<>();
+        int duplicatesFound = 0;
+        int uniquesRetained = 0;
+
+        for (MultiEntityFieldHandlingInput item : normalizedList) {
+            if (item.isRemovedAfterFiltering()) {
+                finalOutput.add(item);  // Keep the original split items for tracking
+                continue;
+            }
+
+            String key = String.format("%s|%s|%s", item.getOriginId(), item.getSorItemName(), item.getAnswer());
+
+            if (uniqueKeys.add(key)) {
+                uniquesRetained++;
+                item.setRemovedAfterFiltering(false);
+                item.setMessage(item.getMessage() != null ?
+                        item.getMessage().startsWith("Normalized") ? item.getMessage() + " Retained as unique." : "Retained as a unique multi_value item."
+                        : "Retained as a unique multi_value item.");
+                finalOutput.add(item);
+
+                log.debug(aMarker, "Retained unique item - SorItemName: {}, Score: {}, DocumentId: {}, GroupId: {}, BatchId: {}",
+                        item.getSorItemName(), item.getScore(), item.getDocumentId(), item.getGroupId(), item.getBatchId());
+            } else {
+                duplicatesFound++;
+                item.setRemovedAfterFiltering(true);
+                item.setMessage("Removed as a duplicate multi_value item (same value/score found in another page/instance).");
+                finalOutput.add(item);
+
+                log.debug(aMarker, "Removed duplicate - SorItemName: {}, DocumentId: {}, GroupId: {}, BatchId: {}",
+                        item.getSorItemName(), item.getDocumentId(), item.getGroupId(), item.getBatchId());
+            }
+        }
+
+        log.info(aMarker, "De-duplication Stats - Unique retained: {}, Duplicates removed: {}", uniquesRetained, duplicatesFound);
+        log.info(aMarker, "CASE 1 Complete - Final output size: {}, Active records: {}",
+                finalOutput.size(), finalOutput.stream().filter(item -> !item.isRemovedAfterFiltering()).count());
+        log.info(aMarker, "====== CASE 1: SINGLE ENTITY MULTI-VALUE PROCESSING COMPLETED ======");
 
         consolidatedInputs.addAll(finalOutput);
     }

@@ -88,7 +88,11 @@ class MultivalueSorItemHandlingActionTest {
 
         Map<String, List<MultiEntityFieldHandlingInput>> groupedOrigins = actionInstance.getGroupedOrigins(inputs);
 
-        inputs.forEach(multiEntityFieldHandlingInput ->
+        String sorContainerName = "MEMBER_DETAILS";
+
+        inputs.stream().filter(multiEntityFieldHandlingInput -> {
+            return multiEntityFieldHandlingInput.getSorContainerName().equals(sorContainerName);
+        }).forEach(multiEntityFieldHandlingInput ->
                 System.out.println("Input Origin ID: " + multiEntityFieldHandlingInput.getOriginId() +
                         ", Container Instance: " + multiEntityFieldHandlingInput.getSorContainerInstance() +
                         ", Paper No: " + multiEntityFieldHandlingInput.getPaperNo() +
@@ -99,17 +103,23 @@ class MultivalueSorItemHandlingActionTest {
         groupedOrigins.forEach((s, multiEntityFieldHandlingInputs) -> {
             try {
                 log.info(aMarker, "Processing OriginId: {} with {} records", s, multiEntityFieldHandlingInputs.size());
-                updatedTableInfos.addAll(actionInstance.processAndMapFilteredData(multiEntityFieldHandlingInputs));
+                List<MultiEntityFieldHandlingInput> multiEntityFieldHandlingInputsFiltered= multiEntityFieldHandlingInputs.stream().filter(multiEntityFieldHandlingInput -> {
+                    return multiEntityFieldHandlingInput.getSorContainerName().equals(sorContainerName);
+                }).collect(Collectors.toList());
+                updatedTableInfos.addAll(actionInstance.processAndMapFilteredData(multiEntityFieldHandlingInputsFiltered));
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
         });
         for (MultiEntityFieldHandlingInput updatedTableInfo : updatedTableInfos) {
-            System.out.println("Retained Origin ID: " + updatedTableInfo.getOriginId() +
-                    ", Container Instance: " + updatedTableInfo.getSorContainerInstance() +
-                    ", Paper No: " + updatedTableInfo.getPaperNo() +
-                    ", Item Name: " + updatedTableInfo.getSorItemName() +
-                    ", Answer: " + updatedTableInfo.getAnswer());
+            if(updatedTableInfo.getSorContainerName().equals(sorContainerName)){
+                System.out.println("Retained Origin ID: " + updatedTableInfo.getOriginId() +
+                        ", Container Instance: " + updatedTableInfo.getSorContainerInstance() +
+                        ", Paper No: " + updatedTableInfo.getPaperNo() +
+                        ", Item Name: " + updatedTableInfo.getSorItemName() +
+                        ", Answer: " + updatedTableInfo.getAnswer());
+            }
+
         }
 
     }
@@ -125,63 +135,107 @@ class MultivalueSorItemHandlingActionTest {
                 // originId, containerName, containerInstance, paperNo, itemName, answer,
                 // lineItemType, isMultiEntityEnabled, score
 
-//                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_0", 2,
-//                        "member_last_name", "", "single_value", false, 50},
-//
-//                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_0", 2,
-//                        "member_date_of_birth", "06/01/1985", "single_value", false, 0},
-//
-//                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_0", 2,
-//                        "member_gender", "Male", "single_value", false, 0},
-//
-//                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_0", 2,
-//                        "member_address_line1", "601 E Kennedy Blvd", "single_value", false, 0},
-//
-//                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_0", 2,
-//                        "member_city", "", "single_value", false, 50},
-//
-//                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_0", 2,
-//                        "member_zipcode", "", "single_value", false, 50},
-//
-//                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_0", 2,
-//                        "member_state", "", "single_value", false, 50},
-//
-//                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_0", 2,
-//                        "medicaid_id", "", "single_value", false, 50},
-//
-//                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_0", 2,
-//                        "member_first_name", "", "single_value", false, 50},
-//
-//                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_0", 2,
-//                        "member_full_name", "HILLEN ILA", "single_value", false, 0},
+                // MEMBER 1
+                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_0", 2,
+                        "member_first_name", "ILA", "single_value", false, 0},
 
-                {"ORIGIN-1949", "SERVICING_FACILITY_DETAILS", "SERVICING_FACILITY_DETAILS_0", 2,
-                        "servicing_facility_full_name", "", "single_value", true, 50},
+                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_0", 2,
+                        "member_last_name", "HILLEN", "single_value", false, 0},
 
-                {"ORIGIN-1949", "SERVICING_FACILITY_DETAILS", "SERVICING_FACILITY_DETAILS_0", 2,
-                        "servicing_facility_first_name", "", "single_value", true, 50},
+                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_0", 2,
+                        "member_full_name", "HILLEN ILA", "single_value", false, 0},
 
-                {"ORIGIN-1949", "SERVICING_PROVIDER_DETAILS", "SERVICING_PROVIDER_DETAILS_0", 2,
+                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_0", 2,
+                        "member_date_of_birth", "06/01/1985", "single_value", false, 0},
+
+                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_0", 2,
+                        "member_gender", "Male", "single_value", false, 0},
+
+                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_0", 2,
+                        "member_address_line1", "601 E Kennedy Blvd", "single_value", false, 0},
+
+                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_0", 2,
+                        "member_city", "Tampa", "single_value", false, 0},
+
+                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_0", 2,
+                        "member_state", "FL", "single_value", false, 0},
+
+                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_0", 2,
+                        "member_zipcode", "33602", "single_value", false, 0},
+
+                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_0", 2,
+                        "medicaid_id", "1234567890", "single_value", false, 0},
+                // MEMBER 2
+                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_1", 2,
+                        "member_first_name", "Doe", "single_value", false, 0},
+
+                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_1", 2,
+                        "member_last_name", "Doe", "single_value", false, 0},
+
+                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_1", 2,
+                        "member_full_name", "DOE DOE", "single_value", false, 0},
+
+                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_1", 2,
+                        "member_date_of_birth", "06/11/1966", "single_value", false, 0},
+
+                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_1", 2,
+                        "member_gender", "Male", "single_value", false, 0},
+
+                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_1", 2,
+                        "member_address_line1", "543 Whale Street", "single_value", false, 0},
+
+                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_1", 2,
+                        "member_city", "Canada", "single_value", false, 0},
+
+                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_1", 2,
+                        "member_state", "CN", "single_value", false, 0},
+
+                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_1", 2,
+                        "member_zipcode", "654300", "single_value", false, 0},
+
+                {"ORIGIN-1949", "MEMBER_DETAILS", "MEMBER_DETAILS_1", 2,
+                        "medicaid_id", "21342132245", "single_value", false, 0},
+
+
+                {"ORIGIN-1949", "FAX_DETAILS", "FAX_DETAILS_0", 1,
+                        "fax_received_date", "06/04/2025 06:19:02 PM ET", "single_value", false, 96},
+
+                {"ORIGIN-1949", "LEVEL_OF_SERVICE", "LEVEL_OF_SERVICE_0", 2,
+                        "level_of_service", "Urgent", "multi_value", false, 98},
+
+                {"ORIGIN-1949", "SERVICE_FROM_DATE", "SERVICE_FROM_DATE_0", 2,
+                        "service_from_date", "6/3/2025", "single_value", false, 93},
+
+                {"ORIGIN-1949", "DIAGNOSIS_CODE", "DIAGNOSIS_CODE_0", 2,
+                        "diagnosis_code", "R07.9", "multi_value", false, 90},
+
+                {"ORIGIN-1949", "AUTH_ID", "AUTH_ID_0", 2,
+                        "auth_id", "", "multi_value", false, 50},
+
+                //SERVICING PROVIDER 2
+                {"ORIGIN-1949", "SERVICING_PROVIDER_DETAILS", "SERVICING_PROVIDER_DETAILS_1", 2,
+                        "servicing_provider_city", "", "single_value", true, 50},
+
+                {"ORIGIN-1949", "SERVICING_PROVIDER_DETAILS", "SERVICING_PROVIDER_DETAILS_1", 2,
+                        "servicing_provider_state", "", "single_value", true, 50},
+
+                {"ORIGIN-1949", "SERVICING_PROVIDER_DETAILS", "SERVICING_PROVIDER_DETAILS_1", 2,
+                        "servicing_provider_last_name", "Nancy", "single_value", true, 100},
+
+                {"ORIGIN-1949", "SERVICING_PROVIDER_DETAILS", "SERVICING_PROVIDER_DETAILS_1", 2,
+                        "servicing_provider_npi", "1013083435", "single_value", true, 100},
+
+                {"ORIGIN-1949", "SERVICING_PROVIDER_DETAILS", "SERVICING_PROVIDER_DETAILS_1", 2,
+                        "servicing_provider_tin", "410883623", "single_value", true, 100},
+
+                {"ORIGIN-1949", "SERVICING_PROVIDER_DETAILS", "SERVICING_PROVIDER_DETAILS_1", 2,
                         "servicing_provider_full_name", "Dronen Nancy", "single_value", true, 100},
 
-                {"ORIGIN-1949", "SERVICING_PROVIDER_DETAILS", "SERVICING_PROVIDER_DETAILS_0", 2,
+                {"ORIGIN-1949", "SERVICING_PROVIDER_DETAILS", "SERVICING_PROVIDER_DETAILS_1", 2,
                         "servicing_provider_first_name", "Dronen", "single_value", true, 100},
-//
-//                {"ORIGIN-1949", "FAX_DETAILS", "FAX_DETAILS_0", 1,
-//                        "fax_received_date", "06/04/2025 06:19:02 PM ET", "single_value", false, 96},
-//
-//                {"ORIGIN-1949", "LEVEL_OF_SERVICE", "LEVEL_OF_SERVICE_0", 2,
-//                        "level_of_service", "Urgent", "multi_value", false, 98},
 
-//                {"ORIGIN-1949", "SERVICE_FROM_DATE", "SERVICE_FROM_DATE_0", 2,
-//                        "service_from_date", "6/3/2025", "single_value", false, 93},
 
-//                {"ORIGIN-1949", "DIAGNOSIS_CODE", "DIAGNOSIS_CODE_0", 2,
-//                        "diagnosis_code", "R07.9", "multi_value", false, 90},
-
-//                {"ORIGIN-1949", "AUTH_ID", "AUTH_ID_0", 2,
-//                        "auth_id", "", "multi_value", false, 50},
-
+                //SERVICING PROVIDER 1
                 {"ORIGIN-1949", "SERVICING_PROVIDER_DETAILS", "SERVICING_PROVIDER_DETAILS_0", 2,
                         "servicing_provider_city", "", "single_value", true, 50},
 
@@ -196,6 +250,20 @@ class MultivalueSorItemHandlingActionTest {
 
                 {"ORIGIN-1949", "SERVICING_PROVIDER_DETAILS", "SERVICING_PROVIDER_DETAILS_0", 2,
                         "servicing_provider_tin", "410883623", "single_value", true, 100},
+
+                {"ORIGIN-1949", "SERVICING_PROVIDER_DETAILS", "SERVICING_PROVIDER_DETAILS_0", 2,
+                        "servicing_provider_full_name", "Dronen Nancy", "single_value", true, 100},
+
+                {"ORIGIN-1949", "SERVICING_PROVIDER_DETAILS", "SERVICING_PROVIDER_DETAILS_0", 2,
+                        "servicing_provider_first_name", "Dronen", "single_value", true, 100},
+
+
+                //SERVICING FACILITY 1
+                {"ORIGIN-1949", "SERVICING_FACILITY_DETAILS", "SERVICING_FACILITY_DETAILS_0", 2,
+                        "servicing_facility_full_name", "", "single_value", true, 50},
+
+                {"ORIGIN-1949", "SERVICING_FACILITY_DETAILS", "SERVICING_FACILITY_DETAILS_0", 2,
+                        "servicing_facility_first_name", "", "single_value", true, 50},
 
                 {"ORIGIN-1949", "SERVICING_FACILITY_DETAILS", "SERVICING_FACILITY_DETAILS_0", 2,
                         "servicing_facility_address_line1", "500 S Oakwood Rd", "single_value", true, 100},
