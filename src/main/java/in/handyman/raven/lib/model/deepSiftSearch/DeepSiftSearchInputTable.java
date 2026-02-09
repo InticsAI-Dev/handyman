@@ -36,6 +36,7 @@ public class DeepSiftSearchInputTable implements CoproProcessor.Entity {
     private Timestamp createdOn;
     private String createdBy;
     private Long timeTakenMS;
+    private String blocked_keywords_json;
 
     @Override
     public String getStatus() {
@@ -62,7 +63,8 @@ public class DeepSiftSearchInputTable implements CoproProcessor.Entity {
                 paperNo,
                 createdOn,
                 createdBy,
-                timeTakenMS
+                timeTakenMS,
+                blocked_keywords_json
         ).collect(Collectors.toList());
     }
 }
