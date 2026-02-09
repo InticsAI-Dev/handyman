@@ -7,8 +7,8 @@ import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lib.custom.outbound.dao.PredictionDTO;
 import in.handyman.raven.lib.model.DocumentWisePostProcessing;
+import in.handyman.raven.lib.model.DocumentWisePostProcessingInput;
 import in.handyman.raven.lib.model.scalar.ValidationByDocumentWiseExecutor;
 import in.handyman.raven.util.CommonQueryUtil;
 import org.jdbi.v3.core.Handle;
@@ -38,7 +38,7 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
 
   private final Marker aMarker;
 
-  private List<PredictionDTO> predictionDTOs;
+  private List<DocumentWisePostProcessingInput> documentWisePostProcessingInputs;
 
   private static final String DOCUMENT_WISE_POST_PROCESSING_THREAD_COUNT = "document.wise.post.processing.thread.count";
 
@@ -62,126 +62,126 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
 
     jdbi.useTransaction(handle -> fetchAndDecryptInputs(handle, crypt, encryptEnabled));
 
-    log.info(aMarker, "Fetched {} predictions for document-wise post-processing", predictionDTOs.size());
-    predictionDTOs = new ValidationByDocumentWiseExecutor(predictionDTOs, action, log, threadCount).doDocumentWiseValidator();
-    log.info(aMarker, "Total predictions present after document-wise post-processing: {}", predictionDTOs.size());
+    log.info(aMarker, "Fetched {} records for document-wise post-processing", documentWisePostProcessingInputs.size());
+    documentWisePostProcessingInputs = new ValidationByDocumentWiseExecutor(documentWisePostProcessingInputs, action, log, threadCount).doDocumentWiseValidator();
+    log.info(aMarker, "Total records present after document-wise post-processing: {}", documentWisePostProcessingInputs.size());
 
-    predictionDTOs.forEach(prediction -> processEncryption(prediction, crypt, encryptEnabled));
+    documentWisePostProcessingInputs.forEach(input -> processEncryption(input, crypt, encryptEnabled));
 
     String outputTable = documentWisePostProcessing.getOutputTable();
     log.info(aMarker, "Started batch insert into {}", outputTable);
-    jdbi.useHandle(handle -> executeBatchInsert(handle, predictionDTOs));
+    jdbi.useHandle(handle -> executeBatchInsert(handle, documentWisePostProcessingInputs));
     log.info(aMarker, "Batch insert completed into {}", outputTable);
   }
 
   private void fetchAndDecryptInputs(Handle handle, InticsIntegrity crypt, boolean encryptEnabled) {
     List<String> queries = CommonQueryUtil.getFormattedQuery(documentWisePostProcessing.getQuerySet());
-    predictionDTOs = queries.stream()
+    documentWisePostProcessingInputs = queries.stream()
             .flatMap(sql -> handle.createQuery(sql)
-                    .mapToBean(PredictionDTO.class)
+                    .mapToBean(DocumentWisePostProcessingInput.class)
                     .stream())
             .collect(Collectors.toList());
-    log.info(aMarker, "Total predictions fetched: {}", predictionDTOs.size());
+    log.info(aMarker, "Total records fetched: {}", documentWisePostProcessingInputs.size());
     
     if (encryptEnabled) {
-      log.info(aMarker, "Decrypting only encrypted predictions before BSH processing");
+      log.info(aMarker, "Decrypting only encrypted values before BSH processing");
       String scalarAdapterActivator = action.getContext().getOrDefault("scalar.adapter.activator", "false");
       
-      predictionDTOs.forEach(prediction -> {
+      documentWisePostProcessingInputs.forEach(input -> {
         // Only decrypt if the value is marked as encrypted
-        if (prediction.getPredictedValue() != null && !prediction.getPredictedValue().isEmpty() 
-            && "t".equalsIgnoreCase(prediction.getIsEncrypted())) {
+        if (input.getPredictedValue() != null && !input.getPredictedValue().isEmpty() 
+            && "t".equalsIgnoreCase(input.getIsEncrypted())) {
           try {
             String encryptionPolicy;
             if ("false".equalsIgnoreCase(scalarAdapterActivator)) {
-              log.debug(aMarker, "Scalar adapter disabled, using AES256 for sorItem: {}", prediction.getSorItemName());
+              log.debug(aMarker, "Scalar adapter disabled, using AES256");
               encryptionPolicy = "AES256";
             } else {
-              encryptionPolicy = prediction.getEncryptionPolicy() != null && !prediction.getEncryptionPolicy().isEmpty()
-                  ? prediction.getEncryptionPolicy()
-                  : "AES256";
-              log.debug(aMarker, "Using encryption policy: {} for sorItem: {}", encryptionPolicy, prediction.getSorItemName());
+              // Get encryption policy from sor_meta.sor_item via sor_item_id if needed
+              // For now, default to AES256 if not available in input
+              encryptionPolicy = "AES256";
+              log.debug(aMarker, "Using encryption policy: {}", encryptionPolicy);
             }
             
-            String decryptedValue = crypt.decrypt(prediction.getPredictedValue(), encryptionPolicy, prediction.getSorItemName());
-            prediction.setPredictedValue(decryptedValue);
-            log.debug(aMarker, "Decrypted prediction for sorItem: {}", prediction.getSorItemName());
+            // Use sor_item_name if available, otherwise use sor_item_id as identifier
+            String itemIdentifier = input.getSorItemName() != null ? input.getSorItemName() : String.valueOf(input.getSorItemId());
+            String decryptedValue = crypt.decrypt(input.getPredictedValue(), encryptionPolicy, itemIdentifier);
+            input.setPredictedValue(decryptedValue);
+            log.debug(aMarker, "Decrypted value for sorItemId: {}", input.getSorItemId());
           } catch (Exception e) {
-            log.warn(aMarker, "Failed to decrypt prediction for sorItem: {}, using encrypted value. Error: {}", 
-                prediction.getSorItemName(), e.getMessage());
+            log.warn(aMarker, "Failed to decrypt value for sorItemId: {}, using encrypted value. Error: {}", 
+                input.getSorItemId(), e.getMessage());
           }
         } else {
-          log.debug(aMarker, "Skipping decryption for sorItem: {} (isEncrypted: {})", 
-              prediction.getSorItemName(), prediction.getIsEncrypted());
+          log.debug(aMarker, "Skipping decryption for sorItemId: {} (isEncrypted: {})", 
+              input.getSorItemId(), input.getIsEncrypted());
         }
       });
       
-      long decryptedCount = predictionDTOs.stream()
+      long decryptedCount = documentWisePostProcessingInputs.stream()
           .filter(p -> "t".equalsIgnoreCase(p.getIsEncrypted()))
           .count();
-      log.info(aMarker, "Decrypted {} out of {} predictions", decryptedCount, predictionDTOs.size());
+      log.info(aMarker, "Decrypted {} out of {} records", decryptedCount, documentWisePostProcessingInputs.size());
     }
   }
 
-  private void processEncryption(PredictionDTO prediction, InticsIntegrity crypt, boolean encryptEnabled) {
+  private void processEncryption(DocumentWisePostProcessingInput input, InticsIntegrity crypt, boolean encryptEnabled) {
     // Only encrypt values that were originally encrypted (isEncrypted = 't')
-    if (encryptEnabled && prediction.getPredictedValue() != null && !prediction.getPredictedValue().isEmpty()
-        && "t".equalsIgnoreCase(prediction.getIsEncrypted())) {
+    if (encryptEnabled && input.getPredictedValue() != null && !input.getPredictedValue().isEmpty()
+        && "t".equalsIgnoreCase(input.getIsEncrypted())) {
       try {
-        String encryptionPolicy = prediction.getEncryptionPolicy() != null && !prediction.getEncryptionPolicy().isEmpty()
-            ? prediction.getEncryptionPolicy()
-            : "AES256";
+        String encryptionPolicy = "AES256"; // Default policy, can be enhanced to fetch from sor_item if needed
         
-        prediction.setPredictedValue(crypt.encrypt(prediction.getPredictedValue(), encryptionPolicy, prediction.getSorItemName()));
-        log.debug(aMarker, "Re-encrypted prediction for sorItem: {} with policy: {}", prediction.getSorItemName(), encryptionPolicy);
+        // Use sor_item_name if available, otherwise use sor_item_id as identifier
+        String itemIdentifier = input.getSorItemName() != null ? input.getSorItemName() : String.valueOf(input.getSorItemId());
+        input.setPredictedValue(crypt.encrypt(input.getPredictedValue(), encryptionPolicy, itemIdentifier));
+        log.debug(aMarker, "Re-encrypted value for sorItemId: {} with policy: {}", input.getSorItemId(), encryptionPolicy);
       } catch (Exception e) {
-        log.warn(aMarker, "Failed to encrypt prediction for sorItem: {}. Error: {}", 
-            prediction.getSorItemName(), e.getMessage());
+        log.warn(aMarker, "Failed to encrypt value for sorItemId: {}. Error: {}", 
+            input.getSorItemId(), e.getMessage());
       }
     } else {
-      log.debug(aMarker, "Skipping encryption for sorItem: {} (isEncrypted: {})", 
-          prediction.getSorItemName(), prediction.getIsEncrypted());
+      log.debug(aMarker, "Skipping encryption for sorItemId: {} (isEncrypted: {})", 
+          input.getSorItemId(), input.getIsEncrypted());
     }
   }
 
-  private void executeBatchInsert(Handle handle, List<PredictionDTO> predictions) {
+  private void executeBatchInsert(Handle handle, List<DocumentWisePostProcessingInput> inputs) {
     String sql = buildInsertSQL();
     try (PreparedBatch batch = handle.prepareBatch(sql)) {
-      predictions.forEach(prediction -> {
-        batch.bind("createdOn", prediction.getCreatedOn() != null ? prediction.getCreatedOn() : java.time.LocalDateTime.now());
-        batch.bind("createdUserId", prediction.getCreatedUserId() != null ? prediction.getCreatedUserId() : action.getContext().get("created_user_id"));
-        batch.bind("lastUpdatedOn", prediction.getLastUpdatedOn() != null ? prediction.getLastUpdatedOn() : java.time.LocalDateTime.now());
-        batch.bind("lastUpdatedUserId", prediction.getLastUpdatedUserId() != null ? prediction.getLastUpdatedUserId() : action.getContext().get("created_user_id"));
-        batch.bind("status", prediction.getStatus() != null ? prediction.getStatus() : "ACTIVE");
-        batch.bind("version", prediction.getVersion());
-        batch.bind("encode", prediction.getEncode());
-        batch.bind("feature", prediction.getFeature());
-        batch.bind("label", prediction.getLabel());
-        batch.bind("originId", prediction.getOriginId());
-        batch.bind("precision", prediction.getPrecision());
-        batch.bind("predictedValue", prediction.getPredictedValue());
-        batch.bind("questionId", prediction.getQuestionId());
-        batch.bind("rootPipelineId", prediction.getRootPipelineId() != null ? prediction.getRootPipelineId() : String.valueOf(action.getRootPipelineId()));
-        batch.bind("state", prediction.getState());
-        batch.bind("synonymId", prediction.getSynonymId());
-        batch.bind("tenantId", prediction.getTenantId());
-        batch.bind("transactionId", prediction.getTransactionId());
-        batch.bind("truthId", prediction.getTruthId());
-        batch.bind("channelId", prediction.getChannelId());
-        batch.bind("csvFilePath", prediction.getCsvFilePath());
-        batch.bind("sorContainerId", prediction.getSorContainerId());
-        batch.bind("truthEntityId", prediction.getTruthEntityId());
-        batch.bind("currencyAsciiValue", prediction.getCurrencyAsciiValue());
-        batch.bind("currencyValue", prediction.getCurrencyValue());
-        batch.bind("paragraphSection", prediction.getParagraphSection());
-        batch.bind("sorItemId", prediction.getSorItemId());
-        batch.bind("sorContainerInstance", prediction.getSorContainerInstance());
-        batch.bind("leftPos", prediction.getLeftPos());
-        batch.bind("rightPos", prediction.getRightPos());
-        batch.bind("lowerPos", prediction.getLowerPos());
-        batch.bind("upperPos", prediction.getUpperPos());
-        batch.bind("isEncrypted", prediction.getIsEncrypted());
-        batch.bind("encryptionPolicy", prediction.getEncryptionPolicy());
+      inputs.forEach(input -> {
+        batch.bind("createdOn", input.getCreatedOn() != null ? input.getCreatedOn() : java.time.LocalDateTime.now());
+        batch.bind("createdUserId", input.getCreatedUserId() != null ? input.getCreatedUserId() : action.getContext().get("created_user_id"));
+        batch.bind("lastUpdatedOn", input.getLastUpdatedOn() != null ? input.getLastUpdatedOn() : java.time.LocalDateTime.now());
+        batch.bind("lastUpdatedUserId", input.getLastUpdatedUserId() != null ? input.getLastUpdatedUserId() : action.getContext().get("created_user_id"));
+        batch.bind("status", input.getStatus() != null ? input.getStatus() : "ACTIVE");
+        batch.bind("version", input.getVersion());
+        batch.bind("encode", input.getEncode());
+        batch.bind("feature", input.getFeature());
+        batch.bind("label", input.getLabel());
+        batch.bind("originId", input.getOriginId());
+        batch.bind("precision", input.getPrecision());
+        batch.bind("predictedValue", input.getPredictedValue());
+        batch.bind("questionId", input.getQuestionId());
+        batch.bind("rootPipelineId", input.getRootPipelineId() != null ? input.getRootPipelineId() : String.valueOf(action.getRootPipelineId()));
+        batch.bind("state", input.getState());
+        batch.bind("synonymId", input.getSynonymId());
+        batch.bind("tenantId", input.getTenantId());
+        batch.bind("transactionId", input.getTransactionId());
+        batch.bind("truthId", input.getTruthId());
+        batch.bind("channelId", input.getChannelId());
+        batch.bind("csvFilePath", input.getCsvFilePath());
+        batch.bind("sorContainerId", input.getSorContainerId());
+        batch.bind("truthEntityId", input.getTruthEntityId());
+        batch.bind("currencyAsciiValue", input.getCurrencyAsciiValue());
+        batch.bind("currencyValue", input.getCurrencyValue());
+        batch.bind("paragraphSection", input.getParagraphSection());
+        batch.bind("sorItemId", input.getSorItemId());
+        batch.bind("leftPos", input.getLeftPos());
+        batch.bind("rightPos", input.getRightPos());
+        batch.bind("lowerPos", input.getLowerPos());
+        batch.bind("upperPos", input.getUpperPos());
+        batch.bind("isEncrypted", input.getIsEncrypted());
         batch.add();
       });
       int[] counts = batch.execute();
@@ -199,15 +199,15 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
             "question_id, root_pipeline_id, state, synonym_id, " +
             "tenant_id, transaction_id, truth_id, channel_id, " +
             "csv_file_path, sor_container_id, truth_entity_id, currency_ascii_value, currency_value, " +
-            "paragraph_section, sor_item_id, sor_container_instance, left_pos, right_pos, lower_pos, upper_pos, " +
-            "is_encrypted, encryption_policy) VALUES (" +
+            "paragraph_section, sor_item_id, left_pos, right_pos, lower_pos, upper_pos, " +
+            "is_encrypted) VALUES (" +
             ":createdOn, :createdUserId, :lastUpdatedOn, :lastUpdatedUserId, :status, :version, " +
             ":encode, :feature, :label, :originId, :precision, :predictedValue, " +
             ":questionId, :rootPipelineId, :state, :synonymId, " +
             ":tenantId, :transactionId, :truthId, :channelId, " +
             ":csvFilePath, :sorContainerId, :truthEntityId, :currencyAsciiValue, :currencyValue, " +
-            ":paragraphSection, :sorItemId, :sorContainerInstance, :leftPos, :rightPos, :lowerPos, :upperPos, " +
-            ":isEncrypted, :encryptionPolicy)";
+            ":paragraphSection, :sorItemId, :leftPos, :rightPos, :lowerPos, :upperPos, " +
+            ":isEncrypted)";
   }
 
   @Override

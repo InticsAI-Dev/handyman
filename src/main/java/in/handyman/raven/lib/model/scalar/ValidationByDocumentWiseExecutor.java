@@ -4,7 +4,7 @@ import bsh.EvalError;
 import bsh.Interpreter;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lib.custom.outbound.dao.PredictionDTO;
+import in.handyman.raven.lib.model.DocumentWisePostProcessingInput;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
@@ -15,27 +15,27 @@ import java.util.stream.Collectors;
 
 public class ValidationByDocumentWiseExecutor {
 
-    private final List<PredictionDTO> predictionDTOs;
+    private final List<DocumentWisePostProcessingInput> documentWisePostProcessingInputs;
 
     private final ActionExecutionAudit actionExecutionAudit;
     private final Logger log;
     private final ExecutorService executor;
 
-    public ValidationByDocumentWiseExecutor(List<PredictionDTO> predictionDTOs,
+    public ValidationByDocumentWiseExecutor(List<DocumentWisePostProcessingInput> documentWisePostProcessingInputs,
                                             ActionExecutionAudit actionExecutionAudit,
                                             final Logger log,
                                             int threadPoolSize) {
-        this.predictionDTOs = predictionDTOs;
+        this.documentWisePostProcessingInputs = documentWisePostProcessingInputs;
         this.actionExecutionAudit = actionExecutionAudit;
         this.log = log;
         this.executor = Executors.newFixedThreadPool(threadPoolSize);
     }
 
-    public List<PredictionDTO> doDocumentWiseValidator() throws InterruptedException, ExecutionException {
-        int inputSize = predictionDTOs.size();
-        log.info("Starting document-wise validation for {} predictions", inputSize);
+    public List<DocumentWisePostProcessingInput> doDocumentWiseValidator() throws InterruptedException, ExecutionException {
+        int inputSize = documentWisePostProcessingInputs.size();
+        log.info("Starting document-wise validation for {} records", inputSize);
 
-        Map<String, List<PredictionDTO>> byOrigin = groupByOrigin(predictionDTOs);
+        Map<String, List<DocumentWisePostProcessingInput>> byOrigin = groupByOrigin(documentWisePostProcessingInputs);
         List<CompletableFuture<Void>> originFutures = new ArrayList<>();
 
         byOrigin.forEach((origin, originPredictions) -> originFutures.add(
@@ -47,23 +47,23 @@ public class ValidationByDocumentWiseExecutor {
         executor.awaitTermination(1, TimeUnit.MINUTES);
 
         log.info("Completed all validations for document-wise post processing.");
-        return predictionDTOs;
+        return documentWisePostProcessingInputs;
     }
 
-    private Map<String, List<PredictionDTO>> groupByOrigin(List<PredictionDTO> predictions) {
-        log.info("Grouping predictions by origin_id");
-        return predictions.stream()
+    private Map<String, List<DocumentWisePostProcessingInput>> groupByOrigin(List<DocumentWisePostProcessingInput> inputs) {
+        log.info("Grouping records by origin_id");
+        return inputs.stream()
                 .filter(p -> p.getOriginId() != null)
-                .collect(Collectors.groupingBy(PredictionDTO::getOriginId));
+                .collect(Collectors.groupingBy(DocumentWisePostProcessingInput::getOriginId));
     }
 
-    private void processOrigin(String originId, List<PredictionDTO> originPredictions) {
-        log.info("START validation for origin {} with {} predictions", originId, originPredictions.size());
+    private void processOrigin(String originId, List<DocumentWisePostProcessingInput> originInputs) {
+        log.info("START validation for origin {} with {} records", originId, originInputs.size());
         long start = System.currentTimeMillis();
 
         List<String> scriptClasses = loadScriptOrder();
-        List<PredictionDTO> resultPredictions = executeScripts(scriptClasses, originPredictions);
-        updatePredictions(originPredictions, resultPredictions);
+        List<DocumentWisePostProcessingInput> resultInputs = executeScripts(scriptClasses, originInputs);
+        updateInputs(originInputs, resultInputs);
 
         long duration = System.currentTimeMillis() - start;
         log.info("END validation for origin {} ({} ms)", originId, duration);
@@ -84,8 +84,8 @@ public class ValidationByDocumentWiseExecutor {
         return classes;
     }
 
-    private List<PredictionDTO> executeScripts(List<String> classes, List<PredictionDTO> currentPredictions) {
-        List<PredictionDTO> updatedPredictions = new ArrayList<>(currentPredictions);
+    private List<DocumentWisePostProcessingInput> executeScripts(List<String> classes, List<DocumentWisePostProcessingInput> currentInputs) {
+        List<DocumentWisePostProcessingInput> updatedInputs = new ArrayList<>(currentInputs);
         Long pipelineId = actionExecutionAudit.getRootPipelineId();
 
         for (String className : classes) {
@@ -95,13 +95,13 @@ public class ValidationByDocumentWiseExecutor {
                 continue;
             }
             log.info("Executing script {}", className);
-            updatedPredictions = getPostProcessedValidatorList(className, source, updatedPredictions, pipelineId);
+            updatedInputs = getPostProcessedValidatorList(className, source, updatedInputs, pipelineId);
         }
-        return updatedPredictions;
+        return updatedInputs;
     }
 
-    private List<PredictionDTO> getPostProcessedValidatorList(String className, String sourceCode, 
-                                                               List<PredictionDTO> currentPredictions, 
+    private List<DocumentWisePostProcessingInput> getPostProcessedValidatorList(String className, String sourceCode, 
+                                                               List<DocumentWisePostProcessingInput> currentInputs, 
                                                                Long rootPipelineId) {
         try {
             Interpreter interpreter = new Interpreter();
@@ -114,11 +114,11 @@ public class ValidationByDocumentWiseExecutor {
             interpreter.eval(classInstantiation);
             log.info("Class instantiated: {}", classInstantiation);
 
-            interpreter.set("predictionDTOList", currentPredictions);
+            interpreter.set("documentWisePostProcessingInputList", currentInputs);
             interpreter.set("rootPipelineId", rootPipelineId);
-            log.info("Mapped predictionDTOList and rootPipelineId, calling doCustomPredictionMapping");
+            log.info("Mapped documentWisePostProcessingInputList and rootPipelineId, calling doCustomPredictionMapping");
 
-            interpreter.eval("validatorResult = mapper.doCustomPredictionMapping(predictionDTOList, rootPipelineId);");
+            interpreter.eval("validatorResult = mapper.doCustomPredictionMapping(documentWisePostProcessingInputList, rootPipelineId);");
             log.info("Completed execution of doCustomPredictionMapping for class {}", className);
 
             Object validatorResultObject = interpreter.get("validatorResult");
@@ -126,30 +126,30 @@ public class ValidationByDocumentWiseExecutor {
                 return processValidatorResult(validatorResultObject);
             } else {
                 log.warn("Validator result is null for class: {}", className);
-                return currentPredictions;
+                return currentInputs;
             }
 
         } catch (EvalError e) {
             log.error("BeanShell evaluation error for class {}: {}", className, e.getMessage(), e);
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException("BeanShell evaluation error for class: " + className, handymanException, actionExecutionAudit);
-            return currentPredictions;
+            return currentInputs;
         } catch (Exception e) {
             log.error("Error executing class script: {}", className, e);
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException("Error executing class script: " + className, handymanException, actionExecutionAudit);
-            return currentPredictions;
+            return currentInputs;
         }
     }
 
     @NotNull
-    private List<PredictionDTO> processValidatorResult(Object validatorResultObject) {
+    private List<DocumentWisePostProcessingInput> processValidatorResult(Object validatorResultObject) {
         try {
-            // Check if it's already a List<PredictionDTO>
+            // Check if it's already a List<DocumentWisePostProcessingInput>
             if (validatorResultObject instanceof List) {
                 @SuppressWarnings("unchecked")
-                List<PredictionDTO> resultList = (List<PredictionDTO>) validatorResultObject;
-                log.info("Successfully retrieved list of {} PredictionDTO objects", resultList.size());
+                List<DocumentWisePostProcessingInput> resultList = (List<DocumentWisePostProcessingInput>) validatorResultObject;
+                log.info("Successfully retrieved list of {} DocumentWisePostProcessingInput objects", resultList.size());
                 return resultList;
             }
             
@@ -160,11 +160,11 @@ public class ValidationByDocumentWiseExecutor {
 
                 if (mappedData instanceof List) {
                     @SuppressWarnings("unchecked")
-                    List<PredictionDTO> resultList = (List<PredictionDTO>) mappedData;
-                    log.info("Successfully retrieved list of {} PredictionDTO objects via getMappedData", resultList.size());
+                    List<DocumentWisePostProcessingInput> resultList = (List<DocumentWisePostProcessingInput>) mappedData;
+                    log.info("Successfully retrieved list of {} DocumentWisePostProcessingInput objects via getMappedData", resultList.size());
                     return resultList;
                 } else {
-                    log.error("Expected mappedData to be a List<PredictionDTO>, but got: {}", mappedData != null ? mappedData.getClass().getName() : "null");
+                    log.error("Expected mappedData to be a List<DocumentWisePostProcessingInput>, but got: {}", mappedData != null ? mappedData.getClass().getName() : "null");
                     return new ArrayList<>();
                 }
             } catch (NoSuchMethodException e) {
@@ -172,7 +172,7 @@ public class ValidationByDocumentWiseExecutor {
                 log.warn("getMappedData() method not found, treating result object as List");
                 if (validatorResultObject instanceof List) {
                     @SuppressWarnings("unchecked")
-                    List<PredictionDTO> resultList = (List<PredictionDTO>) validatorResultObject;
+                    List<DocumentWisePostProcessingInput> resultList = (List<DocumentWisePostProcessingInput>) validatorResultObject;
                     return resultList;
                 }
                 return new ArrayList<>();
@@ -183,44 +183,51 @@ public class ValidationByDocumentWiseExecutor {
         }
     }
 
-    private void updatePredictions(List<PredictionDTO> originalPredictions, List<PredictionDTO> resultPredictions) {
-        if (resultPredictions == null || resultPredictions.isEmpty()) {
-            log.warn("Result predictions list is null or empty, no updates will be made");
+    private void updateInputs(List<DocumentWisePostProcessingInput> originalInputs, List<DocumentWisePostProcessingInput> resultInputs) {
+        if (resultInputs == null || resultInputs.isEmpty()) {
+            log.warn("Result inputs list is null or empty, no updates will be made");
             return;
         }
 
-        Map<Long, PredictionDTO> resultMap = resultPredictions.stream()
-                .filter(p -> p.getPredictionId() != null)
+        // Create a map using sor_item_id + origin_id + question_id + synonym_id as composite key
+        Map<String, DocumentWisePostProcessingInput> resultMap = resultInputs.stream()
+                .filter(p -> p.getSorItemId() != null && p.getOriginId() != null)
                 .collect(Collectors.toMap(
-                        PredictionDTO::getPredictionId,
+                        p -> p.getSorItemId() + "_" + p.getOriginId() + "_" + 
+                             (p.getQuestionId() != null ? p.getQuestionId() : "null") + "_" +
+                             (p.getSynonymId() != null ? p.getSynonymId() : "null"),
                         p -> p,
                         (existing, replacement) -> replacement
                 ));
 
         int updatedCount = 0;
-        for (PredictionDTO original : originalPredictions) {
-            if (original.getPredictionId() != null) {
-                PredictionDTO updated = resultMap.get(original.getPredictionId());
+        for (DocumentWisePostProcessingInput original : originalInputs) {
+            if (original.getSorItemId() != null && original.getOriginId() != null) {
+                String key = original.getSorItemId() + "_" + original.getOriginId() + "_" +
+                            (original.getQuestionId() != null ? original.getQuestionId() : "null") + "_" +
+                            (original.getSynonymId() != null ? original.getSynonymId() : "null");
+                DocumentWisePostProcessingInput updated = resultMap.get(key);
                 if (updated != null) {
-                    updatePredictionFields(original, updated);
+                    updateInputFields(original, updated);
                     updatedCount++;
                 }
             }
         }
 
-        log.info("Updated {} predictions out of {} original predictions", updatedCount, originalPredictions.size());
+        log.info("Updated {} records out of {} original records", updatedCount, originalInputs.size());
     }
 
-    private void updatePredictionFields(PredictionDTO original, PredictionDTO updated) {
+    private void updateInputFields(DocumentWisePostProcessingInput original, DocumentWisePostProcessingInput updated) {
         if (updated.getPredictedValue() != null) {
             if (Objects.equals(original.getPredictedValue(), updated.getPredictedValue())) {
-                log.debug("Predicted value unchanged for predictionId: {}", original.getPredictionId());
+                log.debug("Predicted value unchanged for sorItemId: {}, originId: {}", original.getSorItemId(), original.getOriginId());
             } else if (!updated.getPredictedValue().isEmpty()) {
-                log.info("Updating predicted value for predictionId: {} from '{}' to '{}'", 
-                        original.getPredictionId(), original.getPredictedValue(), updated.getPredictedValue());
+                log.info("Updating predicted value for sorItemId: {}, originId: {} from '{}' to '{}'", 
+                        original.getSorItemId(), original.getOriginId(), original.getPredictedValue(), updated.getPredictedValue());
                 original.setPredictedValue(updated.getPredictedValue());
             } else {
-                log.info("Predicted value emptied for predictionId: {}, clearing related fields", original.getPredictionId());
+                log.info("Predicted value emptied for sorItemId: {}, originId: {}, clearing related fields", 
+                        original.getSorItemId(), original.getOriginId());
                 original.setPredictedValue("");
                 original.setPrecision(0.0);
                 original.setLeftPos(0.0);
