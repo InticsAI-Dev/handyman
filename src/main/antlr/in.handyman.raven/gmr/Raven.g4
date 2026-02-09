@@ -192,6 +192,7 @@ action:
     |multiValueMemberMapper
     |ocrTextComparator
     |sectionFiltering
+    |documentWisePostProcessing
     );
 
 
@@ -1530,6 +1531,15 @@ sectionFiltering:
             querySet=STRING '}'
     ('on-condition' condition=expression)*  ;
 
+documentWisePostProcessing:
+    'documentWisePostProcessing' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'output-table' outputTable=STRING
+    'batch-id' batchId=STRING
+    'using' '{'
+        querySet=STRING
+    '}'
+    ('on-condition' condition=expression)*  ;
 //rules
 
 resource : STRING;
