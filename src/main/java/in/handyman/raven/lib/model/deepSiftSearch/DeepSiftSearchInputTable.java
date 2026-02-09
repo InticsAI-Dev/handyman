@@ -36,6 +36,10 @@ public class DeepSiftSearchInputTable implements CoproProcessor.Entity {
     private Timestamp createdOn;
     private String createdBy;
     private Long timeTakenMS;
+    private Integer fieldPaperCount;
+    private Boolean fieldConsiderBlankPages;
+    private Boolean isBlankPage;
+    private String pageRange;
     private String blocked_keywords_json;
 
     @Override
@@ -64,6 +68,10 @@ public class DeepSiftSearchInputTable implements CoproProcessor.Entity {
                 createdOn,
                 createdBy,
                 timeTakenMS,
+                fieldPaperCount,
+                fieldConsiderBlankPages,
+                isBlankPage,
+                pageRange,
                 blocked_keywords_json
         ).collect(Collectors.toList());
     }
