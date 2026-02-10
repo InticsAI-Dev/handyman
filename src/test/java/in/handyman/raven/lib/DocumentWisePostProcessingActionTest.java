@@ -26,16 +26,22 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 @Slf4j
 class DocumentWisePostProcessingActionTest {
 
+    /**
+     * Integration test for DocumentWisePostProcessingAction.
+     * 
+     * To run this test:
+     * 1. Ensure database connection "intics_zio_db_conn" is configured in resource_config table
+     * 2. Ensure test data exists matching the querySet SQL (group_id=5, tenant_id=1, batch_id='BATCH-5_0')
+     * 3. Ensure encryption service endpoints are available
+     * 4. Run with: -Dtest.database.enabled=true
+     * 
+     * Example: mvn test -Dtest.database.enabled=true -Dtest=DocumentWisePostProcessingActionTest
+     * Or in IDE: Add VM option: -Dtest.database.enabled=true
+     */
     @Test
     @EnabledIfSystemProperty(named = "test.database.enabled", matches = "true", 
                              disabledReason = "Database connection required. Set -Dtest.database.enabled=true to run")
     void execute() throws Exception {
-        // Note: This is an integration test that requires:
-        // 1. Database connection "intics_zio_db_conn" configured in resource_config table
-        // 2. Test data matching the querySet SQL
-        // 3. Encryption service endpoints available
-        // If you see database connection errors, ensure the database is properly configured
-        // or skip this test by not setting -Dtest.database.enabled=true
 
         DocumentWisePostProcessing documentWisePostProcessing = DocumentWisePostProcessing.builder()
                 .name("Document Wise Post Processing executor")
