@@ -9,34 +9,38 @@ import lombok.NoArgsConstructor;
 
 import java.sql.Timestamp;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class DeepSiftSearchInputTable implements CoproProcessor.Entity {
-    private Long id;
-    private String originId;
-    private String groupId;
-    private Timestamp createdOn;
-    private String createdBy;
-    private String extractedText;
-    private Long rootPipelineId;
-    private Long tenantId;
-    private String batchId;
-    private Integer paperNo;
-    private String sourceDocumentType;
-    private Long sorContainerId;
-    private String sorContainerName;
+    private Long Id;
     private Long sorItemId;
     private String sorItemName;
-    private Long searchId;
+    private Long sorContainerId;
+    private String sorContainerName;
+    private String sourceDocumentType;
+    private String originId;
+    private Long rootPipelineId;
     private String searchName;
+    private Integer searchId;
     private String keywords;
+    private String groupId;
+    private Integer tenantId;
+    private String batchId;
+    private String extractedText;
+    private Integer paperNo;
+    private Timestamp createdOn;
+    private String createdBy;
+    private Long timeTakenMS;
     private Integer fieldPaperCount;
     private Boolean fieldConsiderBlankPages;
     private Boolean isBlankPage;
     private String pageRange;
+    private String blocked_keywords_json;
 
     @Override
     public String getStatus() {
@@ -45,6 +49,30 @@ public class DeepSiftSearchInputTable implements CoproProcessor.Entity {
 
     @Override
     public List<Object> getRowData() {
-        return null;
+        return Stream.of(
+                sorItemId,
+                sorItemName,
+                sorContainerId,
+                sorContainerName,
+                sourceDocumentType,
+                originId,
+                rootPipelineId,
+                searchName,
+                searchId,
+                keywords != null ? String.join(",", keywords) : null,
+                groupId,
+                tenantId,
+                batchId,
+                extractedText,
+                paperNo,
+                createdOn,
+                createdBy,
+                timeTakenMS,
+                fieldPaperCount,
+                fieldConsiderBlankPages,
+                isBlankPage,
+                pageRange,
+                blocked_keywords_json
+        ).collect(Collectors.toList());
     }
 }

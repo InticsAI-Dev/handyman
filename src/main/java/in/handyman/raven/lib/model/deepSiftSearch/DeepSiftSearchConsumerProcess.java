@@ -18,6 +18,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Collections;
 
 import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_DEEP_SIFT_OUTPUT;
 
@@ -68,6 +71,7 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
             }
 
             List<String> matchedKeywords = new ArrayList<>();
+            List<String> blockedKeywords = new ArrayList<>();
             boolean matchFound = false;
 
             log.debug(marker, "Processing searchType: {} for sorItemId: {}, total keywords: {}",
@@ -106,6 +110,19 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
                 return outputRecords;
             }
 
+            if (matchFound) {
+                BlockingResult result = applyBlockingRules(
+                        finalExtractedText,
+                        matchedKeywords,
+                        entity.getBlocked_keywords_json()
+                );
+
+                matchedKeywords = result.getAllowedKeywords();
+                blockedKeywords = result.getBlockedKeywords();
+
+                matchFound = !matchedKeywords.isEmpty();
+            }
+
             long elapsedTimeMs = System.currentTimeMillis() - startTime;
             if (matchFound) {
                 log.info(marker, "Match found for sorItemId: {}, searchType: {}, matched keyword count: {}",
@@ -129,6 +146,7 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
                         .groupId(entity.getGroupId())
                         .timeTakenMS(elapsedTimeMs)
                         .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                        .blocked_output(blockedKeywords)
                         .build());
             } else {
                 log.info(marker, "No keyword match found for sorItemId: {}", entity.getSorItemId());
@@ -151,6 +169,7 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
                         .groupId(entity.getGroupId())
                         .timeTakenMS(elapsedTimeMs)
                         .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                        .blocked_output(blockedKeywords)
                         .build());
             }
 
@@ -171,6 +190,95 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
         return outputRecords;
     }
 
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+    private List<BlockedKeywordRule> parseBlockedRules(String blockedKeywordsJson) {
+        try {
+            if (blockedKeywordsJson == null || blockedKeywordsJson.trim().isEmpty()) {
+                return Collections.emptyList();
+            }
+
+            List<BlockedKeywordRule> rules = OBJECT_MAPPER.readValue(
+                    blockedKeywordsJson,
+                    new TypeReference<List<BlockedKeywordRule>>() {});
+
+            for (BlockedKeywordRule r : rules) {
+                if (r.getLabel() != null) {
+                    r.setLabel(r.getLabel().trim().toLowerCase());
+                }
+                if (r.getValue() != null) {
+                    r.setValue(r.getValue().trim().toLowerCase());
+                }
+            }
+
+            return rules;
+
+        } catch (Exception e) {
+            log.error(marker, "Failed to parse blocked keyword JSON: {}", blockedKeywordsJson, e);
+            return Collections.emptyList();
+        }
+    }
+
+    private BlockingResult applyBlockingRules(
+            String ocrText,
+            List<String> matchedKeywords,
+            String blockedKeywordsJson) {
+
+        List<BlockedKeywordRule> blockedRules = parseBlockedRules(blockedKeywordsJson);
+
+        log.info(marker, "Blocklisting JSON: {}", blockedRules);
+
+        if (blockedRules.isEmpty() || matchedKeywords == null || matchedKeywords.isEmpty()) {
+            return new BlockingResult(matchedKeywords, Collections.emptyList());
+        }
+
+        String normalizedText = ocrText == null ? "" : ocrText.toLowerCase();
+
+        List<String> allowedKeywords = new ArrayList<>();
+        List<String> blockedKeywords = new ArrayList<>();
+
+        for (String keyword : matchedKeywords) {
+            if (keyword == null || keyword.trim().isEmpty()) continue;
+
+            String normalizedKeyword = keyword.trim().toLowerCase();
+            boolean isBlocked = false;
+
+            for (BlockedKeywordRule rule : blockedRules) {
+                if (!normalizedKeyword.equals(rule.getValue())) continue;
+
+                String[] labels = rule.getLabel().split("\\s*,\\s*");
+
+                for (String label : labels) {
+
+                    if (!normalizedText.contains(label)) continue;
+
+                    String textWithoutPhrase = normalizedText.replaceAll(
+                            "\\b" + Pattern.quote(label) + "\\b", "");
+
+                    boolean existsElsewhere = Pattern.compile("\\b" + Pattern.quote(normalizedKeyword) + "\\b")
+                            .matcher(textWithoutPhrase)
+                            .find();
+
+                    if (!existsElsewhere) {
+                        blockedKeywords.add(keyword);
+                        log.info(marker, "Blocked keyword '{}' only found inside phrase '{}'", keyword, label);
+                        isBlocked = true;
+                        break;
+                    }
+                    else {
+                        log.info(marker, "Keyword '{}' also exists outside phrase '{}', not blocking", keyword, rule.getLabel());
+                    }
+                }
+            }
+
+            if (!isBlocked) {
+                allowedKeywords.add(keyword);
+            }
+        }
+
+        return new BlockingResult(allowedKeywords, blockedKeywords);
+    }
+
     private String getBelowMinPageLengthFlag(String text) {
         if (text == null || text.trim().isEmpty()) {
             return "Y";
@@ -180,10 +288,10 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
     }
 
     private DeepSiftSearchOutputTable buildOutputTable(DeepSiftSearchInputTable entity, String status, String message, long timeTakenMS) {
-        return buildOutputTable(entity, status, message, new ArrayList<>(), timeTakenMS);
+        return buildOutputTable(entity, status, message, new ArrayList<>(), timeTakenMS, new ArrayList<>());
     }
 
-    private DeepSiftSearchOutputTable buildOutputTable(DeepSiftSearchInputTable entity, String status, String message, List<String> matchedKeywords, long timeTakenMS) {
+    private DeepSiftSearchOutputTable buildOutputTable(DeepSiftSearchInputTable entity, String status, String message, List<String> matchedKeywords, long timeTakenMS, List<String> blockedKeywords) {
         log.debug(marker, "Building output table for sorItemId: {} with status: {}", entity.getSorItemId(), status);
         return DeepSiftSearchOutputTable.builder()
                 .sorItemId(entity.getSorItemId())
@@ -204,6 +312,21 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
                 .groupId(entity.getGroupId())
                 .timeTakenMS(timeTakenMS)
                 .status(status)
+                .blocked_output(blockedKeywords)
                 .build();
     }
+
+    @Data
+    public static class BlockedKeywordRule {
+        private String label;
+        private String value;
+    }
+
+    @Data
+    @AllArgsConstructor
+    public class BlockingResult {
+        private List<String> allowedKeywords;
+        private List<String> blockedKeywords;
+    }
+
 }
