@@ -151,9 +151,18 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
     try (PreparedBatch batch = handle.prepareBatch(sql)) {
       inputs.forEach(input -> {
         batch.bind("createdOn", input.getCreatedOn() != null ? input.getCreatedOn() : java.time.LocalDateTime.now());
-        batch.bind("createdUserId", input.getCreatedUserId() != null ? input.getCreatedUserId() : action.getContext().get("created_user_id"));
+        String createdUserIdStr = action.getContext().get("created_user_id");
+        Long createdUserIdLong = null;
+        if (createdUserIdStr != null && !createdUserIdStr.isEmpty()) {
+          try {
+            createdUserIdLong = Long.parseLong(createdUserIdStr);
+          } catch (NumberFormatException e) {
+            log.warn(aMarker, "Invalid created_user_id format: {}, using null", createdUserIdStr);
+          }
+        }
+        batch.bind("createdUserId", input.getCreatedUserId() != null ? input.getCreatedUserId() : createdUserIdLong);
         batch.bind("lastUpdatedOn", input.getLastUpdatedOn() != null ? input.getLastUpdatedOn() : java.time.LocalDateTime.now());
-        batch.bind("lastUpdatedUserId", input.getLastUpdatedUserId() != null ? input.getLastUpdatedUserId() : action.getContext().get("created_user_id"));
+        batch.bind("lastUpdatedUserId", input.getLastUpdatedUserId() != null ? input.getLastUpdatedUserId() : createdUserIdLong);
         batch.bind("status", input.getStatus() != null ? input.getStatus() : "ACTIVE");
         batch.bind("version", input.getVersion());
         batch.bind("encode", input.getEncode());
@@ -163,7 +172,7 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
         batch.bind("precision", input.getPrecision());
         batch.bind("predictedValue", input.getPredictedValue());
         batch.bind("questionId", input.getQuestionId());
-        batch.bind("rootPipelineId", input.getRootPipelineId() != null ? input.getRootPipelineId() : String.valueOf(action.getRootPipelineId()));
+        batch.bind("rootPipelineId", input.getRootPipelineId() != null ? input.getRootPipelineId() : action.getRootPipelineId());
         batch.bind("state", input.getState());
         batch.bind("synonymId", input.getSynonymId());
         batch.bind("tenantId", input.getTenantId());
@@ -181,7 +190,9 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
         batch.bind("rightPos", input.getRightPos());
         batch.bind("lowerPos", input.getLowerPos());
         batch.bind("upperPos", input.getUpperPos());
-        batch.bind("isEncrypted", input.getIsEncrypted());
+        batch.bind("isEncrypted", input.getIsEncrypted() != null ? input.getIsEncrypted() : false);
+        batch.bind("groupId", input.getGroupId());
+        batch.bind("batchId", input.getBatchId());
         batch.add();
       });
       int[] counts = batch.execute();
@@ -200,14 +211,14 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
             "tenant_id, transaction_id, truth_id, channel_id, " +
             "csv_file_path, sor_container_id, truth_entity_id, currency_ascii_value, currency_value, " +
             "paragraph_section, sor_item_id, left_pos, right_pos, lower_pos, upper_pos, " +
-            "is_encrypted) VALUES (" +
+            "is_encrypted, group_id, batch_id) VALUES (" +
             ":createdOn, :createdUserId, :lastUpdatedOn, :lastUpdatedUserId, :status, :version, " +
             ":encode, :feature, :label, :originId, :precision, :predictedValue, " +
             ":questionId, :rootPipelineId, :state, :synonymId, " +
             ":tenantId, :transactionId, :truthId, :channelId, " +
             ":csvFilePath, :sorContainerId, :truthEntityId, :currencyAsciiValue, :currencyValue, " +
             ":paragraphSection, :sorItemId, :leftPos, :rightPos, :lowerPos, :upperPos, " +
-            ":isEncrypted)";
+            ":isEncrypted, :groupId, :batchId)";
   }
 
   @Override

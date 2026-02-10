@@ -18,13 +18,13 @@ public class DocumentWisePostProcessingInput {
     private LocalDateTime createdOn;
     
     @ColumnName("created_user_id")
-    private String createdUserId;
+    private Long createdUserId;
     
     @ColumnName("last_updated_on")
     private LocalDateTime lastUpdatedOn;
     
     @ColumnName("last_updated_user_id")
-    private String lastUpdatedUserId;
+    private Long lastUpdatedUserId;
     
     private String status;
     private Integer version;
@@ -44,7 +44,7 @@ public class DocumentWisePostProcessingInput {
     private Long questionId;
     
     @ColumnName("root_pipeline_id")
-    private String rootPipelineId;
+    private Long rootPipelineId;
     
     private String state;
     
@@ -61,7 +61,7 @@ public class DocumentWisePostProcessingInput {
     private Long truthId;
     
     @ColumnName("channel_id")
-    private String channelId;
+    private Long channelId;
     
     @ColumnName("csv_file_path")
     private String csvFilePath;
@@ -104,7 +104,7 @@ public class DocumentWisePostProcessingInput {
     private String sorItemName;
     
     @ColumnName("group_id")
-    private Long groupId;
+    private Integer groupId;
     
     @ColumnName("batch_id")
     private String batchId;
