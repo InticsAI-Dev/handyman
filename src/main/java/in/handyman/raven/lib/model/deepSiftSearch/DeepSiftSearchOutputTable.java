@@ -37,6 +37,7 @@ public class DeepSiftSearchOutputTable implements CoproProcessor.Entity {
     private Integer paperNo;
     private String groupId;
     private Long timeTakenMS;
+    private List<String> blocked_output;
 
     @Override
     public List<Object> getRowData() {
@@ -58,7 +59,8 @@ public class DeepSiftSearchOutputTable implements CoproProcessor.Entity {
                 paperNo,
                 groupId,
                 timeTakenMS,
-                status
+                status,
+                blocked_output != null ? String.join(", ", blocked_output) : null
         ).collect(Collectors.toList());
     }
 
