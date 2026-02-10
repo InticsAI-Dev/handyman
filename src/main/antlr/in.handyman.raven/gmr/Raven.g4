@@ -175,6 +175,7 @@ action:
     |neonKvp
     |radonKvp
     |llmJsonParser
+    |checkboxJsonParser
     |radonKvpBbox
     |dockerInspect
     |kafkaPublish
@@ -1324,6 +1325,15 @@ radonKvp:
 
 llmJsonParser:
     'llmJsonParser' 'as' name=STRING
+    'on-resource-conn' resourceConn= STRING
+    'input-table' inputTable=STRING
+    'output-table' outputTable=STRING
+    'using'  '{'
+            querySet=STRING '}'
+    ('on-condition' condition=expression)*  ;
+
+checkboxJsonParser:
+    'checkboxJsonParser' 'as' name=STRING
     'on-resource-conn' resourceConn= STRING
     'input-table' inputTable=STRING
     'output-table' outputTable=STRING
