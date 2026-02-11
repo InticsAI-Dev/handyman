@@ -44,4 +44,5 @@ public class OcrTextComparatorInput {
     private String lineItemType;
     private Long mismatchCount;
     private String matchStatus;
+    private String sorContainerInstance;
 }

@@ -32,6 +32,7 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
                     .bestScore(0)
                     .matchingMethod("EMPTY_ANSWER")
                     .candidatesList("")
+                    .message("ocrExecutor | EMPTY_ANSWER | score=0")
                     .build();
         }
 
@@ -43,6 +44,7 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
                     .bestScore(0)
                     .matchingMethod("NO_CANDIDATES")
                     .candidatesList("")
+                    .message("ocrExecutor | NO_CANDIDATES | score=0")
                     .build();
         }
 
@@ -78,6 +80,7 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
                     .bestScore(0)
                     .matchingMethod("NO_CANDIDATES")
                     .candidatesList(candidatesList)
+                    .message("ocrExecutor | NO_CANDIDATES | score=0")
                     .build();
         }
 
@@ -174,8 +177,12 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
         return wordToFind;
     }
 
-    private OcrComparisonResult buildFinalResult(List<OcrComparisonMatchResult> matches, String originalExpected,
-                                                 String candidatesList, double threshold, boolean hasCommaFormat) {
+    private OcrComparisonResult buildFinalResult(List<OcrComparisonMatchResult> matches,
+                                                 String originalExpected,
+                                                 String candidatesList,
+                                                 double threshold,
+                                                 boolean hasCommaFormat) {
+
         boolean allWordsMatch = matches.stream()
                 .allMatch(match -> match.getScore() >= threshold);
 
@@ -187,10 +194,12 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
                 .collect(Collectors.toList());
 
         String method = determineMatchingMethod(matches, threshold);
-        logger.debug("Matching method determined: {}", method);
 
         String matchSummary = matches.stream()
-                .map(match -> String.format("%s:%.2f->%s", match.getOriginalExpected(), match.getScore(), match.getCandidate()))
+                .map(match -> String.format("%s:%.2f->%s",
+                        match.getOriginalExpected(),
+                        match.getScore(),
+                        match.getCandidate()))
                 .collect(Collectors.joining("|"));
 
         String finalBestMatch;
@@ -203,18 +212,18 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
                     .mapToDouble(OcrComparisonMatchResult::getScore)
                     .average()
                     .orElse(0.0);
+
             finalScore = (int) (avgScore * 100);
-            logger.info("Match found with average score: {}", finalScore);
         } else {
             finalBestMatch = originalExpected;
             finalScore = matches.stream()
                     .mapToInt(match -> (int) (match.getScore() * 100))
                     .max()
                     .orElse(0);
-            logger.info("No match found, best score: {}", finalScore);
         }
 
-        logger.debug("Final result - isMatch: {}, score: {}, method: {}", allWordsMatch, finalScore, method);
+        String actionMessage = method + " | score=" + finalScore;
+        String finalMessage = "ocrExecutor | " + actionMessage;
 
         return OcrComparisonResult.builder()
                 .isMatch(allWordsMatch)
@@ -222,8 +231,10 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
                 .bestScore(finalScore)
                 .matchingMethod(method)
                 .candidatesList(candidatesList + "|MATCHES:" + matchSummary)
+                .message(finalMessage)
                 .build();
     }
+
 
     private String reconstructBestMatch(List<OcrComparisonMatchResult> matches, double threshold,
                                         boolean hasCommaFormat, String originalExpected) {
