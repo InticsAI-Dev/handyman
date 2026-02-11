@@ -105,7 +105,7 @@ class DocumentWisePostProcessingActionTest {
         action.getContext().put("group_id", "5");
         action.getContext().put("batch_id", "BATCH-5_0");
         action.getContext().put("created_user_id", "1");
-        action.getContext().put("document.wise.executor.bsh.class.order", "NewbornDOBValidator");
+        action.getContext().put("document.wise.executor.bsh.class.order", "NewbornDOBValidatorDWPP");
         action.getContext().put(EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION, "true");
         action.getContext().put("document.wise.post.processing.thread.count", "10");
         action.getContext().put("NewbornDOBValidatorDWPP", "import org.slf4j.Logger;\n" +
@@ -113,11 +113,11 @@ class DocumentWisePostProcessingActionTest {
                 "import java.text.SimpleDateFormat;\n" +
                 "import java.util.Date;\n" +
                 "\n" +
-                "public class NewbornDOBValidator {\n" +
+                "public class NewbornDOBValidatorDWPP {\n" +
                 "\n" +
                 "    private Logger logger;\n" +
                 "\n" +
-                "    public NewbornDOBValidator(Logger logger) {\n" +
+                "    public NewbornDOBValidatorDWPP(Logger logger) {\n" +
                 "        this.logger = logger;\n" +
                 "    }\n" +
                 "\n" +
