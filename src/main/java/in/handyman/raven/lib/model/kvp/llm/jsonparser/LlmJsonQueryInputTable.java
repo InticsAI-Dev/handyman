@@ -29,5 +29,4 @@ public class LlmJsonQueryInputTable {
     private String sorMetaDetail;
     private Long sorContainerId;
     private String SorItemLabel;
-    private String sorContainerInstance;
 }

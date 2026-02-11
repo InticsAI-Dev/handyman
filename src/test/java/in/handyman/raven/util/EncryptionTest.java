@@ -4,15 +4,11 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.TransformAction;
 import in.handyman.raven.core.encryption.impl.AESEncryptionImpl;
 import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
-import in.handyman.raven.lib.adapters.selections.models.SelectionFilteringInputTable;
 import in.handyman.raven.lib.model.Transform;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -116,11 +112,6 @@ public class EncryptionTest {
 //        AssetInfoAction assetInfoAction=new AssetInfoAction(executionAudit,log,assetInfo);
 //
 //        assetInfoAction.consumerBatch(jdbi,List.of(fileInfo));
-        List<SelectionFilteringInputTable> input = new ArrayList<>();
-        input.stream()
-                .filter(Objects::nonNull)
-                .filter(SelectionFilteringInputTable::isLabelMatching)
-                .collect(Collectors.toList());
 
     }
 

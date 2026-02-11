@@ -11,10 +11,8 @@ import lombok.NoArgsConstructor;
 @Data
 @Builder
 public class extractedSorItemList {
-    private String transactionId;
-    private Integer truthId;
-    private Integer paperNo;
-    private Integer groupId;
+    private Long paperNo;
+    private Long groupId;
     private String sorItemName;
     private String predictedValue;
     private String bBox;
@@ -27,7 +25,4 @@ public class extractedSorItemList {
     private Long rootPipelineId;
     private String batchId;
     private String documentType;
-    private String sorContainerInstance;
-    private String message;
-
 }

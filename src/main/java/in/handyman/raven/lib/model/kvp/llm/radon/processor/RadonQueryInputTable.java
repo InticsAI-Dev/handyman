@@ -38,7 +38,6 @@ public class RadonQueryInputTable implements CoproProcessor.Entity{
     private Boolean postProcess;
     private String postProcessClassName;
     private String modelName;
-    private String sorContainerName;
     private UUID requestId;
     private Boolean coproMetricsActivator;
 

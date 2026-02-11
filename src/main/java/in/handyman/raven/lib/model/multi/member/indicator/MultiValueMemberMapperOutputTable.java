@@ -1,6 +1,7 @@
 package in.handyman.raven.lib.model.multi.member.indicator;
 
 import in.handyman.raven.lib.CoproProcessor;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -39,12 +40,12 @@ public class MultiValueMemberMapperOutputTable implements CoproProcessor.Entity{
     private Long tenantId;
     private String modelRegistry;
     private String batchId;
-    private String sorContainerInstance;
+
 
     @Override
     public List<Object> getRowData() {
         return Stream.of(this.createdOn, this.createdUserId, this.lastUpdatedOn, this.lastUpdatedUserId, this.status, this.version, this.frequency, this.bBox, this.confidenceScore,
                 this.extractedValue, this.filterScore, this.groupId, this.maximumScore, this.originId, this.paperNo, this.questionId, this.rootPipelineId,
-                this.sorItemName, this.synonymId, this.tenantId, this.modelRegistry, this.batchId, this.sorContainerInstance).collect(Collectors.toList());
+                this.sorItemName, this.synonymId, this.tenantId, this.modelRegistry, this.batchId).collect(Collectors.toList());
     }
 }

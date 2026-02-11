@@ -13,40 +13,17 @@ public class WhitelistFilterAdapter implements FieldSelectionAdapter {
             return List.of();
         }
 
-
-        List<ExtractedField> filteredLabels = fields.stream()
+        return fields.stream()
                 .map(field -> {
-                    if (field.isLabelMatching()) {
-                        return isLabelValueMatching(field.getWhitelistedLabels(), field, "LABELS");
+                        if(field.isLabelMatching()){
+                            return isLabelValueMatching(field.getWhitelistedLabels(), field, "LABELS");
 
-                    } else {
-                        return field;
-                    }
+                        }else {
+                            return field;
+                        }
                 })
                 .collect(Collectors.toList());
-        emptyEntryCheck(filteredLabels);
-        return filteredLabels;
-
     }
-    private boolean isEmpty(String s) {
-        return s == null || s.isEmpty();
-    }
-
-    public void emptyEntryCheck(List<ExtractedField> fields) {
-        for (ExtractedField f : fields) {
-            if (isEmpty(f.getValue())
-                    && isEmpty(f.getLabel())
-                    && isEmpty(f.getSectionAlias())) {
-
-                f.setLabelMatching(true);
-                f.setLabelMatchMessage(
-                        (f.getLabelMatchMessage() == null ? "" : f.getLabelMatchMessage())
-                                + " | Checking for missing Entry check, Empty entry with no value, label or section so allowing them for downstream process."
-                );
-            }
-        }
-    }
-
     public ExtractedField isLabelValueMatching(List<WhitelistLabelConfig> whitelistFields,
                                                    ExtractedField response,
                                                    String filteringType) {

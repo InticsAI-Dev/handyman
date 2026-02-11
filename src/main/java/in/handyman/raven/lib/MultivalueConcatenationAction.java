@@ -10,7 +10,14 @@ import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.MultivalueConcatenation;
-import in.handyman.raven.lib.services.sor.transform.MultiValueUniquenessInput;
+import java.lang.Exception;
+import java.lang.Object;
+import java.lang.Override;
+import java.time.LocalDate;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+
 import in.handyman.raven.util.CommonQueryUtil;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -22,14 +29,6 @@ import org.jdbi.v3.core.statement.Query;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
-
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
 
@@ -57,7 +56,7 @@ public class MultivalueConcatenationAction implements IActionExecution {
     this.aMarker = MarkerFactory.getMarker(" MultivalueConcatenation:" + this.multivalueConcatenation.getName());
   }
 
-  private final List<MultiValueUniquenessInput> multiValueUniquenessInputs = new ArrayList<>();
+  private final List<MultivalueConcatenationInput> multivalueConcatenationInputs = new ArrayList<>();
 
   @Override
   public void execute() throws Exception {
@@ -79,17 +78,17 @@ public class MultivalueConcatenationAction implements IActionExecution {
         for (String sqlToExecute : formattedQuery) {
           log.info(aMarker, "executing  query {} from index {}", sqlToExecute, i.getAndIncrement());
           Query query = handle.createQuery(sqlToExecute);
-          ResultIterable<MultiValueUniquenessInput> resultIterable = query.mapToBean(MultiValueUniquenessInput.class);
-          List<MultiValueUniquenessInput> processingExecutorInputs = resultIterable.stream().collect(Collectors.toList());
-          multiValueUniquenessInputs.addAll(processingExecutorInputs);
+          ResultIterable<MultivalueConcatenationInput> resultIterable = query.mapToBean(MultivalueConcatenationInput.class);
+          List<MultivalueConcatenationInput> processingExecutorInputs = resultIterable.stream().collect(Collectors.toList());
+          multivalueConcatenationInputs.addAll(processingExecutorInputs);
           log.info(aMarker, "executed query from index {}", i.get());
         }
       });
 
-      log.info("Multi value concatenation action total rows returned from the query {}", multiValueUniquenessInputs.size());
+      log.info("Multi value concatenation action total rows returned from the query {}", multivalueConcatenationInputs.size());
 
         try {
-          doMultiValueConcatenation(multiValueUniquenessInputs, jdbi, outputTableName, pipelineEndToEndEncryptionActivator, groupId, batchId, encryption);
+          doMultiValueConcatenation(multivalueConcatenationInputs, jdbi, outputTableName, pipelineEndToEndEncryptionActivator, groupId, batchId, encryption);
         } catch (JsonProcessingException e) {
           HandymanException handymanException = new HandymanException(e);
           HandymanException.insertException("Control data comparison Input table failed :", handymanException, action);
@@ -106,7 +105,7 @@ public class MultivalueConcatenationAction implements IActionExecution {
 
   }
 
-  private void doMultiValueConcatenation(List<MultiValueUniquenessInput> multiValueUniquenessInputs,
+  private void doMultiValueConcatenation(List<MultivalueConcatenationInput> multivalueConcatenationInputs,
                                          Jdbi jdbi,
                                          String outputTable,
                                          Boolean pipelineEndToEndEncryptionActivator,
@@ -115,32 +114,49 @@ public class MultivalueConcatenationAction implements IActionExecution {
                                          InticsIntegrity encryption) throws JsonProcessingException {
 
     log.info("Starting multi-value concatenation process for batchId: {}, groupId: {}, totalInputs: {}",
-            batchId, groupId, multiValueUniquenessInputs.size());
+            batchId, groupId, multivalueConcatenationInputs.size());
 
-    Map<String, List<MultiValueUniquenessInput>> groupedInputs = multiValueUniquenessInputs.stream()
+    Map<String, List<MultivalueConcatenationInput>> groupedInputs = multivalueConcatenationInputs.stream()
             .collect(Collectors.groupingBy(input -> input.getOriginId() + "|" + input.getSorItemName()));
 
-    for (Map.Entry<String, List<MultiValueUniquenessInput>> entry : groupedInputs.entrySet()) {
-      List<MultiValueUniquenessInput> groupList = entry.getValue();
+    for (Map.Entry<String, List<MultivalueConcatenationInput>> entry : groupedInputs.entrySet()) {
+      List<MultivalueConcatenationInput> groupList = entry.getValue();
       if (groupList.isEmpty()) continue;
 
       Integer fallbackPageNo = groupList.stream()
-              .map(MultiValueUniquenessInput::getPaperNo)
+              .map(MultivalueConcatenationInput::getPaperNo)
               .filter(Objects::nonNull)
               .min(Integer::compareTo)
               .orElse(null);
 
       Integer selectedPageNoFromValue = null;
 
-      MultiValueUniquenessInput firstInput = groupList.get(0);
+      MultivalueConcatenationInput firstInput = groupList.get(0);
       log.debug("Processing group: originId={}, sorItemName={}, inputCount={}",
               firstInput.getOriginId(), firstInput.getSorItemName(), groupList.size());
 
       List<String> valuesToConcat = new ArrayList<>();
 
       String scalarAdapterActivator = action.getContext().getOrDefault("scalar.adapter.activator", "false");
-      for (MultiValueUniquenessInput input : groupList) {
-          String value = input.getAnswer();
+      for (MultivalueConcatenationInput input : groupList) {
+        String originalValue = input.getPredictedValue();
+        String value = originalValue;
+
+        if (pipelineEndToEndEncryptionActivator && "t".equalsIgnoreCase(input.getIsEncrypted())) {
+          try {
+            if("false".equalsIgnoreCase(scalarAdapterActivator)){
+              log.info("Scalar activator is disabled, running decryption in AES256 mode when decrypting");
+              value = encryption.decrypt(value, AES_256, input.getSorItemName());
+            }else {
+              log.info("Scalar activator is enabled, running decryption in policy mode when decrypting");
+              value = encryption.decrypt(value, input.getEncryptionPolicy(), input.getSorItemName());
+            }
+            log.debug("Decrypted value for originId={}, sorItemName={}", input.getOriginId(), input.getSorItemName());
+          } catch (Exception e) {
+            log.error("Decryption failed for originId={}, sorItemName={}: {}", input.getOriginId(), input.getSorItemName(), e.getMessage(), e);
+            throw e;
+          }
+        }
 
         value = (value == null) ? "" : value.trim().replaceAll("(^,+|,+$)", "").replaceAll(",{2,}", ",");
 
@@ -159,13 +175,30 @@ public class MultivalueConcatenationAction implements IActionExecution {
 
       log.debug("Concatenated value before encryption for originId={}, sorItemName={}", firstInput.getOriginId(), firstInput.getSorItemName());
 
+      if (pipelineEndToEndEncryptionActivator && "t".equalsIgnoreCase(firstInput.getIsEncrypted())) {
+        try {
+          if("false".equalsIgnoreCase(scalarAdapterActivator)){
+            log.info("Scalar activator is disabled, running decryption in AES256 mode when encrypting");
+            concatenatedValue = encryption.encrypt(concatenatedValue, AES_256, firstInput.getSorItemName());
+          }else {
+            log.info("Scalar activator is enabled, running decryption in policy mode when encrypting");
+            concatenatedValue = encryption.encrypt(concatenatedValue, firstInput.getEncryptionPolicy(), firstInput.getSorItemName());
+          }
+          log.info("Encrypted concatenated value for originId={}, sorItemName={}", firstInput.getOriginId(), firstInput.getSorItemName());
+        } catch (Exception e) {
+          log.error("Encryption failed for originId={}, sorItemName={}: {}", firstInput.getOriginId(), firstInput.getSorItemName(), e.getMessage(), e);
+          throw e;
+        }
+      }
+
       try {
         insertExecutionInfo(
                 jdbi, outputTable,
                 firstInput.getOriginId(), firstInput.getSorItemName(), firstInput.getTenantId(), batchId, concatenatedValue,
                 groupId, selectedPageNo, firstInput.getVqaScore(), firstInput.getQuestionId(), firstInput.getSynonymId(),
                 firstInput.getModelRegistry(), firstInput.getDocumentId(), firstInput.getBBox(), firstInput.getRootPipelineId(),
-                firstInput.getSorItemAttributionId(),firstInput.getSorContainerInstance()
+                firstInput.getAggregatedScore(), firstInput.getMaskedScore(), firstInput.getRank(),
+                firstInput.getSorItemAttributionId(), firstInput.getFrequency()
         );
 
         log.info("Inserted concatenated value for originId={}, sorItemName={}, paperNo={}", firstInput.getOriginId(), firstInput.getSorItemName(), selectedPageNo);
@@ -179,28 +212,28 @@ public class MultivalueConcatenationAction implements IActionExecution {
     log.info("Completed multi-value concatenation for batchId: {}", batchId);
   }
 
-  private void insertExecutionInfo(Jdbi jdbi, String outputTable, String originId, String sorItemName, Long tenantId, String batchId, String predictedValue, Integer groupId, Integer paperNo, Double vqaScore, Long questionId, Long synonymId, String modelRegistry, String documentId, String bBox, Long rootPipelineId, Integer sorItemAttributionId,String sorContainerInstance) {
+  private void insertExecutionInfo(Jdbi jdbi, String outputTable, String originId, String sorItemName, Long tenantId, String batchId, String predictedValue, Integer groupId, Integer paperNo, Double vqaScore, Long questionId, Long synonymId, String modelRegistry, String documentId, String bBox, Long rootPipelineId, Long aggregatedScore, Long maskedScore, Long rank, Long sorItemAttributionId, Long frequency) {
     jdbi.useHandle(handle -> handle.createUpdate(
                     "INSERT INTO " + outputTable + " (" +
                             "created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, " +
                             "aggregated_score, masked_score, origin_id, paper_no, predicted_value, rank, sor_item_attribution_id, sor_item_name, " +
-                            "document_id, b_box, group_id, root_pipeline_id, vqa_score, question_id, synonym_id, model_registry, batch_id, frequency, sor_container_instance" +
+                            "document_id, b_box, group_id, root_pipeline_id, vqa_score, question_id, synonym_id, model_registry, batch_id, frequency" +
                             ") VALUES (" +
                             ":createdOn, :createdUserId, :lastUpdatedOn, :lastUpdatedUserId, :tenantId, " +
                             ":aggregatedScore, :maskedScore, :originId, :paperNo, :predictedValue, :rank, :sorItemAttributionId, :sorItemName, " +
-                            ":documentId, :bBox, :groupId, :rootPipelineId, :vqaScore, :questionId, :synonymId, :modelRegistry, :batchId, :frequency, :sorContainerInstance" +
+                            ":documentId, :bBox, :groupId, :rootPipelineId, :vqaScore, :questionId, :synonymId, :modelRegistry, :batchId, :frequency" +
                             ");")
             .bind("createdOn", LocalDate.now())
             .bind("createdUserId", tenantId)
             .bind("lastUpdatedOn", LocalDate.now())
             .bind("lastUpdatedUserId", tenantId)
             .bind("tenantId", tenantId)
-            .bind("aggregatedScore", 0L)
-            .bind("maskedScore", vqaScore)
+            .bind("aggregatedScore", aggregatedScore)
+            .bind("maskedScore", maskedScore)
             .bind("originId", originId)
             .bind("paperNo", paperNo)
             .bind("predictedValue", predictedValue)
-            .bind("rank", 0L)
+            .bind("rank", rank)
             .bind("sorItemAttributionId", sorItemAttributionId)
             .bind("sorItemName", sorItemName)
             .bind("documentId", documentId)
@@ -212,8 +245,7 @@ public class MultivalueConcatenationAction implements IActionExecution {
             .bind("synonymId", synonymId)
             .bind("modelRegistry", modelRegistry)
             .bind("batchId", batchId)
-            .bind("frequency", 0L)
-            .bind("sorContainerInstance", sorContainerInstance)
+            .bind("frequency", frequency)
             .execute());
     log.info("Predicted value has been done for the multivalue concatenating logic.");
   }
@@ -224,5 +256,39 @@ public class MultivalueConcatenationAction implements IActionExecution {
     return multivalueConcatenation.getCondition();
   }
 
+  @AllArgsConstructor
+  @NoArgsConstructor
+  @Data
+  @Builder
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class MultivalueConcatenationInput {
+    private String originId;
+    private String sorItemName;
+    private String question;
+    private Float votingOut;
+    private Long tenantId;
+    private String batchId;
+    private String predictedValue;
+    private Integer groupId;
+    private Integer paperNo;
+    private Double vqaScore;
+    private Long questionId;
+    private Long synonymId;
+    private String modelRegistry;
+    private Integer weight;
+    private Double score;
+    private String documentId;
+    private String validationName;
+    private String bBox;
+    private Long rootPipelineId;
+    private Long aggregatedScore;
+    private Long maskedScore;
+    private Long rank;
+    private Long sorItemAttributionId;
+    private Long frequency;
+    private String encryptionPolicy;
+    private String isEncrypted;
+
+  }
 
 }

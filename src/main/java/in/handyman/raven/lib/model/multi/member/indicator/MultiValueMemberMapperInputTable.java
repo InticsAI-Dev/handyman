@@ -13,12 +13,12 @@ public class MultiValueMemberMapperInputTable {
 
     private Long rootPipelineId;
     private String batchId;
-    private Integer groupId;
+    private Long groupId;
     private String originId;
     private String sorContainerName;
     private String sorItemName;
     private String predictedValue;
-    private Integer paperNo;
+    private Long paperNo;
     private Long tenantId;
     private String encryptionPolicy;
     private String isEncrypted;

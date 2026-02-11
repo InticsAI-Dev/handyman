@@ -10,8 +10,11 @@ import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.PostProcessingExecutor;
 import in.handyman.raven.lib.model.scalar.ValidatorByBeanShellExecutor;
-import in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput;
 import in.handyman.raven.util.CommonQueryUtil;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.PreparedBatch;
@@ -19,9 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
@@ -41,7 +42,7 @@ public class PostProcessingExecutorAction implements IActionExecution {
 
     private final Marker aMarker;
 
-    private List<PostProcessingFieldsInput> PostProcessingFieldsInputs;
+    private List<PostProcessingExecutorInput> postProcessingExecutorInputs;
 
     private static final String POST_PROCESSING_THREAD_COUNT = "post.processing.thread.count";
 
@@ -65,52 +66,52 @@ public class PostProcessingExecutorAction implements IActionExecution {
 
         jdbi.useTransaction(handle -> fetchAndDecryptInputs(handle, crypt, encryptEnabled));
 
-        log.info(aMarker, "Fetched {} rows for post-processing", PostProcessingFieldsInputs.size());
-        PostProcessingFieldsInputs = new ValidatorByBeanShellExecutor(PostProcessingFieldsInputs, action, log, postProcessingThreadCount).doRowWiseValidator();
-        log.info(aMarker, "Total Rows present after post-processing : {}", PostProcessingFieldsInputs.size());
+        log.info(aMarker, "Fetched {} rows for post-processing", postProcessingExecutorInputs.size());
+        postProcessingExecutorInputs = new ValidatorByBeanShellExecutor(postProcessingExecutorInputs, action, log, postProcessingThreadCount).doRowWiseValidator();
+        log.info(aMarker, "Total Rows present after post-processing : {}", postProcessingExecutorInputs.size());
 
-        PostProcessingFieldsInputs.forEach(input -> processEncryption(input, crypt, encryptEnabled));
+        postProcessingExecutorInputs.forEach(input -> processEncryption(input, crypt, encryptEnabled));
 
         String outputTable = postProcessingExecutor.getOutputTable();
         log.info(aMarker, "Started batch insert into {}", outputTable);
-        jdbi.useHandle(handle -> executeBatchInsert(handle, PostProcessingFieldsInputs));
+        jdbi.useHandle(handle -> executeBatchInsert(handle, postProcessingExecutorInputs));
         log.info(aMarker, "Batch insert completed into {}", outputTable);
     }
 
     private void fetchAndDecryptInputs(Handle handle, InticsIntegrity crypt, boolean encryptEnabled) {
         List<String> queries = CommonQueryUtil.getFormattedQuery(postProcessingExecutor.getQuerySet());
-        PostProcessingFieldsInputs = queries.stream()
+        postProcessingExecutorInputs = queries.stream()
                 .flatMap(sql -> handle.createQuery(sql)
-                        .mapToBean(PostProcessingFieldsInput.class)
+                        .mapToBean(PostProcessingExecutorInput.class)
                         .stream())
                 .collect(Collectors.toList());
-        log.info(aMarker, "Total rows fetched: {}", PostProcessingFieldsInputs.size());
+        log.info(aMarker, "Total rows fetched: {}", postProcessingExecutorInputs.size());
         if (encryptEnabled) {
             if ("false".equalsIgnoreCase(action.getContext().getOrDefault("scalar.adapter.activator", "false"))) {
                 log.info("Scalar activator is disabled, running decryption in AES256 mode");
-                PostProcessingFieldsInputs.forEach(PostProcessingFieldsInput -> {
-                    if (PostProcessingFieldsInput.isEncrypted()) {
-                        PostProcessingFieldsInput.setAnswer(crypt.decrypt(PostProcessingFieldsInput.getAnswer(), "AES256", PostProcessingFieldsInput.getSorItemName()));
+                postProcessingExecutorInputs.forEach(postProcessingExecutorInput -> {
+                    if ("t".equalsIgnoreCase(postProcessingExecutorInput.getIsEncrypted())) {
+                        postProcessingExecutorInput.setExtractedValue(crypt.decrypt(postProcessingExecutorInput.getExtractedValue(), "AES256", postProcessingExecutorInput.getSorItemName()));
                     }
                 });
             } else {
                 log.info("Scalar activator is enabled, running decryption in policy mode");
-                PostProcessingFieldsInputs.forEach(PostProcessingFieldsInput -> {
-                    if (PostProcessingFieldsInput.isEncrypted()) {
-                        PostProcessingFieldsInput.setAnswer(crypt.decrypt(PostProcessingFieldsInput.getAnswer(), PostProcessingFieldsInput.getEncryptionPolicy(), PostProcessingFieldsInput.getSorItemName()));
+                postProcessingExecutorInputs.forEach(postProcessingExecutorInput -> {
+                    if ("t".equalsIgnoreCase(postProcessingExecutorInput.getIsEncrypted())) {
+                        postProcessingExecutorInput.setExtractedValue(crypt.decrypt(postProcessingExecutorInput.getExtractedValue(), postProcessingExecutorInput.getEncryptionPolicy(), postProcessingExecutorInput.getSorItemName()));
                     }
                 });
             }
         }
     }
 
-    private void processEncryption(PostProcessingFieldsInput input, InticsIntegrity crypt, boolean encryptEnabled) {
+    private void processEncryption(PostProcessingExecutorInput input, InticsIntegrity crypt, boolean encryptEnabled) {
         if ("multi_value".equalsIgnoreCase(input.getLineItemType())) {
             handleMultiValue(input, crypt, encryptEnabled);
-        } else if (encryptEnabled && input.isEncrypted()) {
-            input.setAnswer(
+        } else if (encryptEnabled && "t".equalsIgnoreCase(input.getIsEncrypted())) {
+            input.setExtractedValue(
                     crypt.encrypt(
-                            input.getAnswer(),
+                            input.getExtractedValue(),
                             input.getEncryptionPolicy(),
                             input.getSorItemName()
                     )
@@ -118,124 +119,74 @@ public class PostProcessingExecutorAction implements IActionExecution {
         }
     }
 
-    private void handleMultiValue(PostProcessingFieldsInput input, InticsIntegrity crypt, boolean encryptEnabled) {
-        String[] parts = input.getAnswer().split(",");
+    private void handleMultiValue(PostProcessingExecutorInput input, InticsIntegrity crypt, boolean encryptEnabled) {
+        String[] parts = input.getExtractedValue().split(",");
         List<String> reEncrypted = java.util.Arrays.stream(parts)
                 .map(String::trim)
-                .map(val -> encryptEnabled && input.isEncrypted()
+                .map(val -> encryptEnabled && "t".equalsIgnoreCase(input.getIsEncrypted())
                         ? crypt.encrypt(val, input.getEncryptionPolicy(), input.getSorItemName())
                         : val)
                 .collect(Collectors.toList());
-        input.setAnswer(String.join(",", reEncrypted));
+        input.setExtractedValue(String.join(",", reEncrypted));
     }
 
-    private void executeBatchInsert(Handle handle, List<PostProcessingFieldsInput> rows) {
+    private void executeBatchInsert(Handle handle, List<PostProcessingExecutorInput> rows) {
         String sql = buildInsertSQL();
-
         try (PreparedBatch batch = handle.prepareBatch(sql)) {
-
             rows.forEach(row -> {
-                batch
-                        .bind("transactionId", row.getTransactionId())
-                        .bind("createdOn", LocalDateTime.now())
-                        .bind("createdUserId", row.getCreatedUserId())
-                        .bind("lastUpdatedOn", LocalDateTime.now())
-                        .bind("lastUpdatedUserId", row.getLastUpdatedUserId())
-                        .bind("rootPipelineId", row.getRootPipelineId())
-                        .bind("tenantId", row.getTenantId())
-                        .bind("documentId", row.getDocumentId())
-                        .bind("groupId", row.getGroupId())
-                        .bind("batchId", row.getBatchId())
-                        .bind("originId", row.getOriginId())
-                        .bind("paperNo", row.getPaperNo())
-                        .bind("truthId", row.getTruthId())
-                        .bind("status", row.getStatus())
-                        .bind("stage", row.getStage())
-                        .bind("message", row.getMessage())
-                        .bind("version", row.getVersion())
-                        .bind("extractedImageUnit", row.getExtractedImageUnit())
-                        .bind("imageDpi", row.getImageDpi())
-                        .bind("imageHeight", row.getImageHeight())
-                        .bind("imageWidth", row.getImageWidth())
-                        .bind("sectionPriorityAfterFilter", row.getSectionPriorityAfterFilter())
-                        .bind("sorContainerId", row.getSorContainerId())
-                        .bind("sorContainerName", row.getSorContainerName())
-                        .bind("sorContainerInstance", row.getSorContainerInstance())
-                        .bind("sorItemName", row.getSorItemName())
-                        .bind("sorItemId", row.getSorItemId())
-                        .bind("sorItemAttributionId", row.getSorItemAttributionId())
-                        .bind("modelId", row.getModelId())
-                        .bind("modelInfo", row.getModelInfo())
-                        .bind("modelRegistry", row.getModelRegistry())
-                        .bind("modelRegistryId", row.getModelRegistryId())
-                        .bind("answer", row.getAnswer())
-                        .bind("vqaScore", row.getVqaScore())
-                        .bind("score", row.getScore())
-                        .bind("bBox", row.getBBox())
-                        .bind("label", row.getLabel())
-                        .bind("sectionAlias", row.getSectionAlias())
-                        .bind("synonymId", row.getSynonymId())
-                        .bind("sorSynonym", row.getSorSynonym())
-                        .bind("questionId", row.getQuestionId())
-                        .bind("sorQuestion", row.getSorQuestion())
-                        .bind("weight", row.getWeight())
-                        .bind("category", row.getCategory())
-                        .bind("lineItemType", row.getLineItemType())
-                        .bind("isMultiEntityEnabled", row.getIsMultiEntityEnabled())
-                        .bind("encryptionPolicy", row.getEncryptionPolicy())
-                        .bind("isEncrypted", row.isEncrypted())
-                        .bind("postProcessingCode", row.getPostProcessingCode())
-                        .bind("postProcessingKey", row.getPostProcessingKey())
-                        .bind("aggregatedScore", row.getAggregatedScore())
-                        .add();
+                batch.bind("createdUserId", action.getContext().get("created_user_id"));
+                batch.bindBean(row);
+                batch.bind("groupId", Long.valueOf(postProcessingExecutor.getGroupId()));
+                batch.bind("batchId", postProcessingExecutor.getBatchId());
+                batch.add();
             });
-
             int[] counts = batch.execute();
             log.info(aMarker, "Batch inserted {} records", counts.length);
-
         } catch (Exception e) {
             log.error(aMarker, "Batch insert failed", e);
-            HandymanException.insertException(
-                    "Error in batch insert into " + postProcessingExecutor.getOutputTable(),
-                    new HandymanException(e),
-                    action
-            );
+            HandymanException.insertException("Error in batch insert into " + postProcessingExecutor.getOutputTable(), new HandymanException(e), action);
         }
     }
 
-
-
     private String buildInsertSQL() {
         return "INSERT INTO " + postProcessingExecutor.getOutputTable() + " (" +
-                "post_processing_field_id, transaction_id, created_on, created_user_id, " +
-                "last_updated_on, last_updated_user_id, root_pipeline_id, tenant_id, document_id, " +
-                "group_id, batch_id, origin_id, paper_no, truth_id, status, stage, message, version, " +
-                "extracted_image_unit, image_dpi, image_height, image_width, " +
-                "section_priority_after_filter, sor_container_id, sor_container_name, " +
-                "sor_container_instance, sor_item_name, sor_item_id, sor_item_attribution_id, " +
-                "model_id, model_info, model_registry, model_registry_id, answer, vqa_score, score, " +
-                "b_box, label, section_alias, synonym_id, sor_synonym, question_id, sor_question, " +
-                "weight, category, line_item_type, is_multi_entity_enabled, encryption_policy, " +
-                "is_encrypted, post_processing_code, post_processing_key, aggregated_score" +
-                ") VALUES (" +
-                "nextval('sor_transform.vqa_transaction_post_processing_ou_post_processing_field_id_seq'), " +
-                ":transactionId, :createdOn, :createdUserId, :lastUpdatedOn, :lastUpdatedUserId, " +
-                ":rootPipelineId, :tenantId, :documentId, :groupId, :batchId, :originId, :paperNo, " +
-                ":truthId, :status, :stage, :message, :version, :extractedImageUnit, :imageDpi, " +
-                ":imageHeight, :imageWidth, :sectionPriorityAfterFilter, :sorContainerId, " +
-                ":sorContainerName, :sorContainerInstance, :sorItemName, :sorItemId, " +
-                ":sorItemAttributionId, :modelId, :modelInfo, :modelRegistry, :modelRegistryId, " +
-                ":answer, :vqaScore, :score, :bBox, :label, :sectionAlias, :synonymId, :sorSynonym, " +
-                ":questionId, :sorQuestion, :weight, :category, :lineItemType, " +
-                ":isMultiEntityEnabled, :encryptionPolicy, :isEncrypted, " +
-                ":postProcessingCode, :postProcessingKey, :aggregatedScore" +
-                ")";
+                "created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, aggregated_score, masked_score, group_id, origin_id, paper_no, predicted_value, vqa_score, " +
+                "rank, sor_item_attribution_id, sor_item_name, document_id, acc_transaction_id, b_box, root_pipeline_id, frequency, question_id, synonym_id, model_registry, batch_id) VALUES (" +
+                "now(), :createdUserId, now(), :createdUserId, :tenantId, :aggregatedScore, :maskedScore, :groupId, :originId, :paperNo, :extractedValue, :vqaScore, " +
+                ":rank, :sorItemAttributionId, :sorItemName, :documentId, :accTransactionId, :bbox, :rootPipelineId, :frequency, :questionId, :synonymId, :modelRegistry, :batchId)";
     }
-
-
 
     @Override
     public boolean executeIf() throws Exception {
         return postProcessingExecutor.getCondition();
+    }
+
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @Data
+    @Builder
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class PostProcessingExecutorInput {
+        private Long tenantId;
+        private double aggregatedScore;
+        private double maskedScore;
+        private String originId;
+        private Integer paperNo;
+        private String extractedValue;
+        private double vqaScore;
+        private Integer rank;
+        private Integer sorItemAttributionId;
+        private String sorItemName;
+        private String documentId;
+        private Long accTransactionId;
+        private String bbox;
+        private Long rootPipelineId;
+        private Long frequency;
+        private Long questionId;
+        private Long synonymId;
+        private String modelRegistry;
+        private String encryptionPolicy;
+        private String isEncrypted;
+        private String lineItemType;
     }
 }

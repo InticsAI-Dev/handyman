@@ -222,7 +222,6 @@ public class ProviderTransformerFinal {
         metaProviderEntityDetails.put("SERVICING_PROVIDER_DETAILS", Arrays.asList("servicing provider", "physician", "Therapist", "Attending physician", "Accepting physician", "Rendering Provider"));
         metaProviderEntityDetails.put("REFERRING_PROVIDER_DETAILS", Arrays.asList("Referring Provider", "Requesting Provider", "Ordering Provider"));
         metaProviderEntityDetails.put("SERVICING_FACILITY_DETAILS", Arrays.asList("SERVICING_FACILITY_DETAILS", "Service Facility", "Facility", "facility name", "servicing facility"));
-        metaProviderEntityDetails.put("MEMBER_DETAILS", Arrays.asList("patient", "member", "subscriber", "insured"));
         return metaProviderEntityDetails;
     }
 
@@ -242,12 +241,6 @@ public class ProviderTransformerFinal {
                 Arrays.asList("referring_provider_address_line1", "referring_provider_full_name", "referring_provider_npi",
                         "referring_provider_city", "referring_provider_specialty", "referring_provider_state",
                         "referring_provider_tin", "referring_provider_zipcode", "referring_provider_address_line2"));
-
-        itemMappingDetails.put("MEMBER_DETAILS",
-                Arrays.asList("member_id", "member_full_name", "member_first_name", "member_last_name",
-                        "member_date_of_birth", "member_gender", "member_address_line1", "member_address_line2",
-                        "member_city", "member_state", "member_zipcode"));
-
         return itemMappingDetails;
     }
 

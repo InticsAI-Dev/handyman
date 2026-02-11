@@ -17,12 +17,8 @@ public class ExtractedField {
     private Integer id;
     private String label;
     private String sectionAlias;
-    private String originId;
-    private Integer paperNo;
-    private String sorItemName;
     private String value;
     private Set<String> blacklistedLabels;
-    private String sorContainerInstance;
     private Set<String> blacklistedSections;
     private boolean isLabelMatching;
     private String labelMatchMessage;

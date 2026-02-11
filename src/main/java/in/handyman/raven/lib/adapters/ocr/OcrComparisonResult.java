@@ -18,5 +18,4 @@ public class OcrComparisonResult {
     private int bestScore;
     private String matchingMethod;
     private String candidatesList;
-    private String message;
 }

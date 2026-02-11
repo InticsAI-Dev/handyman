@@ -2,8 +2,6 @@ package in.handyman.raven.lib.adapters.ocr;
 
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lib.services.sor.transform.MessageUtils;
-import in.handyman.raven.lib.services.sor.transform.OcrTextComparisonInput;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
@@ -44,7 +42,7 @@ public class OcrTextComparisonExecutor {
     /**
      * Executes OCR comparison across multiple threads
      */
-    public List<OcrTextComparisonInput> executeComparisons(List<OcrTextComparisonInput> inputs,
+    public List<OcrTextComparatorInput> executeComparisons(List<OcrTextComparatorInput> inputs,
                                                            double fuzzyMatchThreshold) {
 
         AtomicInteger processedCount = new AtomicInteger();
@@ -53,13 +51,13 @@ public class OcrTextComparisonExecutor {
         log.info(aMarker, "Starting parallel OCR text comparison for {} inputs using {} threads",
                 inputs.size(), parallelism);
 
-        List<CompletableFuture<OcrTextComparisonInput>> futures = inputs.stream()
+        List<CompletableFuture<OcrTextComparatorInput>> futures = inputs.stream()
                 .filter(this::isComparable)
                 .map(input -> CompletableFuture.supplyAsync(() -> processInput(input, fuzzyMatchThreshold, processedCount, errorCount), executor))
                 .collect(Collectors.toList());
 
         // Wait for all comparisons to finish
-        List<OcrTextComparisonInput> results = futures.stream()
+        List<OcrTextComparatorInput> results = futures.stream()
                 .map(CompletableFuture::join)
                 .collect(Collectors.toList());
 
@@ -71,12 +69,12 @@ public class OcrTextComparisonExecutor {
         return results;
     }
 
-    private boolean isComparable(OcrTextComparisonInput input) {
+    private boolean isComparable(OcrTextComparatorInput input) {
         Boolean comparable = input.getIsOcrFieldComparable();
         return Boolean.TRUE.equals(comparable) || "t".equalsIgnoreCase(String.valueOf(comparable));
     }
 
-    private OcrTextComparisonInput processInput(OcrTextComparisonInput input,
+    private OcrTextComparatorInput processInput(OcrTextComparatorInput input,
                                                 double fuzzyMatchThreshold,
                                                 AtomicInteger processedCount,
                                                 AtomicInteger errorCount) {
@@ -88,21 +86,20 @@ public class OcrTextComparisonExecutor {
 
             OcrComparisonResult result = adapter.compareValues(answer, extractedText, fuzzyMatchThreshold);
 
-//            input.setBestMatch(result.getBestMatch());
-            input.setAnswer(result.getBestMatch());
+            input.setBestMatch(result.getBestMatch());
             input.setBestScore(result.getBestScore());
-//            input.setCandidatesList(result.getCandidatesList());
+            input.setCandidatesList(result.getCandidatesList());
             input.setIsOcrFieldComparable(result.isMatch());
             input.setThreshold((int) (fuzzyMatchThreshold * 100));
-            input.setMessage(MessageUtils.appendMsg(input.getMessage(),result.getMessage()));
 
             processedCount.incrementAndGet();
             return input;
         } catch (Exception e) {
             errorCount.incrementAndGet();
-            log.error(aMarker, "Ocr comparison failed for {} ",input.buildLoggerBaseInput(), e);
+            log.error(aMarker, "Comparison failed for originId={}, sorItemName={}, paperNo={}",
+                    input.getOriginId(), input.getSorItemName(), input.getPaperNo(), e);
             HandymanException handymanException = new HandymanException(e);
-            HandymanException.insertException("OCR comparison failed for " + input.buildLoggerBaseInput(), handymanException, action);
+            HandymanException.insertException("OCR comparison failed for originId: " + input.getOriginId(), handymanException, action);
             return input;
         }
     }
@@ -123,5 +120,4 @@ public class OcrTextComparisonExecutor {
             log.error(aMarker, "Executor termination interrupted", e);
         }
     }
-
 }
