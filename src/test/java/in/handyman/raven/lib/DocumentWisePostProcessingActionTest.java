@@ -108,7 +108,7 @@ class DocumentWisePostProcessingActionTest {
         action.getContext().put("document.wise.executor.bsh.class.order", "NewbornDOBValidator");
         action.getContext().put(EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION, "true");
         action.getContext().put("document.wise.post.processing.thread.count", "10");
-        action.getContext().put("NewbornDOBValidator", "import org.slf4j.Logger;\n" +
+        action.getContext().put("NewbornDOBValidatorDWPP", "import org.slf4j.Logger;\n" +
                 "import java.util.*;\n" +
                 "import java.text.SimpleDateFormat;\n" +
                 "import java.util.Date;\n" +
