@@ -785,7 +785,9 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
                         continue;
                     }
 
-                    if (alias.toLowerCase().contains(truthEntity.toLowerCase())) {
+                    if (alias != null &&
+                            alias.toLowerCase().contains(truthEntity.toLowerCase())) {
+
                         if (priority < bestPriority) {
                             bestPriority = priority;
                             bestMatches.clear();
@@ -797,14 +799,37 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
                 }
             }
 
+            if (bestMatches.isEmpty()) {
+                return null;
+            }
+
+            // ✅ Step 1: If only one, return directly
             if (bestMatches.size() == 1) {
                 return bestMatches.get(0);
             }
 
-            // Tie on priority → highest score
-            return bestMatches.stream()
-                    .max(Comparator.comparingDouble(
-                            i -> Optional.ofNullable(i.getScore()).orElse(0L)))
+            // ✅ Step 2: Select minimum paperNo
+            int minPaperNo = bestMatches.stream()
+                    .map(MultiEntityFieldHandlingInput::getPaperNo)
+                    .filter(Objects::nonNull)
+                    .min(Integer::compareTo)
+                    .orElse(Integer.MAX_VALUE);
+
+            List<MultiEntityFieldHandlingInput> paperFiltered =
+                    bestMatches.stream()
+                            .filter(i -> Objects.equals(i.getPaperNo(), minPaperNo))
+                            .collect(Collectors.toList());
+
+            if (paperFiltered.size() == 1) {
+                return paperFiltered.get(0);
+            }
+
+            // ✅ Step 3: Resolve by sor Container Instance (MEMBER_0, MEMBER_1...)
+            // Pick the smallest MEMBER index having non-empty sorItem
+
+            return paperFiltered.stream()
+                    .filter(this::hasNonEmptySorItem)
+                    .min(Comparator.comparingInt(this::extractMemberIndex))
                     .orElse(null);
 
         } catch (Exception e) {
@@ -812,6 +837,26 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
             return null;
         }
     }
+
+    private int extractMemberIndex(MultiEntityFieldHandlingInput item) {
+        String container = item.getSorContainerInstance(); // e.g. MEMBER_2
+
+        if (container == null) {
+            return Integer.MAX_VALUE;
+        }
+
+        try {
+            return Integer.parseInt(container.replaceAll("\\D+", ""));
+        } catch (Exception e) {
+            return Integer.MAX_VALUE;
+        }
+    }
+
+    private boolean hasNonEmptySorItem(MultiEntityFieldHandlingInput item) {
+        return  item.getAnswer() != null
+                && !item.getAnswer().trim().isEmpty();
+    }
+
 
     private void preprocessBySorItemAnswer(
             List<MultiEntityFieldHandlingInput> list, List<MultiEntityFieldHandlingInput> consolidatedOutputs) {
