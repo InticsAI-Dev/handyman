@@ -59,12 +59,12 @@ public class TableExtractionAction implements IActionExecution {
 
             final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(tableExtraction.getResourceConn());
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
-            final String outputDir = Optional.ofNullable(tableExtraction.getOutputDir()).map(String::valueOf).orElse(null);
-            log.info(aMarker, "Table Extraction Action output directory {}", outputDir);
-            //5. build insert prepare statement with output table columns
+
+            //5. build insert prepare statement with output table columns (page-level results)
             final String insertQuery = "INSERT INTO " + tableExtraction.getResultTable() +
-                    "(origin_id,group_id,tenant_id,template_id,processed_file_path,paper_no, status,stage,message,created_on,process_id,root_pipeline_id,table_response, bboxes, croppedImage, model_name,batch_id) " +
-                    " VALUES(?,?, ?,?, ?,?, ?,?,?,? ,?,  ?, ? , ?, ?,   ?,?)";
+                    "(origin_id, tenant_id, table_group_id, page_number, markdown_table, status, model_name, " +
+                    "error_message, duration_time, batch_id, process_id, created_on) " +
+                    " VALUES(?,?,?,?,?,?,?,?,?,?,?,?)";
             log.info(aMarker, "table extraction Insert query {}", insertQuery);
 
             //3. initiate copro processor and copro urls
@@ -91,7 +91,7 @@ public class TableExtractionAction implements IActionExecution {
             coproProcessor.startProducer(tableExtraction.getQuerySet(), Integer.valueOf(action.getContext().get(DB_SELECT_READ_BATCH_SIZE)));
             log.info(aMarker, "table extraction copro coproProcessor startProducer called read batch size {}", action.getContext().get(DB_SELECT_READ_BATCH_SIZE));
             Thread.sleep(1000);
-            coproProcessor.startConsumer(insertQuery, Integer.valueOf(action.getContext().get("table.extraction.consumer.API.count")), Integer.valueOf(action.getContext().get(DB_INSERT_WRITE_BATCH_SIZE)), new TableExtractionConsumerProcess(log, aMarker, outputDir, action));
+            coproProcessor.startConsumer(insertQuery, Integer.valueOf(action.getContext().get("table.extraction.consumer.API.count")), Integer.valueOf(action.getContext().get(DB_INSERT_WRITE_BATCH_SIZE)), new TableExtractionConsumerProcess(log, aMarker, action));
             log.info(aMarker, "table extraction copro coproProcessor startConsumer called consumer count {} write batch count {} ", Integer.valueOf(action.getContext().get("table.extraction.consumer.API.count")), Integer.valueOf(action.getContext().get(DB_INSERT_WRITE_BATCH_SIZE)));
 
 
