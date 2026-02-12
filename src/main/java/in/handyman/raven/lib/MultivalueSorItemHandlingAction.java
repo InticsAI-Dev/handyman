@@ -327,13 +327,17 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
         log.info(aMarker, "Processing {} simple single-value items/indicators.", inputList.size());
 
         int processedCount = 0;
-        if (inputList.size()>1){
+        if (inputList.size() > 1) {
             log.info(aMarker, "Multiple records found for single-value items. Applying section alias or fallback filtering.");
 
             handleSingleValueEmptyAnswer(inputList, consolidatedInputs);
-        }else if (inputList.size()==1){
+        } else if (inputList.size() == 1) {
             log.info(aMarker, "Single record found for single-value items. Directly adding to consolidated inputs.");
             consolidatedInputs.addAll(inputList);
+            // Single node selected – record selection details in message
+            inputList.forEach(item ->
+                    updateFilterMessage(item,
+                            "Selected as the only candidate for single-value SorItem."));
             processedCount = inputList.size();
         }
         return processedCount;
@@ -369,13 +373,19 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
         // Case 1: all answers are empty → return one node
         if (nonEmptyAnswerNodes.isEmpty()) {
             log.info(aMarker, "All items have empty answers. Selecting the first item as representative.");
-            consolidatedInputs.add(inputList.get(0));
+            MultiEntityFieldHandlingInput representative = inputList.get(0);
+            consolidatedInputs.add(representative);
+            updateFilterMessage(representative,
+                    "Selected as representative node when all competing answers were empty.");
         }
 
         // Case 2: exactly one node has answers → return that node
         if (nonEmptyAnswerNodes.size() == 1) {
             log.info(aMarker, "Exactly one item has a non-empty answer. Selecting that item.");
             consolidatedInputs.addAll(nonEmptyAnswerNodes);
+            nonEmptyAnswerNodes.forEach(item ->
+                    updateFilterMessage(item,
+                            "Selected as the only node with non-empty answer within competing group."));
         }
 
         if (nonEmptyAnswerNodes.size() > 1) {
@@ -386,7 +396,11 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
             MultiEntityFieldHandlingInput resolved =
                     resolveBySectionAliasOrAnswerFallback(nonEmptyAnswerNodes, uniqueSectionAliases);
 
-            consolidatedInputs.add(resolved);
+            if (resolved != null) {
+                consolidatedInputs.add(resolved);
+                updateFilterMessage(resolved,
+                        "Selected after resolving multiple non-empty answers via alias/answer/score rules.");
+            }
         }
 
 
@@ -414,7 +428,9 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
                         item.getSorItemName(), values.length, item.getDocumentId(), item.getGroupId(), item.getBatchId());
 
                 item.setRemovedAfterFiltering(true);
-                item.setMessage(String.format("Split and removed due to multiple values (%s). Individual values will be processed.", item.getSorItemName()));
+                updateFilterMessage(item,
+                        String.format("Split and removed due to multiple values (%s). Individual values will be processed.",
+                                item.getSorItemName()));
 
                 int splitCount = 0;
                 for (String singleValue : values) {
@@ -423,7 +439,8 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
                         MultiEntityFieldHandlingInput newItem = cloneInputItem(item);
                         newItem.setAnswer(trimmedValue);
                         newItem.setRemovedAfterFiltering(false);
-                        newItem.setMessage(String.format("Normalized from a multi-value. Original item: %s", item.getSorItemName()));
+                        updateFilterMessage(newItem,
+                                String.format("Normalized from a multi-value. Original item: %s", item.getSorItemName()));
                         normalizedList.add(newItem);
                         splitCount++;
                         totalSplits++;
@@ -456,9 +473,10 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
             if (uniqueKeys.add(key)) {
                 uniquesRetained++;
                 item.setRemovedAfterFiltering(false);
-                item.setMessage(item.getMessage() != null ?
-                        item.getMessage().startsWith("Normalized") ? item.getMessage() + " Retained as unique." : "Retained as a unique multi_value item."
-                        : "Retained as a unique multi_value item.");
+                String baseReason = item.getMessage() != null && item.getMessage().startsWith("Normalized")
+                        ? item.getMessage() + " Retained as unique."
+                        : "Retained as a unique multi_value item.";
+                updateFilterMessage(item, baseReason);
                 finalOutput.add(item);
 
                 log.debug(aMarker, "Retained unique item - SorItemName: {}, Score: {}, DocumentId: {}, GroupId: {}, BatchId: {}",
@@ -466,7 +484,8 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
             } else {
                 duplicatesFound++;
                 item.setRemovedAfterFiltering(true);
-                item.setMessage("Removed as a duplicate multi_value item (same value/score found in another page/instance).");
+                updateFilterMessage(item,
+                        "Removed as a duplicate multi_value item (same value/score found in another page/instance).");
                 finalOutput.add(item);
 
                 log.debug(aMarker, "Removed duplicate - SorItemName: {}, DocumentId: {}, GroupId: {}, BatchId: {}",
@@ -502,7 +521,9 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
                         item.getSorItemName(), values.length, item.getDocumentId(), item.getGroupId(), item.getBatchId());
 
                 item.setRemovedAfterFiltering(true);
-                item.setMessage(String.format("Split and removed due to multiple values (%s). Individual values will be processed.", item.getSorItemName()));
+                updateFilterMessage(item,
+                        String.format("Split and removed due to multiple values (%s). Individual values will be processed.",
+                                item.getSorItemName()));
 
                 int splitCount = 0;
                 for (String singleValue : values) {
@@ -511,7 +532,8 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
                         MultiEntityFieldHandlingInput newItem = cloneInputItem(item);
                         newItem.setAnswer(trimmedValue);
                         newItem.setRemovedAfterFiltering(false);
-                        newItem.setMessage(String.format("Normalized from a multi-value. Original item: %s", item.getSorItemName()));
+                        updateFilterMessage(newItem,
+                                String.format("Normalized from a multi-value. Original item: %s", item.getSorItemName()));
                         normalizedList.add(newItem);
                         splitCount++;
                         totalSplits++;
@@ -544,9 +566,10 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
             if (uniqueKeys.add(key)) {
                 uniquesRetained++;
                 item.setRemovedAfterFiltering(false);
-                item.setMessage(item.getMessage() != null ?
-                        item.getMessage().startsWith("Normalized") ? item.getMessage() + " Retained as unique." : "Retained as a unique multi_value item."
-                        : "Retained as a unique multi_value item.");
+                String baseReason = item.getMessage() != null && item.getMessage().startsWith("Normalized")
+                        ? item.getMessage() + " Retained as unique."
+                        : "Retained as a unique multi_value item.";
+                updateFilterMessage(item, baseReason);
                 finalOutput.add(item);
 
                 log.debug(aMarker, "Retained unique item - SorItemName: {}, Score: {}, DocumentId: {}, GroupId: {}, BatchId: {}",
@@ -554,7 +577,8 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
             } else {
                 duplicatesFound++;
                 item.setRemovedAfterFiltering(true);
-                item.setMessage("Removed as a duplicate multi_value item (same value/score found in another page/instance).");
+                updateFilterMessage(item,
+                        "Removed as a duplicate multi_value item (same value/score found in another page/instance).");
                 finalOutput.add(item);
 
                 log.debug(aMarker, "Removed duplicate - SorItemName: {}, DocumentId: {}, GroupId: {}, BatchId: {}",
@@ -711,6 +735,8 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
 
             if (priorityWinner != null) {
                 log.info(aMarker, "Resolved using SectionAlias priority");
+                updateFilterMessage(priorityWinner,
+                        "Selected by section alias priority within competing nodes.");
                 return priorityWinner;
             }
         }
@@ -736,8 +762,11 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
                         .collect(Collectors.toList());
 
         if (freqWinners.size() == 1) {
+            MultiEntityFieldHandlingInput winner = freqWinners.get(0);
             log.info(aMarker, "Resolved using highest occurring answer");
-            return freqWinners.get(0);
+            updateFilterMessage(winner,
+                    "Selected by highest occurring answer within competing nodes.");
+            return winner;
         }
 
         // 4️⃣ Highest score fallback
@@ -749,12 +778,17 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
 
         if (scoreWinner != null) {
             log.info(aMarker, "Resolved using highest score");
+            updateFilterMessage(scoreWinner,
+                    "Selected by highest score within competing nodes.");
             return scoreWinner;
         }
 
         // 5️⃣ Absolute deterministic fallback
         log.warn(aMarker, "Multiple ties remain, falling back to first deterministic node");
-        return inputs.get(0);
+        MultiEntityFieldHandlingInput fallback = inputs.get(0);
+        updateFilterMessage(fallback,
+                "Selected as deterministic first node after all tie-breaking strategies.");
+        return fallback;
     }
 
 
@@ -881,9 +915,15 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
 
             // If non-empty exists → discard empties
             if (!nonEmpty.isEmpty()) {
+                nonEmpty.forEach(item ->
+                        updateFilterMessage(item,
+                                "Preprocessed by sorItem answer: retained node with non-empty answer."));
                 result.addAll(nonEmpty);
             } else {
-                // All empty → keep as-is
+                // All empty → keep as-is, but still record that they were passed through
+                nodes.forEach(item ->
+                        updateFilterMessage(item,
+                                "Preprocessed by sorItem answer: all answers empty, node passed through unfiltered."));
                 result.addAll(nodes);
             }
         }
@@ -1247,7 +1287,7 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
                     ? (merged ? "Retained as winner in cross-page merge." : "Retained by instance prioritization.")
                     : "Merged from connected instance: " + item.getSorContainerInstance();
 
-            item.setMessage(appendMessage(item.getMessage(), msg));
+            updateFilterMessage(item, msg);
 
             if (!output.contains(item)) {
                 output.add(item);
@@ -1316,6 +1356,41 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
         return oldMsg == null || oldMsg.isEmpty() ? newMsg : oldMsg + " | " + newMsg;
     }
 
+    /**
+     * Builds a standardized filter message that captures how a node was selected / filtered /
+     * prioritised along with key dimensional information.
+     */
+    private String buildFilterContextMessage(MultiEntityFieldHandlingInput item, String reason) {
+        String lineItemType = safeValue(item.getLineItemType());
+        String sorItemName = safeValue(item.getSorItemName());
+        String originId = safeValue(item.getOriginId());
+        String containerInstance = safeValue(item.getSorContainerInstance());
+
+        return String.format(
+                "%s [FilterContext: lineItemType=%s, sorItemName=%s, originId=%s, containerInstance=%s]",
+                reason,
+                lineItemType,
+                sorItemName,
+                originId,
+                containerInstance
+        );
+    }
+
+    /**
+     * Appends a filter decision message to an item, preserving any existing message content.
+     */
+    private void updateFilterMessage(MultiEntityFieldHandlingInput item, String reason) {
+        String contextualMessage = buildFilterContextMessage(item, reason);
+        String updatedMessage = appendMessage(item.getMessage(), contextualMessage);
+        item.setMessage(updatedMessage);
+
+        log.debug(aMarker, "Filter decision recorded for node - {}", contextualMessage);
+    }
+
+    private String safeValue(String value) {
+        return (value == null || value.isEmpty()) ? "N/A" : value;
+    }
+
     private MultiEntityFieldHandlingInput applyWhitelistPriorityFilter(
             List<MultiEntityFieldHandlingInput> competingInputs,
             Marker aMarker,
@@ -1327,9 +1402,10 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
 
         if (competingInputs.size() <= 1) {
             if (!competingInputs.isEmpty()) {
-                competingInputs.get(0).setRemovedAfterFiltering(false);
-                competingInputs.get(0).setMessage("Retained as only one candidate found.");
-                log.debug(aMarker, "Single candidate - Auto-retained: {}", competingInputs.get(0).getSorItemName());
+                MultiEntityFieldHandlingInput single = competingInputs.get(0);
+                single.setRemovedAfterFiltering(false);
+                updateFilterMessage(single, "Retained as only one candidate found in whitelist priority evaluation.");
+                log.debug(aMarker, "Single candidate - Auto-retained: {}", single.getSorItemName());
             }
             return competingInputs.isEmpty() ? null : competingInputs.get(0);
         }
@@ -1351,13 +1427,15 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
                             .filter(item -> item != maxScoreItem)
                             .forEach(item -> {
                                 item.setRemovedAfterFiltering(true);
-                                item.setMessage("Removed by max score fallback (No whitelist config).");
+                                updateFilterMessage(item,
+                                        "Removed by max score fallback (No whitelist config).");
                                 log.debug(aMarker, "Removed by max score - SorItemName: {}, Score: {}",
                                         item.getSorItemName(), item.getScore());
                             });
 
                     maxScoreItem.setRemovedAfterFiltering(false);
-                    maxScoreItem.setMessage("Retained by max score fallback (No whitelist config).");
+                    updateFilterMessage(maxScoreItem,
+                            "Retained by max score fallback (No whitelist config).");
                 }
                 return maxScoreItem;
             }
@@ -1392,15 +1470,17 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
 
             if (bestMatch != null) {
                 bestMatch.setRemovedAfterFiltering(false);
-                bestMatch.setMessage("Retained by Section Alias Priority: " + bestMatch.getSectionAlias());
+                updateFilterMessage(bestMatch,
+                        "Retained by Section Alias Priority: " + bestMatch.getSectionAlias());
 
                 MultiEntityFieldHandlingInput finalBestMatch = bestMatch;
                 competingInputs.stream()
                         .filter(item -> item != finalBestMatch)
                         .forEach(item -> {
                             item.setRemovedAfterFiltering(true);
-                            item.setMessage("Removed by lower Section Alias Priority. Retained alias: "
-                                    + finalBestMatch.getSectionAlias());
+                            updateFilterMessage(item,
+                                    "Removed by lower Section Alias Priority. Retained alias: "
+                                            + finalBestMatch.getSectionAlias());
                             log.debug(aMarker, "Removed by priority - SorItemName: {}, SectionAlias: {}",
                                     item.getSorItemName(), item.getSectionAlias());
                         });
@@ -1415,14 +1495,16 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
                         .get();
 
                 maxScoreItem.setRemovedAfterFiltering(false);
-                maxScoreItem.setMessage("Retained by max score fallback (Alias did not match whitelist).");
+                updateFilterMessage(maxScoreItem,
+                        "Retained by max score fallback (Alias did not match whitelist).");
 
                 competingInputs.stream()
                         .filter(item -> item != maxScoreItem)
                         .forEach(item -> {
                             item.setRemovedAfterFiltering(true);
-                            item.setMessage("Removed by max score fallback (Alias did not match whitelist). Retained score: "
-                                    + maxScoreItem.getScore());
+                            updateFilterMessage(item,
+                                    "Removed by max score fallback (Alias did not match whitelist). Retained score: "
+                                            + maxScoreItem.getScore());
                         });
 
                 log.debug(aMarker, "====== WHITELIST PRIORITY FILTER COMPLETED - FALLBACK USED ======");
@@ -1504,7 +1586,12 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
                             "Selected group - Container: {}, GroupSize: {}",
                             containerName, size);
 
-                    output.addAll(g.getValue());
+                    for (MultiEntityFieldHandlingInput item : g.getValue()) {
+                        updateFilterMessage(item,
+                                String.format("Selected in max-count group for container %s with group size %d.",
+                                        containerName, size));
+                        output.add(item);
+                    }
                 }
 
             }
