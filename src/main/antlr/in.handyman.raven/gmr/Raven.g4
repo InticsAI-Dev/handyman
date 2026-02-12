@@ -196,6 +196,7 @@ action:
     |sectionFiltering
     |multivalueSorItemHandling
     |sectionFilteringAfterGrouping
+    |checkboxExtraction
     );
 
 
@@ -1022,6 +1023,17 @@ productResponse:
 
 tableExtraction:
 	'tableExtraction' 'as' name=STRING
+	'extraction-url' endpoint=STRING
+	'outputDir' outputDir=STRING
+	'result-table' resultTable=STRING
+	'processId' processId=STRING
+	'resource-conn' resourceConn=STRING
+	'using' '{'
+		querySet=STRING
+	'}' ('on-condition' condition=expression)* ;
+
+checkboxExtraction:
+	'checkboxExtraction' 'as' name=STRING
 	'extraction-url' endpoint=STRING
 	'outputDir' outputDir=STRING
 	'result-table' resultTable=STRING
