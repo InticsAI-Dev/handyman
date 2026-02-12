@@ -29,4 +29,6 @@ public class CheckboxQueryInputTable {
     private String sorMetaDetail;
     private Long sorContainerId;
     private String sorItemLabel;
+    private String sorItemName;
+    private String checkboxKeywords;
 }

@@ -48,8 +48,8 @@ public class CheckboxJsonParserAction implements IActionExecution {
   public static final String INSERT_INTO = "INSERT INTO ";
   public static final String INSERT_INTO_VALUES_UPDATED = "VALUES(    ?::timestamp,?,?,?,?,?," +
       "    ?,?,?::jsonb,?,?,?,?,?,?," +
-      "    ?,?,?,?,?,?,?,?,?,?" +
-      ",?::boolean,?)";
+      "    ?,?,?,?,?,?,?,?,?::boolean,?," +
+      "    ?::boolean,?)";
 
   public static final String INSERT_COLUMNS_UPDATED = "created_on, tenant_id, created_user_id, last_updated_on, last_updated_user_id,confidence, "
       +
