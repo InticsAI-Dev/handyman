@@ -99,6 +99,13 @@ public interface HandymanRepo {
 
     List<ActionExecutionAudit> findAllActionsByPipelineIdAndExecutionStatusId(final Long pipelineId, final Integer statusId);
 
+    /**
+     * Check if any failed actions exist for a given root pipeline
+     * @param rootPipelineId The root pipeline ID to check
+     * @return true if any actions with execution_status_id = 4 (FAILED) exist, false otherwise
+     */
+    boolean hasFailedActions(final Long rootPipelineId);
+
     List<ActionExecutionAudit> findActionByRootPipelineIdAndActionName(final Long rootPipelineId, final String actionName);
 
     ActionExecutionAudit findActionByActionId(final Long actionId);

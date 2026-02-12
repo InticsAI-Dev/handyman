@@ -309,6 +309,21 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
     }
 
     @Override
+    public boolean hasFailedActions(final Long rootPipelineId) {
+        checkJDBIConnection();
+        return JDBI.withHandle(handle -> {
+            // Query action_execution_status_audit table for failed actions (execution_status_id = 4)
+            Integer count = handle.createQuery(
+                    "SELECT COUNT(*) FROM " + DoaConstant.AUDIT_SCHEMA_NAME + "." + DoaConstant.AESA_TABLE_NAME +
+                    " WHERE root_pipeline_id = :rootPipelineId AND execution_status_id = 4")
+                    .bind("rootPipelineId", rootPipelineId)
+                    .mapTo(Integer.class)
+                    .one();
+            return count != null && count > 0;
+        });
+    }
+
+    @Override
     public void insertStatement(final StatementExecutionAudit audit) {
         checkJDBIConnection();
         audit.setLastModifiedDate(LocalDateTime.now());
