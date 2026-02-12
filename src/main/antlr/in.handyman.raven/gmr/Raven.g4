@@ -109,7 +109,6 @@ action:
     |dataExtraction
     |deepSift
     |deepSiftSearch
-    |blankPageDetection
     |assetInfo
     |episodeOfCoverage
     |userRegistration
@@ -175,7 +174,6 @@ action:
     |neonKvp
     |radonKvp
     |llmJsonParser
-    |checkboxJsonParser
     |radonKvpBbox
     |dockerInspect
     |kafkaPublish
