@@ -275,9 +275,15 @@ public class CoproRetryService {
                     retryAuditMetricSetter(root, mapper, retryAudit);
                 }
 
+                String CriticalDataPersistence = action.getContext().get("critical.data.cleanup.activator");
 
-                retryAudit.setResponse(encryptRequestResponse(peekResponseBody, action));
-
+                if ("false".equalsIgnoreCase(CriticalDataPersistence)) {
+                    log.info("Critical data cleanup is enabled, not storing request and response for copro service id {} ",retryAudit.getCoproServiceId());
+                    retryAudit.setResponse(null);
+                }else {
+                    log.info("Critical data cleanup is disabled, storing request and response for copro service id {} ",retryAudit.getCoproServiceId());
+                    retryAudit.setResponse(encryptRequestResponse(peekResponseBody, action));
+                }
             } catch (Exception ex) {
                 HandymanException handymanException = new HandymanException(ex);
                 HandymanException.insertException("Error in execute method for Copro retry service", handymanException, action);
