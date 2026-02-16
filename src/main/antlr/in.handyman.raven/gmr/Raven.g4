@@ -193,6 +193,7 @@ action:
     |ocrTextComparator
     |sectionFiltering
     |documentWisePostProcessing
+    |customResponse
     );
 
 
@@ -1008,6 +1009,15 @@ productResponse:
      querySet=STRING
     '}'('on-condition' condition=expression)*;
 
+customResponse:
+    'customResponse' 'as' name=STRING
+    'tenantId' tenantId=STRING
+    'auth-token' token=STRING
+    'result-table' resultTable=STRING
+    'on-resource-conn' resourceConn=STRING
+    'using'  '{'
+     querySet=STRING
+    '}'('on-condition' condition=expression)*;
 
 tableExtraction:
 	'tableExtraction' 'as' name=STRING
