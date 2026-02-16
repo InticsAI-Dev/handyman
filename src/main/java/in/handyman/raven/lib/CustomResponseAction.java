@@ -1,17 +1,37 @@
 package in.handyman.raven.lib;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import in.handyman.raven.exception.HandymanException;
+import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import in.handyman.raven.lib.custom.outbound.dao.PredictionDTO;
+import in.handyman.raven.lib.custom.outbound.mapper.MedicalPayloadGeneration;
+import in.handyman.raven.lib.custom.outbound.model.MedicalOutboundResponse;
 import in.handyman.raven.lib.model.CustomResponse;
 import java.lang.Exception;
 import java.lang.Object;
 import java.lang.Override;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
+import in.handyman.raven.util.CommonQueryUtil;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.core.result.ResultIterable;
+import org.jdbi.v3.core.statement.PreparedBatch;
+import org.jdbi.v3.core.statement.Query;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
@@ -41,6 +61,138 @@ public class CustomResponseAction implements IActionExecution {
 
   @Override
   public void execute() throws Exception {
+    try {
+      final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(customResponse.getResourceConn());
+
+      List<PredictionDTO> multivalueConcatenationInputs = new ArrayList<>();
+      List<CustomResponseAction.CustomResponseOutputTable> customResponseOutputTables = new ArrayList<>();
+
+
+      jdbi.useTransaction(handle -> {
+        final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(customResponse.getQuerySet());
+        AtomicInteger i = new AtomicInteger(0);
+        for (String sqlToExecute : formattedQuery) {
+          log.info(aMarker, "executing  query {} from index {}", sqlToExecute, i.getAndIncrement());
+          Query query = handle.createQuery(sqlToExecute);
+          ResultIterable<PredictionDTO> resultIterable = query.mapToBean(PredictionDTO.class);
+          List<PredictionDTO> processingExecutorInputs = resultIterable.stream().collect(Collectors.toList());
+          multivalueConcatenationInputs.addAll(processingExecutorInputs);
+          log.info(aMarker, "executed query from index {}", i.get());
+        }
+      });
+
+      log.info("Product Response generation action total rows returned from the query {}", multivalueConcatenationInputs.size());
+
+      MedicalPayloadGeneration medicalPayloadGeneration = new MedicalPayloadGeneration(log);
+      //group the PredictionDTO list by origin id
+      Map<String, List<PredictionDTO>> groupedByOriginId = multivalueConcatenationInputs.stream()
+              .collect(Collectors.groupingBy(PredictionDTO::getOriginId));
+      ObjectMapper objectMapper = JsonMapper.builder()
+              .addModule(new JavaTimeModule())
+              .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+              .build();
+
+      groupedByOriginId.forEach((originId, predictionDTOList) -> {
+        if(!predictionDTOList.isEmpty()){
+          String metadata = predictionDTOList.get(0).getMetadataJson();
+          Long groupId = predictionDTOList.get(0).getGroupId();
+          Long tenantId = predictionDTOList.get(0).getTenantId();
+          String batchId = predictionDTOList.get(0).getBatchId();
+          String rootPipelineId = predictionDTOList.get(0).getRootPipelineId();
+
+          try {
+            MedicalOutboundResponse medicalOutboundResponse=medicalPayloadGeneration.buildMedicalOutboundResponse(predictionDTOList,action.getContext(),metadata);
+
+
+            String productResponseStr = objectMapper.writeValueAsString(medicalOutboundResponse);
+            customResponseOutputTables.add(CustomResponseOutputTable.builder()
+                    .processId(Integer.valueOf(rootPipelineId))
+                    .groupId(groupId)
+                    .customResponse(productResponseStr)
+                    .originId(originId)
+                    .tenantId(tenantId)
+                    .rootPipelineId(Long.valueOf(rootPipelineId))
+                    .status("COMPLETED")
+                    .stage("Product Response Generation")
+                    .message("Product Response generated successfully")
+                    .triggeredUrl("")
+                    .feature("Product")
+                    .batchId(batchId)
+                    .inboundTransactionId(medicalOutboundResponse.getInboundTransactionId())
+                    .createdOn(LocalDateTime.now())
+                    .lastUpdatedOn(LocalDateTime.now())
+                    .build());
+          } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+          }
+
+        }
+
+      });
+
+      executeBatchInsert(jdbi, customResponseOutputTables);
+      log.info(aMarker, "Product Response generation Action has been completed {}  ", customResponse.getName());
+
+    } catch (Exception e) {
+      action.getContext().put(customResponse.getName() + ".isSuccessful", "false");
+      log.error(aMarker, "Error in execute method for Multi value concatenation ", e);
+      HandymanException handymanException = new HandymanException(e);
+      HandymanException.insertException("Multi value concatenation failed ", handymanException, action);
+    }
+
+  }
+
+  private void executeBatchInsert(Jdbi jdbi, List<CustomResponseAction.CustomResponseOutputTable> rows) {
+
+    if (rows == null || rows.isEmpty()) {
+      log.warn(aMarker, "No rows to insert into {}", customResponse.getResultTable());
+      return;
+    }
+
+    final String insertQuery =
+            "INSERT INTO " + customResponse.getResultTable() +
+                    " (process_id, group_id, origin_id, custom_response, tenant_id, root_pipeline_id, " +
+                    " status, stage, message, feature, triggered_url, batch_id, inbound_transaction_id, " +
+                    " created_on, last_updated_on) " +
+                    " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+    jdbi.useTransaction(handle -> {
+      try (PreparedBatch batch = handle.prepareBatch(insertQuery)) {
+
+        for (CustomResponseAction.CustomResponseOutputTable row : rows) {
+          batch
+                  .bind(0, row.getProcessId())
+                  .bind(1, row.getGroupId())
+                  .bind(2, row.getOriginId())
+                  .bind(3, row.getCustomResponse())   // TEXT / JSON / JSONB safe
+                  .bind(4, row.getTenantId())
+                  .bind(5, row.getRootPipelineId())
+                  .bind(6, row.getStatus())
+                  .bind(7, row.getStage())
+                  .bind(8, row.getMessage())
+                  .bind(9, row.getFeature())
+                  .bind(10, row.getTriggeredUrl())
+                  .bind(11, row.getBatchId())
+                  .bind(12, row.getInboundTransactionId())
+                  .bind(13, row.getCreatedOn())
+                  .bind(14, row.getLastUpdatedOn())
+                  .add();
+        }
+
+        int[] counts = batch.execute();
+        log.info(
+                aMarker,
+                "Batch inserted {} records into {}",
+                counts.length,
+                customResponse.getResultTable()
+        );
+
+      } catch (Exception e) {
+        log.error(aMarker, "Batch insert failed for {}", customResponse.getResultTable(), e);
+        HandymanException handymanException = new HandymanException(e);
+        HandymanException.insertException("Batch insert failed for " + customResponse.getResultTable(), handymanException, action);
+      }
+    });
   }
 
   @Override
