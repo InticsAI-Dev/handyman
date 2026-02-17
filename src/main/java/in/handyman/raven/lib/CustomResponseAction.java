@@ -81,7 +81,7 @@ public class CustomResponseAction implements IActionExecution {
         }
       });
 
-      log.info("Product Response generation action total rows returned from the query {}", multivalueConcatenationInputs.size());
+      log.info("Custom Response generation action total rows returned from the query {}", multivalueConcatenationInputs.size());
 
       MedicalPayloadGeneration medicalPayloadGeneration = new MedicalPayloadGeneration(log);
       //group the PredictionDTO list by origin id
@@ -104,19 +104,19 @@ public class CustomResponseAction implements IActionExecution {
             MedicalOutboundResponse medicalOutboundResponse=medicalPayloadGeneration.buildMedicalOutboundResponse(predictionDTOList,action.getContext(),metadata);
 
 
-            String productResponseStr = objectMapper.writeValueAsString(medicalOutboundResponse);
+            String customResponseStr = objectMapper.writeValueAsString(medicalOutboundResponse);
             customResponseOutputTables.add(CustomResponseOutputTable.builder()
                     .processId(Integer.valueOf(rootPipelineId))
                     .groupId(groupId)
-                    .customResponse(productResponseStr)
+                    .customResponse(customResponseStr)
                     .originId(originId)
                     .tenantId(tenantId)
                     .rootPipelineId(Long.valueOf(rootPipelineId))
                     .status("COMPLETED")
-                    .stage("Product Response Generation")
-                    .message("Product Response generated successfully")
+                    .stage("Custom Response Generation")
+                    .message("Custom Response generated successfully")
                     .triggeredUrl("")
-                    .feature("Product")
+                    .feature("Custom")
                     .batchId(batchId)
                     .inboundTransactionId(medicalOutboundResponse.getInboundTransactionId())
                     .createdOn(LocalDateTime.now())
@@ -131,7 +131,7 @@ public class CustomResponseAction implements IActionExecution {
       });
 
       executeBatchInsert(jdbi, customResponseOutputTables);
-      log.info(aMarker, "Product Response generation Action has been completed {}  ", customResponse.getName());
+      log.info(aMarker, "Custom Response generation Action has been completed {}  ", customResponse.getName());
 
     } catch (Exception e) {
       action.getContext().put(customResponse.getName() + ".isSuccessful", "false");
