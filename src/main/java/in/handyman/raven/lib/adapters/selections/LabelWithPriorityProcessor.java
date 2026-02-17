@@ -12,11 +12,12 @@ import java.util.stream.Collectors;
 public class LabelWithPriorityProcessor {
 
     private final ObjectMapper mapper;
-    private final Logger log;
+    private final Logger logger;
 
     public LabelWithPriorityProcessor(ObjectMapper mapper, Logger log) {
         this.mapper = mapper;
-        this.log = log;
+        this.logger = log;
+        logger.info("LabelWithPriorityProcessor initialized");
     }
 
     /**
@@ -28,17 +29,17 @@ public class LabelWithPriorityProcessor {
      */
     public List<AggregationEvaluatorInputModel> process(List<AggregationEvaluatorInputModel> input) {
         if (input == null || input.isEmpty()) {
-            log.info("LabelWithPriorityProcessor: Input is empty.");
+            logger.info("LabelWithPriorityProcessor: Input is empty.");
             return Collections.emptyList();
         }
 
-        log.info("LabelWithPriorityProcessor: Processing {} input records.", input.size());
+        logger.info("LabelWithPriorityProcessor: Processing {} input records.", input.size());
 
         // Group by originId + sorItemName
         Map<String, List<AggregationEvaluatorInputModel>> groupedOriginWithItems = input.stream()
                 .collect(Collectors.groupingBy(r -> String.format("%s|%s", r.getOriginId(), r.getSorItemName())));
 
-        log.info("LabelWithPriorityProcessor: Created {} groups.", groupedOriginWithItems.size());
+        logger.info("LabelWithPriorityProcessor: Created {} groups.", groupedOriginWithItems.size());
 
         List<AggregationEvaluatorInputModel> result = new ArrayList<>();
 
@@ -58,14 +59,14 @@ public class LabelWithPriorityProcessor {
     }
 
     private AggregationEvaluatorInputModel processGroup(List<AggregationEvaluatorInputModel> group, String contextKey) {
-        log.info("[{}] Processing group with {} records.", contextKey, group.size());
+        logger.info("[{}] Processing group with {} records.", contextKey, group.size());
 
         // 1. Single value check
         if (group.size() == 1) {
             AggregationEvaluatorInputModel row = group.get(0);
             row.setLabelMatching(true);
             row.setLabelMatchMessage(appendMsg(row, "Single row → selected"));
-            log.info("[{}] Single row group. Selected ID: {}", contextKey, row.getId());
+            logger.info("[{}] Single row group. Selected ID: {}", contextKey, row.getId());
             return row;
         }
 
@@ -87,7 +88,7 @@ public class LabelWithPriorityProcessor {
                 r.setLabelMatching(false);
                 r.setLabelMatchMessage(appendMsg(r, "All answers empty → rejected"));
             });
-            log.info("[{}] All answers empty. Selected Fallback ID: {}", contextKey, winner.getId());
+            logger.info("[{}] All answers empty. Selected Fallback ID: {}", contextKey, winner.getId());
             return winner;
         }
 
@@ -95,7 +96,7 @@ public class LabelWithPriorityProcessor {
         boolean hasSectionAlias = nonEmptyAnswers.stream()
                 .anyMatch(r -> r.getSectionAlias() != null && !r.getSectionAlias().isBlank());
 
-        log.info("[{}] Branch Decision: hasSectionAlias={} (checked {} candidates)", contextKey, hasSectionAlias,
+        logger.info("[{}] Branch Decision: hasSectionAlias={} (checked {} candidates)", contextKey, hasSectionAlias,
                 nonEmptyAnswers.size());
 
         AggregationEvaluatorInputModel winner;
@@ -111,10 +112,10 @@ public class LabelWithPriorityProcessor {
     // --- CASE A: Section Priority Logic ---
     private AggregationEvaluatorInputModel filterBySectionPriority(List<AggregationEvaluatorInputModel> candidates,
             List<AggregationEvaluatorInputModel> allGroupRows, String contextKey) {
-        log.info("[{}] Executing Section Priority Logic. Candidates: {}", contextKey, candidates.size());
+        logger.info("[{}] Executing Section Priority Logic. Candidates: {}", contextKey, candidates.size());
 
         List<WhitelistLabelPriority> priorityRules = extractPriorityList(allGroupRows);
-        log.info("[{}] Found {} priority rules.", contextKey, priorityRules.size());
+        logger.info("[{}] Found {} priority rules.", contextKey, priorityRules.size());
 
         if (!priorityRules.isEmpty()) {
             // Find min priority value across CURRENT candidates using SECTION ALIAS
@@ -130,7 +131,7 @@ public class LabelWithPriorityProcessor {
 
             if (minPriority != null) {
                 final int best = minPriority;
-                log.info("[{}] Best Section Priority found: {}", contextKey, best);
+                logger.info("[{}] Best Section Priority found: {}", contextKey, best);
                 List<AggregationEvaluatorInputModel> priorityWinners = candidates.stream()
                         .filter(r -> {
                             Integer p = getSectionPriority(r, priorityRules);
@@ -140,13 +141,13 @@ public class LabelWithPriorityProcessor {
 
                 if (!priorityWinners.isEmpty()) {
                     candidates = priorityWinners;
-                    log.info("[{}] Filtered to {} candidates by priority.", contextKey, candidates.size());
+                    logger.info("[{}] Filtered to {} candidates by priority.", contextKey, candidates.size());
                 }
             } else {
-                log.info("[{}] No matching Section Priority found for candidates.", contextKey);
+                logger.info("[{}] No matching Section Priority found for candidates.", contextKey);
             }
         } else {
-            log.info("[{}] No priority rules configured.", contextKey);
+            logger.info("[{}] No priority rules configured.", contextKey);
         }
 
         // Fallback
@@ -156,7 +157,7 @@ public class LabelWithPriorityProcessor {
     // --- CASE B: Voting / Consensus Logic ---
     private AggregationEvaluatorInputModel filterByConsensusAndMajority(List<AggregationEvaluatorInputModel> candidates,
             List<AggregationEvaluatorInputModel> allGroupRows, String contextKey) {
-        log.info("[{}] Executing Voting Logic. Candidates: {}", contextKey, candidates.size());
+        logger.info("[{}] Executing Voting Logic. Candidates: {}", contextKey, candidates.size());
 
         // Step 1: Consensus
         boolean consensus = candidates.stream()
@@ -164,7 +165,7 @@ public class LabelWithPriorityProcessor {
                 .distinct()
                 .count() == 1;
 
-        log.info("[{}] Consensus Check: {}", contextKey, consensus);
+        logger.info("[{}] Consensus Check: {}", contextKey, consensus);
 
         if (consensus) {
             // Select min paperNo
@@ -180,7 +181,7 @@ public class LabelWithPriorityProcessor {
 
         if (!containerCounts.isEmpty()) {
             long maxCount = containerCounts.values().stream().max(Long::compare).orElse(0L);
-            log.info("[{}] Container Majority Max Count: {}", contextKey, maxCount);
+            logger.info("[{}] Container Majority Max Count: {}", contextKey, maxCount);
 
             // Filter candidates to those belonging to ANY container with maxCount
             List<AggregationEvaluatorInputModel> majorityCandidates = candidates.stream()
@@ -190,7 +191,7 @@ public class LabelWithPriorityProcessor {
 
             if (!majorityCandidates.isEmpty()) {
                 candidates = majorityCandidates; // Narrow down candidates
-                log.info("[{}] Filtered to {} candidates by Majority.", contextKey, candidates.size());
+                logger.info("[{}] Filtered to {} candidates by Majority.", contextKey, candidates.size());
             }
         }
 
@@ -212,7 +213,7 @@ public class LabelWithPriorityProcessor {
 
             if (minPriority != null) {
                 final int best = minPriority;
-                log.info("[{}] Best Priority (in Voting) found: {}", contextKey, best);
+                logger.info("[{}] Best Priority (in Voting) found: {}", contextKey, best);
                 List<AggregationEvaluatorInputModel> priorityWinners = candidates.stream()
                         .filter(r -> {
                             Integer p = getPriority(r, priorityRules);
@@ -222,7 +223,7 @@ public class LabelWithPriorityProcessor {
 
                 if (!priorityWinners.isEmpty()) {
                     candidates = priorityWinners; // Narrow down further
-                    log.info("[{}] Filtered to {} candidates by Priority (Voting phase).", contextKey,
+                    logger.info("[{}] Filtered to {} candidates by Priority (Voting phase).", contextKey,
                             candidates.size());
                 }
             }
@@ -243,7 +244,7 @@ public class LabelWithPriorityProcessor {
         winner.setLabelMatching(true);
         winner.setLabelMatchMessage(appendMsg(winner, successMsg));
 
-        log.info("[{}] Final Selection - ID: {}, PaperNo: {}, Reason: {}", contextKey, winner.getId(),
+        logger.info("[{}] Final Selection - ID: {}, PaperNo: {}, Reason: {}", contextKey, winner.getId(),
                 winner.getPaperNo(), successMsg);
 
         final AggregationEvaluatorInputModel finalWinner = winner;
