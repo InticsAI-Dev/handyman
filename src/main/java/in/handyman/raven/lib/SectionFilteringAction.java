@@ -83,6 +83,7 @@ public class SectionFilteringAction implements IActionExecution {
       final InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
       jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
       ObjectMapper objectMapper = new ObjectMapper();
+      LabelWithPriorityProcessor LabelWithPriorityProcessor = new LabelWithPriorityProcessor(objectMapper, log);
       List<SelectionFilteringInputTable> updatedTableInfos = new ArrayList<>();
 
       // 1 Fetch data
@@ -101,16 +102,16 @@ public class SectionFilteringAction implements IActionExecution {
       }
       log.info(aMarker, "Decryption completed for fetched records {}", tableInfos.size());
 
-      // 3 Map input to blacklistAdapter fields
+      // 3 Map input to adapter fields
       List<ExtractedField> extractedFields = mapToExtractedFields(tableInfos,objectMapper);
 
       // 4 Pre-filter summary
       log.debug(aMarker, "Pre-filter Extracted Fields count: {}", extractedFields.size());
 
-      // 5 Apply blacklistAdapter-based filtering
-      FieldSelectionAdapter blacklistAdapter = FieldSelectionAdapterFactory.getAdapter("blacklist");
+      // 5 Apply adapter-based filtering
+      FieldSelectionAdapter adapter = FieldSelectionAdapterFactory.getAdapter("blacklist");
       FieldSelectionAdapter whiteListedAdapter = FieldSelectionAdapterFactory.getAdapter("whitelist");
-      List<ExtractedField> filteredExtractedFields = filterExtractedFields(blacklistAdapter, extractedFields, whiteListedAdapter);
+      List<ExtractedField> filteredExtractedFields = filterExtractedFields(adapter, extractedFields, whiteListedAdapter);
 
       // 6 Merge filtered results back into original list
       mergeFilteredResults(tableInfos, filteredExtractedFields);
@@ -122,7 +123,7 @@ public class SectionFilteringAction implements IActionExecution {
           log.info(aMarker, "Label with priority processing disabled count {} ", tableInfos.size());
           updatedTableInfos.addAll(tableInfos);
         }else{
-//           updatedTableInfos.addAll(LabelWithPriorityProcessor.process(tableInfos));
+           updatedTableInfos.addAll(LabelWithPriorityProcessor.process(tableInfos));
           log.info(aMarker, "Label with priority processing completed. Initial count {} and Final count: {} ", tableInfos.size(),updatedTableInfos.size());
       }
 

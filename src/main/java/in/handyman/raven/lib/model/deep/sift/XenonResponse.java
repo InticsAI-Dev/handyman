@@ -71,6 +71,6 @@ public class XenonResponse {
     }
 
     public boolean hasInferResponse() {
-        return inferResponse != null && !inferResponse.trim().isEmpty();
+        return inferResponse != null;
     }
 }

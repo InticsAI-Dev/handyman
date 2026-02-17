@@ -48,12 +48,25 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
                     .build();
         }
 
+        // Extract expected words first to check for single initial case
+        List<String> expectedWords = extractAllWords(expectedValue);
+        logger.debug("Expected words count: {}", expectedWords.size());
+
+        // NEW: Check if expected value is a single initial
+        if (expectedWords.size() == 1 && expectedWords.get(0).length() == 1) {
+            logger.info("Single initial detected. OCR validation skipped due to low reliability.");
+            return OcrComparisonResult.builder()
+                    .isMatch(true)
+                    .bestMatch(expectedValue)
+                    .bestScore(100)
+                    .matchingMethod("SINGLE_INITIAL_VALIDATION_SKIPPED")
+                    .candidatesList("Single initial - OCR validation not reliable")
+                    .build();
+        }
+
         // Detect if expected value has comma format
         boolean hasCommaFormat = expectedValue.contains(",");
         logger.debug("Expected value comma format detected: {}", hasCommaFormat);
-
-        List<String> expectedWords = extractAllWords(expectedValue);
-        logger.debug("Expected words count: {}", expectedWords.size());
 
         List<String> ocrWords = extractAllWords(extractedText);
         String candidatesList = String.join(",", ocrWords);
@@ -91,12 +104,14 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
         if (text == null || text.isBlank()) {
             return List.of();
         }
-        Matcher matcher = WORD_PATTERN.matcher(text.toLowerCase());
+        Matcher matcher = WORD_PATTERN.matcher(text);
         Set<String> words = new LinkedHashSet<>();
         while (matcher.find()) {
             String word = matcher.group().trim();
-            if (word.length() > 1) {
-                words.add(word);
+            String lowerWord = word.toLowerCase();
+            // Allow multi-character words OR single uppercase letters (initials)
+            if (word.length() > 1 || (word.length() == 1 && Character.isUpperCase(word.charAt(0)))) {
+                words.add(lowerWord);
             }
         }
         return new ArrayList<>(words);
@@ -110,9 +125,21 @@ public class NameComparisonAdaptor implements OcrComparisonAdapter {
         String bestCandidate = expectedWord;
         String bestOriginalCandidate = expectedWord;
 
-        for (String ocrWord : ocrWords) {
-            double score = SIMILARITY.apply(expectedWord, ocrWord);
+        // Check if this is a single letter initial
+        boolean isInitial = expectedWord.length() == 1;
 
+        for (String ocrWord : ocrWords) {
+            double score;
+
+            if (isInitial) {
+                if (ocrWord.length() == 1 && ocrWord.equalsIgnoreCase(expectedWord)) {
+                    score = 1.0;
+                } else {
+                    score = 0.0;
+                }
+            } else {
+                score = SIMILARITY.apply(expectedWord, ocrWord);
+            }
             if (score > bestScore) {
                 bestScore = score;
                 bestCandidate = ocrWord;
