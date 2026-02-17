@@ -80,7 +80,6 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
         final List<MultiEntityFieldHandlingInput> tableInfos = fetchValuesFromDB(jdbi);
 
         log.info(aMarker, "Starting Multi value concatenation process. Input records fetched: {}", tableInfos.size());
-        logInputSummary(tableInfos);
 
         try {
             if (pipelineEncryptionActive) {
@@ -97,7 +96,10 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
             groupedOrigins.forEach((s, multiEntityFieldHandlingInputs) -> {
                 try {
                     log.info(aMarker, "Processing OriginId: {} with {} records", s, multiEntityFieldHandlingInputs.size());
-                    updatedTableInfos.addAll(processAndMapFilteredData(tableInfos));
+                    logInputSummary(multiEntityFieldHandlingInputs);
+                    List<MultiEntityFieldHandlingInput> processedOutput = processAndMapFilteredData(multiEntityFieldHandlingInputs);
+                    log.info(aMarker, "Finished processing OriginId: {}. Output records: {}", s, processedOutput.size());
+                    updatedTableInfos.addAll(processedOutput);
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
@@ -148,12 +150,16 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
                 .filter(item -> "multiple_member_indicator".equals(item.getSorItemName()))
                 .collect(Collectors.toList());
 
-        List<MultiEntityFieldHandlingInput> multiEntityEnabledInputs = inputList.stream()
+        List<MultiEntityFieldHandlingInput> nonMmIndicatorInputs = inputList.stream()
+                .filter(item -> !"multiple_member_indicator".equals(item.getSorItemName()))
+                .collect(Collectors.toList());
+
+        List<MultiEntityFieldHandlingInput> multiEntityEnabledInputs = nonMmIndicatorInputs.stream()
                 .filter(item -> "true".equals(item.getIsMultiEntityEnabled()))
                 .collect(Collectors.toList());
 
 
-        List<MultiEntityFieldHandlingInput> multiEntityDisabledInputs = inputList.stream()
+        List<MultiEntityFieldHandlingInput> multiEntityDisabledInputs = nonMmIndicatorInputs.stream()
                 .filter(item -> "false".equals(item.getIsMultiEntityEnabled()))
                 .collect(Collectors.toList());
 

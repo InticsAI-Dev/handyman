@@ -16,17 +16,15 @@ class MultivalueConcatenationActionTest {
                 .batchId("BATCH-2014_0_new")
                 .groupId("2014")
                 .condition(true)
-                .outputTable("macro.aggregate_cleaned_result")
+                .outputTable("sor_transform.vqa_transaction_multi_value_unifier_output")
                 .resourceConn("intics_zio_db_conn")
-                .querySet("SELECT DISTINCT a.tenant_id, a.aggregated_score, a.masked_score, a.origin_id, a.paper_no, a.predicted_value,\n" +
-                        "                     a.rank, a.sor_item_attribution_id, a.sor_item_name, a.document_id, a.b_box, a.group_id, a.root_pipeline_id,\n" +
-                        "                     a.vqa_score, a.question_id, a.synonym_id, a.model_registry, a.batch_id, a.frequency, smca.is_encrypted, smca.encryption_policy\n" +
-                        "                    FROM macro.multi_value_sor_item_audit a\n" +
-                        "                    JOIN macro.sor_meta_consolidated_audit smca ON smca.tenant_id = a.tenant_id\n" +
-                        "                              AND smca.root_pipeline_id = a.root_pipeline_id\n" +
-                        "                              AND smca.synonym_id = a.synonym_id\n" +
-                        "                              AND smca.sor_item_name = a.sor_item_name\n" +
-                        "                    WHERE a.group_id = '2014' AND a.rank = 1 AND a.tenant_id = 1 AND a.batch_id = 'BATCH-2014_0' and a.root_pipeline_id = 275569;\n")
+                .querySet("SELECT vqa_id, transaction_id, created_on, created_user_id, last_updated_on, last_updated_user_id, root_pipeline_id, tenant_id,\n" +
+                        "                    document_id, group_id, batch_id, origin_id, paper_no, truth_id, status, stage, message, version, extracted_image_unit,\n" +
+                        "                    image_dpi, image_height, image_width, section_priority_after_filter, sor_container_id, sor_container_name, sor_container_instance,\n" +
+                        "                    sor_item_name, sor_item_id, sor_item_attribution_id, model_id, model_info, model_registry, model_registry_id, answer, vqa_score,\n" +
+                        "                    score, b_box, label, section_alias, synonym_id, sor_synonym, question_id, sor_question, weight, category, line_item_type,\n" +
+                        "                    is_multi_entity_enabled, encryption_policy, is_encrypted\n" +
+                        "                    FROM sor_transform.vqa_transaction_multi_value_unifier_input a;")
                 .build();
 
         final ActionExecutionAudit action = ActionExecutionAudit.builder().build();

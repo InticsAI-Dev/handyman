@@ -26,7 +26,7 @@ import static org.mockito.Mockito.*;
 @Slf4j
 class MultivalueSorItemHandlingActionTest {
 
-    private ActionExecutionAudit action;
+
 
     private final MultivalueSorItemHandling config=new MultivalueSorItemHandling();
 
@@ -42,13 +42,37 @@ class MultivalueSorItemHandlingActionTest {
 
     @BeforeEach
     void setUp() {
+        ActionExecutionAudit action = new ActionExecutionAudit();
+        action.getContext().put("tenant_id", "1");
+        action.getContext().put("group_id", "2014");
+        action.getContext().put("batch_id", "BATCH-2014_0_new");
+        action.getContext().put("created_user_id", "1");
+        action.getContext().put(EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION, "false");
+        action.setRootPipelineId(929L);
+
         config.setName("MultivalueSorItemHandlingAction");
         config.setCondition(true);
-        config.setOutputTable("multivalue_sor_item_handling_output");
+        config.setOutputTable("sor_transform.vqa_transaction_post_processing_output");
         config.setResourceConn("intics_zio_db_conn");
-        config.setQuerySet("select 1");
+        config.setQuerySet("select\n" +
+                "                    vqa_id, transaction_id, created_on, created_user_id, last_updated_on, last_updated_user_id, root_pipeline_id, tenant_id,\n" +
+                "                    document_id, group_id, batch_id, origin_id, paper_no, truth_id, status, stage, message, version, extracted_image_unit,\n" +
+                "                    image_dpi, image_height, image_width, section_priority_after_filter, sor_container_id, sor_container_name, sor_container_instance,\n" +
+                "                    sor_item_name, sor_item_id, sor_item_attribution_id, model_id, model_info, model_registry, model_registry_id, answer, vqa_score,\n" +
+                "                    score, b_box, label, section_alias, synonym_id, sor_synonym, question_id, sor_question, weight, category, line_item_type,\n" +
+                "                    is_multi_entity_enabled, encryption_policy, is_encrypted, post_processing_code, post_processing_key, aggregated_score\n" +
+                "                   FROM\n" +
+                "                     sor_transform.vqa_transaction_post_processing_input a\n" +
+                "                   WHERE\n" +
+                "                      origin_id ='ORIGIN-2057';");
         actionInstance = new MultivalueSorItemHandlingAction(action, log, config);
     }
+
+    @Test
+    public void testExecute() throws Exception {
+        actionInstance.execute();
+    }
+
 
 
     private MultiEntityFieldHandlingInput buildCase3Input(
