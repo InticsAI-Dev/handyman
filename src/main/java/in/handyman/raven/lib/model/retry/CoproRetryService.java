@@ -31,6 +31,7 @@ public class CoproRetryService {
     private final HandymanRepo handymanRepo;
     private final OkHttpClient httpClient;
     private final Logger log;
+    public static final String CRITICAL_DATA_PERSISTENCE_OFF = "critical.data.off.activator";
 
     // HTTP/2 specific error patterns
     private static final List<String> HTTP2_RETRYABLE_ERRORS = Arrays.asList(
@@ -275,11 +276,11 @@ public class CoproRetryService {
                     retryAuditMetricSetter(root, mapper, retryAudit);
                 }
 
-                String CriticalDataPersistence = action.getContext().get("critical.data.cleanup.activator");
+                String CriticalDataPersistenceOff = action.getContext().get(CRITICAL_DATA_PERSISTENCE_OFF);
 
-                if ("false".equalsIgnoreCase(CriticalDataPersistence)) {
+                if ("false".equalsIgnoreCase(CriticalDataPersistenceOff)) {
                     log.info("Critical data cleanup is enabled, not storing request and response for copro service id {} ",retryAudit.getCoproServiceId());
-                    retryAudit.setResponse(null);
+                    retryAudit.setResponse("");
                 }else {
                     log.info("Critical data cleanup is disabled, storing request and response for copro service id {} ",retryAudit.getCoproServiceId());
                     retryAudit.setResponse(encryptRequestResponse(peekResponseBody, action));
