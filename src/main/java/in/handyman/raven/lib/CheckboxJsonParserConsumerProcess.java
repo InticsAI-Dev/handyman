@@ -102,12 +102,12 @@ public class CheckboxJsonParserConsumerProcess
 
                             String encryptedAnswer = answer;
 
-                            // Label matching logic
                             boolean isLabelMatching = false;
                             String labelMatchMessage = "Label matching is disabled";
                             String trimmedLabel = label.trim();
 
                             if (!keywordList.isEmpty()) {
+                                labelMatchMessage = "Label not matched with keywords";
                                 for (String keyword : keywordList) {
                                     if (trimmedLabel.equalsIgnoreCase(keyword)) {
                                         processedKeywords.add(keyword);
