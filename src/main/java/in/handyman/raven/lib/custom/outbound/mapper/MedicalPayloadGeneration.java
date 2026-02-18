@@ -93,18 +93,48 @@ public class MedicalPayloadGeneration {
         // Build medical payload
         MedicalPayload payload = buildMedicalPayload(predictions, configMap);
 
-        // Build complete response
-        return MedicalOutboundResponse.builder()
+        // Map status to SUCCESS or FAILURE
+        String uploadStatus = metadataContext.getUploadStatus();
+        String mappedStatus = "SUCCESS";
+        if (uploadStatus != null) {
+            String statusUpper = uploadStatus.toUpperCase();
+            if (statusUpper.contains("FAIL") || statusUpper.contains("ERROR") || 
+                statusUpper.contains("REJECT") || statusUpper.contains("INVALID")) {
+                mappedStatus = "FAILURE";
+            } else if (statusUpper.equals("SUCCESS") || statusUpper.equals("COMPLETED") || 
+                       statusUpper.equals("COMPLETE") || statusUpper.equals("SUCCEEDED")) {
+                mappedStatus = "SUCCESS";
+            }
+        }
+        
+        // Build complete response - only set error fields when there's an error
+        MedicalOutboundResponse.MedicalOutboundResponseBuilder responseBuilder = MedicalOutboundResponse.builder()
                 .requestTxnId(metadataContext.getRequestTxnId())
-                .status(metadataContext.getUploadStatus())
-                .errorMessage(metadataContext.getErrorMessage())
-                .errorMessageDetail(metadataContext.getErrorMessageDetail())
-                .errorCd(metadataContext.getErrorCode())
+                .status(mappedStatus)
                 .documentId(metadataContext.getDocumentId())
                 .inboundTransactionId(metadataContext.getInboundTransactionId())
                 .metadata(metadata)
-                .aumipayload(payload)
-                .build();
+                .aumipayload(payload);
+        
+        // Only set error fields if there's an actual error, else set them to null
+        if (metadataContext.getErrorCode() != 200 && metadataContext.getErrorCode() != null) {
+            if (metadataContext.getErrorMessage() != null && !metadataContext.getErrorMessage().trim().isEmpty()) {
+                responseBuilder.errorMessage(metadataContext.getErrorMessage());
+            }
+            if (metadataContext.getErrorMessageDetail() != null && !metadataContext.getErrorMessageDetail().trim().isEmpty()) {
+                responseBuilder.errorMessageDetail(metadataContext.getErrorMessageDetail());
+            }
+            if (metadataContext.getErrorCode() != null) {
+                responseBuilder.errorCd(metadataContext.getErrorCode());
+            }
+        } else {
+            // Set error fields to null when there's no error
+            responseBuilder.errorMessage(null)
+                    .errorMessageDetail(null)
+                    .errorCd(null);
+        }
+        
+        return responseBuilder.build();
     }
 
 
@@ -492,28 +522,22 @@ public class MedicalPayloadGeneration {
                 buildMemberDetailsIfPresent(builder, fieldMap);
             }
         } else {
-            builder.hcid(fieldMap.getOrDefault(MEMBER_ID_SOR_ITEM_NAME, getDefaultExtractedField()))
-                    .medicaidId(fieldMap.getOrDefault(MEDICAID_ID_SOR_ITEM_NAME,
-                            getDefaultExtractedField()))
-                    .groupId(fieldMap.getOrDefault(MEMBER_GROUP_ID_SOR_ITEM_NAME,
-                            getDefaultExtractedField()))
-                    .memberAddressLine1(
-                            fieldMap.getOrDefault(MEMBER_ADDRESS_LINE_1_SOR_ITEM_NAME,
-                                    getDefaultExtractedField()))
-                    .memberCity(fieldMap.getOrDefault(MEMBER_CITY_SOR_ITEM_NAME,
-                            getDefaultExtractedField()))
-                    .memberZipCode(fieldMap.getOrDefault(MEMBER_ZIPCODE_SOR_ITEM_NAME,
-                            getDefaultExtractedField()))
-                    .memberState(fieldMap.getOrDefault(MEMBER_STATE_SOR_ITEM_NAME,
-                            getDefaultExtractedField()));
+            // Use putIfPresent to only set fields with valid values
+            putIfPresent(builder::hcid, fieldMap, MEMBER_ID_SOR_ITEM_NAME);
+            putIfPresent(builder::medicaidId, fieldMap, MEDICAID_ID_SOR_ITEM_NAME);
+            putIfPresent(builder::groupId, fieldMap, MEMBER_GROUP_ID_SOR_ITEM_NAME);
+            putIfPresent(builder::memberAddressLine1, fieldMap, MEMBER_ADDRESS_LINE_1_SOR_ITEM_NAME);
+            putIfPresent(builder::memberCity, fieldMap, MEMBER_CITY_SOR_ITEM_NAME);
+            putIfPresent(builder::memberZipCode, fieldMap, MEMBER_ZIPCODE_SOR_ITEM_NAME);
+            putIfPresent(builder::memberState, fieldMap, MEMBER_STATE_SOR_ITEM_NAME);
 
             if (memberEnabler) {
                 String newbornRequest = getFieldValue(fieldMap, NEWBORN_REQUEST_SOR_ITEM_NAME);
                 if (!"Y".equals(newbornRequest)) {
-                    buildMemberDetails(builder, fieldMap);
+                    buildMemberDetailsIfPresent(builder, fieldMap);
                 }
             } else {
-                buildMemberDetails(builder, fieldMap);
+                buildMemberDetailsIfPresent(builder, fieldMap);
             }
         }
     }
@@ -528,14 +552,11 @@ public class MedicalPayloadGeneration {
 
     private void buildMemberDetails(MedicalPayload.MedicalPayloadBuilder builder,
                                     Map<String, ExtractedField> fieldMap) {
-        builder.memberLastName(
-                        fieldMap.getOrDefault(MEMBER_LAST_NAME_SOR_ITEM_NAME, getDefaultExtractedField()))
-                .memberFirstName(fieldMap.getOrDefault(MEMBER_FIRST_NAME_SOR_ITEM_NAME,
-                        getDefaultExtractedField()))
-                .memberDOB(fieldMap.getOrDefault(MEMBER_DATE_OF_BIRTH_SOR_ITEM_NAME,
-                        getDefaultExtractedField()))
-                .memberGender(fieldMap.getOrDefault(MEMBER_GENDER_SOR_ITEM_NAME,
-                        getDefaultExtractedField()));
+        // Use putIfPresent to only set fields with valid values
+        putIfPresent(builder::memberLastName, fieldMap, MEMBER_LAST_NAME_SOR_ITEM_NAME);
+        putIfPresent(builder::memberFirstName, fieldMap, MEMBER_FIRST_NAME_SOR_ITEM_NAME);
+        putIfPresent(builder::memberDOB, fieldMap, MEMBER_DATE_OF_BIRTH_SOR_ITEM_NAME);
+        putIfPresent(builder::memberGender, fieldMap, MEMBER_GENDER_SOR_ITEM_NAME);
     }
 
     private void buildAuthorizationSection(MedicalPayload.MedicalPayloadBuilder builder,
@@ -554,26 +575,16 @@ public class MedicalPayloadGeneration {
             putIfPresent(builder::faxReceivedDate, fieldMap, FAX_RECEIVED_DATE_SOR_ITEM_NAME);
             putIfPresent(builder::totalServiceDays, fieldMap, TOTAL_SERVICE_DAYS_SOR_ITEM_NAME);
         } else {
-            builder.authId(fieldMap.getOrDefault(AUTH_ID_SOR_ITEM_NAME, getDefaultExtractedField()))
-                    .levelOfService(fieldMap.getOrDefault(LEVEL_OF_SERVICE_SOR_ITEM_NAME,
-                            getDefaultExtractedField()))
-                    .serviceFromDate(fieldMap.getOrDefault(SERVICE_FROM_DATE_SOR_ITEM_NAME,
-                            getDefaultExtractedField()))
-                    .serviceToDate(fieldMap.getOrDefault(SERVICE_TO_DATE_SOR_ITEM_NAME,
-                            getDefaultExtractedField()))
-                    .notificationType(
-                            fieldMap.getOrDefault(NOTIFICATION_TYPE_SOR_ITEM_NAME,
-                                    getDefaultExtractedField()))
-                    .authAdmitDate(fieldMap.getOrDefault(AUTH_ADMIT_DATE_SOR_ITEM_NAME,
-                            getDefaultExtractedField()))
-                    .authDischargeDate(
-                            fieldMap.getOrDefault(AUTH_DISCHARGE_DATE_SOR_ITEM_NAME,
-                                    getDefaultExtractedField()))
-                    .faxReceivedDate(fieldMap.getOrDefault(FAX_RECEIVED_DATE_SOR_ITEM_NAME,
-                            getDefaultExtractedField()))
-                    .totalServiceDays(
-                            fieldMap.getOrDefault(TOTAL_SERVICE_DAYS_SOR_ITEM_NAME,
-                                    getDefaultExtractedField()));
+            // Use putIfPresent to only set fields with valid values
+            putIfPresent(builder::authId, fieldMap, AUTH_ID_SOR_ITEM_NAME);
+            putIfPresent(builder::levelOfService, fieldMap, LEVEL_OF_SERVICE_SOR_ITEM_NAME);
+            putIfPresent(builder::serviceFromDate, fieldMap, SERVICE_FROM_DATE_SOR_ITEM_NAME);
+            putIfPresent(builder::serviceToDate, fieldMap, SERVICE_TO_DATE_SOR_ITEM_NAME);
+            putIfPresent(builder::notificationType, fieldMap, NOTIFICATION_TYPE_SOR_ITEM_NAME);
+            putIfPresent(builder::authAdmitDate, fieldMap, AUTH_ADMIT_DATE_SOR_ITEM_NAME);
+            putIfPresent(builder::authDischargeDate, fieldMap, AUTH_DISCHARGE_DATE_SOR_ITEM_NAME);
+            putIfPresent(builder::faxReceivedDate, fieldMap, FAX_RECEIVED_DATE_SOR_ITEM_NAME);
+            putIfPresent(builder::totalServiceDays, fieldMap, TOTAL_SERVICE_DAYS_SOR_ITEM_NAME);
         }
     }
 
