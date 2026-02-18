@@ -5,12 +5,14 @@ import com.azure.core.credential.TokenRequestContext;
 import com.azure.identity.ClientSecretCredential;
 import com.azure.identity.ClientSecretCredentialBuilder;
 import in.handyman.raven.lambda.access.ConfigAccess;
+import in.handyman.raven.lambda.doa.config.SpwBshConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -22,6 +24,8 @@ class ConfigAccessDTest {
         assert commonConfig != null;
         log.info(commonConfig.toString());
     }
+
+
 
 
     @Test
@@ -52,5 +56,14 @@ class ConfigAccessDTest {
         }
 
 
+    }
+
+
+    @Test
+    void getBshConfig() {
+        final Long tenantId = 1L;
+        final List<SpwBshConfig> commonConfig = ConfigAccess.findAllBshClassesByTenantId(tenantId);
+        assert commonConfig != null;
+        System.out.println(commonConfig.toString());
     }
 }

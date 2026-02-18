@@ -15,4 +15,5 @@ public interface DoaConstant {
     String SPC_TABLE_NAME = "spw_process_config";
     String SRC_TABLE_NAME = "spw_resource_config";
     String DDC_TABLE_NAME = "datum_drift_config";
+    String BSH_TABLE_NAME = "spw_bsh_config";
 }

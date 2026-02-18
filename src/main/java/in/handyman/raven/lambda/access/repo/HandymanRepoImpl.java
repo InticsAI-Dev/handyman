@@ -129,13 +129,13 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
     @Override
     public Map<String, String> getAllConfig(final String pipelineName) {
         final String lambdaName = getLambdaName(pipelineName);
-        final Map<String, String> pipelineConfig = findAllByInstance(pipelineName).stream()
+        final Map<String, String> instanceConfig = findAllByInstance(pipelineName).stream()
                 .collect(Collectors
                         .toMap((SpwInstanceConfig::getVariable),
                                 SpwInstanceConfig::getValue,
                                 (p, q) -> p));
 
-        final Map<String, String> lambdaConfig = findAllByProcess(lambdaName).stream()
+        final Map<String, String> processConfig = findAllByProcess(lambdaName).stream()
                 .collect(Collectors
                         .toMap((SpwProcessConfig::getVariable),
                                 SpwProcessConfig::getValue,
@@ -143,9 +143,10 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
 
         final Map<String, String> commonConfig = getCommonConfig();
 
-        final Map<String, String> finalMap = new HashMap<>(pipelineConfig);
-        finalMap.putAll(lambdaConfig);
+        final Map<String, String> finalMap = new HashMap<>();
         finalMap.putAll(commonConfig);
+        finalMap.putAll(processConfig);
+        finalMap.putAll(instanceConfig);
 
         return Map.copyOf(finalMap);
     }
@@ -754,4 +755,15 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
             return repo.findByStatusAndStage(status, stage);
         });
     }
+
+    @Override
+    public List<SpwBshConfig> findAllBshClassesByTenantId(Long tenantId) {
+        checkJDBIConnection();
+        return JDBI.withHandle(handle -> {
+            var repo = handle.attach(SpwBshConfigRepo.class);
+            return repo.findAllByTenantId(tenantId);
+        });
+    }
+
+
 }

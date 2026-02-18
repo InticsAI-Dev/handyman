@@ -193,6 +193,7 @@ public class LlmJsonParserConsumerProcess implements CoproProcessor.ConsumerProc
                 .labelMatchMessage(parsedEncryptResponse.getLabelMatchMessage())
                 .isEncrypted(parsedEncryptResponse.isEncrypted)
                 .encryptionPolicy(parsedEncryptResponse.getEncryptionPolicy())
+                .sorContainerInstance(input.getSorContainerInstance())
                 .build();
 
         llmJsonQueryOutputTables.add(insertData);
