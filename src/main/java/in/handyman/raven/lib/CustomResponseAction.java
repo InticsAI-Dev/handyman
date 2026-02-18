@@ -1,5 +1,6 @@
 package in.handyman.raven.lib;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -90,6 +91,7 @@ public class CustomResponseAction implements IActionExecution {
       ObjectMapper objectMapper = JsonMapper.builder()
               .addModule(new JavaTimeModule())
               .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+              .serializationInclusion(JsonInclude.Include.NON_NULL)
               .build();
 
       groupedByOriginId.forEach((originId, predictionDTOList) -> {
@@ -112,7 +114,7 @@ public class CustomResponseAction implements IActionExecution {
                     .originId(originId)
                     .tenantId(tenantId)
                     .rootPipelineId(Long.valueOf(rootPipelineId))
-                    .status("COMPLETED")
+                    .status("SUCCESS")
                     .stage("Custom Response Generation")
                     .message("Custom Response generated successfully")
                     .triggeredUrl("")

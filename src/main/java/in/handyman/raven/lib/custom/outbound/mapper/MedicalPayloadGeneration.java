@@ -112,6 +112,20 @@ public class MedicalPayloadGeneration {
         log.info("Building metadata section");
 
         Integer overallConfidence = 0; // Can be calculated from predictions if needed
+        
+        // Calculate processingTimeMs from processaStartTime and processEndTime
+        Long processingTimeMs = 0L;
+        if (context.getProcessStartTime() != null && context.getProcessEndTime() != null) {
+            try {
+                java.time.LocalDateTime startTime = java.time.LocalDateTime.parse(context.getProcessStartTime());
+                java.time.LocalDateTime endTime = java.time.LocalDateTime.parse(context.getProcessEndTime());
+                java.time.Duration duration = java.time.Duration.between(startTime, endTime);
+                processingTimeMs = duration.toMillis();
+            } catch (Exception e) {
+                log.warn("Failed to calculate processingTimeMs from timestamps: {} - {}", 
+                        context.getProcessStartTime(), context.getProcessEndTime(), e);
+            }
+        }
 
         return OutboundJsonMetaData.builder()
                 .documentExtension(context.getDocumentExtension())
@@ -120,10 +134,10 @@ public class MedicalPayloadGeneration {
                 .documentType(context.getDocumentType())
                 .processStartTime(context.getProcessStartTime())
                 .processEndTime(context.getProcessEndTime())
-                .processingTimeMs(0L) // Can be calculated if needed
+                .processingTimeMs(processingTimeMs)
                 .processedAt(context.getProcessedAt())
-                .pageCount(context.getCandidatePapers().size())
-                .candidatePaper(context.getCandidatePapers())
+                .pageCount(context.getCandidatePapers() != null ? context.getCandidatePapers().size() : 0)
+                .candidatePaper(context.getCandidatePapers() != null ? context.getCandidatePapers() : Collections.emptyList())
                 .overallConfidence(overallConfidence)
                 .build();
     }
