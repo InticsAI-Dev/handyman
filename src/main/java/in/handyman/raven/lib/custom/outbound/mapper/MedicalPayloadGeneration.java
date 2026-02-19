@@ -65,6 +65,7 @@ public class MedicalPayloadGeneration {
     private static final String NEWBORN_DATE_OF_BIRTH_SOR_ITEM_NAME = "newborn_date_of_birth";
     private static final String NEWBORN_GENDER_SOR_ITEM_NAME = "newborn_gender";
     private static final String FAX_REPORT_SOR_ITEM_NAME = "fax_report";
+    private static final String CLINICAL_PRESENT_PROP_VALUE = "CLINICAL_PRESENT";
 
     private static final String FIRST_NAME_SUFFIX = "_first_name";
     private static final String LAST_NAME_SUFFIX = "_last_name";
@@ -85,10 +86,8 @@ public class MedicalPayloadGeneration {
 
         log.info("Building complete medical outbound response");
 
-        // Build metadata
         OutboundJsonMetaData metadata = buildMetadata(metadataContext, configMap);
 
-        // Build medical payload
         MedicalPayload payload = buildMedicalPayload(predictions, configMap);
 
         String uploadStatus = metadataContext.getUploadStatus();
@@ -311,8 +310,7 @@ public class MedicalPayloadGeneration {
 
         for (Map<String, ExtractedField> fieldMap : groupedByInstance.values()) {
             ExtractedField serviceCode = fieldMap.get(SERVICE_CODE_SOR_ITEM_NAME);
-            
-            // Only add service modifier if service code has a value
+
             if (serviceCode == null || serviceCode.getValue() == null || serviceCode.getValue().isEmpty()) {
                 continue;
             }
@@ -463,27 +461,27 @@ public class MedicalPayloadGeneration {
             putIfPresent(builder::hcid, fieldMap, MEMBER_ID_SOR_ITEM_NAME);
             putIfPresent(builder::medicaidId, fieldMap, MEDICAID_ID_SOR_ITEM_NAME);
             putIfPresent(builder::groupId, fieldMap, MEMBER_GROUP_ID_SOR_ITEM_NAME);
-            putIfPresent(builder::memberLastName, fieldMap, MEMBER_LAST_NAME_SOR_ITEM_NAME);
             putIfPresent(builder::memberFirstName, fieldMap, MEMBER_FIRST_NAME_SOR_ITEM_NAME);
+            putIfPresent(builder::memberLastName, fieldMap, MEMBER_LAST_NAME_SOR_ITEM_NAME);
             putIfPresent(builder::memberDOB, fieldMap, MEMBER_DATE_OF_BIRTH_SOR_ITEM_NAME);
             putIfPresent(builder::memberGender, fieldMap, MEMBER_GENDER_SOR_ITEM_NAME);
             putIfPresent(builder::memberAddressLine1, fieldMap, MEMBER_ADDRESS_LINE_1_SOR_ITEM_NAME);
             putIfPresent(builder::memberCity, fieldMap, MEMBER_CITY_SOR_ITEM_NAME);
-            putIfPresent(builder::memberZipCode, fieldMap, MEMBER_ZIPCODE_SOR_ITEM_NAME);
             putIfPresent(builder::memberState, fieldMap, MEMBER_STATE_SOR_ITEM_NAME);
+            putIfPresent(builder::memberZipCode, fieldMap, MEMBER_ZIPCODE_SOR_ITEM_NAME);
         }
         else{
-            putIfPresent(builder::hcid, fieldMap, MEMBER_ID_SOR_ITEM_NAME);
-            putIfPresent(builder::medicaidId, fieldMap, MEDICAID_ID_SOR_ITEM_NAME);
-            putIfPresent(builder::groupId, fieldMap, MEMBER_GROUP_ID_SOR_ITEM_NAME);
-            putIfPresent(builder::memberLastName, fieldMap, MEMBER_LAST_NAME_SOR_ITEM_NAME);
-            putIfPresent(builder::memberFirstName, fieldMap, MEMBER_FIRST_NAME_SOR_ITEM_NAME);
-            putIfPresent(builder::memberDOB, fieldMap, MEMBER_DATE_OF_BIRTH_SOR_ITEM_NAME);
-            putIfPresent(builder::memberGender, fieldMap, MEMBER_GENDER_SOR_ITEM_NAME);
-            putIfPresent(builder::memberAddressLine1, fieldMap, MEMBER_ADDRESS_LINE_1_SOR_ITEM_NAME);
-            putIfPresent(builder::memberCity, fieldMap, MEMBER_CITY_SOR_ITEM_NAME);
-            putIfPresent(builder::memberZipCode, fieldMap, MEMBER_ZIPCODE_SOR_ITEM_NAME);
-            putIfPresent(builder::memberState, fieldMap, MEMBER_STATE_SOR_ITEM_NAME);
+            builder.hcid(fieldMap.getOrDefault(MEMBER_ID_SOR_ITEM_NAME, getDefaultExtractedField()))
+                    .medicaidId(fieldMap.getOrDefault(MEDICAID_ID_SOR_ITEM_NAME, getDefaultExtractedField()))
+                    .groupId(fieldMap.getOrDefault(MEMBER_GROUP_ID_SOR_ITEM_NAME, getDefaultExtractedField()))
+                    .memberFirstName(fieldMap.getOrDefault(MEMBER_FIRST_NAME_SOR_ITEM_NAME, getDefaultExtractedField()))
+                    .memberLastName(fieldMap.getOrDefault(MEMBER_LAST_NAME_SOR_ITEM_NAME, getDefaultExtractedField()))
+                    .memberDOB(fieldMap.getOrDefault(MEMBER_DATE_OF_BIRTH_SOR_ITEM_NAME, getDefaultExtractedField()))
+                    .memberGender(fieldMap.getOrDefault(MEMBER_GENDER_SOR_ITEM_NAME, getDefaultExtractedField()))
+                    .memberAddressLine1(fieldMap.getOrDefault(MEMBER_ADDRESS_LINE_1_SOR_ITEM_NAME, getDefaultExtractedField()))
+                    .memberCity(fieldMap.getOrDefault(MEMBER_CITY_SOR_ITEM_NAME, getDefaultExtractedField()))
+                    .memberState(fieldMap.getOrDefault(MEMBER_STATE_SOR_ITEM_NAME, getDefaultExtractedField()))
+                    .memberZipCode(fieldMap.getOrDefault(MEMBER_ZIPCODE_SOR_ITEM_NAME, getDefaultExtractedField()));
         }
     }
 
@@ -498,21 +496,23 @@ public class MedicalPayloadGeneration {
             putIfPresent(builder::levelOfService, fieldMap, LEVEL_OF_SERVICE_SOR_ITEM_NAME);
             putIfPresent(builder::serviceFromDate, fieldMap, SERVICE_FROM_DATE_SOR_ITEM_NAME);
             putIfPresent(builder::serviceToDate, fieldMap, SERVICE_TO_DATE_SOR_ITEM_NAME);
-            putIfPresent(builder::notificationType, fieldMap, NOTIFICATION_TYPE_SOR_ITEM_NAME);
             putIfPresent(builder::authAdmitDate, fieldMap, AUTH_ADMIT_DATE_SOR_ITEM_NAME);
             putIfPresent(builder::authDischargeDate, fieldMap, AUTH_DISCHARGE_DATE_SOR_ITEM_NAME);
             putIfPresent(builder::faxReceivedDate, fieldMap, FAX_RECEIVED_DATE_SOR_ITEM_NAME);
             putIfPresent(builder::totalServiceDays, fieldMap, TOTAL_SERVICE_DAYS_SOR_ITEM_NAME);
+            putIfPresent(builder::notificationType, fieldMap, NOTIFICATION_TYPE_SOR_ITEM_NAME);
+
         } else {
-            putIfPresent(builder::authId, fieldMap, AUTH_ID_SOR_ITEM_NAME);
-            putIfPresent(builder::levelOfService, fieldMap, LEVEL_OF_SERVICE_SOR_ITEM_NAME);
-            putIfPresent(builder::serviceFromDate, fieldMap, SERVICE_FROM_DATE_SOR_ITEM_NAME);
-            putIfPresent(builder::serviceToDate, fieldMap, SERVICE_TO_DATE_SOR_ITEM_NAME);
-            putIfPresent(builder::notificationType, fieldMap, NOTIFICATION_TYPE_SOR_ITEM_NAME);
-            putIfPresent(builder::authAdmitDate, fieldMap, AUTH_ADMIT_DATE_SOR_ITEM_NAME);
-            putIfPresent(builder::authDischargeDate, fieldMap, AUTH_DISCHARGE_DATE_SOR_ITEM_NAME);
-            putIfPresent(builder::faxReceivedDate, fieldMap, FAX_RECEIVED_DATE_SOR_ITEM_NAME);
-            putIfPresent(builder::totalServiceDays, fieldMap, TOTAL_SERVICE_DAYS_SOR_ITEM_NAME);
+            builder.authId(fieldMap.getOrDefault(AUTH_ID_SOR_ITEM_NAME, getDefaultExtractedField()))
+                    .levelOfService(fieldMap.getOrDefault(LEVEL_OF_SERVICE_SOR_ITEM_NAME, getDefaultExtractedField()))
+                    .serviceFromDate(fieldMap.getOrDefault(SERVICE_FROM_DATE_SOR_ITEM_NAME,getDefaultExtractedField()))
+                    .serviceToDate(fieldMap.getOrDefault(SERVICE_TO_DATE_SOR_ITEM_NAME, getDefaultExtractedField()))
+                    .authAdmitDate(fieldMap.getOrDefault(AUTH_ADMIT_DATE_SOR_ITEM_NAME, getDefaultExtractedField()))
+                    .authDischargeDate(fieldMap.getOrDefault(AUTH_DISCHARGE_DATE_SOR_ITEM_NAME, getDefaultExtractedField()))
+                    .faxReceivedDate(fieldMap.getOrDefault(FAX_RECEIVED_DATE_SOR_ITEM_NAME, getDefaultExtractedField()))
+                    .totalServiceDays(fieldMap.getOrDefault(TOTAL_SERVICE_DAYS_SOR_ITEM_NAME, getDefaultExtractedField()))
+                    .notificationType(fieldMap.getOrDefault(NOTIFICATION_TYPE_SOR_ITEM_NAME, getDefaultExtractedField()));
+
         }
     }
 
@@ -659,52 +659,11 @@ public class MedicalPayloadGeneration {
 
         List<AdditionalProperties> properties = new ArrayList<>();
 
-        int clinicalPresentPages = Integer
-                .parseInt(configMap.getOrDefault("AUMI_CLINICAL_PRESENT_PAGE_COUNT", "5"));
-        int totalPages = 10;
-        String clinicalValue = totalPages > clinicalPresentPages ? "Y" : "N";
-
-        ExtractedField defaultField = getDefaultExtractedField();
-        properties.add(AdditionalProperties.builder()
-                .propName("CLINICAL_PRESENT")
-                .propValue(clinicalValue)
-                .page(defaultField.getPage())
-                .confidence(Double.valueOf(defaultField.getConfidence()))
-                .boundingBox(defaultField.getBoundingBox())
-                .build());
-
-        String faxReportValue = getFieldValue(fieldMap, FAX_REPORT_SOR_ITEM_NAME);
-        if (faxReportValue != null && !faxReportValue.isEmpty()) {
-            ExtractedField faxReportField = fieldMap.get(FAX_REPORT_SOR_ITEM_NAME);
-            ExtractedField fieldToUse = faxReportField != null ? faxReportField : defaultField;
-            properties.add(AdditionalProperties.builder()
-                    .propName("FAX_REPORT")
-                    .propValue(faxReportValue)
-                    .page(fieldToUse.getPage())
-                    .confidence(Double.valueOf(fieldToUse.getConfidence()))
-                    .boundingBox(fieldToUse.getBoundingBox())
-                    .build());
-        }
-
-        ExtractedField levelOfCare = fieldMap.get(LEVEL_OF_SERVICE_SOR_ITEM_NAME);
-        if (levelOfCare != null && levelOfCare.getValue() != null && !levelOfCare.getValue().isEmpty()) {
-            String[] values = levelOfCare.getValue().contains(",")
-                    ? levelOfCare.getValue().split(",")
-                    : new String[] { levelOfCare.getValue() };
-
-            for (String value : values) {
-                value = value.trim();
-                if (!value.isEmpty()) {
-                    properties.add(AdditionalProperties.builder()
-                            .propName("AUTH_KEYWORD")
-                            .propValue(value)
-                            .page(levelOfCare.getPage())
-                            .confidence(Double.valueOf(levelOfCare.getConfidence()))
-                            .boundingBox(levelOfCare.getBoundingBox())
-                            .build());
-                }
-            }
-        }
+        handleClinicalPresent(fieldMap, properties, configMap);
+        handleAuthAdditionalKeyword(fieldMap, properties);
+        handleResponsibleArea(fieldMap, properties);
+        handleLevelOfCare(fieldMap, properties);
+        handleFaxReport(fieldMap, properties);
 
         log.info("Built {} additional properties", properties.size());
         return properties;
@@ -715,42 +674,24 @@ public class MedicalPayloadGeneration {
 
         List<AdditionalProperties> properties = new ArrayList<>();
 
-        ExtractedField multipleMember = fieldMap.get(MULTIPLE_MEMBER_SOR_ITEM_NAME);
-        if (multipleMember != null && multipleMember.getValue() != null
-                && !multipleMember.getValue().isEmpty()) {
-            properties.add(AdditionalProperties.builder()
-                    .propName("MULTIPLE_MEMBER")
-                    .propValue(multipleMember.getValue())
-                    .page(multipleMember.getPage())
-                    .confidence(Double.valueOf(multipleMember.getConfidence()))
-                    .boundingBox(multipleMember.getBoundingBox())
-                    .build());
-        }
-
-        ExtractedField newbornRequest = fieldMap.get(NEWBORN_REQUEST_SOR_ITEM_NAME);
-        if (newbornRequest != null && newbornRequest.getValue() != null && !newbornRequest.getValue().isEmpty()) {
-            properties.add(AdditionalProperties.builder()
-                    .propName("NEWBORN_REQUEST")
-                    .propValue(newbornRequest.getValue())
-                    .page(newbornRequest.getPage())
-                    .confidence(Double.valueOf(newbornRequest.getConfidence()))
-                    .boundingBox(newbornRequest.getBoundingBox())
-                    .build());
-        }
-            addNewbornPropertyIfPresent(properties, "NEWBORN_FIRSTNAME",
+        addMemberAdditionalPropertiesIfPresent(properties, "MULTIPLE_MEMBER",
+                    fieldMap.get(MULTIPLE_MEMBER_SOR_ITEM_NAME));
+        addMemberAdditionalPropertiesIfPresent(properties, "NEWBORN_REQUEST",
+                    fieldMap.get(NEWBORN_REQUEST_SOR_ITEM_NAME));
+        addMemberAdditionalPropertiesIfPresent(properties, "NEWBORN_FIRSTNAME",
                     fieldMap.get(NEWBORN_FIRST_NAME_SOR_ITEM_NAME));
-            addNewbornPropertyIfPresent(properties, "NEWBORN_LASTNAME",
+        addMemberAdditionalPropertiesIfPresent(properties, "NEWBORN_LASTNAME",
                     fieldMap.get(NEWBORN_LAST_NAME_SOR_ITEM_NAME));
-            addNewbornPropertyIfPresent(properties, "NEWBORN_GENDER",
+        addMemberAdditionalPropertiesIfPresent(properties, "NEWBORN_GENDER",
                     fieldMap.get(NEWBORN_GENDER_SOR_ITEM_NAME));
-            addNewbornPropertyIfPresent(properties, "NEWBORN_DOB",
+        addMemberAdditionalPropertiesIfPresent(properties, "NEWBORN_DOB",
                     fieldMap.get(NEWBORN_DATE_OF_BIRTH_SOR_ITEM_NAME));
 
         log.info("Built {} member additional properties", properties.size());
         return properties;
     }
 
-    private void addNewbornPropertyIfPresent(List<AdditionalProperties> properties,
+    private void addMemberAdditionalPropertiesIfPresent(List<AdditionalProperties> properties,
                                              String propName,
                                              ExtractedField field) {
         if (field != null && field.getValue() != null && !field.getValue().isEmpty()) {
@@ -792,6 +733,183 @@ public class MedicalPayloadGeneration {
                 .confidence(0)
                 .boundingBox(boundingBoxJsonNode)
                 .build();
+    }
+
+
+    private void handleClinicalPresent(Map<String, ExtractedField> fieldMap,
+                                       List<AdditionalProperties> additionalList,
+                                       Map<String, String> configMap) {
+        fieldMap.entrySet().stream()
+                .filter(entry -> entry.getKey().startsWith("clinical_present"))
+                .sorted(Map.Entry.comparingByKey())
+                .forEach(entry -> {
+                    try {
+                        ExtractedField field = entry.getValue();
+
+                        if (field != null && hasValue(field.getValue())) {
+
+                            AdditionalProperties prop = AdditionalProperties.builder()
+                                    .propName(CLINICAL_PRESENT_PROP_VALUE)
+                                    .propValue(field.getValue())
+                                    .page(field.getPage())
+                                    .confidence(Double.valueOf(field.getConfidence()))
+                                    .boundingBox(field.getBoundingBox())
+                                    .build();
+
+                            additionalList.add(prop);
+
+                            log.info("Added Clinical Present property as '{}' since total pages {}",
+                                    field.getValue(), field.getPage());
+                        }
+                    } catch (Exception ex) {
+                        log.error("Error processing clinical_present field: {}", entry.getKey(), ex);
+                    }
+                });
+    }
+
+    private void handleAuthAdditionalKeyword(Map<String, ExtractedField> fieldMap,
+                                            List<AdditionalProperties> additionalList) {
+        fieldMap.entrySet().stream()
+                .filter(entry -> entry.getKey().startsWith("additional_auth_properties"))
+                .sorted(Map.Entry.comparingByKey())
+                .forEach(entry -> {
+                    try {
+                        ExtractedField field = entry.getValue();
+
+                        if (field == null || !hasValue(field.getValue())) {
+                            log.info("AUTH_ADDL_KEYWORD not found or empty");
+                            return;
+                        }
+
+                        String[] keywords = field.getValue().split(",");
+
+                        for (String keyword : keywords) {
+                            String trimmedKeyword = keyword.trim();
+                            if (trimmedKeyword.isEmpty()) continue;
+
+                            AdditionalProperties prop = AdditionalProperties.builder()
+                                    .propName("AUTH_ADDL_KEYWORD")
+                                    .propValue(trimmedKeyword)
+                                    .page(field.getPage())
+                                    .confidence(Double.valueOf(field.getConfidence()))
+                                    .boundingBox(field.getBoundingBox())
+                                    .build();
+
+                            additionalList.add(prop);
+                        }
+
+                        log.info("Added {} AUTH_ADDL_KEYWORD entries", keywords.length);
+
+                    } catch (Exception ex) {
+                        log.error("Error while processing AUTH_ADDL_KEYWORD", ex);
+                    }
+                });
+    }
+
+    private void handleResponsibleArea(Map<String, ExtractedField> fieldMap,
+                                      List<AdditionalProperties> additionalList) {
+
+        fieldMap.entrySet().stream()
+                .filter(entry -> entry.getKey().startsWith("responsible_area"))
+                .sorted(Map.Entry.comparingByKey())
+                .forEach(entry -> {
+                    try {
+                        ExtractedField field = entry.getValue();
+
+                        if (field != null && hasValue(field.getValue())) {
+                            AdditionalProperties prop = AdditionalProperties.builder()
+                                    .propName("SORTING_KEYWORD")
+                                    .propValue(field.getValue())
+                                    .page(field.getPage())
+                                    .confidence(Double.valueOf(field.getConfidence()))
+                                    .boundingBox(field.getBoundingBox())
+                                    .build();
+
+                            additionalList.add(prop);
+                            log.info("Added SORTING_KEYWORD property for responsible_area");
+                        }
+                    } catch (Exception ex) {
+                        log.error("Error processing responsible_area field: {}", entry.getKey(), ex);
+                    }
+                });
+    }
+
+    private void handleLevelOfCare(Map<String, ExtractedField> fieldMap,
+                                   List<AdditionalProperties> additionalList) {
+        List<Map.Entry<String, ExtractedField>> locEntries = fieldMap.entrySet().stream()
+                .filter(entry -> entry.getKey().startsWith("level_of_care"))
+                .sorted(Map.Entry.comparingByKey())
+                .collect(Collectors.toList());
+
+        for (Map.Entry<String, ExtractedField> entry : locEntries) {
+            try {
+                ExtractedField field = entry.getValue();
+
+                if (field != null && hasValue(field.getValue())) {
+                    String[] values = field.getValue().contains(",")
+                            ? field.getValue().split(",")
+                            : new String[]{field.getValue()};
+
+                    doLevelOfCareEntries(entry, values, field, additionalList);
+                }
+
+            } catch (Exception ex) {
+                log.error("Error processing level_of_care entry: {}", entry.getKey(), ex);
+            }
+        }
+    }
+
+    private void handleFaxReport(Map<String, ExtractedField> fieldMap,
+                                 List<AdditionalProperties> additionalList) {
+        try {
+            ExtractedField faxField = fieldMap.get(FAX_REPORT_SOR_ITEM_NAME);
+
+            if (faxField != null && hasValue(faxField.getValue())) {
+                AdditionalProperties prop = AdditionalProperties.builder()
+                        .propName("FAX_REPORT")
+                        .propValue(faxField.getValue().toUpperCase())
+                        .page(faxField.getPage())
+                        .confidence(Double.valueOf(faxField.getConfidence()))
+                        .boundingBox(faxField.getBoundingBox())
+                        .build();
+                additionalList.add(prop);
+                log.info("Added FAX_REPORT property for Commercial");
+
+            } else {
+                log.info("FAX_REPORT missing or empty for Commercial case");
+            }
+
+        } catch (Exception ex) {
+            log.error("Error while processing FAX_REPORT field", ex);
+        }
+    }
+
+    private void doLevelOfCareEntries(Map.Entry<String, ExtractedField> entry,
+                                     String[] levelOfCareValues,
+                                     ExtractedField levelOfCareField,
+                                     List<AdditionalProperties> additionalPropertiesList) {
+        for (String value : levelOfCareValues) {
+            value = value.trim();
+            if (value.isEmpty()) {
+                log.info("Skipped empty level_of_care entry for key: {}", entry.getKey());
+                continue;
+            }
+
+            AdditionalProperties authKeywordProperty = AdditionalProperties.builder()
+                    .propName("AUTH_KEYWORD")
+                    .propValue(value)
+                    .page(levelOfCareField.getPage())
+                    .confidence(Double.valueOf(levelOfCareField.getConfidence()))
+                    .boundingBox(levelOfCareField.getBoundingBox())
+                    .build();
+
+            additionalPropertiesList.add(authKeywordProperty);
+            log.info("Added AUTH_KEYWORD property for level_of_care entry");
+        }
+    }
+
+    private boolean hasValue(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 
 }
