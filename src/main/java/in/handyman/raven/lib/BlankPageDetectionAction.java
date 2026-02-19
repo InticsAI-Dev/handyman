@@ -127,17 +127,25 @@ public class BlankPageDetectionAction implements IActionExecution {
         log.info(marker, "Processing row #{}", rowNum);
 
         final String originId = String.valueOf(row.get("origin_id"));
-        final String batchId = String.valueOf(row.get("batch_id"));
-        final int groupId = Integer.parseInt(String.valueOf(row.get("group_id")));
-        final long tenantId = Long.parseLong(String.valueOf(row.get("tenant_id")));
-        final Object processIdObj = row.get("process_id");
-        final Object rootPipelineIdObj = row.get("root_pipeline_id");
+        final String pdfPath = getFilePath(row);
 
-        String pdfPath = getFilePath(row);
+        if (isPathInvalid(pdfPath, originId)) {
+            return;
+        }
 
+        final String fileExtension = getFileExtension(row, pdfPath);
+        log.info(marker, "Processing file: {} with extension: {} for origin_id: {}", pdfPath, fileExtension, originId);
+
+        final int pageNumber = getPageNumber(row, pdfPath);
+        routeToProcessor(handle, row, insertQuery, pdfPath, originId, fileExtension, pageNumber);
+
+        log.info(marker, "Completed processing for origin_id: {}", originId);
+    }
+
+    private boolean isPathInvalid(final String pdfPath, final String originId) {
         if (pdfPath == null || pdfPath.equals("null") || pdfPath.trim().isEmpty()) {
             log.warn(marker, "Skipping NULL or empty file_path for origin_id: {}", originId);
-            return;
+            return true;
         }
 
         if (!Files.exists(Paths.get(pdfPath))) {
@@ -145,18 +153,24 @@ public class BlankPageDetectionAction implements IActionExecution {
             throw new HandymanException("File not found: " + pdfPath,
                     new RuntimeException("File not found"), action);
         }
+        return false;
+    }
 
-        final String fileExtension = getFileExtension(row, pdfPath);
-        log.info(marker, "Processing file: {} with extension: {} for origin_id: {}", pdfPath, fileExtension, originId);
+    private void routeToProcessor(final Handle handle, final java.util.Map<String, Object> row,
+            final String insertQuery, final String pdfPath, final String originId,
+            final String fileExtension, final int pageNumber) {
 
-        final int pageNumber = getPageNumber(row, pdfPath);
+        final String batchId = String.valueOf(row.get("batch_id"));
+        final int groupId = Integer.parseInt(String.valueOf(row.get("group_id")));
+        final long tenantId = Long.parseLong(String.valueOf(row.get("tenant_id")));
+        final Object processIdObj = row.get("process_id");
+        final Object rootPipelineIdObj = row.get("root_pipeline_id");
 
         try {
             if (fileExtension.contains("pdf")) {
                 processPdf(handle, insertQuery, pdfPath, originId, groupId, tenantId, batchId, processIdObj,
                         rootPipelineIdObj);
-            } else if (fileExtension.contains("png") || fileExtension.contains("jpeg")
-                    || fileExtension.contains("jpg")) {
+            } else if (isImageExtension(fileExtension)) {
                 processImage(handle, insertQuery, pdfPath, originId, groupId, tenantId, batchId, processIdObj,
                         rootPipelineIdObj, pageNumber);
             } else {
@@ -166,8 +180,10 @@ public class BlankPageDetectionAction implements IActionExecution {
             log.error(marker, "Failed blank detection for file: {}", pdfPath, ex);
             throw new HandymanException("Failed blank detection for file: " + pdfPath, ex, action);
         }
+    }
 
-        log.info(marker, "Completed processing for origin_id: {}", originId);
+    private boolean isImageExtension(String extension) {
+        return extension.contains("png") || extension.contains("jpeg") || extension.contains("jpg");
     }
 
     private String getFilePath(final java.util.Map<String, Object> row) {
@@ -240,34 +256,43 @@ public class BlankPageDetectionAction implements IActionExecution {
             final long rootPipelineId, final PDDocument document, final int pageIndex) throws IOException {
         final long startTime = System.currentTimeMillis();
 
-        final String activator = this.action.getContext().getOrDefault(PHOTON_BLANK_PAGE_DETECTION_ACTIVATOR,
-                "FALSE");
-        final boolean usePhoton = "TRUE".equalsIgnoreCase(activator);
-
-        final boolean isBlank;
-        final String modelName;
-        final String modelVersion;
-
-        if (usePhoton) {
-            final PDFRenderer renderer = new PDFRenderer(document);
-            final BufferedImage pageImage = renderer.renderImageWithDPI(pageIndex, PDF_RENDER_DPI,
-                    ImageType.GRAY);
-            final Mat mat = bufferedImageToMat(pageImage);
-            isBlank = isBlankPage(mat);
-            mat.release();
-            modelName = PHOTON_NAME;
-            modelVersion = PHOTON_VERSION;
-        } else {
-            isBlank = isPageBlankUltraFast(document.getPage(pageIndex));
-            modelName = NEON_NAME;
-            modelVersion = NEON_VERSION;
-        }
+        final DetectionResult result = performDetection(document, pageIndex);
 
         final long execMs = System.currentTimeMillis() - startTime;
 
         insertResult(handle, insertQuery, originId, groupId, tenantId, pdfPath,
-                pageIndex + 1, isBlank, processId, rootPipelineId, batchId, execMs, modelName, modelVersion,
-                "PDF");
+                pageIndex + 1, result.isBlank, processId, rootPipelineId, batchId, execMs,
+                result.modelName, result.modelVersion, "PDF");
+    }
+
+    private DetectionResult performDetection(final PDDocument document, final int pageIndex) throws IOException {
+        final String activator = this.action.getContext().getOrDefault(PHOTON_BLANK_PAGE_DETECTION_ACTIVATOR, "FALSE");
+        final boolean usePhoton = "TRUE".equalsIgnoreCase(activator);
+
+        if (usePhoton) {
+            final PDFRenderer renderer = new PDFRenderer(document);
+            final BufferedImage pageImage = renderer.renderImageWithDPI(pageIndex, PDF_RENDER_DPI, ImageType.GRAY);
+            final Mat mat = bufferedImageToMat(pageImage);
+            try {
+                return new DetectionResult(isBlankPage(mat), PHOTON_NAME, PHOTON_VERSION);
+            } finally {
+                mat.release();
+            }
+        } else {
+            return new DetectionResult(isPageBlankUltraFast(document.getPage(pageIndex)), NEON_NAME, NEON_VERSION);
+        }
+    }
+
+    private static class DetectionResult {
+        final boolean isBlank;
+        final String modelName;
+        final String modelVersion;
+
+        DetectionResult(boolean isBlank, String modelName, String modelVersion) {
+            this.isBlank = isBlank;
+            this.modelName = modelName;
+            this.modelVersion = modelVersion;
+        }
     }
 
     private boolean isPageBlankUltraFast(final PDPage page) throws IOException {
@@ -290,28 +315,28 @@ public class BlankPageDetectionAction implements IActionExecution {
             if (stream == null) {
                 return true;
             }
-
-            final byte[] buffer = new byte[4096];
-            int totalRead = 0;
-            int bytesRead;
-
-            boolean hasContent = false;
-
-            while ((bytesRead = stream.read(buffer)) != -1) {
-                totalRead += bytesRead;
-
-                if (analyzeBufferForContent(buffer, bytesRead)) {
-                    hasContent = true;
-                    break;
-                }
-            }
-
-            if (hasContent) {
-                return false;
-            }
-
-            return totalRead < MIN_SIGNIFICANT_CONTENT;
+            return isStreamActuallyBlank(stream);
         }
+    }
+
+    private boolean isStreamActuallyBlank(InputStream stream) throws IOException {
+        final byte[] buffer = new byte[4096];
+        int totalRead = 0;
+        int bytesRead;
+        boolean hasContent = false;
+
+        while ((bytesRead = stream.read(buffer)) != -1) {
+            totalRead += bytesRead;
+            if (analyzeBufferForContent(buffer, bytesRead)) {
+                hasContent = true;
+                break;
+            }
+        }
+
+        if (hasContent) {
+            return false;
+        }
+        return totalRead < MIN_SIGNIFICANT_CONTENT;
     }
 
     private boolean analyzeBufferForContent(final byte[] buffer, final int bytesRead) {
@@ -432,10 +457,16 @@ public class BlankPageDetectionAction implements IActionExecution {
     }
 
     private boolean isBlankPage(final Mat mat) {
+        final Mat binary = preprocessForBlankDetection(mat);
+        final double inkRatio = calculateInkRatio(binary);
+        binary.release();
+        return inkRatio < BLANK_INK_RATIO_THRESHOLD;
+    }
+
+    private Mat preprocessForBlankDetection(final Mat mat) {
         final Mat resized = new Mat();
-        double scale = 1.0;
         if (mat.width() > 1024) {
-            scale = 1024.0 / mat.width();
+            double scale = 1024.0 / mat.width();
             Imgproc.resize(mat, resized, new Size(), scale, scale, Imgproc.INTER_AREA);
         } else {
             mat.copyTo(resized);
@@ -443,19 +474,19 @@ public class BlankPageDetectionAction implements IActionExecution {
 
         final Mat blurred = new Mat();
         Imgproc.GaussianBlur(resized, blurred, new Size(GAUSSIAN_BLUR_SIZE, GAUSSIAN_BLUR_SIZE), 0);
+        resized.release();
 
         final Mat binary = new Mat();
         Imgproc.threshold(blurred, binary, BINARY_THRESHOLD_VALUE, 255, Imgproc.THRESH_BINARY_INV);
+        blurred.release();
 
+        return binary;
+    }
+
+    private double calculateInkRatio(final Mat binary) {
         final int nonZeroPixels = Core.countNonZero(binary);
         final int totalPixels = binary.rows() * binary.cols();
-        final double inkRatio = (double) nonZeroPixels / totalPixels;
-
-        blurred.release();
-        binary.release();
-        resized.release();
-
-        return inkRatio < BLANK_INK_RATIO_THRESHOLD;
+        return (double) nonZeroPixels / totalPixels;
     }
 
     private Mat bufferedImageToMat(final BufferedImage image) {

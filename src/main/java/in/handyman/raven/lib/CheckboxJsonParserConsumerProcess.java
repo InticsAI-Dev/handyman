@@ -55,27 +55,7 @@ public class CheckboxJsonParserConsumerProcess
         try {
             String extractedContent = input.getResponse();
             if (extractedContent != null) {
-                String jsonResponse = getDecryptedInputJson(encryption, extractedContent, encryptOutputSorItem);
-
-                CheckboxJsonParsedResponse parsedResponse = objectMapper.readValue(jsonResponse,
-                        CheckboxJsonParsedResponse.class);
-
-                if (parsedResponse != null && parsedResponse.getGroups() != null) {
-                    Map<String, LlmJsonQueryInputTableSorMeta> metaMap = getSorMetaMap(input.getSorMetaDetail());
-                    List<String> keywordList = getKeywordList(input.getCheckboxKeywords());
-                    Set<String> processedKeywords = new HashSet<>();
-
-                    for (CheckboxJsonParsedResponse.CheckboxGroup group : parsedResponse.getGroups()) {
-                        String bboxAsIs = getBboxAsIs(group);
-                        String sectionAlias = group.getSectionHeader() != null ? group.getSectionHeader() : "";
-
-                        for (CheckboxJsonParsedResponse.CheckboxOption option : group.getOpts()) {
-                            CheckboxQueryOutputTable output = createOutputTable(input, option, bboxAsIs, sectionAlias,
-                                    metaMap, keywordList, processedKeywords, encryptOutputSorItem);
-                            outputTables.add(output);
-                        }
-                    }
-                }
+                processExtractedContent(input, extractedContent, outputTables, encryptOutputSorItem);
             } else {
                 log.debug("Extracted content is null for {}. Skipping processing.", loggerInput);
             }
@@ -85,6 +65,36 @@ public class CheckboxJsonParserConsumerProcess
         }
 
         return outputTables;
+    }
+
+    private void processExtractedContent(CheckboxQueryInputTable input, String extractedContent,
+            List<CheckboxQueryOutputTable> outputTables, String encryptOutputSorItem) throws Exception {
+        String jsonResponse = getDecryptedInputJson(encryption, extractedContent, encryptOutputSorItem);
+        CheckboxJsonParsedResponse parsedResponse = objectMapper.readValue(jsonResponse,
+                CheckboxJsonParsedResponse.class);
+
+        if (parsedResponse != null && parsedResponse.getGroups() != null) {
+            Map<String, LlmJsonQueryInputTableSorMeta> metaMap = getSorMetaMap(input.getSorMetaDetail());
+            List<String> keywordList = getKeywordList(input.getCheckboxKeywords());
+            Set<String> processedKeywords = new HashSet<>();
+
+            for (CheckboxJsonParsedResponse.CheckboxGroup group : parsedResponse.getGroups()) {
+                processGroup(input, group, outputTables, metaMap, keywordList, processedKeywords, encryptOutputSorItem);
+            }
+        }
+    }
+
+    private void processGroup(CheckboxQueryInputTable input, CheckboxJsonParsedResponse.CheckboxGroup group,
+            List<CheckboxQueryOutputTable> outputTables, Map<String, LlmJsonQueryInputTableSorMeta> metaMap,
+            List<String> keywordList, Set<String> processedKeywords, String encryptOutputSorItem) throws Exception {
+        String bboxAsIs = getBboxAsIs(group);
+        String sectionAlias = group.getSectionHeader() != null ? group.getSectionHeader() : "";
+
+        for (CheckboxJsonParsedResponse.CheckboxOption option : group.getOpts()) {
+            CheckboxQueryOutputTable output = createOutputTable(input, option, bboxAsIs, sectionAlias,
+                    metaMap, keywordList, processedKeywords, encryptOutputSorItem);
+            outputTables.add(output);
+        }
     }
 
     private Map<String, LlmJsonQueryInputTableSorMeta> getSorMetaMap(String sorMetaDetail) throws Exception {
@@ -130,25 +140,7 @@ public class CheckboxJsonParserConsumerProcess
         String status = option.getStatus();
         String answer = "C".equalsIgnoreCase(status) ? "Checked" : "Unchecked";
 
-        boolean isLabelMatching = false;
-        String labelMatchMessage = "Label matching is disabled";
-        String trimmedLabel = label.trim();
-
-        if (!keywordList.isEmpty()) {
-            labelMatchMessage = "Label not matched with keywords";
-            for (String keyword : keywordList) {
-                if (trimmedLabel.equalsIgnoreCase(keyword)) {
-                    processedKeywords.add(keyword);
-                    if ("Checked".equals(answer)) {
-                        isLabelMatching = true;
-                        labelMatchMessage = "Label matched with keywords";
-                    } else {
-                        labelMatchMessage = "Label matched but unchecked";
-                    }
-                    break;
-                }
-            }
-        }
+        LabelMatchResult matchResult = matchLabelWithKeywords(label, answer, keywordList, processedKeywords);
 
         // Encryption logic for label and answer based on metadata
         String sorItemName = input.getSorItemName();
@@ -187,8 +179,8 @@ public class CheckboxJsonParserConsumerProcess
                 .sorItemName(input.getSorItemName())
                 .sectionAlias(encryptedSectionAlias)
                 .bBoxAsIs(bboxAsIs)
-                .isLabelMatching(isLabelMatching)
-                .labelMatchMessage(labelMatchMessage)
+                .isLabelMatching(matchResult.isLabelMatching)
+                .labelMatchMessage(matchResult.labelMatchMessage)
                 .isEncrypted(itemEncryptionEnabled)
                 .encryptionPolicy(AES_256)
                 .build();
@@ -200,6 +192,40 @@ public class CheckboxJsonParserConsumerProcess
             return encryption.decrypt(extractedContent, AES_256, "CHECKBOX_OUTPUT_JSON");
         } else {
             return extractedContent;
+        }
+    }
+
+    private LabelMatchResult matchLabelWithKeywords(String label, String answer, List<String> keywordList,
+            Set<String> processedKeywords) {
+        boolean isLabelMatching = false;
+        String labelMatchMessage = "Label matching is disabled";
+        String trimmedLabel = label.trim();
+
+        if (!keywordList.isEmpty()) {
+            labelMatchMessage = "Label not matched with keywords";
+            for (String keyword : keywordList) {
+                if (trimmedLabel.equalsIgnoreCase(keyword)) {
+                    processedKeywords.add(keyword);
+                    if ("Checked".equals(answer)) {
+                        isLabelMatching = true;
+                        labelMatchMessage = "Label matched with keywords";
+                    } else {
+                        labelMatchMessage = "Label matched but unchecked";
+                    }
+                    break;
+                }
+            }
+        }
+        return new LabelMatchResult(isLabelMatching, labelMatchMessage);
+    }
+
+    private static class LabelMatchResult {
+        final boolean isLabelMatching;
+        final String labelMatchMessage;
+
+        LabelMatchResult(boolean isLabelMatching, String labelMatchMessage) {
+            this.isLabelMatching = isLabelMatching;
+            this.labelMatchMessage = labelMatchMessage;
         }
     }
 }
