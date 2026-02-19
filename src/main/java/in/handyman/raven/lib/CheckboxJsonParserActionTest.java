@@ -16,15 +16,28 @@ public class CheckboxJsonParserActionTest {
                 .name("checkbox json parser")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .outputTable("sor_transaction.llm_json_parser_output_audit")
+                .outputTable("checkbox_extraction.checkbox_extraction_llm_json_parser_output_audit")
                 .querySet(
-                        "SELECT '{\"chbq_grps\": [{\"grid\": \"q_01\", \"sec_hdr\": \"Section Header\", \"qns_txt\": \"Question?\", \"grp_bbox\": [137, 433, 794, 457], \"opts\": [{\"l\": \"Urgent\", \"s\": \"C\"}, {\"l\": \"For Review\", \"s\": \"U\"}]}]}' as response, "
-                                +
-                                "1 as paper_no, 'origin_1' as origin_id, 12345::bigint as group_id, 1::bigint as tenant_id, 17290::bigint as root_pipeline_id, 'batch_1' as batch_id, "
-                                +
-                                "'registry_1' as model_registry, 'pixel' as extracted_image_unit, 300::bigint as image_dpi, 1000::bigint as image_width, 1000::bigint as image_height, "
-                                +
-                                "now()::timestamp as created_on, 'process_1' as process, '[]' as sor_meta_detail, 1::bigint as sor_container_id, 'item_label' as sor_item_label")
+                        "SELECT\n" +
+                                "    a.response,\n" +
+                                "    a.paper_no,\n" +
+                                "    a.origin_id,\n" +
+                                "    a.group_id,\n" +
+                                "    a.tenant_id,\n" +
+                                "    a.root_pipeline_id,\n" +
+                                "    a.batch_id,\n" +
+                                "    a.model_registry,\n" +
+                                "    a.created_on,\n" +
+                                "    a.sor_container_id,\n" +
+                                "    a.image_dpi,\n" +
+                                "    a.image_width,\n" +
+                                "    a.image_height,\n" +
+                                "    a.sor_item_name,\n" +
+                                "    a.checkbox_keywords,\n" +
+                                "    a.sor_meta_detail\n" +
+                                "FROM checkbox_extraction.checkbox_extraction_llm_json_parser_input_audit a\n" +
+                                "WHERE a.tenant_id = 1\n" +
+                                "  AND a.group_id  = '31'")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();

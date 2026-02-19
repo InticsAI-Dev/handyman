@@ -70,7 +70,7 @@ class AlchemyResponseActionTest {
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
         actionExecutionAudit.setRootPipelineId(1L);
         actionExecutionAudit.getContext().put("alchemy.origin.valuation.url","http://localhost:8189/alchemy/api/v1/valuation/predictions-list/origin");
-        actionExecutionAudit.getContext().put("alchemyAuth.token","eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJVc2VyIERldGFpbHMiLCJpc3MiOiJJbnRpY3NBSSBBbGNoZW15IiwiZXhwIjoxNzcxMDg2NjQ0LCJpYXQiOjE3NzEwMDAyNDQsImVtYWlsIjoiU21hcnRJbnRha2UifQ.geX7OPn_PqY5uDxyLu4N0n1IhloPGd61M1UjwKpJPPM");
+        actionExecutionAudit.getContext().put("alchemyAuth.token","");
         actionExecutionAudit.getContext().put("alchemyAuth.tenantId","1");
         actionExecutionAudit.getContext().put("gen_group_id.group_id","1");
         actionExecutionAudit.getContext().put("group_id","1");

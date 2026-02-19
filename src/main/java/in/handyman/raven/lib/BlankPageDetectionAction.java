@@ -15,11 +15,14 @@ import org.apache.pdfbox.pdmodel.PDResources;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.argument.Arguments;
 import org.jdbi.v3.core.argument.NullArgument;
+import java.util.Optional;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
@@ -139,7 +142,7 @@ public class BlankPageDetectionAction implements IActionExecution {
                         }
 
                         if (fileExtension.isEmpty()) {
-                            fileExtension = java.util.Optional.ofNullable(row.get("file_extension"))
+                            fileExtension = Optional.ofNullable(row.get("file_extension"))
                                     .map(String::valueOf)
                                     .map(String::toLowerCase)
                                     .orElse("");
@@ -222,7 +225,7 @@ public class BlankPageDetectionAction implements IActionExecution {
         }
     }
 
-    private void processPdf(final org.jdbi.v3.core.Handle handle,
+    private void processPdf(final Handle handle,
             final String insertQuery,
             final String pdfPath,
             final String originId,
@@ -235,7 +238,7 @@ public class BlankPageDetectionAction implements IActionExecution {
         final long processId = Long.parseLong(String.valueOf(processIdObj));
         final long rootPipelineId = Long.parseLong(String.valueOf(rootPipelineIdObj));
 
-        try (PDDocument document = Loader.loadPDF(new java.io.File(pdfPath))) {
+        try (PDDocument document = Loader.loadPDF(new File(pdfPath))) {
             final int totalPages = document.getNumberOfPages();
 
             for (int pageIndex = 0; pageIndex < totalPages; pageIndex++) {
@@ -349,7 +352,7 @@ public class BlankPageDetectionAction implements IActionExecution {
         return b == ' ' || b == '\n' || b == '\r' || b == '\t';
     }
 
-    private void processImage(final org.jdbi.v3.core.Handle handle,
+    private void processImage(final Handle handle,
             final String insertQuery,
             final String filePath,
             final String originId,
@@ -379,7 +382,7 @@ public class BlankPageDetectionAction implements IActionExecution {
                 pageNo, isBlank, processId, rootPipelineId, batchId, execMs, PHOTON_NAME, PHOTON_VERSION, "IMAGE");
     }
 
-    private void insertResult(final org.jdbi.v3.core.Handle handle,
+    private void insertResult(final Handle handle,
             final String insertQuery,
             final String originId,
             final int groupId,
@@ -419,7 +422,7 @@ public class BlankPageDetectionAction implements IActionExecution {
                 .bind(15, now)
                 .bind(16, "")
                 .bind(17, "")
-                .bind(18, java.util.Optional.ofNullable(blankPageDetection.getEndPoint()).orElse("LOCAL_PDFBOX_OPENCV"))
+                .bind(18, Optional.ofNullable(blankPageDetection.getEndPoint()).orElse("LOCAL_PDFBOX_OPENCV"))
                 .bind(19, execMs + " ms")
                 .bind(20, isBlank)
                 .execute();

@@ -7,6 +7,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import org.postgresql.util.PGobject;
+
+import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -17,7 +20,7 @@ import java.util.stream.Stream;
 @NoArgsConstructor
 @Builder
 public class CheckboxQueryOutputTable implements CoproProcessor.Entity {
-    private String createdOn;
+    private Timestamp createdOn;
     private Long tenantId;
     private Long createdUserId;
     private Timestamp lastUpdatedOn;
@@ -42,18 +45,33 @@ public class CheckboxQueryOutputTable implements CoproProcessor.Entity {
     private String bBoxAsIs;
     private boolean isLabelMatching;
     private String labelMatchMessage;
-    private String isEncrypted;
+    private boolean isEncrypted;
     private String encryptionPolicy;
 
     @Override
     public List<Object> getRowData() {
         return Stream.of(this.createdOn, this.tenantId, this.createdUserId, this.lastUpdatedOn, this.lastUpdatedUserId,
-                this.confidenceScore, this.sorItemName, this.answer, this.boundingBox, this.paperNo,
+                this.confidenceScore, this.sorItemName, this.answer, getJsonb(this.boundingBox), this.paperNo,
                 this.originId, this.groupId, this.rootPipelineId, this.batchId, this.modelRegistry,
                 this.extractedImageUnit, this.imageDpi, this.imageHeight, this.imageWidth,
-                this.sorContainerId, this.sorItemLabel, this.sectionAlias, this.bBoxAsIs, this.isLabelMatching,
+                this.sorContainerId, this.sorItemLabel, this.sectionAlias, getJsonb(this.bBoxAsIs),
+                this.isLabelMatching,
                 this.labelMatchMessage,
                 this.isEncrypted, this.encryptionPolicy).collect(Collectors.toList());
+    }
+
+    private Object getJsonb(String json) {
+        if (json == null || json.isEmpty()) {
+            return null;
+        }
+        try {
+            PGobject pGobject = new PGobject();
+            pGobject.setType("jsonb");
+            pGobject.setValue(json);
+            return pGobject;
+        } catch (SQLException e) {
+            return null;
+        }
     }
 
     @Override

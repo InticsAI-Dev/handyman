@@ -61,113 +61,17 @@ public class CheckboxJsonParserConsumerProcess
                         CheckboxJsonParsedResponse.class);
 
                 if (parsedResponse != null && parsedResponse.getGroups() != null) {
-                    final String sorMetaDetail = input.getSorMetaDetail();
-                    Map<String, LlmJsonQueryInputTableSorMeta> metaMap = Collections.emptyMap();
-                    if (sorMetaDetail != null && !sorMetaDetail.isEmpty()) {
-                        List<LlmJsonQueryInputTableSorMeta> metaList = objectMapper.readValue(sorMetaDetail,
-                                new TypeReference<>() {
-                                });
-                        metaMap = metaList.stream()
-                                .collect(Collectors.toMap(LlmJsonQueryInputTableSorMeta::getSorItemName, meta -> meta,
-                                        (a, b) -> a));
-                    }
-
-                    List<String> keywordList = new ArrayList<>();
-                    String checkboxKeywords = input.getCheckboxKeywords();
-                    if (checkboxKeywords != null && !checkboxKeywords.isEmpty()) {
-                        keywordList = java.util.Arrays.stream(checkboxKeywords.split(","))
-                                .map(String::trim)
-                                .filter(s -> !s.isEmpty())
-                                .collect(Collectors.toList());
-                    }
+                    Map<String, LlmJsonQueryInputTableSorMeta> metaMap = getSorMetaMap(input.getSorMetaDetail());
+                    List<String> keywordList = getKeywordList(input.getCheckboxKeywords());
                     Set<String> processedKeywords = new HashSet<>();
 
                     for (CheckboxJsonParsedResponse.CheckboxGroup group : parsedResponse.getGroups()) {
-                        String bboxAsIs = "[]";
-                        if (group.getGroupBbox() != null && group.getGroupBbox().size() == 4) {
-                            List<Integer> bbox = group.getGroupBbox();
-                            var bboxNode = objectMapper.createObjectNode();
-                            bboxNode.put("topLeftX", bbox.get(0));
-                            bboxNode.put("topLeftY", bbox.get(1));
-                            bboxNode.put("bottomRightX", bbox.get(2));
-                            bboxNode.put("bottomRightY", bbox.get(3));
-                            bboxAsIs = objectMapper.writeValueAsString(bboxNode);
-                        }
+                        String bboxAsIs = getBboxAsIs(group);
                         String sectionAlias = group.getSectionHeader() != null ? group.getSectionHeader() : "";
 
                         for (CheckboxJsonParsedResponse.CheckboxOption option : group.getOpts()) {
-                            String label = option.getLabel() != null ? option.getLabel() : "";
-                            String status = option.getStatus();
-                            String answer = "C".equalsIgnoreCase(status) ? "Checked" : "Unchecked";
-
-                            String encryptedAnswer = answer;
-
-                            boolean isLabelMatching = false;
-                            String labelMatchMessage = "Label matching is disabled";
-                            String trimmedLabel = label.trim();
-
-                            if (!keywordList.isEmpty()) {
-                                labelMatchMessage = "Label not matched with keywords";
-                                for (String keyword : keywordList) {
-                                    if (trimmedLabel.equalsIgnoreCase(keyword)) {
-                                        processedKeywords.add(keyword);
-                                        if ("Checked".equals(answer)) {
-                                            isLabelMatching = true;
-                                            labelMatchMessage = "Label matched with keywords";
-                                        } else {
-                                            labelMatchMessage = "Label matched but unchecked";
-                                        }
-                                        break;
-                                    }
-                                }
-                            }
-
-                            // Encryption logic for label and answer based on metadata
-                            String sorItemName = input.getSorItemName();
-                            LlmJsonQueryInputTableSorMeta meta = (sorItemName != null) ? metaMap.get(sorItemName)
-                                    : null;
-                            boolean isEncryptionEnabled = "true".equalsIgnoreCase(encryptOutputSorItem);
-                            boolean itemEncryptionEnabled = meta != null
-                                    && "true".equalsIgnoreCase(meta.getIsEncrypted()) && isEncryptionEnabled;
-
-                            String encryptedLabel = itemEncryptionEnabled
-                                    ? encryption.encrypt(label, AES_256, input.getSorItemName())
-                                    : label;
-                            String encryptedSectionAlias = itemEncryptionEnabled
-                                    ? encryption.encrypt(sectionAlias, AES_256,
-                                            input.getSorItemName())
-                                    : sectionAlias;
-
-                            CheckboxQueryOutputTable output = CheckboxQueryOutputTable.builder()
-                                    .createdOn(String.valueOf(input.getCreatedOn()))
-                                    .tenantId(input.getTenantId())
-                                    .createdUserId(input.getTenantId())
-                                    .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
-                                    .lastUpdatedUserId(input.getTenantId())
-                                    .confidenceScore(0.0)
-                                    .answer(encryptedAnswer)
-                                    .boundingBox(bboxAsIs)
-                                    .paperNo(input.getPaperNo())
-                                    .originId(input.getOriginId())
-                                    .groupId(input.getGroupId())
-                                    .rootPipelineId(input.getRootPipelineId())
-                                    .batchId(input.getBatchId())
-                                    .modelRegistry(input.getModelRegistry())
-                                    .extractedImageUnit(input.getExtractedImageUnit())
-                                    .imageDpi(input.getImageDpi())
-                                    .imageHeight(input.getImageHeight())
-                                    .imageWidth(input.getImageWidth())
-                                    .sorContainerId(input.getSorContainerId())
-                                    .sorItemLabel(encryptedLabel)
-                                    .sorItemName(input.getSorItemName())
-                                    .sectionAlias(encryptedSectionAlias)
-                                    .bBoxAsIs(bboxAsIs)
-                                    .isLabelMatching(isLabelMatching)
-                                    .labelMatchMessage(labelMatchMessage)
-                                    .isEncrypted(String.valueOf(itemEncryptionEnabled))
-                                    .encryptionPolicy(AES_256)
-                                    .build();
-
+                            CheckboxQueryOutputTable output = createOutputTable(input, option, bboxAsIs, sectionAlias,
+                                    metaMap, keywordList, processedKeywords, encryptOutputSorItem);
                             outputTables.add(output);
                         }
                     }
@@ -181,6 +85,113 @@ public class CheckboxJsonParserConsumerProcess
         }
 
         return outputTables;
+    }
+
+    private Map<String, LlmJsonQueryInputTableSorMeta> getSorMetaMap(String sorMetaDetail) throws Exception {
+        if (sorMetaDetail != null && !sorMetaDetail.isEmpty()) {
+            List<LlmJsonQueryInputTableSorMeta> metaList = objectMapper.readValue(sorMetaDetail,
+                    new TypeReference<>() {
+                    });
+            return metaList.stream()
+                    .collect(Collectors.toMap(LlmJsonQueryInputTableSorMeta::getSorItemName, meta -> meta,
+                            (a, b) -> a));
+        }
+        return Collections.emptyMap();
+    }
+
+    private List<String> getKeywordList(String checkboxKeywords) {
+        if (checkboxKeywords != null && !checkboxKeywords.isEmpty()) {
+            return java.util.Arrays.stream(checkboxKeywords.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toList());
+        }
+        return Collections.emptyList();
+    }
+
+    private String getBboxAsIs(CheckboxJsonParsedResponse.CheckboxGroup group) throws Exception {
+        if (group.getGroupBbox() != null && group.getGroupBbox().size() == 4) {
+            List<Integer> bbox = group.getGroupBbox();
+            var bboxNode = objectMapper.createObjectNode();
+            bboxNode.put("topLeftX", bbox.get(0));
+            bboxNode.put("topLeftY", bbox.get(1));
+            bboxNode.put("bottomRightX", bbox.get(2));
+            bboxNode.put("bottomRightY", bbox.get(3));
+            return objectMapper.writeValueAsString(bboxNode);
+        }
+        return "[]";
+    }
+
+    private CheckboxQueryOutputTable createOutputTable(CheckboxQueryInputTable input,
+            CheckboxJsonParsedResponse.CheckboxOption option, String bboxAsIs, String sectionAlias,
+            Map<String, LlmJsonQueryInputTableSorMeta> metaMap, List<String> keywordList,
+            Set<String> processedKeywords, String encryptOutputSorItem) throws Exception {
+        String label = option.getLabel() != null ? option.getLabel() : "";
+        String status = option.getStatus();
+        String answer = "C".equalsIgnoreCase(status) ? "Checked" : "Unchecked";
+
+        boolean isLabelMatching = false;
+        String labelMatchMessage = "Label matching is disabled";
+        String trimmedLabel = label.trim();
+
+        if (!keywordList.isEmpty()) {
+            labelMatchMessage = "Label not matched with keywords";
+            for (String keyword : keywordList) {
+                if (trimmedLabel.equalsIgnoreCase(keyword)) {
+                    processedKeywords.add(keyword);
+                    if ("Checked".equals(answer)) {
+                        isLabelMatching = true;
+                        labelMatchMessage = "Label matched with keywords";
+                    } else {
+                        labelMatchMessage = "Label matched but unchecked";
+                    }
+                    break;
+                }
+            }
+        }
+
+        // Encryption logic for label and answer based on metadata
+        String sorItemName = input.getSorItemName();
+        LlmJsonQueryInputTableSorMeta meta = (sorItemName != null) ? metaMap.get(sorItemName) : null;
+        boolean isEncryptionEnabled = "true".equalsIgnoreCase(encryptOutputSorItem);
+        boolean itemEncryptionEnabled = meta != null && "true".equalsIgnoreCase(meta.getIsEncrypted())
+                && isEncryptionEnabled;
+
+        String encryptedLabel = itemEncryptionEnabled ? encryption.encrypt(label, AES_256, input.getSorItemName())
+                : label;
+        String encryptedSectionAlias = itemEncryptionEnabled
+                ? encryption.encrypt(sectionAlias, AES_256, input.getSorItemName())
+                : sectionAlias;
+
+        return CheckboxQueryOutputTable.builder()
+                .createdOn(input.getCreatedOn())
+                .tenantId(input.getTenantId())
+                .createdUserId(input.getTenantId())
+                .lastUpdatedOn(CreateTimeStamp.currentTimestamp())
+                .lastUpdatedUserId(input.getTenantId())
+                .confidenceScore(0.0)
+                .answer(answer)
+                .boundingBox(bboxAsIs)
+                .paperNo(input.getPaperNo())
+                .originId(input.getOriginId())
+                .groupId(input.getGroupId())
+                .rootPipelineId(input.getRootPipelineId())
+                .batchId(input.getBatchId())
+                .modelRegistry(input.getModelRegistry())
+                .extractedImageUnit(input.getExtractedImageUnit())
+                .imageDpi(input.getImageDpi())
+                .imageHeight(input.getImageHeight())
+                .imageWidth(input.getImageWidth())
+                .sorContainerId(input.getSorContainerId())
+                .sorItemLabel(encryptedLabel)
+                .sorItemName(input.getSorItemName())
+                .sectionAlias(encryptedSectionAlias)
+                .bBoxAsIs(bboxAsIs)
+                .isLabelMatching(isLabelMatching)
+                .labelMatchMessage(labelMatchMessage)
+                .isEncrypted(itemEncryptionEnabled)
+                .encryptionPolicy(AES_256)
+                .build();
     }
 
     private String getDecryptedInputJson(InticsIntegrity encryption, String extractedContent,
