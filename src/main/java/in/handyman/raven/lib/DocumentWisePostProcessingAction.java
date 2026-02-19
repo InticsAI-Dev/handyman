@@ -186,6 +186,7 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
         batch.bind("currencyValue", input.getCurrencyValue());
         batch.bind("paragraphSection", input.getParagraphSection());
         batch.bind("sorItemId", input.getSorItemId());
+        batch.bind("sorItemName", input.getSorItemName());
         batch.bind("leftPos", input.getLeftPos());
         batch.bind("rightPos", input.getRightPos());
         batch.bind("lowerPos", input.getLowerPos());
@@ -210,14 +211,14 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
             "question_id, root_pipeline_id, state, synonym_id, " +
             "tenant_id, transaction_id, truth_id, channel_id, " +
             "csv_file_path, sor_container_id, truth_entity_id, currency_ascii_value, currency_value, " +
-            "paragraph_section, sor_item_id, left_pos, right_pos, lower_pos, upper_pos, " +
+            "paragraph_section, sor_item_id, sor_item_name, left_pos, right_pos, lower_pos, upper_pos, " +
             "is_encrypted, group_id, batch_id) VALUES (" +
             ":createdOn, :createdUserId, :lastUpdatedOn, :lastUpdatedUserId, :status, :version, " +
             ":encode, :feature, :label, :originId, :precision, :predictedValue, " +
             ":questionId, :rootPipelineId, :state, :synonymId, " +
             ":tenantId, :transactionId, :truthId, :channelId, " +
             ":csvFilePath, :sorContainerId, :truthEntityId, :currencyAsciiValue, :currencyValue, " +
-            ":paragraphSection, :sorItemId, :leftPos, :rightPos, :lowerPos, :upperPos, " +
+            ":paragraphSection, :sorItemId, :sorItemName, :leftPos, :rightPos, :lowerPos, :upperPos, " +
             ":isEncrypted, :groupId, :batchId)";
   }
 

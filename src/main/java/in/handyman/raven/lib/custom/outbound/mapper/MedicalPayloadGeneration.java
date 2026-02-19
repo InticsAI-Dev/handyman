@@ -58,16 +58,14 @@ public class MedicalPayloadGeneration {
     private static final String TOTAL_SERVICE_DAYS_SOR_ITEM_NAME = "total_service_days";
     private static final String SERVICE_QUANTITY_VISITS_SOR_ITEM_NAME = "service_quantity_visits";
     private static final String SERVICE_QUANTITY_UNIT_SOR_ITEM_NAME = "service_quantity_units";
-
-    // Newborn information
     private static final String MULTIPLE_MEMBER_SOR_ITEM_NAME = "multiple_member_indicator";
     private static final String NEWBORN_REQUEST_SOR_ITEM_NAME = "newborn_request";
     private static final String NEWBORN_LAST_NAME_SOR_ITEM_NAME = "newborn_last_name";
     private static final String NEWBORN_FIRST_NAME_SOR_ITEM_NAME = "newborn_first_name";
     private static final String NEWBORN_DATE_OF_BIRTH_SOR_ITEM_NAME = "newborn_date_of_birth";
     private static final String NEWBORN_GENDER_SOR_ITEM_NAME = "newborn_gender";
+    private static final String FAX_REPORT_SOR_ITEM_NAME = "fax_report";
 
-    // Provider suffixes
     private static final String FIRST_NAME_SUFFIX = "_first_name";
     private static final String LAST_NAME_SUFFIX = "_last_name";
     private static final String ADDRESS_LINE1_SUFFIX = "_address_line1";
@@ -93,7 +91,6 @@ public class MedicalPayloadGeneration {
         // Build medical payload
         MedicalPayload payload = buildMedicalPayload(predictions, configMap);
 
-        // Map status to SUCCESS or FAILURE
         String uploadStatus = metadataContext.getUploadStatus();
         String mappedStatus = "SUCCESS";
         if (uploadStatus != null) {
@@ -106,8 +103,7 @@ public class MedicalPayloadGeneration {
                 mappedStatus = "SUCCESS";
             }
         }
-        
-        // Build complete response - only set error fields when there's an error
+
         MedicalOutboundResponse.MedicalOutboundResponseBuilder responseBuilder = MedicalOutboundResponse.builder()
                 .requestTxnId(metadataContext.getRequestTxnId())
                 .status(mappedStatus)
@@ -115,8 +111,7 @@ public class MedicalPayloadGeneration {
                 .inboundTransactionId(metadataContext.getInboundTransactionId())
                 .metadata(metadata)
                 .aumipayload(payload);
-        
-        // Only set error fields if there's an actual error, else set them to null
+
         if (metadataContext.getErrorCode() != 200 && metadataContext.getErrorCode() != null) {
             if (metadataContext.getErrorMessage() != null && !metadataContext.getErrorMessage().trim().isEmpty()) {
                 responseBuilder.errorMessage(metadataContext.getErrorMessage());
@@ -128,7 +123,6 @@ public class MedicalPayloadGeneration {
                 responseBuilder.errorCd(metadataContext.getErrorCode());
             }
         } else {
-            // Set error fields to null when there's no error
             responseBuilder.errorMessage(null)
                     .errorMessageDetail(null)
                     .errorCd(null);
@@ -141,9 +135,7 @@ public class MedicalPayloadGeneration {
     private OutboundJsonMetaData buildMetadata(MetadataContext context, Map<String, String> configMap) {
         log.info("Building metadata section");
 
-        Integer overallConfidence = 0; // Can be calculated from predictions if needed
-        
-        // Calculate processingTimeMs from processaStartTime and processEndTime
+        Integer overallConfidence = 0;
         Long processingTimeMs = 0L;
         if (context.getProcessStartTime() != null && context.getProcessEndTime() != null) {
             try {
@@ -176,10 +168,6 @@ public class MedicalPayloadGeneration {
     private MedicalPayload buildMedicalPayload(List<PredictionDTO> predictions, Map<String, String> configMap) {
         log.info("Building medical payload from {} predictions", predictions.size());
 
-        //filter predictions having line item Type is multi_value
-
-
-
         List<PredictionDTO> singleEntityPredictions =  predictions.stream().filter(predictionDTO -> !predictionDTO.getIsMultiEntityEnabled()).collect(Collectors.toList());
 
         List<PredictionDTO> multiEntityPredictions =  predictions.stream().filter(PredictionDTO::getIsMultiEntityEnabled).collect(Collectors.toList());
@@ -194,7 +182,7 @@ public class MedicalPayloadGeneration {
 
 
     private void getSingleEntityMedicalPayload(List<PredictionDTO> predictions, Map<String, String> configMap, MedicalPayload.MedicalPayloadBuilder builder) {
-        // Split predictions by line_item_type
+
         Map<String, List<PredictionDTO>> predictionsByType = predictions.stream()
                 .collect(Collectors.groupingBy(
                         pred -> pred.getLineItemType() != null ? pred.getLineItemType()
@@ -206,32 +194,21 @@ public class MedicalPayloadGeneration {
         List<PredictionDTO> multiValuePredictions = predictionsByType.getOrDefault("multi_value",
                 Collections.emptyList());
 
-        // Build field map from single_value predictions
         Map<String, ExtractedField> singleValueFieldMap = buildSingleValueFieldMap(singleValuePredictions,
                 configMap);
 
-        // Get configuration values
         boolean cleanStatus = Boolean
                 .parseBoolean(configMap.getOrDefault("CUSTOM_MEDICAL_OUTBOUND_CLEANER", "false"));
-        boolean memberEnabler = Boolean
-                .parseBoolean(configMap.getOrDefault("NEWBORN_REQUEST_MEMBER_ENABLER", "false"));
 
-        // Build payload
+        buildMemberSection(builder, singleValueFieldMap, cleanStatus);
 
-
-        // Build member section
-        buildMemberSection(builder, singleValueFieldMap, memberEnabler, cleanStatus);
-
-        // Build authorization section
         buildAuthorizationSection(builder, singleValueFieldMap, cleanStatus);
 
-        // Build service modifiers from multi-value
         List<ServiceModifier> serviceModifiers = buildServiceModifiers(multiValuePredictions, configMap);
         if (!serviceModifiers.isEmpty()) {
             builder.service(serviceModifiers);
         }
 
-        // Build diagnosis from multi-value
         List<Diagonsis> diagnosisList = buildDiagnosisList(multiValuePredictions, singleValueFieldMap,
                 configMap,
                 cleanStatus);
@@ -239,20 +216,17 @@ public class MedicalPayloadGeneration {
             builder.diagnosis(diagnosisList);
         }
 
-        // Build providers
         List<Provider> providers = buildProvidersFromSingleValue(singleValueFieldMap, cleanStatus);
         if (!providers.isEmpty()) {
             builder.provider(providers);
         }
 
-        // Build additional properties
         List<AdditionalProperties> additionalProperties = buildAdditionalProperties(singleValueFieldMap,
                 configMap);
         if (!additionalProperties.isEmpty()) {
             builder.additionalProperties(additionalProperties);
         }
 
-        // Build member additional properties (newborn)
         List<AdditionalProperties> memberAdditionalProperties = buildMemberAdditionalProperties(
                 singleValueFieldMap);
         if (!memberAdditionalProperties.isEmpty()) {
@@ -263,7 +237,7 @@ public class MedicalPayloadGeneration {
 
 
     private void getMultiEntityMedicalPayload(List<PredictionDTO> predictions, Map<String, String> configMap, MedicalPayload.MedicalPayloadBuilder builder) {
-        // Split predictions by line_item_type
+
         Map<String, List<PredictionDTO>> predictionsByType = predictions.stream()
                 .collect(Collectors.groupingBy(
                         pred -> pred.getLineItemType() != null ? pred.getLineItemType()
@@ -277,12 +251,9 @@ public class MedicalPayloadGeneration {
         Map<String, ExtractedField> singleValueFieldMap = buildSingleValueFieldMap(singleValuePredictions,
                 configMap);
 
-        // Get configuration values
         boolean cleanStatus = Boolean
                 .parseBoolean(configMap.getOrDefault("CUSTOM_MEDICAL_OUTBOUND_CLEANER", "false"));
 
-
-        // Build providers
         List<Provider> providers = buildProvidersFromSingleValue(singleValueFieldMap, cleanStatus);
         if (!providers.isEmpty()) {
             builder.provider(providers);
@@ -339,42 +310,25 @@ public class MedicalPayloadGeneration {
         List<ServiceModifier> serviceModifiers = new ArrayList<>();
 
         for (Map<String, ExtractedField> fieldMap : groupedByInstance.values()) {
-            ExtractedField serviceCode = fieldMap.getOrDefault(SERVICE_CODE_SOR_ITEM_NAME,
-                    getDefaultExtractedField());
-            // Filter only valid service entries if needed, or if code is mandatory
-            if ((serviceCode.getValue() == null || serviceCode.getValue().isEmpty())
-                    && !fieldMap.containsKey(SERVICE_CODE_SOR_ITEM_NAME)) {
-                // Check if any service related fields exist, if so maybe we should keep it?
-                // For now, if no service code, we might skip or use empty.
-                // Let's assume strictness: if no service code, skip.
-                if (fieldMap.isEmpty())
-                    continue;
-            }
-
-            // More robust check: if it's not a service container instance (could be
-            // diagnosis), we might want to skip?
-            // Actually, we are iterating over ALL multi-value predictions.
-            // We need to differentiate Service instances from Diagnosis instances.
-            // The groupedByInstance mixes them if we don't filter.
-            // The best way is to check if the instance contains service keys.
-            if (!fieldMap.containsKey(SERVICE_CODE_SOR_ITEM_NAME)
-                    && !fieldMap.containsKey(SERVICE_MODIFIER_SOR_ITEM_NAME)
-                    && !fieldMap.containsKey(SERVICE_QUANTITY_UNIT_SOR_ITEM_NAME)
-                    && !fieldMap.containsKey(SERVICE_QUANTITY_VISITS_SOR_ITEM_NAME)) {
+            ExtractedField serviceCode = fieldMap.get(SERVICE_CODE_SOR_ITEM_NAME);
+            
+            // Only add service modifier if service code has a value
+            if (serviceCode == null || serviceCode.getValue() == null || serviceCode.getValue().isEmpty()) {
                 continue;
             }
 
-            ExtractedField modifier = fieldMap.getOrDefault(SERVICE_MODIFIER_SOR_ITEM_NAME,
-                    getDefaultExtractedField());
-            List<ServiceModifierWrapper> modifierList = Collections.singletonList(
-                    ServiceModifierWrapper.builder().cd(modifier).build());
+            ExtractedField modifier = fieldMap.get(SERVICE_MODIFIER_SOR_ITEM_NAME);
+            List<ServiceModifierWrapper> modifierList = new ArrayList<>();
+            if (modifier != null && modifier.getValue() != null && !modifier.getValue().isEmpty()) {
+                modifierList.add(ServiceModifierWrapper.builder().cd(modifier).build());
+            }
 
             List<ServiceQuantity> quantities = buildServiceQuantities(fieldMap);
 
             ServiceModifier serviceModifier = ServiceModifier.builder()
                     .cd(serviceCode)
-                    .modifier(modifierList)
-                    .serviceQuantity(quantities)
+                    .modifier(modifierList.isEmpty() ? null : modifierList)
+                    .serviceQuantity(quantities.isEmpty() ? null : quantities)
                     .build();
 
             serviceModifiers.add(serviceModifier);
@@ -387,19 +341,21 @@ public class MedicalPayloadGeneration {
     private List<ServiceQuantity> buildServiceQuantities(Map<String, ExtractedField> fieldMap) {
         List<ServiceQuantity> quantities = new ArrayList<>();
 
-        ExtractedField unitField = fieldMap.getOrDefault(SERVICE_QUANTITY_UNIT_SOR_ITEM_NAME,
-                getDefaultExtractedField());
-        quantities.add(ServiceQuantity.builder()
-                .quantityType(SimpleValueField.builder().value("Units").build())
-                .quantityUnits(unitField)
-                .build());
+        ExtractedField unitField = fieldMap.get(SERVICE_QUANTITY_UNIT_SOR_ITEM_NAME);
+        if (unitField != null && unitField.getValue() != null && !unitField.getValue().isEmpty()) {
+            quantities.add(ServiceQuantity.builder()
+                    .quantityType(SimpleValueField.builder().value("Units").build())
+                    .quantityUnits(unitField)
+                    .build());
+        }
 
-        ExtractedField visitField = fieldMap.getOrDefault(SERVICE_QUANTITY_VISITS_SOR_ITEM_NAME,
-                getDefaultExtractedField());
-        quantities.add(ServiceQuantity.builder()
-                .quantityType(SimpleValueField.builder().value("Visits").build())
-                .quantityUnits(visitField)
-                .build());
+        ExtractedField visitField = fieldMap.get(SERVICE_QUANTITY_VISITS_SOR_ITEM_NAME);
+        if (visitField != null && visitField.getValue() != null && !visitField.getValue().isEmpty()) {
+            quantities.add(ServiceQuantity.builder()
+                    .quantityType(SimpleValueField.builder().value("Visits").build())
+                    .quantityUnits(visitField)
+                    .build());
+        }
 
         return quantities;
     }
@@ -500,7 +456,6 @@ public class MedicalPayloadGeneration {
 
     private void buildMemberSection(MedicalPayload.MedicalPayloadBuilder builder,
                                     Map<String, ExtractedField> fieldMap,
-                                    boolean memberEnabler,
                                     boolean cleanStatus) {
         log.info("Building member section");
 
@@ -508,56 +463,30 @@ public class MedicalPayloadGeneration {
             putIfPresent(builder::hcid, fieldMap, MEMBER_ID_SOR_ITEM_NAME);
             putIfPresent(builder::medicaidId, fieldMap, MEDICAID_ID_SOR_ITEM_NAME);
             putIfPresent(builder::groupId, fieldMap, MEMBER_GROUP_ID_SOR_ITEM_NAME);
+            putIfPresent(builder::memberLastName, fieldMap, MEMBER_LAST_NAME_SOR_ITEM_NAME);
+            putIfPresent(builder::memberFirstName, fieldMap, MEMBER_FIRST_NAME_SOR_ITEM_NAME);
+            putIfPresent(builder::memberDOB, fieldMap, MEMBER_DATE_OF_BIRTH_SOR_ITEM_NAME);
+            putIfPresent(builder::memberGender, fieldMap, MEMBER_GENDER_SOR_ITEM_NAME);
             putIfPresent(builder::memberAddressLine1, fieldMap, MEMBER_ADDRESS_LINE_1_SOR_ITEM_NAME);
             putIfPresent(builder::memberCity, fieldMap, MEMBER_CITY_SOR_ITEM_NAME);
             putIfPresent(builder::memberZipCode, fieldMap, MEMBER_ZIPCODE_SOR_ITEM_NAME);
             putIfPresent(builder::memberState, fieldMap, MEMBER_STATE_SOR_ITEM_NAME);
-
-            if (memberEnabler) {
-                String newbornRequest = getFieldValue(fieldMap, NEWBORN_REQUEST_SOR_ITEM_NAME);
-                if (!"Y".equals(newbornRequest)) {
-                    buildMemberDetailsIfPresent(builder, fieldMap);
-                }
-            } else {
-                buildMemberDetailsIfPresent(builder, fieldMap);
-            }
-        } else {
-            // Use putIfPresent to only set fields with valid values
+        }
+        else{
             putIfPresent(builder::hcid, fieldMap, MEMBER_ID_SOR_ITEM_NAME);
             putIfPresent(builder::medicaidId, fieldMap, MEDICAID_ID_SOR_ITEM_NAME);
             putIfPresent(builder::groupId, fieldMap, MEMBER_GROUP_ID_SOR_ITEM_NAME);
+            putIfPresent(builder::memberLastName, fieldMap, MEMBER_LAST_NAME_SOR_ITEM_NAME);
+            putIfPresent(builder::memberFirstName, fieldMap, MEMBER_FIRST_NAME_SOR_ITEM_NAME);
+            putIfPresent(builder::memberDOB, fieldMap, MEMBER_DATE_OF_BIRTH_SOR_ITEM_NAME);
+            putIfPresent(builder::memberGender, fieldMap, MEMBER_GENDER_SOR_ITEM_NAME);
             putIfPresent(builder::memberAddressLine1, fieldMap, MEMBER_ADDRESS_LINE_1_SOR_ITEM_NAME);
             putIfPresent(builder::memberCity, fieldMap, MEMBER_CITY_SOR_ITEM_NAME);
             putIfPresent(builder::memberZipCode, fieldMap, MEMBER_ZIPCODE_SOR_ITEM_NAME);
             putIfPresent(builder::memberState, fieldMap, MEMBER_STATE_SOR_ITEM_NAME);
-
-            if (memberEnabler) {
-                String newbornRequest = getFieldValue(fieldMap, NEWBORN_REQUEST_SOR_ITEM_NAME);
-                if (!"Y".equals(newbornRequest)) {
-                    buildMemberDetailsIfPresent(builder, fieldMap);
-                }
-            } else {
-                buildMemberDetailsIfPresent(builder, fieldMap);
-            }
         }
     }
 
-    private void buildMemberDetailsIfPresent(MedicalPayload.MedicalPayloadBuilder builder,
-                                             Map<String, ExtractedField> fieldMap) {
-        putIfPresent(builder::memberLastName, fieldMap, MEMBER_LAST_NAME_SOR_ITEM_NAME);
-        putIfPresent(builder::memberFirstName, fieldMap, MEMBER_FIRST_NAME_SOR_ITEM_NAME);
-        putIfPresent(builder::memberDOB, fieldMap, MEMBER_DATE_OF_BIRTH_SOR_ITEM_NAME);
-        putIfPresent(builder::memberGender, fieldMap, MEMBER_GENDER_SOR_ITEM_NAME);
-    }
-
-    private void buildMemberDetails(MedicalPayload.MedicalPayloadBuilder builder,
-                                    Map<String, ExtractedField> fieldMap) {
-        // Use putIfPresent to only set fields with valid values
-        putIfPresent(builder::memberLastName, fieldMap, MEMBER_LAST_NAME_SOR_ITEM_NAME);
-        putIfPresent(builder::memberFirstName, fieldMap, MEMBER_FIRST_NAME_SOR_ITEM_NAME);
-        putIfPresent(builder::memberDOB, fieldMap, MEMBER_DATE_OF_BIRTH_SOR_ITEM_NAME);
-        putIfPresent(builder::memberGender, fieldMap, MEMBER_GENDER_SOR_ITEM_NAME);
-    }
 
     private void buildAuthorizationSection(MedicalPayload.MedicalPayloadBuilder builder,
                                            Map<String, ExtractedField> fieldMap,
@@ -575,7 +504,6 @@ public class MedicalPayloadGeneration {
             putIfPresent(builder::faxReceivedDate, fieldMap, FAX_RECEIVED_DATE_SOR_ITEM_NAME);
             putIfPresent(builder::totalServiceDays, fieldMap, TOTAL_SERVICE_DAYS_SOR_ITEM_NAME);
         } else {
-            // Use putIfPresent to only set fields with valid values
             putIfPresent(builder::authId, fieldMap, AUTH_ID_SOR_ITEM_NAME);
             putIfPresent(builder::levelOfService, fieldMap, LEVEL_OF_SERVICE_SOR_ITEM_NAME);
             putIfPresent(builder::serviceFromDate, fieldMap, SERVICE_FROM_DATE_SOR_ITEM_NAME);
@@ -598,48 +526,22 @@ public class MedicalPayloadGeneration {
                 multiValuePredictions,
                 configMap);
 
-        if (groupedByInstance.isEmpty() && !cleanStatus) {
-            // Fallback for single value logic if needed, though usually multi-value is
-            // expected now
-            ExtractedField desc = singleValueMap.getOrDefault(DIAGNOSIS_DESCRIPTION_SOR_ITEM_NAME,
-                    getDefaultExtractedField());
-            ExtractedField ptr = singleValueMap.getOrDefault(CODE_POINTER_SOR_ITEM_NAME,
-                    getDefaultExtractedField());
-            // Make a default entry if desired, or return empty. Original logic returned a
-            // default if not cleanStatus.
-            return Collections.singletonList(
-                    Diagonsis.builder()
-                            .cd(getDefaultExtractedField())
-                            .desc(desc)
-                            .codePointer(ptr)
-                            .build());
-        }
-
         List<Diagonsis> diagnosisList = new ArrayList<>();
 
         for (Map<String, ExtractedField> fieldMap : groupedByInstance.values()) {
-            ExtractedField code = fieldMap.getOrDefault(DIAGNOSIS_CODE_SOR_ITEM_NAME,
-                    getDefaultExtractedField());
+            ExtractedField code = fieldMap.get(DIAGNOSIS_CODE_SOR_ITEM_NAME);
 
-            if (cleanStatus && (code.getValue() == null || code.getValue().isEmpty())) {
+            if (code == null || code.getValue() == null || code.getValue().isEmpty()) {
                 continue;
             }
 
-            if (!fieldMap.containsKey(DIAGNOSIS_CODE_SOR_ITEM_NAME)
-                    && !fieldMap.containsKey(DIAGNOSIS_DESCRIPTION_SOR_ITEM_NAME)
-                    && !fieldMap.containsKey(CODE_POINTER_SOR_ITEM_NAME)) {
-                continue;
-            }
-
-            ExtractedField desc = fieldMap.getOrDefault(DIAGNOSIS_DESCRIPTION_SOR_ITEM_NAME,
-                    getDefaultExtractedField());
-            ExtractedField pointer = fieldMap.getOrDefault(CODE_POINTER_SOR_ITEM_NAME,
-                    getDefaultExtractedField());
+            ExtractedField desc = fieldMap.get(DIAGNOSIS_DESCRIPTION_SOR_ITEM_NAME);
+            ExtractedField pointer = fieldMap.get(CODE_POINTER_SOR_ITEM_NAME);
 
             Diagonsis diagnosis = Diagonsis.builder()
                     .cd(code)
-                    .desc(desc)
-                    .codePointer(pointer)
+                    .desc(desc != null && desc.getValue() != null && !desc.getValue().isEmpty() ? desc : null)
+                    .codePointer(pointer != null && pointer.getValue() != null && !pointer.getValue().isEmpty() ? pointer : null)
                     .build();
 
             diagnosisList.add(diagnosis);
@@ -714,26 +616,26 @@ public class MedicalPayloadGeneration {
                 return null;
             }
         } else {
-            builder.providerNPI(fieldMap.getOrDefault(prefix + "_npi", getDefaultExtractedField()))
-                    .providerTIN(fieldMap.getOrDefault(prefix + "_tin", getDefaultExtractedField()))
-                    .providerFirstName(fieldMap.getOrDefault(prefix + FIRST_NAME_SUFFIX,
-                            getDefaultExtractedField()))
-                    .providerLastName(fieldMap.getOrDefault(prefix + LAST_NAME_SUFFIX,
-                            getDefaultExtractedField()))
-                    .providerAddressLine1(
-                            fieldMap.getOrDefault(prefix + ADDRESS_LINE1_SUFFIX,
-                                    getDefaultExtractedField()))
-                    .providerAddressLine2(
-                            fieldMap.getOrDefault(prefix + ADDRESS_LINE2_SUFFIX,
-                                    getDefaultExtractedField()))
-                    .providerCity(fieldMap.getOrDefault(prefix + CITY_SUFFIX,
-                            getDefaultExtractedField()))
-                    .providerState(fieldMap.getOrDefault(prefix + STATE_SUFFIX,
-                            getDefaultExtractedField()))
-                    .providerZipCode(fieldMap.getOrDefault(prefix + ZIPCODE_SUFFIX,
-                            getDefaultExtractedField()))
-                    .providerSpeciality(fieldMap.getOrDefault(prefix + SPECIALTY_SUFFIX,
-                            getDefaultExtractedField()));
+            // Only set fields that have values, and check if provider has any dat
+            hasData |= putIfPresentProvider(builder::providerNPI, fieldMap, prefix + "_npi");
+            hasData |= putIfPresentProvider(builder::providerTIN, fieldMap, prefix + "_tin");
+            hasData |= putIfPresentProvider(builder::providerFirstName, fieldMap,
+                    prefix + FIRST_NAME_SUFFIX);
+            hasData |= putIfPresentProvider(builder::providerLastName, fieldMap, prefix + LAST_NAME_SUFFIX);
+            hasData |= putIfPresentProvider(builder::providerAddressLine1, fieldMap,
+                    prefix + ADDRESS_LINE1_SUFFIX);
+            hasData |= putIfPresentProvider(builder::providerAddressLine2, fieldMap,
+                    prefix + ADDRESS_LINE2_SUFFIX);
+            hasData |= putIfPresentProvider(builder::providerCity, fieldMap, prefix + CITY_SUFFIX);
+            hasData |= putIfPresentProvider(builder::providerState, fieldMap, prefix + STATE_SUFFIX);
+            hasData |= putIfPresentProvider(builder::providerZipCode, fieldMap, prefix + ZIPCODE_SUFFIX);
+            hasData |= putIfPresentProvider(builder::providerSpeciality, fieldMap,
+                    prefix + SPECIALTY_SUFFIX);
+
+            if (!hasData) {
+                log.debug("Skipping {} - no data present", category);
+                return null;
+            }
         }
 
         builder.providerCategory(CategoryField.builder().value(category).build());
@@ -770,6 +672,19 @@ public class MedicalPayloadGeneration {
                 .confidence(Double.valueOf(defaultField.getConfidence()))
                 .boundingBox(defaultField.getBoundingBox())
                 .build());
+
+        String faxReportValue = getFieldValue(fieldMap, FAX_REPORT_SOR_ITEM_NAME);
+        if (faxReportValue != null && !faxReportValue.isEmpty()) {
+            ExtractedField faxReportField = fieldMap.get(FAX_REPORT_SOR_ITEM_NAME);
+            ExtractedField fieldToUse = faxReportField != null ? faxReportField : defaultField;
+            properties.add(AdditionalProperties.builder()
+                    .propName("FAX_REPORT")
+                    .propValue(faxReportValue)
+                    .page(fieldToUse.getPage())
+                    .confidence(Double.valueOf(fieldToUse.getConfidence()))
+                    .boundingBox(fieldToUse.getBoundingBox())
+                    .build());
+        }
 
         ExtractedField levelOfCare = fieldMap.get(LEVEL_OF_SERVICE_SOR_ITEM_NAME);
         if (levelOfCare != null && levelOfCare.getValue() != null && !levelOfCare.getValue().isEmpty()) {
@@ -813,39 +728,23 @@ public class MedicalPayloadGeneration {
         }
 
         ExtractedField newbornRequest = fieldMap.get(NEWBORN_REQUEST_SOR_ITEM_NAME);
-        String newbornValue = (newbornRequest != null && "Y".equalsIgnoreCase(newbornRequest.getValue())) ? "Y"
-                : "N";
-
-        ExtractedField baseField = newbornRequest != null ? newbornRequest : getDefaultExtractedField();
-        properties.add(AdditionalProperties.builder()
-                .propName("NEWBORN_REQUEST")
-                .propValue(newbornValue)
-                .page(baseField.getPage())
-                .confidence(Double.valueOf(baseField.getConfidence()))
-                .boundingBox(baseField.getBoundingBox())
-                .build());
-
-        if ("Y".equals(newbornValue)) {
+        if (newbornRequest != null && newbornRequest.getValue() != null && !newbornRequest.getValue().isEmpty()) {
+            properties.add(AdditionalProperties.builder()
+                    .propName("NEWBORN_REQUEST")
+                    .propValue(newbornRequest.getValue())
+                    .page(newbornRequest.getPage())
+                    .confidence(Double.valueOf(newbornRequest.getConfidence()))
+                    .boundingBox(newbornRequest.getBoundingBox())
+                    .build());
+        }
             addNewbornPropertyIfPresent(properties, "NEWBORN_FIRSTNAME",
                     fieldMap.get(NEWBORN_FIRST_NAME_SOR_ITEM_NAME));
             addNewbornPropertyIfPresent(properties, "NEWBORN_LASTNAME",
                     fieldMap.get(NEWBORN_LAST_NAME_SOR_ITEM_NAME));
             addNewbornPropertyIfPresent(properties, "NEWBORN_GENDER",
                     fieldMap.get(NEWBORN_GENDER_SOR_ITEM_NAME));
-
-            ExtractedField newbornDOB = getNewbornDOB(
-                    fieldMap.get(NEWBORN_DATE_OF_BIRTH_SOR_ITEM_NAME),
-                    fieldMap.get(FAX_RECEIVED_DATE_SOR_ITEM_NAME),
-                    fieldMap.get(MEMBER_DATE_OF_BIRTH_SOR_ITEM_NAME));
-            addNewbornPropertyIfPresent(properties, "NEWBORN_DOB", newbornDOB);
-
-            for (AdditionalProperties prop : properties) {
-                if ("MULTIPLE_MEMBER".equals(prop.getPropName())) {
-                    prop.setPropValue("N");
-                    log.info("Overriding MULTIPLE_MEMBER to N due to NEWBORN_REQUEST=Y");
-                }
-            }
-        }
+            addNewbornPropertyIfPresent(properties, "NEWBORN_DOB",
+                    fieldMap.get(NEWBORN_DATE_OF_BIRTH_SOR_ITEM_NAME));
 
         log.info("Built {} member additional properties", properties.size());
         return properties;
@@ -863,73 +762,6 @@ public class MedicalPayloadGeneration {
                     .boundingBox(field.getBoundingBox())
                     .build());
         }
-    }
-
-    private ExtractedField getNewbornDOB(ExtractedField newbornDOB,
-                                         ExtractedField faxReceivedDate,
-                                         ExtractedField memberDOB) {
-        Date faxDate = parseDateSafe(faxReceivedDate);
-        Date newbornDobDate = parseDateSafe(newbornDOB);
-        Date memberDobDate = parseDateSafe(memberDOB);
-
-        if (faxDate == null) {
-            faxDate = new Date();
-            log.info("fax_received_date missing, using current date");
-        }
-
-        if (newbornDobDate != null && isWithin30Days(newbornDobDate, faxDate)) {
-            log.info("Using newborn DOB as valid");
-            return newbornDOB;
-        } else if (memberDobDate != null && isWithin30Days(memberDobDate, faxDate)) {
-            log.info("Using member DOB as newborn DOB");
-            return memberDOB;
-        } else {
-            log.info("Both DOBs invalid, returning empty");
-            return getDefaultExtractedField();
-        }
-    }
-
-    private Date parseDateSafe(ExtractedField field) {
-        if (field == null || field.getValue() == null)
-            return null;
-
-        try {
-            String ymd = toYMD(field.getValue());
-            if (ymd == null)
-                return null;
-
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-            sdf.setLenient(false);
-            return sdf.parse(ymd);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private String toYMD(String input) {
-        if (input == null || input.trim().isEmpty())
-            return null;
-
-        String datePart = input.trim().split(" ")[0];
-        String cleaned = datePart.replaceAll("[^0-9/\\-]", "");
-
-        if (cleaned.matches("\\d{1,2}[-/]\\d{1,2}[-/]\\d{4}")) {
-            String[] p = cleaned.split("[-/]");
-            return p[2] + "-" +
-                    (p[0].length() == 1 ? "0" + p[0] : p[0]) + "-" +
-                    (p[1].length() == 1 ? "0" + p[1] : p[1]);
-        }
-
-        if (cleaned.matches("\\d{4}-\\d{1,2}-\\d{1,2}")) {
-            return cleaned;
-        }
-
-        return "";
-    }
-
-    private boolean isWithin30Days(Date dob, Date faxDate) {
-        long diffDays = (faxDate.getTime() - dob.getTime()) / (1000L * 60 * 60 * 24);
-        return diffDays >= 0 && diffDays <= 30;
     }
 
     private void putIfPresent(Consumer<ExtractedField> setter,
