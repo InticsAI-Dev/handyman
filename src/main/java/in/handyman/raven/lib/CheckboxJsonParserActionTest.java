@@ -2,13 +2,15 @@ package in.handyman.raven.lib;
 
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.CheckboxJsonParser;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.junit.jupiter.api.Test;
 
 import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
 
-@Slf4j
 public class CheckboxJsonParserActionTest {
+
+    private static final Logger log = LoggerFactory.getLogger(CheckboxJsonParserActionTest.class);
 
     @Test
     public void tritonTest() throws Exception {
