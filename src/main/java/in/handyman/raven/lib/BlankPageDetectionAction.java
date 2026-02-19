@@ -106,110 +106,7 @@ public class BlankPageDetectionAction implements IActionExecution {
                     .mapToMap()
                     .forEach(row -> {
                         rowCount[0]++;
-                        log.info(marker, "Processing row #{}", rowCount[0]);
-
-                        final String originId = String.valueOf(row.get("origin_id"));
-                        final String batchId = String.valueOf(row.get("batch_id"));
-                        final int groupId = Integer
-                                .parseInt(String.valueOf(row.get("group_id")));
-                        final long tenantId = Long
-                                .parseLong(String.valueOf(row.get("tenant_id")));
-                        String pdfPath = String.valueOf(row.get("file_path"));
-                        final Object processIdObj = row.get("process_id");
-                        final Object rootPipelineIdObj = row.get("root_pipeline_id");
-
-                        if (pdfPath == null || pdfPath.equals("null") || pdfPath.trim().isEmpty()) {
-                            pdfPath = String.valueOf(row.get("processed_file_path"));
-                        }
-
-                        if (pdfPath == null || pdfPath.equals("null")
-                                || pdfPath.trim().isEmpty()) {
-                            log.warn(marker, "Skipping NULL or empty file_path for origin_id: {}",
-                                    originId);
-                            return;
-                        }
-
-                        if (!Files.exists(Paths.get(pdfPath))) {
-                            log.error(marker, "File not found: {} for origin_id: {}",
-                                    pdfPath, originId);
-                            throw new HandymanException("File not found: " + pdfPath,
-                                    new RuntimeException("File not found"), action);
-                        }
-
-                        String fileExtension = "";
-                        if (pdfPath.contains(".")) {
-                            fileExtension = pdfPath.substring(pdfPath.lastIndexOf(".") + 1).toLowerCase();
-                        }
-
-                        if (fileExtension.isEmpty()) {
-                            fileExtension = Optional.ofNullable(row.get("file_extension"))
-                                    .map(String::valueOf)
-                                    .map(String::toLowerCase)
-                                    .orElse("");
-                        }
-
-                        log.info(marker, "Processing file: {} with extension: {} for origin_id: {}", pdfPath,
-                                fileExtension,
-                                originId);
-
-                        int pageNumber = 1;
-                        if (row.containsKey("paper_no") && row.get("paper_no") != null) {
-                            try {
-                                pageNumber = Integer.parseInt(String.valueOf(row.get("paper_no")));
-                            } catch (NumberFormatException e) {
-                                // Ignore and fall back to filename parsing
-                            }
-                        }
-
-                        if (pageNumber == 1 && pdfPath.matches(".*_\\d+\\.[a-zA-Z]+$")) {
-                            try {
-                                String numberPart = pdfPath.substring(pdfPath.lastIndexOf("_") + 1,
-                                        pdfPath.lastIndexOf("."));
-                                pageNumber = Integer.parseInt(numberPart);
-                            } catch (Exception e) {
-                                // Ignore
-                            }
-                        }
-
-                        try {
-                            if (fileExtension.contains("pdf")) {
-                                processPdf(
-                                        handle,
-                                        insertQuery,
-                                        pdfPath,
-                                        originId,
-                                        groupId,
-                                        tenantId,
-                                        batchId,
-                                        processIdObj,
-                                        rootPipelineIdObj);
-                            } else if (fileExtension.contains("png") || fileExtension.contains("jpeg")
-                                    || fileExtension.contains("jpg")) {
-                                processImage(
-                                        handle,
-                                        insertQuery,
-                                        pdfPath,
-                                        originId,
-                                        groupId,
-                                        tenantId,
-                                        batchId,
-                                        processIdObj,
-                                        rootPipelineIdObj,
-                                        pageNumber);
-                            } else {
-                                log.warn(marker, "Unsupported or missing file extension: {} for file: {}",
-                                        fileExtension, pdfPath);
-                            }
-
-                        } catch (Exception ex) {
-                            log.error(marker, "Failed blank detection for file: {}", pdfPath,
-                                    ex);
-                            throw new HandymanException(
-                                    "Failed blank detection for file: " + pdfPath,
-                                    ex, action);
-                        }
-
-                        log.info(marker, "Completed processing for origin_id: {}", originId);
+                        processRow(handle, row, insertQuery, rowCount[0]);
                     }));
 
             log.info(marker, "BlankPageDetection completed successfully. Total rows processed: {}",
@@ -223,6 +120,96 @@ public class BlankPageDetectionAction implements IActionExecution {
             log.error(marker, "Error in BlankPageDetectionAction", e);
             throw new HandymanException("Error in BlankPageDetectionAction", e, action);
         }
+    }
+
+    private void processRow(final Handle handle, final java.util.Map<String, Object> row, final String insertQuery,
+            final int rowNum) {
+        log.info(marker, "Processing row #{}", rowNum);
+
+        final String originId = String.valueOf(row.get("origin_id"));
+        final String batchId = String.valueOf(row.get("batch_id"));
+        final int groupId = Integer.parseInt(String.valueOf(row.get("group_id")));
+        final long tenantId = Long.parseLong(String.valueOf(row.get("tenant_id")));
+        final Object processIdObj = row.get("process_id");
+        final Object rootPipelineIdObj = row.get("root_pipeline_id");
+
+        String pdfPath = getFilePath(row);
+
+        if (pdfPath == null || pdfPath.equals("null") || pdfPath.trim().isEmpty()) {
+            log.warn(marker, "Skipping NULL or empty file_path for origin_id: {}", originId);
+            return;
+        }
+
+        if (!Files.exists(Paths.get(pdfPath))) {
+            log.error(marker, "File not found: {} for origin_id: {}", pdfPath, originId);
+            throw new HandymanException("File not found: " + pdfPath,
+                    new RuntimeException("File not found"), action);
+        }
+
+        final String fileExtension = getFileExtension(row, pdfPath);
+        log.info(marker, "Processing file: {} with extension: {} for origin_id: {}", pdfPath, fileExtension, originId);
+
+        final int pageNumber = getPageNumber(row, pdfPath);
+
+        try {
+            if (fileExtension.contains("pdf")) {
+                processPdf(handle, insertQuery, pdfPath, originId, groupId, tenantId, batchId, processIdObj,
+                        rootPipelineIdObj);
+            } else if (fileExtension.contains("png") || fileExtension.contains("jpeg")
+                    || fileExtension.contains("jpg")) {
+                processImage(handle, insertQuery, pdfPath, originId, groupId, tenantId, batchId, processIdObj,
+                        rootPipelineIdObj, pageNumber);
+            } else {
+                log.warn(marker, "Unsupported or missing file extension: {} for file: {}", fileExtension, pdfPath);
+            }
+        } catch (Exception ex) {
+            log.error(marker, "Failed blank detection for file: {}", pdfPath, ex);
+            throw new HandymanException("Failed blank detection for file: " + pdfPath, ex, action);
+        }
+
+        log.info(marker, "Completed processing for origin_id: {}", originId);
+    }
+
+    private String getFilePath(final java.util.Map<String, Object> row) {
+        String pdfPath = String.valueOf(row.get("file_path"));
+        if (pdfPath == null || pdfPath.equals("null") || pdfPath.trim().isEmpty()) {
+            pdfPath = String.valueOf(row.get("processed_file_path"));
+        }
+        return pdfPath;
+    }
+
+    private String getFileExtension(final java.util.Map<String, Object> row, final String pdfPath) {
+        String fileExtension = "";
+        if (pdfPath.contains(".")) {
+            fileExtension = pdfPath.substring(pdfPath.lastIndexOf(".") + 1).toLowerCase();
+        }
+        if (fileExtension.isEmpty()) {
+            fileExtension = Optional.ofNullable(row.get("file_extension"))
+                    .map(String::valueOf)
+                    .map(String::toLowerCase)
+                    .orElse("");
+        }
+        return fileExtension;
+    }
+
+    private int getPageNumber(final java.util.Map<String, Object> row, final String pdfPath) {
+        int pageNumber = 1;
+        if (row.containsKey("paper_no") && row.get("paper_no") != null) {
+            try {
+                pageNumber = Integer.parseInt(String.valueOf(row.get("paper_no")));
+            } catch (NumberFormatException e) {
+                // Ignore
+            }
+        }
+        if (pageNumber == 1 && pdfPath.matches(".*_\\d+\\.[a-zA-Z]+$")) {
+            try {
+                String numberPart = pdfPath.substring(pdfPath.lastIndexOf("_") + 1, pdfPath.lastIndexOf("."));
+                pageNumber = Integer.parseInt(numberPart);
+            } catch (Exception e) {
+                // Ignore
+            }
+        }
+        return pageNumber;
     }
 
     private void processPdf(final Handle handle,
@@ -242,50 +229,63 @@ public class BlankPageDetectionAction implements IActionExecution {
             final int totalPages = document.getNumberOfPages();
 
             for (int pageIndex = 0; pageIndex < totalPages; pageIndex++) {
-                final long startTime = System.currentTimeMillis();
-
-                final String activator = this.action.getContext().getOrDefault(PHOTON_BLANK_PAGE_DETECTION_ACTIVATOR,
-                        "FALSE");
-                final boolean usePhoton = "TRUE".equalsIgnoreCase(activator);
-
-                final boolean isBlank;
-                final String modelName;
-                final String modelVersion;
-
-                if (usePhoton) {
-                    final PDFRenderer renderer = new PDFRenderer(document);
-                    final BufferedImage pageImage = renderer.renderImageWithDPI(pageIndex, PDF_RENDER_DPI,
-                            ImageType.GRAY);
-                    final Mat mat = bufferedImageToMat(pageImage);
-                    isBlank = isBlankPage(mat);
-                    mat.release();
-                    modelName = PHOTON_NAME;
-                    modelVersion = PHOTON_VERSION;
-                } else {
-                    isBlank = isPageBlankUltraFast(document.getPage(pageIndex));
-                    modelName = NEON_NAME;
-                    modelVersion = NEON_VERSION;
-                }
-
-                final long execMs = System.currentTimeMillis() - startTime;
-
-                insertResult(handle, insertQuery, originId, groupId, tenantId, pdfPath,
-                        pageIndex + 1, isBlank, processId, rootPipelineId, batchId, execMs, modelName, modelVersion,
-                        "PDF");
+                processSinglePdfPage(handle, insertQuery, pdfPath, originId, groupId, tenantId, batchId, processId,
+                        rootPipelineId, document, pageIndex);
             }
         }
     }
 
+    private void processSinglePdfPage(final Handle handle, final String insertQuery, final String pdfPath,
+            final String originId, final int groupId, final long tenantId, final String batchId, final long processId,
+            final long rootPipelineId, final PDDocument document, final int pageIndex) throws IOException {
+        final long startTime = System.currentTimeMillis();
+
+        final String activator = this.action.getContext().getOrDefault(PHOTON_BLANK_PAGE_DETECTION_ACTIVATOR,
+                "FALSE");
+        final boolean usePhoton = "TRUE".equalsIgnoreCase(activator);
+
+        final boolean isBlank;
+        final String modelName;
+        final String modelVersion;
+
+        if (usePhoton) {
+            final PDFRenderer renderer = new PDFRenderer(document);
+            final BufferedImage pageImage = renderer.renderImageWithDPI(pageIndex, PDF_RENDER_DPI,
+                    ImageType.GRAY);
+            final Mat mat = bufferedImageToMat(pageImage);
+            isBlank = isBlankPage(mat);
+            mat.release();
+            modelName = PHOTON_NAME;
+            modelVersion = PHOTON_VERSION;
+        } else {
+            isBlank = isPageBlankUltraFast(document.getPage(pageIndex));
+            modelName = NEON_NAME;
+            modelVersion = NEON_VERSION;
+        }
+
+        final long execMs = System.currentTimeMillis() - startTime;
+
+        insertResult(handle, insertQuery, originId, groupId, tenantId, pdfPath,
+                pageIndex + 1, isBlank, processId, rootPipelineId, batchId, execMs, modelName, modelVersion,
+                "PDF");
+    }
+
     private boolean isPageBlankUltraFast(final PDPage page) throws IOException {
         // 1. Check if Images/XObjects Exist
-        final PDResources resources = page.getResources();
-        if (resources != null) {
-            if (resources.getXObjectNames().iterator().hasNext()) {
-                return false; // Not blank
-            }
+        if (hasXObjects(page)) {
+            return false;
         }
 
         // 2. Check Content Stream Bytes
+        return isContentStreamBlank(page);
+    }
+
+    private boolean hasXObjects(final PDPage page) {
+        final PDResources resources = page.getResources();
+        return resources != null && resources.getXObjectNames().iterator().hasNext();
+    }
+
+    private boolean isContentStreamBlank(final PDPage page) throws IOException {
         try (InputStream stream = page.getContents()) {
             if (stream == null) {
                 return true;
@@ -295,57 +295,57 @@ public class BlankPageDetectionAction implements IActionExecution {
             int totalRead = 0;
             int bytesRead;
 
-            boolean hasText = false;
-            boolean hasImage = false;
-            boolean hasDraw = false;
+            boolean hasContent = false;
 
             while ((bytesRead = stream.read(buffer)) != -1) {
                 totalRead += bytesRead;
 
-                for (int i = 0; i < bytesRead - 1; i++) {
-                    final byte b1 = buffer[i];
-                    final byte b2 = buffer[i + 1];
-
-                    // Text Operators (Tj / TJ)
-                    if ((b1 == 'T' && b2 == 'j') ||
-                            (b1 == 'T' && b2 == 'J')) {
-                        hasText = true;
-                        break;
-                    }
-
-                    // Image Operators (Do / BI)
-                    if ((b1 == 'D' && b2 == 'o') ||
-                            (b1 == 'B' && b2 == 'I')) {
-                        hasImage = true;
-                        break;
-                    }
-
-                    // Drawing Operators (S / f / B)
-                    if (isWhitespace(b2)) {
-                        if (b1 == 'S' || b1 == 's' ||
-                                b1 == 'f' || b1 == 'F' ||
-                                b1 == 'B' || b1 == 'b') {
-                            hasDraw = true;
-                            break;
-                        }
-                    }
-                }
-
-                if (hasText || hasImage || hasDraw) {
+                if (analyzeBufferForContent(buffer, bytesRead)) {
+                    hasContent = true;
                     break;
                 }
             }
 
-            if (hasText || hasImage) {
-                return false;
-            }
-
-            if (hasDraw && totalRead > MIN_SIGNIFICANT_CONTENT) {
+            if (hasContent) {
                 return false;
             }
 
             return totalRead < MIN_SIGNIFICANT_CONTENT;
         }
+    }
+
+    private boolean analyzeBufferForContent(final byte[] buffer, final int bytesRead) {
+        boolean hasText = false;
+        boolean hasImage = false;
+        boolean hasDraw = false;
+
+        for (int i = 0; i < bytesRead - 1; i++) {
+            final byte b1 = buffer[i];
+            final byte b2 = buffer[i + 1];
+
+            // Text Operators (Tj / TJ)
+            if ((b1 == 'T' && b2 == 'j') || (b1 == 'T' && b2 == 'J')) {
+                hasText = true;
+                break;
+            }
+
+            // Image Operators (Do / BI)
+            if ((b1 == 'D' && b2 == 'o') || (b1 == 'B' && b2 == 'I')) {
+                hasImage = true;
+                break;
+            }
+
+            // Drawing Operators (S / f / B)
+            if (isWhitespace(b2)) {
+                if (b1 == 'S' || b1 == 's' ||
+                        b1 == 'f' || b1 == 'F' ||
+                        b1 == 'B' || b1 == 'b') {
+                    hasDraw = true;
+                    break;
+                }
+            }
+        }
+        return hasText || hasImage || (hasDraw);
     }
 
     private static boolean isWhitespace(final byte b) {
