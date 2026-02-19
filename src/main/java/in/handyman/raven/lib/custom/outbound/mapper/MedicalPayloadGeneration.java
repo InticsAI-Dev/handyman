@@ -197,7 +197,7 @@ public class MedicalPayloadGeneration {
                 configMap);
 
         boolean cleanStatus = Boolean
-                .parseBoolean(configMap.getOrDefault("CUSTOM_MEDICAL_OUTBOUND_CLEANER", "false"));
+                .parseBoolean(configMap.getOrDefault("CUSTOM_MEDICAL_OUTBOUND_CLEANER", "true"));
 
         buildMemberSection(builder, singleValueFieldMap, cleanStatus);
 
@@ -522,29 +522,76 @@ public class MedicalPayloadGeneration {
                                                boolean cleanStatus) {
         log.info("Building diagnosis list from multi-value fields");
 
+        Map<String, ExtractedField> fieldMap = new HashMap<>(singleValueMap);
+
         Map<String, Map<String, ExtractedField>> groupedByInstance = groupAndExtractFields(
                 multiValuePredictions,
                 configMap);
 
+        for (Map.Entry<String, Map<String, ExtractedField>> instanceEntry : groupedByInstance.entrySet()) {
+            String instanceId = instanceEntry.getKey();
+            Map<String, ExtractedField> instanceFields = instanceEntry.getValue();
+            
+            for (Map.Entry<String, ExtractedField> fieldEntry : instanceFields.entrySet()) {
+                String fieldName = fieldEntry.getKey();
+                ExtractedField field = fieldEntry.getValue();
+                
+                if ("1".equals(instanceId)) {
+                    if (!fieldMap.containsKey(fieldName)) {
+                        fieldMap.put(fieldName, field);
+                    }
+                } else {
+                    fieldMap.put(fieldName + "_" + instanceId, field);
+                }
+            }
+        }
+
         List<Diagonsis> diagnosisList = new ArrayList<>();
 
-        for (Map<String, ExtractedField> fieldMap : groupedByInstance.values()) {
-            ExtractedField code = fieldMap.get(DIAGNOSIS_CODE_SOR_ITEM_NAME);
+        // Find all diagnosis code entries (e.g., "diagnosis_code", "diagnosis_code_1", "diagnosis_code_2", etc.)
+        List<Map.Entry<String, ExtractedField>> diagnosisCodeEntries = fieldMap.entrySet().stream()
+                .filter(entry -> entry.getKey().startsWith(DIAGNOSIS_CODE_SOR_ITEM_NAME))
+                .collect(Collectors.toList());
 
-            if (code == null || code.getValue() == null || code.getValue().isEmpty()) {
-                continue;
+        if (diagnosisCodeEntries.isEmpty()) {
+            if (!cleanStatus) {
+                log.warn("No diagnosis codes found; adding default Diagnosis");
+                Diagonsis.DiagonsisBuilder builder = Diagonsis.builder()
+                        .cd(getDefaultExtractedField())
+                        .desc(fieldMap.getOrDefault(DIAGNOSIS_DESCRIPTION_SOR_ITEM_NAME, getDefaultExtractedField()))
+                        .codePointer(fieldMap.getOrDefault(CODE_POINTER_SOR_ITEM_NAME, getDefaultExtractedField()));
+                diagnosisList.add(builder.build());
+            } else {
+                log.info("No diagnosis codes found; skipped default Diagnosis due to customMedicalOutboundCleaner");
             }
+        } else {
+            for (Map.Entry<String, ExtractedField> entry : diagnosisCodeEntries) {
+                String key = entry.getKey();
+                ExtractedField icd10CodeField = entry.getValue();
+                
+                if (cleanStatus && (icd10CodeField.getValue() == null || icd10CodeField.getValue().isEmpty())) {
+                    log.info("Skipped Diagnosis for key {} due to empty code value", key);
+                    continue;
+                }
 
-            ExtractedField desc = fieldMap.get(DIAGNOSIS_DESCRIPTION_SOR_ITEM_NAME);
-            ExtractedField pointer = fieldMap.get(CODE_POINTER_SOR_ITEM_NAME);
+                String descKey = key.replace(DIAGNOSIS_CODE_SOR_ITEM_NAME, DIAGNOSIS_DESCRIPTION_SOR_ITEM_NAME);
+                String codePointerKey = key.replace(DIAGNOSIS_CODE_SOR_ITEM_NAME, CODE_POINTER_SOR_ITEM_NAME);
 
-            Diagonsis diagnosis = Diagonsis.builder()
-                    .cd(code)
-                    .desc(desc != null && desc.getValue() != null && !desc.getValue().isEmpty() ? desc : null)
-                    .codePointer(pointer != null && pointer.getValue() != null && !pointer.getValue().isEmpty() ? pointer : null)
-                    .build();
+                ExtractedField description = fieldMap.getOrDefault(descKey, 
+                        fieldMap.getOrDefault(DIAGNOSIS_DESCRIPTION_SOR_ITEM_NAME, getDefaultExtractedField()));
 
-            diagnosisList.add(diagnosis);
+                ExtractedField codePointer = fieldMap.getOrDefault(codePointerKey, 
+                        fieldMap.getOrDefault(CODE_POINTER_SOR_ITEM_NAME, getDefaultExtractedField()));
+
+                Diagonsis.DiagonsisBuilder builder = Diagonsis.builder();
+                builder.cd(icd10CodeField)
+                        .desc(description)
+                        .codePointer(codePointer);
+
+
+                diagnosisList.add(builder.build());
+                log.info("Generated Diagnosis for key: {}", key);
+            }
         }
 
         log.info("Built {} diagnosis entries", diagnosisList.size());
