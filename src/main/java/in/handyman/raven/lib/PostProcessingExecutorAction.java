@@ -91,14 +91,14 @@ public class PostProcessingExecutorAction implements IActionExecution {
                 log.info("Scalar activator is disabled, running decryption in AES256 mode");
                 PostProcessingFieldsInputs.forEach(PostProcessingFieldsInput -> {
                     if (PostProcessingFieldsInput.isEncrypted()) {
-                        PostProcessingFieldsInput.setAnswer(crypt.decrypt(PostProcessingFieldsInput.getAnswer(), "AES256", PostProcessingFieldsInput.getSorItemName()));
+                        PostProcessingFieldsInput.setAnswer(crypt.decrypt(PostProcessingFieldsInput.getAnswer(), "AES256", String.valueOf(PostProcessingFieldsInput.getVqaId())));
                     }
                 });
             } else {
                 log.info("Scalar activator is enabled, running decryption in policy mode");
                 PostProcessingFieldsInputs.forEach(PostProcessingFieldsInput -> {
                     if (PostProcessingFieldsInput.isEncrypted()) {
-                        PostProcessingFieldsInput.setAnswer(crypt.decrypt(PostProcessingFieldsInput.getAnswer(), PostProcessingFieldsInput.getEncryptionPolicy(), PostProcessingFieldsInput.getSorItemName()));
+                        PostProcessingFieldsInput.setAnswer(crypt.decrypt(PostProcessingFieldsInput.getAnswer(), PostProcessingFieldsInput.getEncryptionPolicy(), String.valueOf(PostProcessingFieldsInput.getVqaId())));
                     }
                 });
             }
@@ -113,7 +113,7 @@ public class PostProcessingExecutorAction implements IActionExecution {
                     crypt.encrypt(
                             input.getAnswer(),
                             input.getEncryptionPolicy(),
-                            input.getSorItemName()
+                            String.valueOf(input.getVqaId())
                     )
             );
         }
@@ -124,7 +124,7 @@ public class PostProcessingExecutorAction implements IActionExecution {
         List<String> reEncrypted = java.util.Arrays.stream(parts)
                 .map(String::trim)
                 .map(val -> encryptEnabled && input.isEncrypted()
-                        ? crypt.encrypt(val, input.getEncryptionPolicy(), input.getSorItemName())
+                        ? crypt.encrypt(val, input.getEncryptionPolicy(), String.valueOf(input.getVqaId()))
                         : val)
                 .collect(Collectors.toList());
         input.setAnswer(String.join(",", reEncrypted));
