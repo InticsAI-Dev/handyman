@@ -1664,8 +1664,8 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
 
         List<EncryptionRequestClass> encryptionRequests = inputList.stream()
                 .filter(VqaTransactionOutput::isEncrypted)
-                .filter(obj -> obj.getSorItemAttributionId() != null && obj.getAnswer() != null && !obj.getAnswer().isEmpty())
-                .map(obj -> new EncryptionRequestClass(AES_256, obj.getAnswer(), String.valueOf(obj.getSorItemAttributionId())))
+                .filter(obj -> obj.getMultiEntityFilteringId() != null && obj.getAnswer() != null && !obj.getAnswer().isEmpty())
+                .map(obj -> new EncryptionRequestClass(AES_256, obj.getAnswer(), String.valueOf(obj.getMultiEntityFilteringId())))
                 .collect(Collectors.toList());
 
         log.info(aMarker, "Total records to decrypt for answers: {}", encryptionRequests.size());
@@ -1690,8 +1690,8 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
 
             int decryptedCount = 0;
             for (MultiEntityFieldHandlingInput item : inputList) {
-                if (item.getSorItemAttributionId() != null && decryptedMap.containsKey(item.getSorItemAttributionId())) {
-                    item.setAnswer(decryptedMap.get(item.getSorItemAttributionId()));
+                if (item.getMultiEntityFilteringId() != null && decryptedMap.containsKey(item.getMultiEntityFilteringId())) {
+                    item.setAnswer(decryptedMap.get(item.getMultiEntityFilteringId()));
                     decryptedCount++;
                 }
             }
@@ -1713,8 +1713,8 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
         }
 
         List<EncryptionRequestClass> encryptionRequests = inputList.stream()
-                .filter(obj -> obj.getSorItemAttributionId() != null && obj.getSectionAlias() != null && !obj.getSectionAlias().isEmpty())
-                .map(obj -> new EncryptionRequestClass(AES_256, obj.getSectionAlias(), String.valueOf(obj.getSorItemAttributionId())))
+                .filter(obj -> obj.getMultiEntityFilteringId() != null && obj.getSectionAlias() != null && !obj.getSectionAlias().isEmpty())
+                .map(obj -> new EncryptionRequestClass(AES_256, obj.getSectionAlias(), String.valueOf(obj.getMultiEntityFilteringId())))
                 .collect(Collectors.toList());
 
         log.info(aMarker, "Total records to decrypt for section alias: {}", encryptionRequests.size());
@@ -1739,8 +1739,8 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
 
             int decryptedCount = 0;
             for (MultiEntityFieldHandlingInput item : inputList) {
-                if (item.getSorItemAttributionId() != null && decryptedMap.containsKey(item.getSorItemAttributionId())) {
-                    item.setSectionAlias(decryptedMap.get(item.getSorItemAttributionId()));
+                if (item.getMultiEntityFilteringId() != null && decryptedMap.containsKey(item.getMultiEntityFilteringId())) {
+                    item.setSectionAlias(decryptedMap.get(item.getMultiEntityFilteringId()));
                     decryptedCount++;
                 }
             }
