@@ -54,6 +54,7 @@ public class AssetInfoConsumerProcess implements CoproProcessor.ConsumerProcess<
     }
 
     public List<AssetInfoOutputTable> process(URL endpoint, AssetInfoInputTable input) throws Exception {
+        final long processStart = System.currentTimeMillis();
         List<AssetInfoOutputTable> fileInfos = new ArrayList<>();
         try {
             log.info(marker, "Processing file path: {}", input.getFilePath());
@@ -75,19 +76,24 @@ public class AssetInfoConsumerProcess implements CoproProcessor.ConsumerProcess<
             HandymanException handymanException=new HandymanException(e);
             HandymanException.insertException("Error in file info for " + input.getFilePath(), handymanException, action);
         }
+        log.info(marker, "AssetInfo process() total time: {} ms for file: {}", System.currentTimeMillis() - processStart, input.getFilePath());
         return fileInfos;
     }
 
     private AssetInfoOutputTable insertQuery(File file, Long tenantId, String batchId) {
+        final long insertQueryStart = System.currentTimeMillis();
         AssetInfoOutputTable fileInfoBuilder = new AssetInfoOutputTable();
         try {
             String sha1Hex;
+            final long checksumStart = System.currentTimeMillis();
             try (InputStream is = Files.newInputStream(Path.of(file.getPath()))) {
                 sha1Hex = org.apache.commons.codec.digest.DigestUtils.sha1Hex(is);
             } catch (IOException e) {
                 log.error("Error in reading input stream {}", ExceptionUtil.toString(e));
                 throw new HandymanException("Error in reading input stream", e, action);
             }
+            log.info(marker, "SHA1 checksum computed in {} ms for file: {}", System.currentTimeMillis() - checksumStart, file.getName());
+
             var fileSize = file.length() / 1024;
             String fileExtension = FilenameUtils.getExtension(file.getName());
             String fileAbsolutePath = file.getAbsolutePath();
@@ -97,7 +103,9 @@ public class AssetInfoConsumerProcess implements CoproProcessor.ConsumerProcess<
             float pageHeight = 0f;
             int dpi = 0;
             if (fileExtension.equalsIgnoreCase("pdf")) {
-                try (PDDocument document = Loader.loadPDF(Files.readAllBytes(file.toPath()))) {
+                final long pdfLoadStart = System.currentTimeMillis();
+                try (PDDocument document = Loader.loadPDF(file)) {
+                    log.info(marker, "PDF loaded in {} ms for file: {}", System.currentTimeMillis() - pdfLoadStart, file.getName());
                     PDPage firstPage = document.getPage(0);
                     pageWidth = firstPage.getMediaBox().getWidth();
                     pageHeight = firstPage.getMediaBox().getHeight();
@@ -107,7 +115,9 @@ public class AssetInfoConsumerProcess implements CoproProcessor.ConsumerProcess<
                     log.error("Error in calculating width, height, dpi for pdf file with exception {}", e.getMessage());
                 }
             } else {
+                final long imageReadStart = System.currentTimeMillis();
                 BufferedImage image = ImageIO.read(file);
+                log.info(marker, "Image read in {} ms for file: {}", System.currentTimeMillis() - imageReadStart, file.getName());
                 if (image != null) {
                     pageWidth = image.getWidth();
                     pageHeight = image.getHeight();
@@ -143,6 +153,7 @@ public class AssetInfoConsumerProcess implements CoproProcessor.ConsumerProcess<
             HandymanException handymanException=new HandymanException(ex);
             HandymanException.insertException("Error occurred in builder", handymanException, action);
         }
+        log.info(marker, "insertQuery total time: {} ms for file: {}", System.currentTimeMillis() - insertQueryStart, file.getName());
         return fileInfoBuilder;
     }
 

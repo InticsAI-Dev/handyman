@@ -47,6 +47,7 @@ public class PdfItemizerWithStreaming {
     }
 
     public List<PaperItemizerOutputTable> paperItemizer(String filePath, String outputDir, PaperItemizerInputTable entity) throws IOException {
+        final long methodStart = System.currentTimeMillis();
         log.info("Starting paper itemization for file: {} with output directory: {}", filePath, outputDir);
         final Timestamp startTime = Timestamp.valueOf(LocalDateTime.now());
         checkOutputDir(outputDir, "Output directory is null or empty for originId {}", entity, "Output directory cannot be null or empty");
@@ -60,7 +61,9 @@ public class PdfItemizerWithStreaming {
         final String originId = entity.getOriginId();
         if (PdfExtensions.EXTENSION_PDF.getEType().equalsIgnoreCase(fileExtension)) {
             log.debug("Processing PDF file: {} for originId {}", filePath, originId);
+            final long itemizeStart = System.currentTimeMillis();
             itemisePdfIntoPapersWithStreaming(parentObj, entity, targetDir.getPath(), filePath, startTime);
+            log.info("itemisePdfIntoPapersWithStreaming completed in {} ms for file: {}", System.currentTimeMillis() - itemizeStart, filePath);
 
         } else if (PdfExtensions.EXTENSION_JPEG.getEType().equalsIgnoreCase(fileExtension) || PdfExtensions.EXTENSION_JPG.getEType().equalsIgnoreCase(fileExtension) || PdfExtensions.EXTENSION_PNG.getEType().equalsIgnoreCase(fileExtension)) {
             log.debug("Processing image file: {} for originId {}", filePath, originId);
@@ -73,7 +76,7 @@ public class PdfItemizerWithStreaming {
             HandymanException handymanException = new HandymanException(new NoSuchElementException());
             HandymanException.insertException("Unsupported file type: " + fileExtension, handymanException, action);
         }
-        log.info("Paper itemization completed for file: {} with output directory: {}", filePath, outputDir);
+        log.info("Paper itemization total time: {} ms for file: {}", System.currentTimeMillis() - methodStart, filePath);
         return parentObj;
     }
 
@@ -138,32 +141,43 @@ public class PdfItemizerWithStreaming {
 
         Path path = Paths.get(pdfPath);
 
-        try (PDDocument document = Loader.loadPDF(Files.readAllBytes(path))) {
+        final long pdfLoadStart = System.currentTimeMillis();
+        try (PDDocument document = Loader.loadPDF(path.toFile())) {
+            log.info("PDF loaded in {} ms for file: {}", System.currentTimeMillis() - pdfLoadStart, pdfPath);
             PDFRenderer renderer = new PDFRenderer(document);
             renderer.setSubsamplingAllowed(true);
 
             final String originalName = getFileNameFromPath(pdfPath);
             final String normalizedFormat = getContextVariableWithDefault(PAPER_ITEMIZER_OUTPUT_FORMAT, "jpg").toLowerCase();
             final int pageCount = getPageNo(document.getNumberOfPages());
+            log.info("Total pages to process: {} for file: {}", pageCount, originalName);
 
             for (int i = 0; i < document.getNumberOfPages(); i++) {
+                final long pageStart = System.currentTimeMillis();
                 ImageType imageType = ImageType.RGB.toString().equalsIgnoreCase(IMAGE_TYPE) ? ImageType.RGB : ImageType.GRAY;
+
+                final long renderStart = System.currentTimeMillis();
                 BufferedImage image = renderer.renderImageWithDPI(i, imageDpiSetting, imageType);
+                log.info("Page {}/{} rendered in {} ms for file: {}", i + 1, pageCount, System.currentTimeMillis() - renderStart, originalName);
+
                 if (imageResizeEnableSetting) {
                     log.debug("Resizing image for page {} of file: {}", i + 1, originalName);
                     BufferedImage bufferedImage = resizeImage(image, imageWidthSetting, imageHeightSetting);
+                    final long writeStart = System.currentTimeMillis();
                     writeOutputItemizedImages(parentObj, entity, basePath, originalName, i, bufferedImage, normalizedFormat, pageCount, startTime);
-
+                    log.info("Page {}/{} written in {} ms for file: {}", i + 1, pageCount, System.currentTimeMillis() - writeStart, originalName);
                 } else {
                     log.debug("Resize operation was turned off and Writing image for page {} of file: {} without", i + 1, originalName);
+                    final long writeStart = System.currentTimeMillis();
                     writeOutputItemizedImages(parentObj, entity, basePath, originalName, i, image, normalizedFormat, pageCount, startTime);
+                    log.info("Page {}/{} written in {} ms for file: {}", i + 1, pageCount, System.currentTimeMillis() - writeStart, originalName);
                 }
                 image.flush();
                 image = null;
-
+                log.info("Page {}/{} total time: {} ms for file: {}", i + 1, pageCount, System.currentTimeMillis() - pageStart, originalName);
             }
         }
-        log.info("Completed itemizing PDF into papers for file: {} with base path: {}", pdfPath, basePath);
+        log.info("Completed itemizing PDF into papers in {} ms for file: {} with base path: {}", System.currentTimeMillis() - pdfLoadStart, pdfPath, basePath);
     }
 
     private void writeOutputItemizedImages(List<PaperItemizerOutputTable> parentObj, PaperItemizerInputTable entity, String basePath, String originalName, int i, BufferedImage image, String normalizedFormat, int pageCount, Timestamp startTime) throws IOException {

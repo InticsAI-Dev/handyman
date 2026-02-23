@@ -63,6 +63,7 @@ public class AssetInfoAction implements IActionExecution {
     @Override
     public void execute() throws Exception {
         try {
+            final long actionStart = System.currentTimeMillis();
             Long tenantId = Long.valueOf(action.getContext().get("tenant_id"));
             log.info(aMarker, "Asset Info Action for {} has been started", assetInfo.getName());
 
@@ -83,14 +84,19 @@ public class AssetInfoAction implements IActionExecution {
 
             log.info(aMarker, "Consumer API count for Asset Info is {}", consumerApiCount);
             String insertQuery = INSERT_INTO + assetInfo.getAssetTable() + " ( " + INSERT_COLUMNS_UPDATED + " ) " + INSERT_INTO_VALUES_UPDATED;
+
+            final long producerStart = System.currentTimeMillis();
             coproProcessor.startProducer(assetInfo.getValues(), readBatchSize);
+            log.info(aMarker, "Asset Info startProducer completed in {} ms", System.currentTimeMillis() - producerStart);
             Thread.sleep(1000);
 
             Integer writeBatchSize = Integer.valueOf(action.getContext().get(DB_INSERT_WRITE_BATCH_SIZE));
             AssetInfoConsumerProcess assetInfoConsumerProcess = new AssetInfoConsumerProcess(log, aMarker, action, assetInfo, tenantId);
 
+            final long consumerStart = System.currentTimeMillis();
             coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, assetInfoConsumerProcess);
-            log.info(aMarker, "Asset Info Action has been completed {}  ", assetInfo.getName());
+            log.info(aMarker, "Asset Info startConsumer completed in {} ms", System.currentTimeMillis() - consumerStart);
+            log.info(aMarker, "Asset Info Action total execution time: {} ms for {}", System.currentTimeMillis() - actionStart, assetInfo.getName());
 
         } catch (Exception e) {
             action.getContext().put(assetInfo.getName().concat(".error"), "true");

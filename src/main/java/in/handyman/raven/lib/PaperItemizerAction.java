@@ -64,6 +64,7 @@ public class PaperItemizerAction implements IActionExecution {
     @Override
     public void execute() {
         try {
+            final long actionStart = System.currentTimeMillis();
             log.info(aMarker, "paper itemizer Action has been started {}", paperItemizer);
 
             final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(paperItemizer.getResourceConn());
@@ -104,12 +105,15 @@ public class PaperItemizerAction implements IActionExecution {
 
             log.info(aMarker, "paper itemizer copro coproProcessor initialization  {}", coproProcessor);
 
-
+            final long producerStart = System.currentTimeMillis();
             coproProcessor.startProducer(paperItemizer.getQuerySet(), readBatchSize);
-            log.info(aMarker, "paper itemizer copro coproProcessor startProducer called read batch size {}", readBatchSize);
+            log.info(aMarker, "paper itemizer startProducer completed in {} ms, read batch size {}", System.currentTimeMillis() - producerStart, readBatchSize);
             Thread.sleep(1000);
+
+            final long consumerStart = System.currentTimeMillis();
             coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, new PaperItemizerConsumerProcess(log, aMarker, outputDir, fileProcessingUtils, action, processBase64, paperItemizer));
-            log.info(aMarker, "paper itemizer copro coproProcessor startConsumer called consumer count {} write batch count {} ", consumerApiCount, writeBatchSize);
+            log.info(aMarker, "paper itemizer startConsumer completed in {} ms, consumer count {}, write batch count {}", System.currentTimeMillis() - consumerStart, consumerApiCount, writeBatchSize);
+            log.info(aMarker, "paper itemizer Action total execution time: {} ms", System.currentTimeMillis() - actionStart);
 
         } catch (Exception ex) {
             log.error(aMarker, "error in execute method for paper itemizer  ", ex);
