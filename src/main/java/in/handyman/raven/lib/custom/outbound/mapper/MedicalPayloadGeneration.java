@@ -12,6 +12,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.Comparator;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -303,59 +304,272 @@ public class MedicalPayloadGeneration {
                                                         Map<String, String> configMap) {
         log.info("Building service modifiers from multi-value fields");
 
-        Map<String, Map<String, ExtractedField>> groupedByInstance = groupAndExtractFields(
-                multiValuePredictions,
-                configMap);
-        List<ServiceModifier> serviceModifiers = new ArrayList<>();
+        // Build field map from all multi-value predictions
+        Map<String, ExtractedField> extractedFieldMap = new HashMap<>();
+        int confidenceMultiplier = Integer.parseInt(configMap.getOrDefault("CONFIDENCE_SCORE_MULTIPLY_VARIABLE", "100"));
+        int scaledWidth = Integer.parseInt(configMap.getOrDefault("AUMI_BBOX_SCALAR_WIDTH", "1000"));
+        int scaledHeight = Integer.parseInt(configMap.getOrDefault("AUMI_BBOX_SCALAR_HEIGHT", "1000"));
+        int roundingPrecision = Integer.parseInt(configMap.getOrDefault("FLOAT_VALUE_ROUNDING_PRECISION", "2"));
+        boolean reorderPaperNumber = Boolean.parseBoolean(configMap.getOrDefault("aumi.reorder.paper.number", "false"));
 
-        for (Map<String, ExtractedField> fieldMap : groupedByInstance.values()) {
-            ExtractedField serviceCode = fieldMap.get(SERVICE_CODE_SOR_ITEM_NAME);
-
-            if (serviceCode == null || serviceCode.getValue() == null || serviceCode.getValue().isEmpty()) {
-                continue;
+        for (PredictionDTO prediction : multiValuePredictions) {
+            String itemName = prediction.getSorItemName();
+            String predictedValue = prediction.getPredictedValue();
+            
+            // Check if this is a multi-value item with comma-separated values
+            boolean isMultiValue = "multi_value".equals(prediction.getLineItemType());
+            boolean hasCommaSeparatedValues = predictedValue != null && predictedValue.contains(",");
+            
+            if (isMultiValue && hasCommaSeparatedValues) {
+                // Split comma-separated values and create indexed fields
+                String[] values = predictedValue.split(",", -1);
+                for (int i = 0; i < values.length; i++) {
+                    String value = values[i].trim();
+                    
+                    // For service_modifier, service_quantity_units, service_quantity_visits:
+                    // If value is "*", convert to empty string (don't skip, create empty field)
+                    boolean isServiceModifierOrQuantity = itemName != null && (
+                            itemName.startsWith(SERVICE_MODIFIER_SOR_ITEM_NAME) ||
+                            itemName.startsWith(SERVICE_QUANTITY_UNIT_SOR_ITEM_NAME) ||
+                            itemName.startsWith(SERVICE_QUANTITY_VISITS_SOR_ITEM_NAME));
+                    
+                    if (isServiceModifierOrQuantity && "*".equals(value)) {
+                        value = ""; // Set to empty for placeholder values
+                    } else if (value.isEmpty() && !isServiceModifierOrQuantity) {
+                        // Skip empty values for non-service fields
+                        continue;
+                    }
+                    
+                    // Create field with split value (or empty for "*" placeholders)
+                    PredictionDTO splitPrediction = createSplitPrediction(prediction, value);
+                    ExtractedField field = createExtractedFieldFromPrediction(
+                            splitPrediction, confidenceMultiplier, scaledWidth, scaledHeight,
+                            roundingPrecision, reorderPaperNumber);
+                    
+                    // Create indexed key (e.g., service_code_1, service_code_2)
+                    String key = values.length > 1 ? itemName + "_" + (i + 1) : itemName;
+                    // Also handle container instance if present
+                    if (prediction.getSorContainerInstance() != null && !prediction.getSorContainerInstance().isEmpty()) {
+                        key = key + "_" + prediction.getSorContainerInstance();
+                    }
+                    extractedFieldMap.put(key, field);
+                }
+            } else {
+                // Single value - use as is
+                ExtractedField field = createExtractedFieldFromPrediction(
+                        prediction, confidenceMultiplier, scaledWidth, scaledHeight,
+                        roundingPrecision, reorderPaperNumber);
+                String key = itemName;
+                // Handle indexed fields (e.g., service_code_1, service_code_2)
+                if (prediction.getSorContainerInstance() != null && !prediction.getSorContainerInstance().isEmpty()) {
+                    key = key + "_" + prediction.getSorContainerInstance();
+                }
+                extractedFieldMap.put(key, field);
             }
-
-            ExtractedField modifier = fieldMap.get(SERVICE_MODIFIER_SOR_ITEM_NAME);
-            List<ServiceModifierWrapper> modifierList = new ArrayList<>();
-            if (modifier != null && modifier.getValue() != null && !modifier.getValue().isEmpty()) {
-                modifierList.add(ServiceModifierWrapper.builder().cd(modifier).build());
-            }
-
-            List<ServiceQuantity> quantities = buildServiceQuantities(fieldMap);
-
-            ServiceModifier serviceModifier = ServiceModifier.builder()
-                    .cd(serviceCode)
-                    .modifier(modifierList.isEmpty() ? null : modifierList)
-                    .serviceQuantity(quantities.isEmpty() ? null : quantities)
-                    .build();
-
-            serviceModifiers.add(serviceModifier);
         }
 
-        log.info("Built {} service modifiers", serviceModifiers.size());
+        List<ServiceModifier> serviceModifiers = new ArrayList<>();
+
+        try {
+            if (extractedFieldMap == null || extractedFieldMap.isEmpty()) {
+                log.warn("Extracted field map is null or empty");
+                return serviceModifiers;
+            }
+
+            // Filter and validate service code entries
+            List<Map.Entry<String, ExtractedField>> serviceCodeEntries =
+                    extractedFieldMap.entrySet().stream()
+                            .filter(entry ->
+                                    entry.getKey().startsWith(SERVICE_CODE_SOR_ITEM_NAME) &&
+                                            entry.getValue() != null &&
+                                            entry.getValue().getValue() != null &&
+                                            entry.getValue().getValue()
+                                                    .trim()
+                                                    .replaceAll("\\s+", " ")
+                                                    .matches("^[A-Za-z0-9 ]{4,10}$")
+                            )
+                            .sorted(Comparator.comparingInt(e -> extractIndex(e.getKey())))
+                            .collect(Collectors.toList());
+
+            log.debug("Identified {} service code entries", serviceCodeEntries.size());
+
+            // Extract unit quantity fields
+            List<ExtractedField> unitQuantityFields = extractedFieldMap.entrySet().stream()
+                    .filter(e -> e.getKey().startsWith(SERVICE_QUANTITY_UNIT_SOR_ITEM_NAME))
+                    .sorted(Comparator.comparingInt(e -> extractIndex(e.getKey())))
+                    .map(Map.Entry::getValue)
+                    .filter(f -> f != null && !getValueOrEmpty(f).isEmpty())
+                    .collect(Collectors.toList());
+
+            // Extract visit quantity fields
+            List<ExtractedField> visitQuantityFields = extractedFieldMap.entrySet().stream()
+                    .filter(e -> e.getKey().startsWith(SERVICE_QUANTITY_VISITS_SOR_ITEM_NAME))
+                    .sorted(Comparator.comparingInt(e -> extractIndex(e.getKey())))
+                    .map(Map.Entry::getValue)
+                    .filter(f -> f != null && !getValueOrEmpty(f).isEmpty())
+                    .collect(Collectors.toList());
+
+            // Extract modifier code fields
+            List<ExtractedField> modifierCodeFields = extractedFieldMap.entrySet().stream()
+                    .filter(e -> e.getKey().startsWith(SERVICE_MODIFIER_SOR_ITEM_NAME))
+                    .sorted(Comparator.comparingInt(e -> extractIndex(e.getKey())))
+                    .map(Map.Entry::getValue)
+                    .filter(f -> f != null && hasValue(f.getValue()))
+                    .collect(Collectors.toList());
+
+            // Build service modifiers by matching indices
+            for (int index = 0; index < serviceCodeEntries.size(); index++) {
+                Map.Entry<String, ExtractedField> serviceCodeEntry = serviceCodeEntries.get(index);
+                String serviceCodeKey = serviceCodeEntry.getKey();
+                ExtractedField serviceCodeField = serviceCodeEntry.getValue();
+
+                if (serviceCodeField == null ||
+                        serviceCodeField.getValue() == null ||
+                        serviceCodeField.getValue().trim().isEmpty()) {
+                    log.warn("Skipping service entry={} | Reason: service_code empty", serviceCodeKey);
+                    continue;
+                }
+
+                String codeIndex = serviceCodeKey.substring(SERVICE_CODE_SOR_ITEM_NAME.length());
+
+                // Build modifiers by index
+                List<ServiceModifierWrapper> modifierList =
+                        buildServiceModifierByOrder(index, modifierCodeFields);
+
+                // Build quantities by index
+                List<ServiceQuantity> quantityList =
+                        buildServiceQuantities(index, unitQuantityFields, visitQuantityFields);
+
+                ServiceModifier serviceModifier = ServiceModifier.builder()
+                        .cd(serviceCodeField)
+                        .modifier(modifierList.isEmpty() ? null : modifierList)
+                        .serviceQuantity(quantityList.isEmpty() ? null : quantityList)
+                        .build();
+
+                serviceModifiers.add(serviceModifier);
+
+                log.debug("Generated ServiceModifier for service | index={}", codeIndex);
+            }
+
+            log.info("Service modifier generation completed | total={}", serviceModifiers.size());
+
+        } catch (Exception ex) {
+            log.error("Unexpected error while generating service modifiers", ex);
+        }
+
         return serviceModifiers;
     }
 
-    private List<ServiceQuantity> buildServiceQuantities(Map<String, ExtractedField> fieldMap) {
+    private List<ServiceQuantity> buildServiceQuantities(
+            int serviceIndex,
+            List<ExtractedField> unitFields,
+            List<ExtractedField> visitFields) {
+
         List<ServiceQuantity> quantities = new ArrayList<>();
 
-        ExtractedField unitField = fieldMap.get(SERVICE_QUANTITY_UNIT_SOR_ITEM_NAME);
-        if (unitField != null && unitField.getValue() != null && !unitField.getValue().isEmpty()) {
-            quantities.add(ServiceQuantity.builder()
-                    .quantityType(SimpleValueField.builder().value("Units").build())
-                    .quantityUnits(unitField)
-                    .build());
+        // Handle unit quantity
+        ExtractedField unitField =
+                (serviceIndex < unitFields.size())
+                        ? unitFields.get(serviceIndex)
+                        : null;
+
+        quantities.add(ServiceQuantity.builder()
+                .quantityType(SimpleValueField.builder().value("Units").build())
+                .quantityUnits(
+                        (unitField != null && !isInvalidPlaceholder(unitField) && hasValue(unitField.getValue()))
+                                ? unitField
+                                : getEmptyExtractedField()
+                )
+                .build());
+
+        // Handle visit quantity
+        ExtractedField visitField = null;
+
+        if (!visitFields.isEmpty()) {
+            visitField = (visitFields.size() == 1)
+                    ? visitFields.get(0)
+                    : (serviceIndex < visitFields.size()
+                    ? visitFields.get(serviceIndex)
+                    : null);
         }
 
-        ExtractedField visitField = fieldMap.get(SERVICE_QUANTITY_VISITS_SOR_ITEM_NAME);
-        if (visitField != null && visitField.getValue() != null && !visitField.getValue().isEmpty()) {
-            quantities.add(ServiceQuantity.builder()
-                    .quantityType(SimpleValueField.builder().value("Visits").build())
-                    .quantityUnits(visitField)
-                    .build());
-        }
+        quantities.add(ServiceQuantity.builder()
+                .quantityType(SimpleValueField.builder().value("Visits").build())
+                .quantityUnits(
+                        (visitField != null && !isInvalidPlaceholder(visitField) && hasValue(visitField.getValue()))
+                                ? visitField
+                                : getEmptyExtractedField()
+                )
+                .build());
 
+        log.debug("Service quantities generated | count={}", quantities.size());
         return quantities;
+    }
+
+    private List<ServiceModifierWrapper> buildServiceModifierByOrder(
+            int serviceIndex,
+            List<ExtractedField> modifierFields) {
+
+        ExtractedField modifier =
+                (serviceIndex < modifierFields.size())
+                        ? modifierFields.get(serviceIndex)
+                        : null;
+
+        // If modifier is null or is a placeholder "*", return empty field
+        ExtractedField modifierField = (modifier != null && !isInvalidPlaceholder(modifier) && hasValue(modifier.getValue()))
+                ? modifier
+                : getEmptyExtractedField();
+
+        return Collections.singletonList(
+                ServiceModifierWrapper.builder()
+                        .cd(modifierField)
+                        .build()
+        );
+    }
+
+    private int extractIndex(String key) {
+        String digits = key.replaceAll("\\D+", "");
+        return digits.isEmpty() ? Integer.MAX_VALUE : Integer.parseInt(digits);
+    }
+
+    private boolean isInvalidPlaceholder(ExtractedField field) {
+        if (field == null || field.getValue() == null) {
+            return true;
+        }
+        return field.getValue().trim().equals("*");
+    }
+
+    private String getValueOrEmpty(ExtractedField field) {
+        return (field != null && field.getValue() != null)
+                ? field.getValue().trim()
+                : "";
+    }
+
+    private PredictionDTO createSplitPrediction(PredictionDTO original, String splitValue) {
+        return PredictionDTO.builder()
+                .predictionId(original.getPredictionId())
+                .originId(original.getOriginId())
+                .tenantId(original.getTenantId())
+                .groupId(original.getGroupId())
+                .batchId(original.getBatchId())
+                .rootPipelineId(original.getRootPipelineId())
+                .transactionId(original.getTransactionId())
+                .feature(original.getFeature())
+                .paperNo(original.getPaperNo())
+                .lineItemType(original.getLineItemType())
+                .sorItemName(original.getSorItemName())
+                .predictedValue(splitValue)
+                .precision(original.getPrecision())
+                .leftPos(original.getLeftPos())
+                .rightPos(original.getRightPos())
+                .upperPos(original.getUpperPos())
+                .lowerPos(original.getLowerPos())
+                .imageWidth(original.getImageWidth())
+                .imageHeight(original.getImageHeight())
+                .isMultiEntityEnabled(original.getIsMultiEntityEnabled())
+                .sorContainerInstance(original.getSorContainerInstance())
+                .metadataJson(original.getMetadataJson())
+                .build();
     }
 
     private Map<String, Map<String, ExtractedField>> groupAndExtractFields(List<PredictionDTO> predictions,
@@ -380,10 +594,62 @@ public class MedicalPayloadGeneration {
         for (Map.Entry<String, List<PredictionDTO>> entry : byInstance.entrySet()) {
             Map<String, ExtractedField> fieldMap = new HashMap<>();
             for (PredictionDTO p : entry.getValue()) {
-                ExtractedField field = createExtractedFieldFromPrediction(
-                        p, confidenceMultiplier, scaledWidth, scaledHeight,
-                        roundingPrecision, reorderPaperNumber);
-                fieldMap.put(p.getSorItemName(), field);
+                String itemName = p.getSorItemName();
+                String predictedValue = p.getPredictedValue();
+                
+                // Check if this is a multi-value item with comma-separated values
+                boolean isMultiValue = "multi_value".equals(p.getLineItemType());
+                boolean hasCommaSeparatedValues = predictedValue != null && predictedValue.contains(",");
+                
+                // Check if this is a diagnosis or service field that should be split
+                boolean isDiagnosisField = itemName != null && (
+                        itemName.startsWith(DIAGNOSIS_CODE_SOR_ITEM_NAME) ||
+                        itemName.startsWith(DIAGNOSIS_DESCRIPTION_SOR_ITEM_NAME) ||
+                        itemName.startsWith(CODE_POINTER_SOR_ITEM_NAME));
+                boolean isServiceField = itemName != null && (
+                        itemName.startsWith(SERVICE_CODE_SOR_ITEM_NAME) ||
+                        itemName.startsWith(SERVICE_MODIFIER_SOR_ITEM_NAME) ||
+                        itemName.startsWith(SERVICE_QUANTITY_UNIT_SOR_ITEM_NAME) ||
+                        itemName.startsWith(SERVICE_QUANTITY_VISITS_SOR_ITEM_NAME));
+                
+                if (isMultiValue && hasCommaSeparatedValues && (isDiagnosisField || isServiceField)) {
+                    // Split comma-separated values and create indexed fields
+                    String[] values = predictedValue.split(",", -1);
+                    for (int i = 0; i < values.length; i++) {
+                        String value = values[i].trim();
+                        // Skip empty values
+                        if (value.isEmpty()) {
+                            continue;
+                        }
+                        
+                        // For service_modifier, service_quantity_units, service_quantity_visits:
+                        // If value is "*", convert to empty string
+                        boolean isServiceModifierOrQuantity = itemName != null && (
+                                itemName.startsWith(SERVICE_MODIFIER_SOR_ITEM_NAME) ||
+                                itemName.startsWith(SERVICE_QUANTITY_UNIT_SOR_ITEM_NAME) ||
+                                itemName.startsWith(SERVICE_QUANTITY_VISITS_SOR_ITEM_NAME));
+                        
+                        if (isServiceModifierOrQuantity && "*".equals(value)) {
+                            value = ""; // Set to empty for placeholder values
+                        }
+                        
+                        // Create field with split value
+                        PredictionDTO splitPrediction = createSplitPrediction(p, value);
+                        ExtractedField field = createExtractedFieldFromPrediction(
+                                splitPrediction, confidenceMultiplier, scaledWidth, scaledHeight,
+                                roundingPrecision, reorderPaperNumber);
+                        
+                        // Create indexed key (e.g., diagnosis_code_1, diagnosis_code_2)
+                        String key = values.length > 1 ? itemName + "_" + (i + 1) : itemName;
+                        fieldMap.put(key, field);
+                    }
+                } else {
+                    // Single value - use as is
+                    ExtractedField field = createExtractedFieldFromPrediction(
+                            p, confidenceMultiplier, scaledWidth, scaledHeight,
+                            roundingPrecision, reorderPaperNumber);
+                    fieldMap.put(itemName, field);
+                }
             }
             result.put(entry.getKey(), fieldMap);
         }
@@ -776,6 +1042,23 @@ public class MedicalPayloadGeneration {
 
         return ExtractedField.builder()
                 .value(DEFAULT_VALUE)
+                .page(0)
+                .confidence(0)
+                .boundingBox(boundingBoxJsonNode)
+                .build();
+    }
+
+    private ExtractedField getEmptyExtractedField() {
+        Map<String, Double> boundingBoxMap = new HashMap<>();
+        boundingBoxMap.put("x", DEFAULT_DOUBLE_VALUE);
+        boundingBoxMap.put("y", DEFAULT_DOUBLE_VALUE);
+        boundingBoxMap.put(WIDTH, DEFAULT_DOUBLE_VALUE);
+        boundingBoxMap.put(HEIGHT, DEFAULT_DOUBLE_VALUE);
+        JsonNode boundingBoxJsonNode = mapper.valueToTree(boundingBoxMap);
+
+        // Return empty ExtractedField (same structure but explicitly empty value)
+        return ExtractedField.builder()
+                .value("")
                 .page(0)
                 .confidence(0)
                 .boundingBox(boundingBoxJsonNode)
