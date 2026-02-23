@@ -109,7 +109,6 @@ action:
     |dataExtraction
     |deepSift
     |deepSiftSearch
-    |blankPageDetection
     |assetInfo
     |episodeOfCoverage
     |userRegistration
@@ -175,7 +174,6 @@ action:
     |neonKvp
     |radonKvp
     |llmJsonParser
-    |checkboxJsonParser
     |radonKvpBbox
     |dockerInspect
     |kafkaPublish
@@ -763,14 +761,6 @@ deepSiftSearch:
 	'process-id' processId=STRING
 	'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ;
 
-blankPageDetection:
-    'blankPageDetection' 'as' name=STRING
-    'resource-conn' resourceConn=STRING
-    'result-table' resultTable=STRING
-    'copro-url' endPoint=STRING
-    'process-id' processId=STRING
-    'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ;
-
 episodeOfCoverage:
   'episodeOfCoverage' 'as' name=STRING
   'on-resource-conn' resourceConn=STRING
@@ -1325,15 +1315,6 @@ radonKvp:
 
 llmJsonParser:
     'llmJsonParser' 'as' name=STRING
-    'on-resource-conn' resourceConn= STRING
-    'input-table' inputTable=STRING
-    'output-table' outputTable=STRING
-    'using'  '{'
-            querySet=STRING '}'
-    ('on-condition' condition=expression)*  ;
-
-checkboxJsonParser:
-    'checkboxJsonParser' 'as' name=STRING
     'on-resource-conn' resourceConn= STRING
     'input-table' inputTable=STRING
     'output-table' outputTable=STRING
