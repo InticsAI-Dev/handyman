@@ -315,10 +315,16 @@ public class MedicalPayloadGeneration {
         for (PredictionDTO prediction : multiValuePredictions) {
             String itemName = prediction.getSorItemName();
             String predictedValue = prediction.getPredictedValue();
+
+            if (itemName == null || predictedValue == null) {
+                log.warn("Skipping prediction with null itemName or predictedValue: itemName={}, predictedValue={}", 
+                        itemName, predictedValue);
+                continue;
+            }
             
             // Check if this is a multi-value item with comma-separated values
             boolean isMultiValue = "multi_value".equals(prediction.getLineItemType());
-            boolean hasCommaSeparatedValues = predictedValue != null && predictedValue.contains(",");
+            boolean hasCommaSeparatedValues = predictedValue.contains(",");
             
             if (isMultiValue && hasCommaSeparatedValues) {
                 // Split comma-separated values and create indexed fields
@@ -546,6 +552,9 @@ public class MedicalPayloadGeneration {
     }
 
     private PredictionDTO createSplitPrediction(PredictionDTO original, String splitValue) {
+
+        String value = splitValue != null ? splitValue : "";
+        
         return PredictionDTO.builder()
                 .predictionId(original.getPredictionId())
                 .originId(original.getOriginId())
@@ -558,7 +567,7 @@ public class MedicalPayloadGeneration {
                 .paperNo(original.getPaperNo())
                 .lineItemType(original.getLineItemType())
                 .sorItemName(original.getSorItemName())
-                .predictedValue(splitValue)
+                .predictedValue(value)
                 .precision(original.getPrecision())
                 .leftPos(original.getLeftPos())
                 .rightPos(original.getRightPos())
@@ -661,24 +670,30 @@ public class MedicalPayloadGeneration {
                                                               int scaledWidth, int scaledHeight,
                                                               int roundingPrecision,
                                                               boolean reorderPaperNumber) {
-        int confidence = (int) (Math.round((prediction.getPrecision() * confidenceMultiplier) / 10.0) * 10);
 
-        int paperNumber = prediction.getPaperNo();
+        double precision = prediction.getPrecision() != null ? prediction.getPrecision() : 0.0;
+        int confidence = (int) (Math.round((precision * confidenceMultiplier) / 10.0) * 10);
+
+        Integer paperNo = prediction.getPaperNo();
+        int paperNumber = paperNo != null ? paperNo : 0;
         if (reorderPaperNumber && paperNumber >= 1) {
             paperNumber = paperNumber - 1;
         }
 
         double[] boundingBox = new double[] {
-                prediction.getLeftPos(),
-                prediction.getUpperPos(),
-                prediction.getRightPos(),
-                prediction.getLowerPos()
+                prediction.getLeftPos() != null ? prediction.getLeftPos() : DEFAULT_DOUBLE_VALUE,
+                prediction.getUpperPos() != null ? prediction.getUpperPos() : DEFAULT_DOUBLE_VALUE,
+                prediction.getRightPos() != null ? prediction.getRightPos() : DEFAULT_DOUBLE_VALUE,
+                prediction.getLowerPos() != null ? prediction.getLowerPos() : DEFAULT_DOUBLE_VALUE
         };
 
+        int imageWidth = prediction.getImageWidth() != null ? prediction.getImageWidth() : scaledWidth;
+        int imageHeight = prediction.getImageHeight() != null ? prediction.getImageHeight() : scaledHeight;
+        
         double[] rescaledBox = rescaleBoundingBox(
                 boundingBox,
-                prediction.getImageWidth(),
-                prediction.getImageHeight(),
+                imageWidth,
+                imageHeight,
                 scaledWidth,
                 scaledHeight,
                 roundingPrecision);
