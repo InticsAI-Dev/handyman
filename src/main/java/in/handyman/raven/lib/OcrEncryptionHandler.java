@@ -65,7 +65,7 @@ public class OcrEncryptionHandler {
         List<EncryptionRequestClass> requests = new ArrayList<>();
 
         for (OcrTextComparisonInput r : records) {
-            if (!r.isEncrypted())
+            if (!r.getIsEncrypted())
                 continue;
 
             String rawVal = isPageContent ? r.getExtractedText() : r.getAnswer();
@@ -181,7 +181,7 @@ public class OcrEncryptionHandler {
         List<EncryptionRequestClass> requests = new ArrayList<>();
 
         for (OcrTextComparisonInput r : records) {
-            if (!r.isEncrypted())
+            if (!r.getIsEncrypted())
                 continue;
 
             String rawVal = isPageContent ? r.getExtractedText() : r.getBestMatch();

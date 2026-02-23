@@ -361,7 +361,7 @@ public class ValidatorByBeanShellExecutor {
             Map<String, List<PostProcessingFieldsInput>> updatedPostProcessingDetailsMap) {
 
         try {
-            log.info("Input predictionKeyMap for class {}: {}", className, currentPostProcessingDetailsMap);
+            log.info("Input predictionKeyMap for class {}: {}", className, currentPostProcessingDetailsMap.size());
             interpreter.set("predictionKeyMap", currentPostProcessingDetailsMap);
             interpreter.set("rootPipelineId", rootPipelineId);
             log.info("Mapped predictionKeyMap and rootPipelineId, calling doCustomPredictionMapping");

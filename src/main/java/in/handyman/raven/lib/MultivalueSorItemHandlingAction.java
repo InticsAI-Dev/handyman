@@ -651,7 +651,7 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
                         .bind("synonymId", output.getSynonymId())
                         .bind("tenantId", output.getTenantId())
                         .bind("vqaScore", output.getVqaScore())
-                        .bind("isEncrypted", output.isEncrypted())
+                        .bind("isEncrypted", output.getIsEncrypted())
                         .bind("encryptionPolicy", output.getEncryptionPolicy())
                         .bind("sorContainerInstance", output.getSorContainerInstance())
                         .bind("isRemovedAfterFiltering", output.isRemovedAfterFiltering())
@@ -699,7 +699,7 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
         output.setSynonymId(inputItem.getSynonymId());
         output.setTenantId(inputItem.getTenantId());
         output.setVqaScore(inputItem.getVqaScore());
-        output.setEncrypted(inputItem.isEncrypted());
+        output.setIsEncrypted(inputItem.getIsEncrypted());
         output.setEncryptionPolicy(inputItem.getEncryptionPolicy());
         output.setSorContainerInstance(inputItem.getSorContainerInstance());
         output.setRemovedAfterFiltering(inputItem.isRemovedAfterFiltering());
@@ -965,7 +965,7 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
         clone.setStage(original.getStage());
         clone.setBatchId(original.getBatchId());
         clone.setLineItemType(original.getLineItemType());
-        clone.setEncrypted(original.isEncrypted());
+        clone.setIsEncrypted(original.getIsEncrypted());
         clone.setEncryptionPolicy(original.getEncryptionPolicy());
         clone.setSorContainerInstance(original.getSorContainerInstance());
         clone.setIsMultiEntityEnabled(original.getIsMultiEntityEnabled());
@@ -1663,7 +1663,7 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
         }
 
         List<EncryptionRequestClass> encryptionRequests = inputList.stream()
-                .filter(VqaTransactionOutput::isEncrypted)
+                .filter(VqaTransactionOutput::getIsEncrypted)
                 .filter(obj -> obj.getMultiEntityFilteringId() != null && obj.getAnswer() != null && !obj.getAnswer().isEmpty())
                 .map(obj -> new EncryptionRequestClass(AES_256, obj.getAnswer(), String.valueOf(obj.getMultiEntityFilteringId())))
                 .collect(Collectors.toList());
@@ -1762,7 +1762,7 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
         }
 
         List<EncryptionRequestClass> encryptionRequests = outputList.stream()
-                .filter(MultiEntityFieldHandlingInput::isEncrypted)
+                .filter(MultiEntityFieldHandlingInput::getIsEncrypted)
                 .filter(obj -> obj.getMultiEntityFilteringId() != null && obj.getAnswer() != null && !obj.getAnswer().isEmpty())
                 .map(obj -> new EncryptionRequestClass(AES_256, obj.getAnswer(), String.valueOf(obj.getMultiEntityFilteringId())))
                 .collect(Collectors.toList());
@@ -1869,7 +1869,7 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
         log.info(aMarker, "Input Summary - LineItemType breakdown: {}", lineItemTypeCounts);
         log.info(aMarker, "Input Summary - MultiEntity breakdown: {}", multiEntityCounts);
         log.info(aMarker, "Input Summary - Encrypted items: {}",
-                inputs.stream().filter(MultiEntityFieldHandlingInput::isEncrypted).count());
+                inputs.stream().filter(MultiEntityFieldHandlingInput::getIsEncrypted).count());
     }
 
     private void logCaseOutput(String caseName, List<MultiEntityFieldHandlingInput> outputs) {
@@ -1908,7 +1908,7 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
         log.info(aMarker, "Output Records - Status breakdown: {}", statusCounts);
         log.info(aMarker, "Output Records - Category breakdown: {}", categoryCounts);
         log.info(aMarker, "Output Records - Encrypted count: {}",
-                outputs.stream().filter(MultiEntityFieldHandlingInput::isEncrypted).count());
+                outputs.stream().filter(MultiEntityFieldHandlingInput::getIsEncrypted).count());
     }
 
     private void logFingerprints(List<InstanceFingerprint> fingerprints) {

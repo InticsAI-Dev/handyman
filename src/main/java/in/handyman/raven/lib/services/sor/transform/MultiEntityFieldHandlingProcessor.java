@@ -149,7 +149,7 @@ public class MultiEntityFieldHandlingProcessor {
         clone.setLineItemType(original.getLineItemType());
         clone.setIsMultiEntityEnabled(original.getIsMultiEntityEnabled());
         clone.setEncryptionPolicy(original.getEncryptionPolicy());
-        clone.setEncrypted(original.isEncrypted());
+        clone.setIsEncrypted(original.getIsEncrypted());
 
         // Fields from VqaTransactionBase
         // Note: transactionId is not copied here because we generate a new one for

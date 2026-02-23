@@ -125,7 +125,7 @@ public class OcrDatabaseHandler {
                                 .bind("lineItemType", r.getLineItemType())
                                 .bind("isMultiEntityEnabled", r.getIsMultiEntityEnabled())
                                 .bind("encryptionPolicy", r.getEncryptionPolicy())
-                                .bind("isEncrypted", r.isEncrypted())
+                                .bind("isEncrypted", r.getIsEncrypted())
                                 .bind("ocrFieldId", r.getOcrFieldId())
                                 .bind("isOcrFieldComparable", r.getIsOcrFieldComparable())
                                 .bind("extractedText", r.getExtractedText())

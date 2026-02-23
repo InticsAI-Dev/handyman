@@ -32,7 +32,7 @@ class ValidatorByBeanShellExecutorTest {
          actionExecutionAudit = new ActionExecutionAudit();
         actionExecutionAudit.getContext().put("multi.line.item.activator", ""); // To avoid NPE
 
-        actionExecutionAudit.getContext().put("outbound.mapper.bsh.class.order","AumiGenderMapper,AumiMemberNameMapper,AumiMultiMemberMapper,AuthDischargeDateValidator,ClinicalPresentProcessor,FaxFromDateMapper,FaxReportProcessor,MedicaidMemberIdValidator,MemberAddressMapper,MemberDOBandServiceFromDateMapper,MemberIdValidator,MemberZipcodeMapper,NewbornDOBMapper,NewbornGenderMapper,NewbornNameMapper,NewBornRequestMapper,ProviderAddressMapper,ProviderNpiTinValidator,ProviderZipCodeMapper,ServiceToDateMapper,AuthIdValidator");
+        actionExecutionAudit.getContext().put("outbound.mapper.bsh.class.order","AumiGenderMapper, AumiMemberNameMapper, AumiMultiMemberMapper, AuthDischargeDateValidator, ClinicalPresentProcessor, FaxFromDateMapper, FaxReportProcessor, MedicaidMemberIdValidator, MemberAddressMapper, MemberDOBandServiceFromDateMapper, MemberIdValidator, MemberZipcodeMapper, NewbornDOBMapper, NewbornGenderMapper, NewbornNameMapper, NewBornRequestMapper, ProviderAddressMapper, ProviderNpiTinValidator, ProviderZipCodeMapper, ServiceToDateMapper,DiagnosisCodeValidator,ServiceCodeValidator");
         List<SpwBshConfig> bshConfigs = getSpwBshConfigs();
         actionExecutionAudit.getContext().put("ProviderZipCodeMapper", "ProviderZipCodeMapper");
         actionExecutionAudit.getContext().put("ProviderNpiTinValidator", "ProviderNpiTinValidator");
@@ -88,8 +88,8 @@ class ValidatorByBeanShellExecutorTest {
                 "                    sor_item_name, sor_item_id, sor_item_attribution_id, model_id, model_info, model_registry, model_registry_id, answer, vqa_score,\n" +
                 "                    score, b_box, label, section_alias, synonym_id, sor_synonym, question_id, sor_question, weight, category, line_item_type,\n" +
                 "                    is_multi_entity_enabled, encryption_policy, is_encrypted, post_processing_code, post_processing_key, aggregated_score\n" +
-                "                   FROM\n" +
-                "                     sor_transform.vqa_transaction_post_processing_input a where origin_id='ORIGIN-37' ");
+                "                   from sor_transform.vqa_transaction_post_processing_input\t\n" +
+                "where origin_id='ORIGIN-84' and sor_container_name ='SERVICE_CODE';");
         PostProcessingExecutorAction postProcessingExecutorAction = new PostProcessingExecutorAction(actionExecutionAudit, log, postProcessingExecutor);
         postProcessingExecutorAction.execute();
     }

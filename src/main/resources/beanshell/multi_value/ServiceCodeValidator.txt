@@ -7,8 +7,11 @@ import org.slf4j.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-
-public class DiagnosisServiceCodeValidator {
+/**
+ * Handles parsing and normalization of service codes, modifiers, units, and visits.
+ * Input/output format is identical to the original DiagnosisServiceCodeValidator.
+ */
+public class ServiceCodeValidator {
 
     private Logger logger;
 
@@ -16,146 +19,122 @@ public class DiagnosisServiceCodeValidator {
     private final List modifiers = new ArrayList();
     private final List units = new ArrayList();
     private final List visits = new ArrayList();
-    private final List validDiagnosisCode = new ArrayList();
 
     // Regex Patterns for parsing
     private static final Pattern HYPHEN_SINGLE_DIGIT_UNIT = Pattern.compile("-([0-9])$");
     private static final Pattern HYPHEN_TWO_CHAR_MODIFIER = Pattern.compile("-([A-Z0-9]{2})$");
     private static final Pattern X_MULTIPLIER = Pattern.compile("[Xx*]\\s*(\\d{1,2})(?!\\d)");
     private static final Pattern PURE_ALPHA_BASE = Pattern.compile("^[A-Z]+$");
-    // Pattern for code-description(multiplier): J9299-Opdivo (x12)
     private static final Pattern CODE_DASH_DESC_PAREN_MULTIPLIER = Pattern.compile(
             "\\s*([A-Z0-9]{5,6})\\s*-\\s*[A-Za-z]+\\s*\\(\\s*[xX*]\\s*(\\d{1,2})(?!\\d)\\s*\\)\\s*",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern DESCRIPTIVE_TEXT_WITH_PAREN_CODE = Pattern.compile(
             "[A-Z\\s-]+\\(\\s*([A-Z0-9]{5,6})\\s*\\)",
             Pattern.CASE_INSENSITIVE);
-
     private static final Pattern DESCRIPTIVE_VISITS_UNITS = Pattern.compile(
             "([A-Z0-9]{5,6})\\s*[xX*]\\s*(\\d+)\\s*visits?\\s*=\\s*(\\d+)\\s*units?",
             Pattern.CASE_INSENSITIVE);
-
     private static final Pattern DESCRIPTIVE_UNITS_VISITS = Pattern.compile(
             "([A-Z0-9]{5,6})\\s*[xX*]\\s*(\\d+)\\s*units?\\s*=\\s*(\\d+)\\s*visits?",
             Pattern.CASE_INSENSITIVE);
-
     private static final Pattern FLEXIBLE_CODE_MOD_X_EQUALS = Pattern.compile(
             "\\s*([A-Z0-9]{5,6})(?:\\s*([A-Z0-9]{2})\\s*|\\s*-\\s*([A-Z0-9]{2})\\s*)?[xX*]\\s*(\\d{1,2})(?!\\d)\\s*(?:units?)?\\s*=\\s*(\\d+)\\s*(?:visits?)?\\s*",
             Pattern.CASE_INSENSITIVE);
-
     private static final Pattern CODE_MOD_EQUALS_UNITS = Pattern.compile(
             "\\s*([A-Z0-9]{5,6})(?:\\s*-([A-Z0-9]{2})|\\s+([A-Z0-9]{2}))\\s*=\\s*(\\d+)\\s*",
             Pattern.CASE_INSENSITIVE);
-
     private static final Pattern CODE_WITH_PAREN_UNITS = Pattern.compile(
             "\\s*([A-Z0-9]{5,6})\\s*\\(\\s*(\\d+)\\s*(?:/[^)]*)?\\)\\s*",
             Pattern.CASE_INSENSITIVE);
-
     private static final Pattern CODE_EQUALS_UNITS = Pattern.compile(
             "\\s*([A-Z0-9]{5,6})\\s*=\\s*(\\d+)\\s*",
             Pattern.CASE_INSENSITIVE);
-
     private static final Pattern CODE_INLINE_MOD_PAREN_UNITS = Pattern.compile(
             "\\s*([A-Z0-9]{5,6})([A-Z0-9]{2})\\s*\\(\\s*(\\d+)\\s*\\)\\s*",
             Pattern.CASE_INSENSITIVE);
-
     private static final Pattern CODE_HYPHEN_MOD_PAREN_UNITS = Pattern.compile(
             "\\s*([A-Z0-9]{5,6})\\s*-([A-Z0-9]{2})\\s*\\(\\s*(\\d+)\\s*\\)\\s*",
             Pattern.CASE_INSENSITIVE);
-
     private static final Pattern CODE_ATTACHED_MOD_PAREN_UNITS_WITH_NOISE = Pattern.compile(
             "\\s*([A-Z0-9]{5,6})([A-Z0-9]{2})\\s*\\(\\s*(\\d+)\\s*(?:/[^)]*)?\\)\\s*",
             Pattern.CASE_INSENSITIVE);
-
     private static final Pattern CODE_INLINE_MOD_PAREN_UNITS_WITH_NOISE = Pattern.compile(
             "\\s*([A-Z0-9]{5,6})\\s*-?\\s*([A-Z0-9]{2})\\s*\\(\\s*(\\d+)\\s*(?:/[^)]*)?\\)\\s*",
             Pattern.CASE_INSENSITIVE);
-
     private static final Pattern CODE_X_VISITS_ONLY = Pattern.compile(
             "\\s*([A-Z0-9]{5,6})\\s*[xX*]\\s*(\\d+)\\s*=\\s*visits?\\s*",
             Pattern.CASE_INSENSITIVE);
-
     private static final Pattern CODE_MOD_ASTERISK_UNITS_WITH_PIPE_NOISE = Pattern.compile(
             "\\s*([A-Z0-9]{5,6})\\s+([A-Z0-9]{2})\\s*\\*\\s*(\\d+)\\s*\\|.*",
             Pattern.CASE_INSENSITIVE);
-
     private static final Pattern CODE_EQUALS_UNITS_WITH_PIPE_NOISE = Pattern.compile(
             "\\s*([A-Z0-9]{5,6})\\s*=([0-9 ]+)\\|.*",
             Pattern.CASE_INSENSITIVE);
-
     private static final Pattern PREFIX_PATTERN = Pattern.compile("^[A-Z]+:\\s*", Pattern.CASE_INSENSITIVE);
-
     private static final Pattern FALLBACK_VISITS_HINT = Pattern.compile(
             "[xX*]\\s*(\\d{1,2})\\s*-?visits?", Pattern.CASE_INSENSITIVE);
-
-    // NEW PATTERN FOR CASE 77: Handles "45433 TG * 4", "A1234 * 5" in blocked entries
     private static final Pattern BLOCK_MULTIPLIER_UNITS = Pattern.compile(
             "\\s*([A-Z0-9]{5,6})\\s*(?:([A-Z0-9]{2})\\s*)?[xX*]\\s*(\\d{1,2})(?!\\d)\\s*$",
             Pattern.CASE_INSENSITIVE);
 
-    public DiagnosisServiceCodeValidator(Logger logger) { this.logger = logger; }
+    public ServiceCodeValidator(Logger logger) {
+        this.logger = logger;
+    }
 
     public MappingResult doCustomPredictionMapping(Map predictionMap, Long rootPipelineId) {
         if (predictionMap == null) predictionMap = new Hashtable();
 
-        Object svcInputObj = getAsObject(predictionMap, "service_code");
-        Object diagInputObj = getAsObject(predictionMap, "diagnosis_code");
+        Object svcInputObj      = getAsObject(predictionMap, "service_code");
         Object qtyUnitsInputObj = getAsObject(predictionMap, "service_quantity_units");
-        Object qtyVisitsInputObj = getAsObject(predictionMap, "service_quantity_visits");
-        Object modifiersInputObj = getAsObject(predictionMap, "service_code_modifier");
+        Object qtyVisitsInputObj= getAsObject(predictionMap, "service_quantity_visits");
+        Object modifiersInputObj= getAsObject(predictionMap, "service_code_modifier");
 
-        if(svcInputObj instanceof List && diagInputObj instanceof List && qtyUnitsInputObj instanceof List && qtyVisitsInputObj instanceof List && modifiersInputObj instanceof List)
-        {
-            List svcInputList = (List) svcInputObj;
-            List diagInputList = (List) diagInputObj;
-            List qtyUnitsInputList = (List) qtyUnitsInputObj;
+        if (svcInputObj instanceof List && qtyUnitsInputObj instanceof List
+                && qtyVisitsInputObj instanceof List && modifiersInputObj instanceof List) {
+
+            List svcInputList       = (List) svcInputObj;
+            List qtyUnitsInputList  = (List) qtyUnitsInputObj;
             List qtyVisitsInputList = (List) qtyVisitsInputObj;
             List modifiersInputList = (List) modifiersInputObj;
 
-            for(int i =0; i < svcInputList.size(); i++)
-            {
-                if (
-                    svcInputList.get(i) instanceof in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput &&
-                    diagInputList.get(i) instanceof in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput &&
-                    qtyUnitsInputList.get(i) instanceof in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput &&
-                    qtyVisitsInputList.get(i) instanceof in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput &&
-                    modifiersInputList.get(i) instanceof in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput
-                )
-                {
-                    in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput svcInput = (in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput) svcInputList.get(i);
-                    in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput diagInput = (in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput) diagInputList.get(i);
-                    in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput qtyUnitsInput = (in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput) qtyUnitsInputList.get(i);
-                    in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput qtyVisitsInput = (in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput) qtyVisitsInputList.get(i);
-                    in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput modifiersInput = (in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput) modifiersInputList.get(i);
+            for (int i = 0; i < svcInputList.size(); i++) {
+                if (svcInputList.get(i) instanceof in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput
+                        && qtyUnitsInputList.get(i) instanceof in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput
+                        && qtyVisitsInputList.get(i) instanceof in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput
+                        && modifiersInputList.get(i) instanceof in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput) {
 
-                    String svcString = svcInput.getAnswer();
-                    String diagString = diagInput.getAnswer();
-                    String qtyUnitsString = qtyUnitsInput.getAnswer();
+                    in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput svcInput =
+                            (in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput) svcInputList.get(i);
+                    in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput qtyUnitsInput =
+                            (in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput) qtyUnitsInputList.get(i);
+                    in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput qtyVisitsInput =
+                            (in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput) qtyVisitsInputList.get(i);
+                    in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput modifiersInput =
+                            (in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput) modifiersInputList.get(i);
+
+                    String svcString       = svcInput.getAnswer();
+                    String qtyUnitsString  = qtyUnitsInput.getAnswer();
                     String qtyVisitsString = qtyVisitsInput.getAnswer();
 
                     clearLists();
-                    logger.info("Starting service and diagnosis code mapping");
+                    logger.info("Starting service code mapping");
 
                     processServiceCodes(svcString);
-                    processDiagnosisCodes(diagString);
 
-                    String globalUnits = extractNumbers(qtyUnitsString);
+                    String globalUnits  = extractNumbers(qtyUnitsString);
                     String globalVisits = extractNumbers(qtyVisitsString);
 
                     applyGlobalValues(globalUnits, units);
                     applyGlobalValues(globalVisits, visits);
 
                     String joinedVisits = join(visits);
-                    String finalVisits = "*";
-                    boolean allStars = true;
+                    String finalVisits  = "*";
+                    boolean allStars    = true;
 
                     if (joinedVisits != null && joinedVisits.length() > 0) {
                         String[] parts = joinedVisits.split(",");
                         for (int j = 0; j < parts.length; j++) {
-                            if (!"*".equals(parts[j].trim())) {
-                                allStars = false;
-                                break;
-                            }
+                            if (!"*".equals(parts[j].trim())) { allStars = false; break; }
                         }
                     }
 
@@ -165,9 +144,7 @@ public class DiagnosisServiceCodeValidator {
                         finalVisits = (joinedVisits == null || joinedVisits.trim().length() == 0) ? globalVisits : joinedVisits;
                     }
 
-
                     svcInput.setAnswer(join(serviceCodes));
-                    diagInput.setAnswer(join(validDiagnosisCode));
                     qtyUnitsInput.setAnswer(join(units));
                     qtyVisitsInput.setAnswer(finalVisits);
 
@@ -177,20 +154,15 @@ public class DiagnosisServiceCodeValidator {
                             String mod = (String) modifiers.get(j);
                             finalMods.add((mod == null || mod.trim().length() == 0 || "*".equals(mod)) ? "*" : mod.trim());
                         }
-
                         modifiersInput.setAnswer(join(finalMods));
                     }
 
-
-
                     ensureEmptyString(svcInput);
-                    ensureEmptyString(diagInput);
                     ensureEmptyString(qtyUnitsInput);
                     ensureEmptyString(qtyVisitsInput);
 
-                    if (((String) serviceCodes.get(i)).trim().isEmpty()) {
+                    if (serviceCodes.isEmpty() || ((String) serviceCodes.get(i < serviceCodes.size() ? i : 0)).trim().isEmpty()) {
                         svcInput.setAnswer("*");
-                        diagInput.setAnswer("*");
                         qtyUnitsInput.setAnswer("*");
                         qtyVisitsInput.setAnswer("*");
                     } else if (modifiersInput.getAnswer().trim().isEmpty()) {
@@ -200,7 +172,6 @@ public class DiagnosisServiceCodeValidator {
             }
 
             predictionMap.put("service_code", svcInputList);
-            predictionMap.put("diagnosis_code", diagInputList);
             predictionMap.put("service_quantity_units", qtyUnitsInputList);
             predictionMap.put("service_quantity_visits", qtyVisitsInputList);
             predictionMap.put("service_code_modifier", modifiersInputList);
@@ -209,21 +180,20 @@ public class DiagnosisServiceCodeValidator {
         return new MappingResult(new Hashtable(predictionMap), new ArrayList());
     }
 
+    // -------------------------------------------------------------------------
+    // Service-code parsing logic (unchanged from original)
+    // -------------------------------------------------------------------------
+
     private void processServiceCodes(String input) {
         if (input == null || input.trim().length() == 0) return;
         String cleaned = input.replaceAll("-+$", "").trim();
 
-        // NEW: Handle repeated pipe-delimited blocks (Case 87)
         if (cleaned.contains("|") && cleaned.contains("--")) {
-            // Split by common noise patterns that separate codes in this context
             String[] blocks = cleaned.split("\\|\\*\\*\\|##\\|--,?|\\|--,?|\\|\\*\\*\\|");
             boolean foundBlocks = false;
             for (int i = 0; i < blocks.length; i++) {
                 String b = blocks[i].trim();
-                if (b.length() > 0) {
-                    processSingleStructuredEntry(b);
-                    foundBlocks = true;
-                }
+                if (b.length() > 0) { processSingleStructuredEntry(b); foundBlocks = true; }
             }
             if (foundBlocks) return;
         }
@@ -253,7 +223,8 @@ public class DiagnosisServiceCodeValidator {
             if (flexibleM.find()) {
                 do {
                     addEntry(flexibleM.group(1).toUpperCase(),
-                            flexibleM.group(2) != null ? flexibleM.group(2).toUpperCase() : (flexibleM.group(3) != null ? flexibleM.group(3).toUpperCase() : "*"),
+                            flexibleM.group(2) != null ? flexibleM.group(2).toUpperCase()
+                                    : (flexibleM.group(3) != null ? flexibleM.group(3).toUpperCase() : "*"),
                             flexibleM.group(4), flexibleM.group(5));
                 } while (flexibleM.find());
                 continue;
@@ -266,45 +237,41 @@ public class DiagnosisServiceCodeValidator {
             if (modEqualsUnitsM.find()) {
                 do {
                     addEntry(modEqualsUnitsM.group(1).toUpperCase(),
-                            modEqualsUnitsM.group(2) != null ? modEqualsUnitsM.group(2).toUpperCase() : (modEqualsUnitsM.group(3) != null ? modEqualsUnitsM.group(3).toUpperCase() : "*"),
+                            modEqualsUnitsM.group(2) != null ? modEqualsUnitsM.group(2).toUpperCase()
+                                    : (modEqualsUnitsM.group(3) != null ? modEqualsUnitsM.group(3).toUpperCase() : "*"),
                             modEqualsUnitsM.group(4), "*");
                 } while (modEqualsUnitsM.find());
                 continue;
             }
 
             if (processSpecificPatterns(entry)) continue;
-
             processSingleStructuredEntry(entry);
         }
     }
 
     private boolean processSpecificPatterns(String cleaned) {
-        // NEW: Check for code-description(multiplier) pattern FIRST
         Matcher descMultM = CODE_DASH_DESC_PAREN_MULTIPLIER.matcher(cleaned);
         if (descMultM.find()) {
-            do {
-                addEntry(descMultM.group(1).toUpperCase(), "*", descMultM.group(2), "*");
-            } while (descMultM.find());
+            do { addEntry(descMultM.group(1).toUpperCase(), "*", descMultM.group(2), "*"); }
+            while (descMultM.find());
             return true;
         }
 
         Pattern[] patterns = {
-                CODE_MOD_ASTERISK_UNITS_WITH_PIPE_NOISE,
-                CODE_EQUALS_UNITS_WITH_PIPE_NOISE,
-                CODE_ATTACHED_MOD_PAREN_UNITS_WITH_NOISE,
-                CODE_INLINE_MOD_PAREN_UNITS_WITH_NOISE,
-                CODE_HYPHEN_MOD_PAREN_UNITS,
-                CODE_INLINE_MOD_PAREN_UNITS,
-                CODE_WITH_PAREN_UNITS,
-                CODE_EQUALS_UNITS,
-                CODE_X_VISITS_ONLY
+            CODE_MOD_ASTERISK_UNITS_WITH_PIPE_NOISE,
+            CODE_EQUALS_UNITS_WITH_PIPE_NOISE,
+            CODE_ATTACHED_MOD_PAREN_UNITS_WITH_NOISE,
+            CODE_INLINE_MOD_PAREN_UNITS_WITH_NOISE,
+            CODE_HYPHEN_MOD_PAREN_UNITS,
+            CODE_INLINE_MOD_PAREN_UNITS,
+            CODE_WITH_PAREN_UNITS,
+            CODE_EQUALS_UNITS,
+            CODE_X_VISITS_ONLY
         };
 
-        boolean found = false;
         for (int i = 0; i < patterns.length; i++) {
             Matcher m = patterns[i].matcher(cleaned);
             if (m.find()) {
-                found = true;
                 do {
                     if (i == 0) {
                         addEntry(m.group(1).toUpperCase(), m.group(2).toUpperCase(), m.group(3), "*");
@@ -312,51 +279,43 @@ public class DiagnosisServiceCodeValidator {
                         addEntry(m.group(1).toUpperCase(), "*", m.group(2).trim(), "*");
                     } else if (i < 4) {
                         addEntry(m.group(1).toUpperCase(), m.group(2).toUpperCase(), m.group(3), "*");
-                    } else if (i == 4 || i == 5 || i == 6 || i == 7) {
-                        if (i == 6 || i == 7) {
-                            addEntry(m.group(1).toUpperCase(), "*", m.group(2), "*");
-                        } else {
-                            addEntry(m.group(1).toUpperCase(), m.group(2).toUpperCase(), m.group(3), "*");
-                        }
+                    } else if (i == 4 || i == 5) {
+                        addEntry(m.group(1).toUpperCase(), m.group(2).toUpperCase(), m.group(3), "*");
+                    } else if (i == 6 || i == 7) {
+                        addEntry(m.group(1).toUpperCase(), "*", m.group(2), "*");
                     } else {
                         addEntry(m.group(1).toUpperCase(), "*", "*", m.group(2));
                     }
                 } while (m.find());
-                break;
+                return true;
             }
         }
-        return found;
+        return false;
     }
 
     private void processSingleStructuredEntry(String entry) {
-        // FIX for Case 77: Handle simple patterns that appear in isolated blocks after splitting
         Matcher equalsM = CODE_EQUALS_UNITS.matcher(entry);
         if (equalsM.find()) {
-            do {
-                addEntry(equalsM.group(1).toUpperCase(), "*", equalsM.group(2), "*");
-            } while (equalsM.find());
+            do { addEntry(equalsM.group(1).toUpperCase(), "*", equalsM.group(2), "*"); }
+            while (equalsM.find());
             return;
         }
 
         Matcher parenM = CODE_WITH_PAREN_UNITS.matcher(entry);
         if (parenM.find()) {
-            do {
-                addEntry(parenM.group(1).toUpperCase(), "*", parenM.group(2), "*");
-            } while (parenM.find());
+            do { addEntry(parenM.group(1).toUpperCase(), "*", parenM.group(2), "*"); }
+            while (parenM.find());
             return;
         }
 
-        // NEW: Handle "CODE [MOD] * N" or "CODE [MOD] x N" pattern (e.g., "45433 TG * 4", "A1234 * 5")
         Matcher multM = BLOCK_MULTIPLIER_UNITS.matcher(entry);
         if (multM.find()) {
-            String code = multM.group(1).toUpperCase();
-            String mod = multM.group(2) != null ? multM.group(2).toUpperCase() : "*";
-            String unit = multM.group(3);
-            addEntry(code, mod, unit, "*");
+            addEntry(multM.group(1).toUpperCase(),
+                    multM.group(2) != null ? multM.group(2).toUpperCase() : "*",
+                    multM.group(3), "*");
             return;
         }
 
-        // Original logic continues unchanged
         String[] fields = entry.split("\\|");
         if (fields.length == 0) return;
 
@@ -369,15 +328,12 @@ public class DiagnosisServiceCodeValidator {
             mainField = mainField.replaceAll("[xX*]\\s*\\d+\\s*-?visits?", "").trim();
         }
 
-        List pipeMods = parsePipeField(fields, 1, true);
-        List pipeUnits = parsePipeField(fields, 2, false);
+        List pipeMods   = parsePipeField(fields, 1, true);
+        List pipeUnits  = parsePipeField(fields, 2, false);
         List pipeVisits = parsePipeField(fields, 3, false);
 
         if (pipeVisits.isEmpty() || (pipeVisits.size() == 1 && "*".equals(pipeVisits.get(0)))) {
-            if (!"*".equals(fallbackVisits)) {
-                pipeVisits.clear();
-                pipeVisits.add(fallbackVisits);
-            }
+            if (!"*".equals(fallbackVisits)) { pipeVisits.clear(); pipeVisits.add(fallbackVisits); }
         }
 
         String[] tokens = mainField.split("[,\\s/]+");
@@ -396,15 +352,11 @@ public class DiagnosisServiceCodeValidator {
             if (base == null) {
                 String upper = cleanToken.toUpperCase();
                 Matcher xM = X_MULTIPLIER.matcher(upper);
-                if (xM.find()) {
-                    unit = xM.group(1);
-                    upper = upper.replaceAll("[Xx*]\\s*\\d{1,2}(?!\\d)", "").trim();
-                }
+                if (xM.find()) { unit = xM.group(1); upper = upper.replaceAll("[Xx*]\\s*\\d{1,2}(?!\\d)", "").trim(); }
                 Matcher uM = HYPHEN_SINGLE_DIGIT_UNIT.matcher(upper);
                 if (uM.find()) { unit = uM.group(1); upper = upper.substring(0, uM.start()).trim(); }
                 Matcher mM = HYPHEN_TWO_CHAR_MODIFIER.matcher(upper);
                 if (mM.find()) { mod = mM.group(1); upper = upper.substring(0, mM.start()).trim(); }
-
                 base = keepAlnum(upper);
                 if ("*".equals(mod) && (base.length() == 7 || base.length() == 8)) {
                     String mc = base.substring(base.length() - 2);
@@ -414,17 +366,17 @@ public class DiagnosisServiceCodeValidator {
 
             if (base != null && (base.length() == 5 || base.length() == 6)) {
                 if ("*".equals(unit) && i + 1 < tokens.length) {
-                    String nextToken = tokens[i+1].toUpperCase();
+                    String nextToken = tokens[i + 1].toUpperCase();
                     Matcher nextXM = X_MULTIPLIER.matcher(nextToken);
                     if (nextXM.matches()) { unit = nextXM.group(1); i++; }
                     else if (nextToken.equals("*") || nextToken.equalsIgnoreCase("X")) {
-                        if (i + 2 < tokens.length && tokens[i+2].matches("\\d+")) { unit = tokens[i+2]; i += 2; }
+                        if (i + 2 < tokens.length && tokens[i + 2].matches("\\d+")) { unit = tokens[i + 2]; i += 2; }
                     }
                 }
                 if ("*".equals(mod) && i + 1 < tokens.length) {
-                    String next = tokens[i+1].trim();
+                    String next = tokens[i + 1].trim();
                     if ("-".equals(next) && i + 2 < tokens.length) {
-                        String mc = keepAlnum(tokens[i+2].toUpperCase());
+                        String mc = keepAlnum(tokens[i + 2].toUpperCase());
                         if (mc.length() == 2) { mod = mc; i += 2; }
                     } else {
                         String mc = keepAlnum(next.toUpperCase());
@@ -434,24 +386,26 @@ public class DiagnosisServiceCodeValidator {
             }
 
             if (base != null && base.length() >= 5 && base.length() <= 6 && !PURE_ALPHA_BASE.matcher(base).matches()) {
-                String finalMod = (!"*".equals(mod)) ? mod : getPipeListValue(pipeMods, codeIndex);
-                String finalUnit = (!"*".equals(unit)) ? unit : getPipeListValue(pipeUnits, codeIndex);
+                String finalMod   = (!"*".equals(mod))   ? mod   : getPipeListValue(pipeMods,   codeIndex);
+                String finalUnit  = (!"*".equals(unit))  ? unit  : getPipeListValue(pipeUnits,  codeIndex);
                 String finalVisit = (!"*".equals(visit)) ? visit : getPipeListValue(pipeVisits, codeIndex);
-
                 addEntry(base, finalMod, finalUnit, finalVisit);
                 codeIndex++;
             }
         }
     }
 
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
     private List parsePipeField(String[] fields, int idx, boolean isMod) {
         List res = new ArrayList(); res.add("*");
         if (fields.length > idx) {
             String f = fields[idx].trim();
             if (isMod) {
-                String[] pts = f.split("\\s+");
-                res.clear();
-                for (int i=0; i<pts.length; i++) {
+                String[] pts = f.split("\\s+"); res.clear();
+                for (int i = 0; i < pts.length; i++) {
                     String m = pts[i].trim().toUpperCase();
                     if (m.length() == 2 || "*".equals(m) || "**".equals(m)) res.add("**".equals(m) ? "*" : m);
                 }
@@ -459,7 +413,7 @@ public class DiagnosisServiceCodeValidator {
                 String ext = extractNumbers(f);
                 if (ext.length() > 0) {
                     res.clear(); String[] pts = ext.split(",");
-                    for (int i=0; i<pts.length; i++) res.add(pts[i].trim().length() == 0 ? "*" : pts[i].trim());
+                    for (int i = 0; i < pts.length; i++) res.add(pts[i].trim().length() == 0 ? "*" : pts[i].trim());
                 }
             }
         }
@@ -473,18 +427,10 @@ public class DiagnosisServiceCodeValidator {
 
     private boolean isDuplicate(String b, String m, String u, String v) {
         for (int i = 0; i < serviceCodes.size(); i++) {
-            if (serviceCodes.get(i).equals(b) && modifiers.get(i).equals(m) && units.get(i).equals(u) && visits.get(i).equals(v)) return true;
+            if (serviceCodes.get(i).equals(b) && modifiers.get(i).equals(m)
+                    && units.get(i).equals(u) && visits.get(i).equals(v)) return true;
         }
         return false;
-    }
-
-    private void processDiagnosisCodes(String input) {
-        if (input == null || input.trim().length() == 0) return;
-        String[] parts = input.split(",");
-        for (int i = 0; i < parts.length; i++) {
-            String c = parts[i].trim().replaceAll("[^A-Za-z0-9.]", "").toUpperCase();
-            if (c.length() >= 3 && c.length() <= 7 && c.matches(".*\\d.*") && (c.indexOf('.') == -1 || c.indexOf('.') == 3) && !validDiagnosisCode.contains(c)) validDiagnosisCode.add(c);
-        }
     }
 
     private void applyGlobalValues(String glob, List target) {
@@ -504,7 +450,7 @@ public class DiagnosisServiceCodeValidator {
         return (a.length() == 5 || a.length() == 6) ? a : null;
     }
 
-    private void clearLists() { serviceCodes.clear(); modifiers.clear(); units.clear(); visits.clear(); validDiagnosisCode.clear(); }
+    private void clearLists() { serviceCodes.clear(); modifiers.clear(); units.clear(); visits.clear(); }
 
     private String extractNumbers(String s) {
         if (s == null) return "";
@@ -531,39 +477,15 @@ public class DiagnosisServiceCodeValidator {
         return sb.toString();
     }
 
-    private String getAsString(Map m, String k) { Object o = m.get(k); return o == null ? "" : o.toString().trim(); }
-
     private String getAsString(List l, int index) { return index < l.size() ? (String) l.get(index) : ""; }
 
 private Object getAsObject(Map m, String k) {
-
-    Object o = m.get(k);
-    if (o != null) {
-        return o;
+        return m.get(k); // Returns null if absent; caller's instanceof List check handles it safely
     }
 
-    List list = new ArrayList();
-
-    try {
-        in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput obj =
-            new in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput();
-
-        obj.setAnswer("");
-        list.add(obj);
-
-    } catch (Throwable t) {
-        logger.error("PostProcessingFieldsInput not available in runtime", t);
-        list.add(null);
+    private void ensureEmptyString(in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput obj) {
+        if (obj.getAnswer().length() == 0) obj.setAnswer("");
     }
-
-    return list;
-}
-
-    private void ensureEmptyString(Map m, String k) { if (getAsString(m, k).length() == 0) m.put(k, ""); }
-
-    private void ensureEmptyString(List l, int index) { if(getAsString(l, index).length() == 0) l.set(index, "");}
-
-    private void ensureEmptyString(in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput obj) { if(obj.getAnswer().length() == 0) obj.setAnswer("");}
 
     private String getPipeListValue(List list, int index) {
         if (list == null || list.isEmpty()) return "*";
@@ -579,6 +501,10 @@ private Object getAsObject(Map m, String k) {
         Matcher m = DESCRIPTIVE_UNITS_VISITS.matcher(in);
         while (m.find()) addEntry(m.group(1).toUpperCase(), "*", m.group(2), m.group(3));
     }
+
+    // -------------------------------------------------------------------------
+    // Result wrapper (kept identical to original)
+    // -------------------------------------------------------------------------
 
     public static class MappingResult {
         private Map data; private List logs;

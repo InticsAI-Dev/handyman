@@ -230,6 +230,7 @@ public class SorMetaMapperConsumer implements CoproProcessor.ConsumerProcess<Llm
 
         LlmJsonQueryOutputTable insertData = LlmJsonQueryOutputTable
                 .builder()
+                .id(UUID.randomUUID().toString())
                 .createdOn(String.valueOf(input.getCreatedOn()))
                 .tenantId(input.getTenantId())
                 .createdUserId(input.getTenantId())
@@ -468,7 +469,7 @@ public class SorMetaMapperConsumer implements CoproProcessor.ConsumerProcess<Llm
 
     private Map<String, String> buildEncryptionMap(List<EncryptionRequestClass> responseList) {
         return responseList.stream()
-                .filter(item -> item.getKey() != null && item.getKey().matches("\\d+"))
+                .filter(item -> item.getKey() != null)
                 .collect(Collectors.toMap(
                         EncryptionRequestClass::getKey,
                         EncryptionRequestClass::getValue

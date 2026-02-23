@@ -259,7 +259,7 @@ public class MultivalueConcatenationAction implements IActionExecution {
     clonedInput.setStage(originalInput.getStage());
     clonedInput.setBatchId(originalInput.getBatchId());
     clonedInput.setLineItemType(originalInput.getLineItemType());
-    clonedInput.setEncrypted(originalInput.isEncrypted());
+    clonedInput.setIsEncrypted(originalInput.getIsEncrypted());
     clonedInput.setEncryptionPolicy(originalInput.getEncryptionPolicy());
     clonedInput.setSorContainerInstance(originalInput.getSorContainerInstance());
     clonedInput.setIsMultiEntityEnabled(originalInput.getIsMultiEntityEnabled());
@@ -429,7 +429,7 @@ public class MultivalueConcatenationAction implements IActionExecution {
                 .bind("isMultiEntityEnabled", record.getIsMultiEntityEnabled())
 
                 .bind("encryptionPolicy", record.getEncryptionPolicy())
-                .bind("isEncrypted", record.isEncrypted())
+                .bind("isEncrypted", record.getIsEncrypted())
 
                 .add();
 

@@ -38,7 +38,7 @@ public class VqaTransactionOutput extends VqaTransactionBase  {
     private String lineItemType;
     private String isMultiEntityEnabled;
     private String encryptionPolicy;
-    private boolean isEncrypted;
+    private Boolean isEncrypted;
 
 
     private String buildLoggerOutput() {

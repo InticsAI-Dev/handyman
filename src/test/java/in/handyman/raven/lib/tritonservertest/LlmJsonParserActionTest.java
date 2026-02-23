@@ -18,11 +18,11 @@ public class LlmJsonParserActionTest {
                 .name("llm json parser")
                 .condition(true)
                 .resourceConn("intics_zio_db_conn")
-                .outputTable("sor_transaction.llm_json_parser_output_audit")
-                .querySet("SELECT a.response as response, a.paper_no, a.origin_id, a.group_id, a.tenant_id, a.root_pipeline_id, a.batch_id,\n" +
-                        "a.model_registry, a.category, a.created_on,a.sor_container_id, a.sor_meta_detail,a.image_dpi, a.image_width, a.image_height\n" +
-                        "from sor_transaction.llm_json_parser_input_audit a\n" +
-                        "WHERE root_pipeline_id =17290;")
+                .outputTable("extraction.llm_json_parser_output_audit")
+                .querySet(" SELECT a.response as response, a.paper_no, a.origin_id, a.group_id, a.tenant_id, a.root_pipeline_id, a.batch_id,\n" +
+                        "                    a.model_registry, a.category, a.created_on,a.sor_container_id, a.sor_meta_detail,a.image_dpi, a.image_width, a.image_height,a.sor_container_instance\n" +
+                        "                    from extraction.llm_json_parser_input_audit a\n" +
+                        "                    WHERE origin_id='ORIGIN-72';")
                 .build();
 
         ActionExecutionAudit ac = new ActionExecutionAudit();
@@ -34,11 +34,13 @@ public class LlmJsonParserActionTest {
         ac.getContext().put("read.batch.size", "1");
         ac.getContext().put("sor.transaction.bbox.activator.enable", "true");
         ac.getContext().put("sor.transaction.confidence.activator.enable", "true");
-        ac.getContext().put(ENCRYPT_ITEM_WISE_ENCRYPTION, "false");
-        ac.getContext().put("llm.json.parser.consumer.API.count","10");
+        ac.getContext().put(ENCRYPT_ITEM_WISE_ENCRYPTION, "true");
+        ac.getContext().put("llm.json.parser.consumer.API.count","1");
         ac.getContext().put("copro.processor.thread.creator", "FIXED_THREAD");
         ac.getContext().put("pipeline.encryption.default.holder", "PROTEGRITY_API_ENC");
-
+        ac.getContext().put("llm.json.parser.label.encryption", "true");
+        ac.getContext().put("protegrity.enc.api.url", "http://localhost:8190/vulcan/api/encryption/encrypt");
+        ac.getContext().put("protegrity.dec.api.url", "http://localhost:8190/vulcan/api/encryption/decrypt");
 
         LlmJsonParserAction llmJsonParserAction = new LlmJsonParserAction(ac, log, llmJsonParser);
 

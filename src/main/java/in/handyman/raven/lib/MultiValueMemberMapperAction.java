@@ -182,7 +182,7 @@ public class MultiValueMemberMapperAction implements IActionExecution {
     String sorItemName = row.getSorItemName();
     String encryptionPolicy = row.getEncryptionPolicy();
 
-    if (pipelineEndToEndEncryptionActivator && row.isEncrypted()) {
+    if (pipelineEndToEndEncryptionActivator && row.getIsEncrypted()) {
       log.info("Decryption the extracted value for the sor item:{} for the multi-member voting", sorItemName);
       String encryptedValue = encryption.decrypt(extractedValue, encryptionPolicy, sorItemName);
       row.setAnswer(encryptedValue);
@@ -271,7 +271,7 @@ public class MultiValueMemberMapperAction implements IActionExecution {
                 .bind(44, row.getLineItemType())
                 .bind(45, row.getIsMultiEntityEnabled())
                 .bind(46, row.getEncryptionPolicy())
-                .bind(47, row.isEncrypted());
+                .bind(47, row.getIsEncrypted());
 
         batch.add();
       }

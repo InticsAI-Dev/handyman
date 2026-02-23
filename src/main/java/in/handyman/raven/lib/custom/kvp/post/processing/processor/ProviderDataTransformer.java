@@ -222,7 +222,6 @@ public class ProviderDataTransformer {
                 if (kvpContainers.containsKey(container)) {
                     List<LlmJsonParserKvpKrypton> llmJsonParserKvpKryptonList = kvpContainers.get(container);
                     llmJsonParserKvpKryptonList.add(llmJsonParserKvpKrypton);
-                    kvpContainers.put(container, llmJsonParserKvpKryptonList);
                 } else {
                     List<LlmJsonParserKvpKrypton> llmJsonParserKvpKryptonList = new ArrayList<>();
                     llmJsonParserKvpKryptonList.add(llmJsonParserKvpKrypton);

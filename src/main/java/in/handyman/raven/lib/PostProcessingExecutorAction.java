@@ -90,14 +90,14 @@ public class PostProcessingExecutorAction implements IActionExecution {
             if ("false".equalsIgnoreCase(action.getContext().getOrDefault("scalar.adapter.activator", "false"))) {
                 log.info("Scalar activator is disabled, running decryption in AES256 mode");
                 PostProcessingFieldsInputs.forEach(PostProcessingFieldsInput -> {
-                    if (PostProcessingFieldsInput.isEncrypted()) {
+                    if (PostProcessingFieldsInput.getIsEncrypted()) {
                         PostProcessingFieldsInput.setAnswer(crypt.decrypt(PostProcessingFieldsInput.getAnswer(), "AES256", String.valueOf(PostProcessingFieldsInput.getVqaId())));
                     }
                 });
             } else {
                 log.info("Scalar activator is enabled, running decryption in policy mode");
                 PostProcessingFieldsInputs.forEach(PostProcessingFieldsInput -> {
-                    if (PostProcessingFieldsInput.isEncrypted()) {
+                    if (PostProcessingFieldsInput.getIsEncrypted()) {
                         PostProcessingFieldsInput.setAnswer(crypt.decrypt(PostProcessingFieldsInput.getAnswer(), PostProcessingFieldsInput.getEncryptionPolicy(), String.valueOf(PostProcessingFieldsInput.getVqaId())));
                     }
                 });
@@ -108,7 +108,7 @@ public class PostProcessingExecutorAction implements IActionExecution {
     private void processEncryption(PostProcessingFieldsInput input, InticsIntegrity crypt, boolean encryptEnabled) {
         if ("multi_value".equalsIgnoreCase(input.getLineItemType())) {
             handleMultiValue(input, crypt, encryptEnabled);
-        } else if (encryptEnabled && input.isEncrypted()) {
+        } else if (encryptEnabled && input.getIsEncrypted()) {
             input.setAnswer(
                     crypt.encrypt(
                             input.getAnswer(),
@@ -123,7 +123,7 @@ public class PostProcessingExecutorAction implements IActionExecution {
         String[] parts = input.getAnswer().split(",");
         List<String> reEncrypted = java.util.Arrays.stream(parts)
                 .map(String::trim)
-                .map(val -> encryptEnabled && input.isEncrypted()
+                .map(val -> encryptEnabled && input.getIsEncrypted()
                         ? crypt.encrypt(val, input.getEncryptionPolicy(), String.valueOf(input.getVqaId()))
                         : val)
                 .collect(Collectors.toList());
@@ -184,7 +184,7 @@ public class PostProcessingExecutorAction implements IActionExecution {
                         .bind("lineItemType", row.getLineItemType())
                         .bind("isMultiEntityEnabled", row.getIsMultiEntityEnabled())
                         .bind("encryptionPolicy", row.getEncryptionPolicy())
-                        .bind("isEncrypted", row.isEncrypted())
+                        .bind("isEncrypted", row.getIsEncrypted())
                         .bind("postProcessingCode", row.getPostProcessingCode())
                         .bind("postProcessingKey", row.getPostProcessingKey())
                         .bind("aggregatedScore", row.getAggregatedScore())

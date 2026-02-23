@@ -1,0 +1,112 @@
+import java.util.ArrayList;
+import java.util.Hashtable;
+import java.util.List;
+import java.util.Map;
+import org.slf4j.Logger;
+
+/**
+ * Handles parsing and normalization of diagnosis codes only.
+ * Input/output format is identical to the original DiagnosisServiceCodeValidator.
+ * Reads "diagnosis_code" from the predictionMap and writes the validated codes back.
+ */
+public class DiagnosisCodeValidator {
+
+    private Logger logger;
+
+    private final List validDiagnosisCode = new ArrayList();
+
+    public DiagnosisCodeValidator(Logger logger) {
+        this.logger = logger;
+    }
+
+    public MappingResult doCustomPredictionMapping(Map predictionMap, Long rootPipelineId) {
+        if (predictionMap == null) predictionMap = new Hashtable();
+
+        Object diagInputObj = getAsObject(predictionMap, "diagnosis_code");
+
+        if (diagInputObj instanceof List) {
+            List diagInputList = (List) diagInputObj;
+
+            for (int i = 0; i < diagInputList.size(); i++) {
+                if (diagInputList.get(i) instanceof in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput) {
+
+                    in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput diagInput =
+                            (in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput) diagInputList.get(i);
+
+                    String diagString = diagInput.getAnswer();
+
+                    validDiagnosisCode.clear();
+                    logger.info("Starting diagnosis code mapping");
+
+                    processDiagnosisCodes(diagString);
+
+                    String result = join(validDiagnosisCode);
+                    diagInput.setAnswer(result == null || result.trim().length() == 0 ? "*" : result);
+                }
+            }
+
+            predictionMap.put("diagnosis_code", diagInputList);
+        }
+
+        return new MappingResult(new Hashtable(predictionMap), new ArrayList());
+    }
+
+    // -------------------------------------------------------------------------
+    // Diagnosis-code parsing logic (unchanged from original)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Parses a comma-separated string of diagnosis codes and retains only valid ones.
+     * Valid codes: 3–7 characters, must contain at least one digit,
+     * and if a period is present it must be at position 3.
+     */
+    private void processDiagnosisCodes(String input) {
+        if (input == null || input.trim().length() == 0) return;
+        String[] parts = input.split(",");
+        for (int i = 0; i < parts.length; i++) {
+            String c = parts[i].trim().replaceAll("[^A-Za-z0-9.]", "").toUpperCase();
+            if (c.length() >= 3 && c.length() <= 7
+                    && c.matches(".*\\d.*")
+                    && (c.indexOf('.') == -1 || c.indexOf('.') == 3)
+                    && !validDiagnosisCode.contains(c)) {
+                validDiagnosisCode.add(c);
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
+    private String join(List l) {
+        if (l == null || l.isEmpty()) return "";
+        StringBuffer sb = new StringBuffer();
+        for (int i = 0; i < l.size(); i++) {
+            if (i > 0) sb.append(",");
+            sb.append(l.get(i) == null ? "" : l.get(i).toString());
+        }
+        return sb.toString();
+    }
+
+    private Object getAsObject(Map m, String k) {
+            return m.get(k); // Returns null if absent; caller's instanceof List check handles it safely
+        }
+
+    // -------------------------------------------------------------------------
+    // Result wrapper (kept identical to original)
+    // -------------------------------------------------------------------------
+
+    public static class MappingResult {
+        private Map data;
+        private List logs;
+
+        public MappingResult(Map d, List l) {
+            this.data = d;
+            this.logs = l;
+        }
+
+        public Map getMappedData() {
+            return data;
+        }
+    }
+}
