@@ -109,7 +109,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         entity.setCoproMetricsActivator(coproMetricsActivator);
 
         if (Objects.equals(action.getContext().get("bbox.radon_bbox_activator"), "true")
-                && Objects.equals(entity.getProcess(), "RADON_KVP_ACTION")) {
+                && (Objects.equals(entity.getProcess(), "RADON_KVP_ACTION") || Objects.equals(entity.getProcess(), "CHECKBOX_EXTRACTION"))){
 
 
             String inputResponseJsonstr = entity.getInputResponseJson();
