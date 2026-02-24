@@ -3,7 +3,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
-import in.handyman.raven.lib.model.bsh.PostProcessingExecutorInput;
+import in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput;
 
 public class LOSGBDValidator {
 
@@ -72,16 +72,16 @@ public class LOSGBDValidator {
         }
 
         for (Object obj : levelOfServiceList) {
-            if (!(obj instanceof LOSValidator.PostProcessingExecutorInput)) {
+            if (!(obj instanceof PostProcessingFieldsInput)) {
                 logWarn(rootPipelineId, "level_of_service list contains non-PostProcessingExecutorInput object: " + obj);
                 continue;
             }
 
-            LOSValidator.PostProcessingExecutorInput input = (LOSValidator.PostProcessingExecutorInput) obj;
-            String extractedValue = input.getExtractedValue();
+            PostProcessingFieldsInput input = (PostProcessingFieldsInput) obj;
+            String extractedValue = input.getAnswer();
 
             if (extractedValue == null || extractedValue.trim().isEmpty()) {
-                input.setExtractedValue("");
+                input.setAnswer("");
                 input.setLabel("");
                 input.setSectionAlias("");
                 input.setBBox("");
@@ -110,7 +110,7 @@ public class LOSGBDValidator {
             }
 
             String finalValue = isUrgent ? "Urgent" : "";
-            input.setExtractedValue(finalValue);
+            input.setAnswer(finalValue);
             if (finalValue.isEmpty()) {
                 input.setLabel("");
                 input.setSectionAlias("");
@@ -130,13 +130,13 @@ public class LOSGBDValidator {
         List authIdList = (List) authIdObj;
         int validCount = 0;
         for (Object obj : authIdList) {
-            if (!(obj instanceof LOSValidator.PostProcessingExecutorInput)) {
+            if (!(obj instanceof PostProcessingFieldsInput)) {
                 logWarn(rootPipelineId, "auth_id list contains non-PostProcessingExecutorInput object: " + obj);
                 continue;
             }
 
-            LOSValidator.PostProcessingExecutorInput input = (LOSValidator.PostProcessingExecutorInput) obj;
-            String value = input.getExtractedValue();
+            PostProcessingFieldsInput input = (PostProcessingFieldsInput) obj;
+            String value = input.getAnswer();
             if (value != null && !value.trim().isEmpty()) {
                 validCount++;
             }

@@ -33,17 +33,16 @@ public class SectionFilteringActionTest {
         final SectionFiltering build = SectionFiltering.builder()
                 .condition(true)
                 .name("Test section Filtering")
-                .outputTable("sor_transaction.selection_over_filtering_output_audit")
-                .inputTable("transit_data.selection_over_filtering_input_8677")
+                .outputTable("extraction.selection_over_filtering_output_audit")
+                .inputTable("extraction.selection_over_filtering_output_audit")
                 .resourceConn("intics_zio_db_conn")
                 .querySet("SELECT id, created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, group_id,\n" +
                         "                    root_pipeline_id, batch_id, model_registry, sor_container_id, sor_container_name,\n" +
                         "                    sor_item_name, sor_item_label, section_alias, answer, confidence, bbox,\n" +
                         "                    bbox_asis, paper_no, origin_id, extracted_image_unit, image_dpi, image_height,\n" +
                         "                    image_width, blacklisted_labels,\n" +
-                        "                    blacklisted_sections, is_encrypted, encryption_policy,whitelisted_labels,whitelisted_labels_with_priority\n" +
-                        "             from transit_data.selection_over_filtering_input_8677 a;" +
-                        "             ")
+                        "                    blacklisted_sections, is_encrypted, encryption_policy,whitelisted_labels, whitelisted_labels_with_priority,sor_container_instance,whitelisted_sections_with_priority,'multi_value' as line_item_type\n" +
+                        "                 from extraction.selection_over_filtering_input_audit a where origin_id='ORIGIN-282' and sor_item_name='diagnosis_code';")
                 .build();
 
         String encryptionUrl = "http://localhost:8190/vulcan/api/encryption/encrypt";

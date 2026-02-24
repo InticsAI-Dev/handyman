@@ -44,22 +44,45 @@ public class LabelWithPriorityProcessor {
         List<SelectionFilteringInputTable> result = new ArrayList<>();
 
         for (Map.Entry<String, List<SelectionFilteringInputTable>> entry : groupedOriginWithItems.entrySet()) {
+
             String groupKey = entry.getKey();
             List<SelectionFilteringInputTable> group = entry.getValue();
 
-            if (group == null || group.isEmpty())
+            logger.info("[{}] Processing group with {} records.", groupKey, group.size());
+
+            List<SelectionFilteringInputTable> singleValueRecords = group.stream()
+                    .filter(record -> "single_value".equals(record.getLineItemType()))
+                    .collect(Collectors.toList());
+            logger.info("[{}] Group has {} single_value records.", groupKey, singleValueRecords.size());
+            List<SelectionFilteringInputTable> multiValueRecords = group.stream()
+                    .filter(record -> "multi_value".equals(record.getLineItemType()))
+                    .collect(Collectors.toList());
+            logger.info("[{}] Group has {} multi_value records.", groupKey, multiValueRecords.size());
+
+            multiValueRecords.forEach(selectionFilteringInputTable -> {
+                logger.info("[{}] Marking multi_value record ID {} as matching without priority check.", groupKey,
+                        selectionFilteringInputTable.getId());
+                selectionFilteringInputTable.setLabelMatching(true);
+                selectionFilteringInputTable.setLabelMatchMessage(appendMsg(selectionFilteringInputTable, "| SECTION_FILTER[Multi-value record, No-priority Required]"));
+            });
+
+            result.addAll(multiValueRecords);
+            logger.info("[{}] Added {} multi_value records directly to result.", groupKey, multiValueRecords.size());
+
+            if (singleValueRecords.isEmpty())
                 continue;
-            SelectionFilteringInputTable winer = processGroup(group, groupKey);
+            SelectionFilteringInputTable winer = processGroup(singleValueRecords, groupKey);
             if (winer != null) {
                 result.add(winer);
             }
         }
 
+
         return result;
     }
 
     private SelectionFilteringInputTable processGroup(List<SelectionFilteringInputTable> group, String contextKey) {
-        logger.info("[{}] Processing group with {} records.", contextKey, group.size());
+        logger.info("[{}] Processing group with {} Single value records.", contextKey, group.size());
 
         // 1. Single value check
         if (group.size() == 1) {

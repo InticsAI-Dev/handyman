@@ -32,7 +32,7 @@ class ValidatorByBeanShellExecutorTest {
          actionExecutionAudit = new ActionExecutionAudit();
         actionExecutionAudit.getContext().put("multi.line.item.activator", ""); // To avoid NPE
 
-        actionExecutionAudit.getContext().put("outbound.mapper.bsh.class.order","AumiGenderMapper, AumiMemberNameMapper, AumiMultiMemberMapper, AuthDischargeDateValidator, ClinicalPresentProcessor, FaxFromDateMapper, FaxReportProcessor, MedicaidMemberIdValidator, MemberAddressMapper, MemberDOBandServiceFromDateMapper, MemberIdValidator, MemberZipcodeMapper, NewbornDOBMapper, NewbornGenderMapper, NewbornNameMapper, NewBornRequestMapper, ProviderAddressMapper, ProviderNpiTinValidator, ProviderZipCodeMapper, ServiceToDateMapper,DiagnosisCodeValidator,ServiceCodeValidator");
+        actionExecutionAudit.getContext().put("outbound.mapper.bsh.class.order","LOSGBDValidator,LOSValidator");
         List<SpwBshConfig> bshConfigs = getSpwBshConfigs();
         actionExecutionAudit.getContext().put("ProviderZipCodeMapper", "ProviderZipCodeMapper");
         actionExecutionAudit.getContext().put("ProviderNpiTinValidator", "ProviderNpiTinValidator");
@@ -89,7 +89,7 @@ class ValidatorByBeanShellExecutorTest {
                 "                    score, b_box, label, section_alias, synonym_id, sor_synonym, question_id, sor_question, weight, category, line_item_type,\n" +
                 "                    is_multi_entity_enabled, encryption_policy, is_encrypted, post_processing_code, post_processing_key, aggregated_score\n" +
                 "                   from sor_transform.vqa_transaction_post_processing_input\t\n" +
-                "where origin_id='ORIGIN-84' and sor_container_name ='SERVICE_CODE';");
+                "where origin_id='ORIGIN-93' and sor_container_name ='LEVEL_OF_SERVICE';");
         PostProcessingExecutorAction postProcessingExecutorAction = new PostProcessingExecutorAction(actionExecutionAudit, log, postProcessingExecutor);
         postProcessingExecutorAction.execute();
     }

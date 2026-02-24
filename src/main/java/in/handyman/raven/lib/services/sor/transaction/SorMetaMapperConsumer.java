@@ -153,7 +153,6 @@ public class SorMetaMapperConsumer implements CoproProcessor.ConsumerProcess<Llm
 
 
     // --- Mapping and Preparation Blocks ---
-
     private void mapSorMetaWithParsedOutput(
             List<LlmJsonKvpKryptonParser> parsedKvpJson,
             List<LlmJsonQueryInputTableSorMeta> sorMetaInputDetails,
@@ -164,56 +163,83 @@ public class SorMetaMapperConsumer implements CoproProcessor.ConsumerProcess<Llm
         log.info(marker, "Starting SOR Meta mapping for {}. Meta count: {}, KVP count: {}",
                 loggerInput, sorMetaInputDetails.size(), parsedKvpJson.size());
 
-        if (sorMetaInputDetails.isEmpty()) {
+        if (sorMetaInputDetails == null || sorMetaInputDetails.isEmpty()) {
             log.warn(marker, "SOR metadata input details are empty for {}. Cannot map.", loggerInput);
             return;
         }
 
         for (LlmJsonQueryInputTableSorMeta sorMeta : sorMetaInputDetails) {
-            // Find matching parsed KVP by key = sorItemName
-            Optional<LlmJsonKvpKryptonParser> matchedKvp = parsedKvpJson.stream()
+
+            // 🔥 Get ALL matching KVPs (not findFirst)
+            List<LlmJsonKvpKryptonParser> matchedKvps = parsedKvpJson.stream()
                     .filter(kvp -> kvp.getKey() != null
                             && kvp.getKey().equalsIgnoreCase(sorMeta.getSorItemName()))
-                    .findFirst();
+                    .collect(Collectors.toList());
 
-            LlmJsonKvpKryptonParser parsedResponse = buildLlmJsonKvpKryptonParser(sorMeta, matchedKvp);
+            if (matchedKvps.isEmpty()) {
 
-            // Build final output table record
-            buildParsedStructuredOutput(parsedFinalOutput, input, parsedResponse);
+                // ✅ Meta not found → create ONE empty parsedResponse
+                LlmJsonKvpKryptonParser emptyResponse =
+                        buildEmptyKvpFromMeta(sorMeta);
+
+                buildParsedStructuredOutput(parsedFinalOutput, input, emptyResponse);
+
+            } else {
+
+                // ✅ Meta found → could be multiple → create for EACH
+                for (LlmJsonKvpKryptonParser kvp : matchedKvps) {
+
+                    LlmJsonKvpKryptonParser parsedResponse =
+                            buildKvpFromMatch(sorMeta, kvp);
+
+                    buildParsedStructuredOutput(parsedFinalOutput, input, parsedResponse);
+                }
+            }
         }
 
         log.info(marker, "Completed SOR Meta mapping for {}. Output records created: {}",
                 loggerInput, parsedFinalOutput.size());
     }
 
-    @NotNull
-    private LlmJsonKvpKryptonParser buildLlmJsonKvpKryptonParser(LlmJsonQueryInputTableSorMeta sorMeta, Optional<LlmJsonKvpKryptonParser> matchedKvp) {
+    private LlmJsonKvpKryptonParser buildKvpFromMatch(
+            LlmJsonQueryInputTableSorMeta sorMeta,
+            LlmJsonKvpKryptonParser kvp) {
+
         LlmJsonKvpKryptonParser parsedResponse = new LlmJsonKvpKryptonParser();
 
-        if (matchedKvp.isPresent()) {
-            LlmJsonKvpKryptonParser kvp = matchedKvp.get();
-            // Copy all fields from the parsed KVP
-            parsedResponse.setKey(kvp.getKey());
-            parsedResponse.setValue(kvp.getValue());
-            parsedResponse.setConfidence(kvp.getConfidence());
-            parsedResponse.setSectionAlias(kvp.getSectionAlias());
-            parsedResponse.setLabel(kvp.getLabel());
-            parsedResponse.setBoundingBox(kvp.getBoundingBox());
-            parsedResponse.setLabelMatching(true);
-            parsedResponse.setLabelMatchMessage("Matching KVP found in LLM Output.");
-        } else {
-            // No matching KVP, set empty/default values
-            parsedResponse.setKey(sorMeta.getSorItemName());
-            parsedResponse.setValue("");
-            parsedResponse.setConfidence(0.0);
-            parsedResponse.setBoundingBox(null);
-            parsedResponse.setLabelMatching(false);
-            parsedResponse.setLabelMatchMessage("No matching KVP found in LLM Output.");
-        }
+        parsedResponse.setKey(kvp.getKey());
+        parsedResponse.setValue(kvp.getValue());
+        parsedResponse.setConfidence(kvp.getConfidence());
+        parsedResponse.setSectionAlias(kvp.getSectionAlias());
+        parsedResponse.setLabel(kvp.getLabel());
+        parsedResponse.setBoundingBox(kvp.getBoundingBox());
+        parsedResponse.setLabelMatching(true);
+        parsedResponse.setLabelMatchMessage("Matching KVP found in LLM Output.");
 
         // Apply metadata-driven fields
         parsedResponse.setIsEncrypted(sorMeta.getIsEncrypted());
         parsedResponse.setEncryptionPolicy(sorMeta.getEncryptionPolicy());
+
+        return parsedResponse;
+    }
+
+    private LlmJsonKvpKryptonParser buildEmptyKvpFromMeta(
+            LlmJsonQueryInputTableSorMeta sorMeta) {
+
+        LlmJsonKvpKryptonParser parsedResponse = new LlmJsonKvpKryptonParser();
+
+        parsedResponse.setKey(sorMeta.getSorItemName());
+        parsedResponse.setValue("");
+        parsedResponse.setConfidence(0.0);
+        parsedResponse.setBoundingBox(null);
+        parsedResponse.setSectionAlias(null);
+        parsedResponse.setLabel(null);
+        parsedResponse.setLabelMatching(false);
+        parsedResponse.setLabelMatchMessage("No matching KVP found in LLM Output.");
+
+        parsedResponse.setIsEncrypted(sorMeta.getIsEncrypted());
+        parsedResponse.setEncryptionPolicy(sorMeta.getEncryptionPolicy());
+
         return parsedResponse;
     }
 
