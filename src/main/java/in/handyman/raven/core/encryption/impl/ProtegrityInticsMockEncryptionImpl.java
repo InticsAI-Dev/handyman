@@ -179,11 +179,11 @@ public class ProtegrityInticsMockEncryptionImpl implements InticsDataEncryptionA
         StringBuilder sb = new StringBuilder();
         for (char c : input.toCharArray()) {
             if (Character.isUpperCase(c)) {
-                sb.append((char) ('A' + (c - 'A' + shift + 26) % 26));
+                sb.append((char) ('A' + ((c - 'A' + shift) % 26 + 26) % 26));
             } else if (Character.isLowerCase(c)) {
-                sb.append((char) ('a' + (c - 'a' + shift + 26) % 26));
+                sb.append((char) ('a' + ((c - 'a' + shift) % 26 + 26) % 26));
             } else if (Character.isDigit(c)) {
-                sb.append((char) ('0' + (c - '0' + shift + 10) % 10));
+                sb.append((char) ('0' + ((c - '0' + shift) % 10 + 10) % 10));
             } else {
                 sb.append(c);
             }
@@ -195,13 +195,13 @@ public class ProtegrityInticsMockEncryptionImpl implements InticsDataEncryptionA
         for (char c : input.toCharArray()) {
             if (Character.isUpperCase(c)) {
                 // Shift uppercase letters A–Z
-                sb.append((char) ('A' + (c - 'A' + shift + 26) % 26));
+                sb.append((char) ('A' + ((c - 'A' + shift) % 26 + 26) % 26));
             } else if (Character.isLowerCase(c)) {
                 // Shift lowercase letters a–z
-                sb.append((char) ('a' + (c - 'a' + shift + 26) % 26));
+                sb.append((char) ('a' + ((c - 'a' + shift) % 26 + 26) % 26));
             } else if (Character.isDigit(c)) {
                 // Shift numbers 0–9
-                sb.append((char) ('0' + (c - '0' + shift + 10) % 10));
+                sb.append((char) ('0' + ((c - '0' + shift) % 10 + 10) % 10));
             } else {
                 // Leave other symbols as-is
                 sb.append(c);
@@ -214,7 +214,7 @@ public class ProtegrityInticsMockEncryptionImpl implements InticsDataEncryptionA
         StringBuilder sb = new StringBuilder();
         for (char c : input.toCharArray()) {
             if (Character.isDigit(c)) {
-                sb.append((char) ('0' + (c - '0' + shift + 10) % 10));
+                sb.append((char) ('0' + ((c - '0' + shift) % 10 + 10) % 10));
             } else {
                 sb.append(c);
             }
