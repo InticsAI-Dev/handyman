@@ -24,6 +24,10 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 public class PdfItemizerWithStreaming {
     public static final String PROCESS_NAME = PipelineName.PAPER_ITEMIZER.getProcessName();
@@ -34,6 +38,7 @@ public class PdfItemizerWithStreaming {
     static final String PAPER_ITEMIZER_RESIZE_HEIGHT = "paper.itemizer.resize.height";
     static final String PAPER_ITEMIZER_OUTPUT_FORMAT = "paper.itemizer.output.format";
     static final String PAPER_ITEMIZER_FILE_DPI = "paper.itemizer.file.dpi";
+    static final String PAPER_ITEMIZER_PAGE_THREAD_COUNT = "paper.itemizer.page.thread.count";
     static final String PAPER_ITEMIZATION_RESIZE_ACTIVATOR = "paper.itemization.resize.activator";
     static final String MODEL_NAME = "APP";
     static final String VERSION = "1";
@@ -138,49 +143,102 @@ public class PdfItemizerWithStreaming {
         final int imageWidthSetting = Integer.parseInt(imageWidth);
         final String imageHeight = getContextVariableWithDefault(PAPER_ITEMIZER_RESIZE_HEIGHT, "2550");
         final int imageHeightSetting = Integer.parseInt(imageHeight);
+        final int threadCount = Integer.parseInt(getContextVariableWithDefault(PAPER_ITEMIZER_PAGE_THREAD_COUNT,
+                String.valueOf(Runtime.getRuntime().availableProcessors())));
 
         Path path = Paths.get(pdfPath);
 
         final long pdfLoadStart = System.currentTimeMillis();
+        // Load PDF once to get page count metadata, then close
+        final int totalPages;
+        final int pageCount;
         try (PDDocument document = Loader.loadPDF(path.toFile())) {
-            log.info("PDF loaded in {} ms for file: {}", System.currentTimeMillis() - pdfLoadStart, pdfPath);
-            PDFRenderer renderer = new PDFRenderer(document);
-            renderer.setSubsamplingAllowed(true);
-
-            final String originalName = getFileNameFromPath(pdfPath);
-            final String normalizedFormat = getContextVariableWithDefault(PAPER_ITEMIZER_OUTPUT_FORMAT, "jpg").toLowerCase();
-            final int pageCount = getPageNo(document.getNumberOfPages());
-            log.info("Total pages to process: {} for file: {}", pageCount, originalName);
-
-            for (int i = 0; i < document.getNumberOfPages(); i++) {
-                final long pageStart = System.currentTimeMillis();
-                ImageType imageType = ImageType.RGB.toString().equalsIgnoreCase(IMAGE_TYPE) ? ImageType.RGB : ImageType.GRAY;
-
-                final long renderStart = System.currentTimeMillis();
-                BufferedImage image = renderer.renderImageWithDPI(i, imageDpiSetting, imageType);
-                log.info("Page {}/{} rendered in {} ms for file: {}", i + 1, pageCount, System.currentTimeMillis() - renderStart, originalName);
-
-                if (imageResizeEnableSetting) {
-                    log.debug("Resizing image for page {} of file: {}", i + 1, originalName);
-                    BufferedImage bufferedImage = resizeImage(image, imageWidthSetting, imageHeightSetting);
-                    final long writeStart = System.currentTimeMillis();
-                    writeOutputItemizedImages(parentObj, entity, basePath, originalName, i, bufferedImage, normalizedFormat, pageCount, startTime);
-                    log.info("Page {}/{} written in {} ms for file: {}", i + 1, pageCount, System.currentTimeMillis() - writeStart, originalName);
-                } else {
-                    log.debug("Resize operation was turned off and Writing image for page {} of file: {} without", i + 1, originalName);
-                    final long writeStart = System.currentTimeMillis();
-                    writeOutputItemizedImages(parentObj, entity, basePath, originalName, i, image, normalizedFormat, pageCount, startTime);
-                    log.info("Page {}/{} written in {} ms for file: {}", i + 1, pageCount, System.currentTimeMillis() - writeStart, originalName);
-                }
-                image.flush();
-                image = null;
-                log.info("Page {}/{} total time: {} ms for file: {}", i + 1, pageCount, System.currentTimeMillis() - pageStart, originalName);
-            }
+            totalPages = document.getNumberOfPages();
+            pageCount = getPageNo(totalPages);
         }
+        log.info("PDF loaded in {} ms, total pages: {}, processing: {} for file: {}", System.currentTimeMillis() - pdfLoadStart, totalPages, pageCount, pdfPath);
+
+        final String originalName = getFileNameFromPath(pdfPath);
+        final String normalizedFormat = getContextVariableWithDefault(PAPER_ITEMIZER_OUTPUT_FORMAT, "jpg").toLowerCase();
+        final int effectiveThreads = Math.min(threadCount, totalPages);
+        log.info("Processing {} pages for file: {} using {} page threads (configured: {})", pageCount, originalName, effectiveThreads, threadCount);
+
+        // Partition pages into contiguous chunks — one chunk per thread
+        // PDF loaded once per thread (not once per page) to eliminate I/O amplification
+        final int pagesPerThread = (totalPages + effectiveThreads - 1) / effectiveThreads;
+
+        ExecutorService executor = Executors.newFixedThreadPool(effectiveThreads);
+        List<Future<List<PaperItemizerOutputTable>>> futures = new ArrayList<>(effectiveThreads);
+
+        try {
+            for (int t = 0; t < effectiveThreads; t++) {
+                final int startPage = t * pagesPerThread;
+                final int endPage = Math.min(startPage + pagesPerThread, totalPages);
+                if (startPage >= totalPages) break;
+
+                futures.add(executor.submit(() -> {
+                    final long threadStart = System.currentTimeMillis();
+                    final List<PaperItemizerOutputTable> chunkResults = new ArrayList<>();
+                    // Load PDF once per thread — PDFBox is NOT thread-safe
+                    try (PDDocument pageDoc = Loader.loadPDF(path.toFile())) {
+                        PDFRenderer renderer = new PDFRenderer(pageDoc);
+                        renderer.setSubsamplingAllowed(true);
+                        final ImageType imageType = ImageType.RGB.toString().equalsIgnoreCase(IMAGE_TYPE) ? ImageType.RGB : ImageType.GRAY;
+
+                        for (int p = startPage; p < endPage; p++) {
+                            final int pageIndex = p;
+                            final long pageStart = System.currentTimeMillis();
+
+                            final long renderStart = System.currentTimeMillis();
+                            BufferedImage image = renderer.renderImageWithDPI(pageIndex, imageDpiSetting, imageType);
+                            log.info("Page {}/{} rendered in {} ms for file: {}", pageIndex + 1, pageCount, System.currentTimeMillis() - renderStart, originalName);
+
+                            PaperItemizerOutputTable result;
+                            if (imageResizeEnableSetting) {
+                                log.debug("Resizing image for page {} of file: {}", pageIndex + 1, originalName);
+                                BufferedImage resized = resizeImage(image, imageWidthSetting, imageHeightSetting);
+                                final long writeStart = System.currentTimeMillis();
+                                result = writeOutputItemizedImage(entity, basePath, originalName, pageIndex, resized, normalizedFormat, pageCount, startTime);
+                                log.info("Page {}/{} written in {} ms for file: {}", pageIndex + 1, pageCount, System.currentTimeMillis() - writeStart, originalName);
+                                resized.flush();
+                            } else {
+                                final long writeStart = System.currentTimeMillis();
+                                result = writeOutputItemizedImage(entity, basePath, originalName, pageIndex, image, normalizedFormat, pageCount, startTime);
+                                log.info("Page {}/{} written in {} ms for file: {}", pageIndex + 1, pageCount, System.currentTimeMillis() - writeStart, originalName);
+                            }
+                            image.flush();
+                            log.info("Page {}/{} total time: {} ms for file: {}", pageIndex + 1, pageCount, System.currentTimeMillis() - pageStart, originalName);
+                            chunkResults.add(result);
+                        }
+                    }
+                    log.info("Thread chunk [pages {}-{}] completed in {} ms for file: {}", startPage + 1, endPage, System.currentTimeMillis() - threadStart, originalName);
+                    return chunkResults;
+                }));
+            }
+
+            // Collect results in page order
+            for (Future<List<PaperItemizerOutputTable>> future : futures) {
+                try {
+                    parentObj.addAll(future.get());
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IOException("Page rendering interrupted for file: " + pdfPath, e);
+                } catch (ExecutionException e) {
+                    Throwable cause = e.getCause();
+                    if (cause instanceof IOException) {
+                        throw (IOException) cause;
+                    }
+                    throw new IOException("Failed to render page for file: " + pdfPath, cause);
+                }
+            }
+        } finally {
+            executor.shutdownNow();
+        }
+
         log.info("Completed itemizing PDF into papers in {} ms for file: {} with base path: {}", System.currentTimeMillis() - pdfLoadStart, pdfPath, basePath);
     }
 
-    private void writeOutputItemizedImages(List<PaperItemizerOutputTable> parentObj, PaperItemizerInputTable entity, String basePath, String originalName, int i, BufferedImage image, String normalizedFormat, int pageCount, Timestamp startTime) throws IOException {
+    private PaperItemizerOutputTable writeOutputItemizedImage(PaperItemizerInputTable entity, String basePath, String originalName, int i, BufferedImage image, String normalizedFormat, int pageCount, Timestamp startTime) throws IOException {
         log.debug("Writing output itemized image for page {} of file: {}", i + 1, originalName);
         String fileNameWithoutExtension = removeExtension(originalName);
         final String fileName = fileNameWithoutExtension + "_" + (i + 1) + "." + normalizedFormat;
@@ -188,21 +246,15 @@ public class PdfItemizerWithStreaming {
         final Path out = createOutputFile(basePath, fileName, folderName);
 
         if (!ImageIO.write(image, normalizedFormat, out.toFile())) {
-            PaperItemizerOutputTable paperItemizerOutputTable = getPaperItemizeFailedOutput(entity, pageCount, startTime);
-            parentObj.add(paperItemizerOutputTable);
             final String imageWriteError = "Failed to write image : " + out.getFileName();
             log.error(imageWriteError);
             HandymanException handymanException = new HandymanException(new IOException(imageWriteError));
             HandymanException.insertException(imageWriteError, handymanException, action);
+            return getPaperItemizeFailedOutput(entity, pageCount, startTime);
         } else {
             log.debug("Successfully wrote image to file: {}", out.toFile().getAbsolutePath());
-            PaperItemizerOutputTable paperItemizerOutputTable = getPaperItemizeCompletedOutput(entity, out.toFile(), i, pageCount, startTime);
-            parentObj.add(paperItemizerOutputTable);
+            return getPaperItemizeCompletedOutput(entity, out.toFile(), i, pageCount, startTime);
         }
-
-        image.flush();
-        image = null;
-        log.debug("Successfully wrote output itemized image for page {} of file: {}", i + 1, originalName);
     }
 
     private Path createOutputFile(String basePath, String fileName, String originalFileName) throws IOException {
