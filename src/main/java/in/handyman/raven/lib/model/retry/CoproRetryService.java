@@ -250,6 +250,7 @@ public class CoproRetryService {
                                ActionExecutionAudit action) {
         retryAudit.setRequest(encryptRequestResponse(requestBody, action));
         retryAudit.setAttempt(attempt);
+        retryAudit.setCriticalDataPresent(true);
 
         if (response != null) {
             retryAudit.setMessage(response.code()  +" -> "+ response.message());
