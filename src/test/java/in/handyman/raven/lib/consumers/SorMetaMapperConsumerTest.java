@@ -137,7 +137,7 @@ public class SorMetaMapperConsumerTest {
         log.info("Testing SorMetaMapperConsumer with invalid JSON response");
 
         LlmJsonQueryInputTable inputTable = LlmJsonQueryInputTable.builder()
-                .response("Invalid JSON")
+                .response("")
                 .paperNo(1)
                 .originId("ORIGIN-1")
                 .groupId(1L)

@@ -48,4 +48,5 @@ public class SelectionFilteringInputTable {
     private String labelPriorityIdx;
     private String sorContainerInstance;
     private String lineItemType;
+    private Boolean isMultiEntityEnabled;
 }

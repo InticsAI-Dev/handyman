@@ -32,7 +32,7 @@ class ValidatorByBeanShellExecutorTest {
          actionExecutionAudit = new ActionExecutionAudit();
         actionExecutionAudit.getContext().put("multi.line.item.activator", ""); // To avoid NPE
 
-        actionExecutionAudit.getContext().put("outbound.mapper.bsh.class.order","LOSGBDValidator,LOSValidator");
+        actionExecutionAudit.getContext().put("outbound.mapper.bsh.class.order","ServiceCodeValidator");
         List<SpwBshConfig> bshConfigs = getSpwBshConfigs();
         actionExecutionAudit.getContext().put("ProviderZipCodeMapper", "ProviderZipCodeMapper");
         actionExecutionAudit.getContext().put("ProviderNpiTinValidator", "ProviderNpiTinValidator");
@@ -61,6 +61,7 @@ class ValidatorByBeanShellExecutorTest {
                 "DiagnosisServiceCodeValidator");
         actionExecutionAudit.getContext().put("AuthIdValidator", "AuthIdValidator");
         actionExecutionAudit.getContext().put("FaxReportProcessor", "FaxReportProcessor");
+        actionExecutionAudit.getContext().put("ServiceCodeValidator", "ServiceCodeValidator");
         actionExecutionAudit.getContext().put("tenant_id","1");
         actionExecutionAudit.setRootPipelineId(1L);
         // Default Context
@@ -89,7 +90,7 @@ class ValidatorByBeanShellExecutorTest {
                 "                    score, b_box, label, section_alias, synonym_id, sor_synonym, question_id, sor_question, weight, category, line_item_type,\n" +
                 "                    is_multi_entity_enabled, encryption_policy, is_encrypted, post_processing_code, post_processing_key, aggregated_score\n" +
                 "                   from sor_transform.vqa_transaction_post_processing_input\t\n" +
-                "where origin_id='ORIGIN-93' and sor_container_name ='LEVEL_OF_SERVICE';");
+                "where origin_id='ORIGIN-118' and sor_container_name ='SERVICE_CODE' and post_processing_field_id in (5014,5019,5020,5021);");
         PostProcessingExecutorAction postProcessingExecutorAction = new PostProcessingExecutorAction(actionExecutionAudit, log, postProcessingExecutor);
         postProcessingExecutorAction.execute();
     }

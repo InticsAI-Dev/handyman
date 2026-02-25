@@ -50,11 +50,24 @@ public class LabelWithPriorityProcessor {
 
             logger.info("[{}] Processing group with {} records.", groupKey, group.size());
 
-            List<SelectionFilteringInputTable> singleValueRecords = group.stream()
+
+            List<SelectionFilteringInputTable> singleEntityRecords = group.stream()
+                    .filter(record -> !record.getIsMultiEntityEnabled())
+                    .collect(Collectors.toList());
+            logger.info("[{}] Group has {} single_entity records.", groupKey, singleEntityRecords.size());
+
+            List<SelectionFilteringInputTable> multiEntityRecords = group.stream()
+                    .filter(SelectionFilteringInputTable::getIsMultiEntityEnabled)
+                    .collect(Collectors.toList());
+
+            logger.info("[{}] Group has {} multi_entity records.", groupKey, multiEntityRecords.size());
+
+            List<SelectionFilteringInputTable> singleValueRecords = singleEntityRecords.stream()
                     .filter(record -> "single_value".equals(record.getLineItemType()))
                     .collect(Collectors.toList());
             logger.info("[{}] Group has {} single_value records.", groupKey, singleValueRecords.size());
-            List<SelectionFilteringInputTable> multiValueRecords = group.stream()
+
+            List<SelectionFilteringInputTable> multiValueRecords = singleEntityRecords.stream()
                     .filter(record -> "multi_value".equals(record.getLineItemType()))
                     .collect(Collectors.toList());
             logger.info("[{}] Group has {} multi_value records.", groupKey, multiValueRecords.size());
@@ -66,7 +79,16 @@ public class LabelWithPriorityProcessor {
                 selectionFilteringInputTable.setLabelMatchMessage(appendMsg(selectionFilteringInputTable, "| SECTION_FILTER[Multi-value record, No-priority Required]"));
             });
 
+
+            multiEntityRecords.forEach(selectionFilteringInputTable -> {
+                logger.info("[{}] Marking multi_entity record ID {} as matching without priority check.", groupKey,
+                        selectionFilteringInputTable.getId());
+                selectionFilteringInputTable.setLabelMatching(true);
+                selectionFilteringInputTable.setLabelMatchMessage(appendMsg(selectionFilteringInputTable, "| SECTION_FILTER[Multi-entity record, No-priority Required]"));
+            });
+
             result.addAll(multiValueRecords);
+            result.addAll(multiEntityRecords);
             logger.info("[{}] Added {} multi_value records directly to result.", groupKey, multiValueRecords.size());
 
             if (singleValueRecords.isEmpty())
@@ -91,45 +113,47 @@ public class LabelWithPriorityProcessor {
             row.setLabelMatchMessage(appendMsg(row, "Single row → selected"));
             logger.info("[{}] Single row group. Selected ID: {}", contextKey, row.getId());
             return row;
+        }else {
+
+            // 2. Filter Empty Answers
+            List<SelectionFilteringInputTable> nonEmptyAnswers = group.stream()
+                    .filter(this::hasNonEmptyAnswer)
+                    .collect(Collectors.toList());
+
+            if (nonEmptyAnswers.isEmpty()) {
+                // All empty, return fallback (first by paperNo)
+                SelectionFilteringInputTable winner = group.stream()
+                        .min(Comparator.comparingLong(this::getSafePaperNo).thenComparingLong(this::getSafeId))
+                        .orElse(group.get(0));
+
+                winner.setLabelMatching(true);
+                winner.setLabelMatchMessage(appendMsg(winner, "All answers empty → selected by fallback"));
+
+                group.stream().filter(r -> r != winner).forEach(r -> {
+                    r.setLabelMatching(false);
+                    r.setLabelMatchMessage(appendMsg(r, "All answers empty → rejected"));
+                });
+                logger.info("[{}] All answers empty. Selected Fallback ID: {}", contextKey, winner.getId());
+                return winner;
         }
 
-        // 2. Filter Empty Answers
-        List<SelectionFilteringInputTable> nonEmptyAnswers = group.stream()
-                .filter(this::hasNonEmptyAnswer)
-                .collect(Collectors.toList());
+            // 3. Branching Logic
+            boolean hasSectionAlias = nonEmptyAnswers.stream()
+                    .anyMatch(r -> r.getSectionAlias() != null && !r.getSectionAlias().isBlank());
 
-        if (nonEmptyAnswers.isEmpty()) {
-            // All empty, return fallback (first by paperNo)
-            SelectionFilteringInputTable winner = group.stream()
-                    .min(Comparator.comparingLong(this::getSafePaperNo).thenComparingLong(this::getSafeId))
-                    .orElse(group.get(0));
+            logger.info("[{}] Branch Decision: hasSectionAlias={} (checked {} candidates)", contextKey, hasSectionAlias,
+                    nonEmptyAnswers.size());
 
-            winner.setLabelMatching(true);
-            winner.setLabelMatchMessage(appendMsg(winner, "All answers empty → selected by fallback"));
+            SelectionFilteringInputTable winner;
+            if (hasSectionAlias) {
+                winner = filterBySectionPriority(nonEmptyAnswers, group, contextKey);
+            } else {
+                winner = filterByConsensusAndMajority(nonEmptyAnswers, group, contextKey);
+            }
 
-            group.stream().filter(r -> r != winner).forEach(r -> {
-                r.setLabelMatching(false);
-                r.setLabelMatchMessage(appendMsg(r, "All answers empty → rejected"));
-            });
-            logger.info("[{}] All answers empty. Selected Fallback ID: {}", contextKey, winner.getId());
             return winner;
         }
 
-        // 3. Branching Logic
-        boolean hasSectionAlias = nonEmptyAnswers.stream()
-                .anyMatch(r -> r.getSectionAlias() != null && !r.getSectionAlias().isBlank());
-
-        logger.info("[{}] Branch Decision: hasSectionAlias={} (checked {} candidates)", contextKey, hasSectionAlias,
-                nonEmptyAnswers.size());
-
-        SelectionFilteringInputTable winner;
-        if (hasSectionAlias) {
-            winner = filterBySectionPriority(nonEmptyAnswers, group, contextKey);
-        } else {
-            winner = filterByConsensusAndMajority(nonEmptyAnswers, group, contextKey);
-        }
-
-        return winner;
     }
 
     // --- CASE A: Section Priority Logic ---
