@@ -10,7 +10,6 @@ import org.slf4j.Logger;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.Comparator;
 import java.util.function.Consumer;
@@ -910,6 +909,12 @@ public class MedicalPayloadGeneration {
                 cleanStatus);
         if (orderingProvider != null) {
             providers.add(orderingProvider);
+        }
+
+        Provider undefinedProvider = buildProviderIfPresent("Undefined Provider", "undefined_provider", fieldMap,
+                cleanStatus);
+        if (undefinedProvider != null) {
+            providers.add(undefinedProvider);
         }
 
         log.info("Built {} providers", providers.size());

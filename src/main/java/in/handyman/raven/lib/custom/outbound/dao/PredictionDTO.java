@@ -60,5 +60,5 @@ public class PredictionDTO {
     private String metadataJson;
     private Long groupId;
     private String batchId;
-
+    private String checkboxData;
 }
