@@ -194,6 +194,7 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
         batch.bind("isEncrypted", input.getIsEncrypted() != null ? input.getIsEncrypted() : false);
         batch.bind("groupId", input.getGroupId());
         batch.bind("batchId", input.getBatchId());
+        batch.bind("checkbox_data", input.getCheckboxData());
         batch.add();
       });
       int[] counts = batch.execute();

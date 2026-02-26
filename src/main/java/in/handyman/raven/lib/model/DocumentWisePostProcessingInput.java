@@ -111,4 +111,7 @@ public class DocumentWisePostProcessingInput {
     
     @ColumnName("paper_no")
     private Integer paperNo;
+
+    @ColumnName("checkbox_data")
+    private String checkboxData;
 }
