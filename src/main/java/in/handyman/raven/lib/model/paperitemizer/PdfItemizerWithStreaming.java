@@ -152,12 +152,11 @@ public class PdfItemizerWithStreaming {
 
             int pageCount = 0;
             if (fixedPageEnabler){
-                pageCount = fixedPageSize;
-                log.info("Fixed page itemization enabled. Each output image will contain up to {} pages. Total output pages for file {}: {}", fixedPageSize, originalName, pageCount);
-            }
-            else {
+                pageCount = Math.min(document.getNumberOfPages(), fixedPageSize);
+                log.info("Fixed page itemization enabled. Processing up to {} pages. Total output pages for file {}: {}", fixedPageSize, originalName, pageCount);
+            } else {
                 pageCount = document.getNumberOfPages();
-                log.info("Fixed page itemization disabled. Each output image will contain 1 page. Total output pages for file {}: {}", originalName, pageCount);
+                log.info("Fixed page itemization disabled. Processing all {} pages for file {}.", pageCount, originalName);
             }
 
             for (int i = 0; i < pageCount; i++) {
@@ -176,6 +175,10 @@ public class PdfItemizerWithStreaming {
                 image = null;
 
             }
+        } catch (Exception e) {
+            log.error("Error itemizing PDF into papers for file: {} with base path: {}. Error: {}", pdfPath, basePath, e.getMessage(), e);
+            HandymanException exception = new HandymanException(e);
+            throw new HandymanException("Error itemizing PDF into papers for file: " + pdfPath, exception, action);
         }
         log.info("Completed itemizing PDF into papers for file: {} with base path: {}", pdfPath, basePath);
     }
