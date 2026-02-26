@@ -191,7 +191,7 @@ public class PdfItemizerWithStreaming {
             parentObj.add(paperItemizerOutputTable);
         }
         long time_taken_in_disk = endDisk - startDisk;
-        log.info("Written page {} of file: {} to disk at {} in {} ms", i + 1, originalName, out.getFileName().toString(), time_taken_in_disk);
+        log.info("Itemized page {} of file: {} has been written to disk at {} in {} ms", i + 1, originalName, out.getFileName().toString(), time_taken_in_disk);
         image.flush();
         image = null;
         log.debug("Successfully wrote output itemized image for page {} of file: {}", i + 1, originalName);
