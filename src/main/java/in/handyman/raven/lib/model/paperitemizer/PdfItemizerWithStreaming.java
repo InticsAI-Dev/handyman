@@ -173,19 +173,25 @@ public class PdfItemizerWithStreaming {
         final String folderName = fileNameWithoutExtension;
         final Path out = createOutputFile(basePath, fileName, folderName);
 
+        long startDisk = System.currentTimeMillis();
+        long endDisk;
+
         if (!ImageIO.write(image, normalizedFormat, out.toFile())) {
             PaperItemizerOutputTable paperItemizerOutputTable = getPaperItemizeFailedOutput(entity, pageCount, startTime);
             parentObj.add(paperItemizerOutputTable);
             final String imageWriteError = "Failed to write image : " + out.getFileName();
+            endDisk = System.currentTimeMillis();
             log.error(imageWriteError);
             HandymanException handymanException = new HandymanException(new IOException(imageWriteError));
             HandymanException.insertException(imageWriteError, handymanException, action);
         } else {
             log.debug("Successfully wrote image to file: {}", out.toFile().getAbsolutePath());
+            endDisk = System.currentTimeMillis();
             PaperItemizerOutputTable paperItemizerOutputTable = getPaperItemizeCompletedOutput(entity, out.toFile(), i, pageCount, startTime);
             parentObj.add(paperItemizerOutputTable);
         }
-
+        long time_taken_in_disk = endDisk - startDisk;
+        log.info("Itemized page {} of file: {} has been written to disk at {} in {} ms", i + 1, originalName, out.getFileName().toString(), time_taken_in_disk);
         image.flush();
         image = null;
         log.debug("Successfully wrote output itemized image for page {} of file: {}", i + 1, originalName);
