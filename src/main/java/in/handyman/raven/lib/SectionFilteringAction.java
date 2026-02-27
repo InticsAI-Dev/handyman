@@ -121,7 +121,13 @@ public class SectionFilteringAction implements IActionExecution {
           log.info(aMarker, "Label with priority processing disabled count {} ", tableInfos.size());
           updatedTableInfos.addAll(tableInfos);
         }else{
-           updatedTableInfos.addAll(LabelWithPriorityProcessor.process(tableInfos));
+
+          List<SelectionFilteringInputTable> input = tableInfos.stream()
+                  .filter(SelectionFilteringInputTable::isLabelMatching)
+                  .collect(Collectors.toList());
+          log.info(aMarker, "Applying label with priority processing on records count {} ", input.size());
+
+           updatedTableInfos.addAll(LabelWithPriorityProcessor.process(input));
           log.info(aMarker, "Label with priority processing completed. Initial count {} and Final count: {} ", tableInfos.size(),updatedTableInfos.size());
       }
 
