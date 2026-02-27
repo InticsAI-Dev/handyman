@@ -58,34 +58,41 @@ public class ServiceCodeValidator {
             for (int i = 0; i < svcList.size(); i++) {
 
                 in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput svc =
-                        (in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput) svcList.get(i);
+                        safeGet(svcList, i);
 
                 in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput unit =
-                        (in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput) unitList.get(i);
+                        safeGet(unitList, i);
 
                 in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput visit =
-                        (in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput) visitList.get(i);
+                        safeGet(visitList, i);
 
                 in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput mod =
-                        (in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput) modList.get(i);
+                        safeGet(modList, i);
 
                 clearLists();
 
                 validateServiceData(
-                        svc.getAnswer(),
-                        mod.getAnswer(),
-                        unit.getAnswer(),
-                        visit.getAnswer());
+                        svc != null ? svc.getAnswer() : null,
+                        mod != null ? mod.getAnswer() : null,
+                        unit != null ? unit.getAnswer() : null,
+                        visit != null ? visit.getAnswer() : null);
 
-                svc.setAnswer(join(serviceCodes));
-                unit.setAnswer(join(units));
-                visit.setAnswer(join(visits));
-                mod.setAnswer(join(modifiers));
+                if (svc != null)
+                    svc.setAnswer(join(serviceCodes));
 
-                ensureStarIfEmpty(svc);
-                ensureStarIfEmpty(unit);
-                ensureStarIfEmpty(visit);
-                ensureStarIfEmpty(mod);
+                if (unit != null)
+                    unit.setAnswer(join(units));
+
+                if (visit != null)
+                    visit.setAnswer(join(visits));
+
+                if (mod != null)
+                    mod.setAnswer(join(modifiers));
+
+                if (svc != null) ensureStarIfEmpty(svc);
+                if (unit != null) ensureStarIfEmpty(unit);
+                if (visit != null) ensureStarIfEmpty(visit);
+                if (mod != null) ensureStarIfEmpty(mod);
             }
 
             predictionMap.put("service_code", svcList);
@@ -97,6 +104,23 @@ public class ServiceCodeValidator {
         return new MappingResult(
                 new Hashtable(predictionMap),
                 new ArrayList());
+    }
+
+    private in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput safeGet(List list, int index) {
+
+        if (list == null)
+            return null;
+
+        if (index >= list.size())
+            return null;
+
+        Object obj = list.get(index);
+
+        if (obj instanceof
+                in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput)
+            return (in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput) obj;
+
+        return null;
     }
 
     // =========================================================

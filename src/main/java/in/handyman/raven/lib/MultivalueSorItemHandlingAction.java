@@ -616,12 +616,12 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
                 "model_registry, origin_id, paper_no, question_id, sor_item_attribution_id, root_pipeline_id, score, sor_question, " +
                 "stage, status, synonym_id, tenant_id, vqa_score, is_encrypted, encryption_policy," +
                 "sor_container_instance, is_removed_after_filtering, message, section_priority_after_filter, created_on, " +
-                "last_updated_on, label, section_alias) VALUES" +
+                "last_updated_on, label, section_alias, sor_container_name) VALUES" +
                 " (:sorItemName, :answer, :BBox, :groupId, :batchId, :category, :documentId, :lineItemType, " +
                 ":modelId, :modelInfo, :modelRegistry, :originId, :paperNo, :questionId, :sorItemAttributionId, " +
                 ":rootPipelineId, :score, :sorQuestion, :stage, :status, :synonymId, :tenantId, :vqaScore, :isEncrypted, " +
                 " :encryptionPolicy, :sorContainerInstance, :isRemovedAfterFiltering, :message, " +
-                ":sectionPriorityAfterFilter, :createdOn, :lastUpdatedOn ,:label, :sectionAlias)";
+                ":sectionPriorityAfterFilter, :createdOn, :lastUpdatedOn ,:label, :sectionAlias, :sorContainerName)";
 
         jdbi.useHandle(handle -> {
             var batch = handle.prepareBatch(sql);
@@ -661,6 +661,7 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
                         .bind("label", output.getLabel())
                         .bind("sectionAlias", output.getSectionAlias())
                         .bind("sectionPriorityAfterFilter", output.getSectionPriorityAfterFilter())
+                        .bind("sorContainerName", output.getSorContainerName())
                         .add();
                 batchCount++;
             }
