@@ -154,6 +154,9 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
         if (actionExecutionAudit.getContext().getOrDefault("copro.processor.thread.creator", "WORK_STEALING").equalsIgnoreCase("FIXED_THREAD")) {
             executorService = Executors.newFixedThreadPool(finalConsumerCount);
             logger.info("Copro processor created with fixed thread pool of size {}", finalConsumerCount);
+        } else if (actionExecutionAudit.getContext().getOrDefault("copro.processor.thread.creator", "WORK_STEALING").equalsIgnoreCase("VIRTUAL_THREAD")) {
+            executorService = Executors.newVirtualThreadPerTaskExecutor();
+            logger.info("Copro processor created with Virtual Thread Per Task Executor");
         } else {
             executorService = Executors.newWorkStealingPool();
             logger.info("Copro processor created with work stealing pool");
@@ -202,16 +205,21 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
             return t;
         };
 
-        executorService = new ThreadPoolExecutor(
-                finalConsumerCount,               // core
-                finalConsumerCount,               // max
-                120L, TimeUnit.SECONDS,       // keepAlive
-                new LinkedBlockingQueue<>(),
-                namedThreadFactory,
-                new ThreadPoolExecutor.CallerRunsPolicy() // if pool full, run in caller
-        );
+        if (actionExecutionAudit.getContext().getOrDefault("copro.processor.thread.creator", "FIXED_THREAD").equalsIgnoreCase("VIRTUAL_THREAD")) {
+            executorService = Executors.newVirtualThreadPerTaskExecutor();
+            logger.info("Copro processor created with Virtual consumer thread pool of size {}", finalConsumerCount);
+        } else {
+            executorService = new ThreadPoolExecutor(
+                    finalConsumerCount,               // core
+                    finalConsumerCount,               // max
+                    120L, TimeUnit.SECONDS,       // keepAlive
+                    new LinkedBlockingQueue<>(),
+                    namedThreadFactory,
+                    new ThreadPoolExecutor.CallerRunsPolicy() // if pool full, run in caller
+            );
 
-        logger.info("Copro processor created with fixed consumer thread pool of size {}", finalConsumerCount);
+            logger.info("Copro processor created with fixed consumer thread pool of size {}", finalConsumerCount);
+        }
 
         for (int i = 0; i < consumerCount; i++) {
             executorService.submit(new InboundBatchDataConsumer<>(
