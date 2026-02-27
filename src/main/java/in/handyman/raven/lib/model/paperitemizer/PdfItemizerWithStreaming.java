@@ -24,7 +24,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.Optional;
 
 public class PdfItemizerWithStreaming {
     public static final String PROCESS_NAME = PipelineName.PAPER_ITEMIZER.getProcessName();
@@ -36,8 +35,6 @@ public class PdfItemizerWithStreaming {
     static final String PAPER_ITEMIZER_OUTPUT_FORMAT = "paper.itemizer.output.format";
     static final String PAPER_ITEMIZER_FILE_DPI = "paper.itemizer.file.dpi";
     static final String PAPER_ITEMIZATION_RESIZE_ACTIVATOR = "paper.itemization.resize.activator";
-    private static final String PAPER_ITEMIZER_FIXED_PAGE_ENABLER = "paper.itemizer.fixed.page.enabler";
-    private static final String PAPER_ITEMIZER_FIXED_PAGE_COUNT = "paper.itemizer.fixed.page.count";
     static final String MODEL_NAME = "APP";
     static final String VERSION = "1";
     private final ActionExecutionAudit action;
@@ -138,8 +135,6 @@ public class PdfItemizerWithStreaming {
         final int imageWidthSetting = Integer.parseInt(imageWidth);
         final String imageHeight = getContextVariableWithDefault(PAPER_ITEMIZER_RESIZE_HEIGHT, "2550");
         final int imageHeightSetting = Integer.parseInt(imageHeight);
-        final boolean fixedPageEnabler = Boolean.parseBoolean(getContextVariableWithDefault(PAPER_ITEMIZER_FIXED_PAGE_ENABLER, "true"));
-        final int fixedPageSize = Integer.parseInt(getContextVariableWithDefault(PAPER_ITEMIZER_FIXED_PAGE_COUNT, "25"));
 
         Path path = Paths.get(pdfPath);
 
@@ -149,17 +144,9 @@ public class PdfItemizerWithStreaming {
 
             final String originalName = getFileNameFromPath(pdfPath);
             final String normalizedFormat = getContextVariableWithDefault(PAPER_ITEMIZER_OUTPUT_FORMAT, "jpg").toLowerCase();
+            final int pageCount = getPageNo(document.getNumberOfPages());
 
-            int pageCount = 0;
-            if (fixedPageEnabler){
-                pageCount = Math.min(document.getNumberOfPages(), fixedPageSize);
-                log.info("Fixed page itemization enabled. Processing up to {} pages. Total output pages for file {}: {}", fixedPageSize, originalName, pageCount);
-            } else {
-                pageCount = document.getNumberOfPages();
-                log.info("Fixed page itemization disabled. Processing all {} pages for file {}.", pageCount, originalName);
-            }
-
-            for (int i = 0; i < pageCount; i++) {
+            for (int i = 0; i < document.getNumberOfPages(); i++) {
                 ImageType imageType = ImageType.RGB.toString().equalsIgnoreCase(IMAGE_TYPE) ? ImageType.RGB : ImageType.GRAY;
                 BufferedImage image = renderer.renderImageWithDPI(i, imageDpiSetting, imageType);
                 if (imageResizeEnableSetting) {
@@ -175,10 +162,6 @@ public class PdfItemizerWithStreaming {
                 image = null;
 
             }
-        } catch (Exception e) {
-            log.error("Error itemizing PDF into papers for file: {} with base path: {}. Error: {}", pdfPath, basePath, e.getMessage(), e);
-            HandymanException exception = new HandymanException(e);
-            throw new HandymanException("Error itemizing PDF into papers for file: " + pdfPath, exception, action);
         }
         log.info("Completed itemizing PDF into papers for file: {} with base path: {}", pdfPath, basePath);
     }
