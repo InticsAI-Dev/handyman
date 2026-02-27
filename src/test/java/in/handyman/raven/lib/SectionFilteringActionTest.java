@@ -44,7 +44,7 @@ public class SectionFilteringActionTest {
                         "                    blacklisted_sections, is_encrypted, encryption_policy,whitelisted_labels,\n" +
                         "                    whitelisted_labels_with_priority,sor_container_instance,whitelisted_sections_with_priority,\n" +
                         "                    'single_value' as line_item_type,false as is_multi_entity_enabled" +
-                        "                 from extraction.selection_over_filtering_input_audit a where origin_id='ORIGIN-486' and sor_item_name='member_id';")
+                        "                 from extraction.selection_over_filtering_input_audit a where origin_id='ORIGIN-500' and sor_item_name='member_id';")
                 .build();
 
         String encryptionUrl = "http://localhost:8190/vulcan/api/encryption/encrypt";
