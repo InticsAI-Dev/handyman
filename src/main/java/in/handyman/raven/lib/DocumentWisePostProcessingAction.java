@@ -95,16 +95,10 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
         if (input.getPredictedValue() != null && !input.getPredictedValue().isEmpty()
                 && input.getIsEncrypted()) {
           try {
-            String encryptionPolicy;
-            if ("false".equalsIgnoreCase(scalarAdapterActivator)) {
-              log.debug(aMarker, "Scalar adapter disabled, using AES256");
-              encryptionPolicy = "AES256";
-            } else {
-              // Get encryption policy from sor_meta.sor_item via sor_item_id if needed
-              // For now, default to AES256 if not available in input
-              encryptionPolicy = "AES256";
-              log.debug(aMarker, "Using encryption policy: {}", encryptionPolicy);
-            }
+            String encryptionPolicy = input.getEncryptionPolicy() != null && !input.getEncryptionPolicy().isEmpty()
+                ? input.getEncryptionPolicy()
+                : ("false".equalsIgnoreCase(scalarAdapterActivator) ? "AES256" : "AES256");
+            log.debug(aMarker, "Using encryption policy: {}", encryptionPolicy);
 
             // Use sor_item_name if available, otherwise use sor_item_id as identifier
             String itemIdentifier = input.getSorItemName() != null ? input.getSorItemName() : String.valueOf(input.getSorItemId());
@@ -133,7 +127,8 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
     if (encryptEnabled && input.getPredictedValue() != null && !input.getPredictedValue().isEmpty()
             && input.getIsEncrypted()) {
       try {
-        String encryptionPolicy = "AES256"; // Default policy, can be enhanced to fetch from sor_item if needed
+        String encryptionPolicy = input.getEncryptionPolicy() != null && !input.getEncryptionPolicy().isEmpty()
+            ? input.getEncryptionPolicy() : "AES256";
 
         // Use sor_item_name if available, otherwise use sor_item_id as identifier
         String itemIdentifier = input.getSorItemName() != null ? input.getSorItemName() : String.valueOf(input.getSorItemId());
@@ -168,26 +163,20 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
         batch.bind("lastUpdatedUserId", input.getLastUpdatedUserId() != null ? input.getLastUpdatedUserId() : createdUserIdLong);
         batch.bind("status", input.getStatus() != null ? input.getStatus() : "ACTIVE");
         batch.bind("version", input.getVersion());
-        batch.bind("encode", input.getEncode());
         batch.bind("feature", input.getFeature());
         batch.bind("label", input.getLabel());
         batch.bind("originId", input.getOriginId());
-        batch.bind("precision", input.getPrecision());
-        batch.bind("predictedValue", input.getPredictedValue());
+        batch.bind("precisionVal", input.getPrecision() != null ? String.valueOf(input.getPrecision()) : null);
+        batch.bind("answer", input.getPredictedValue());
         batch.bind("questionId", input.getQuestionId());
         batch.bind("rootPipelineId", input.getRootPipelineId() != null ? input.getRootPipelineId() : action.getRootPipelineId());
-        batch.bind("state", input.getState());
         batch.bind("synonymId", input.getSynonymId());
         batch.bind("tenantId", input.getTenantId());
         batch.bind("transactionId", input.getTransactionId());
         batch.bind("truthId", input.getTruthId());
         batch.bind("channelId", input.getChannelId());
-        batch.bind("csvFilePath", input.getCsvFilePath());
         batch.bind("sorContainerId", input.getSorContainerId());
         batch.bind("truthEntityId", input.getTruthEntityId());
-        batch.bind("currencyAsciiValue", input.getCurrencyAsciiValue());
-        batch.bind("currencyValue", input.getCurrencyValue());
-        batch.bind("paragraphSection", input.getParagraphSection());
         batch.bind("sorItemId", input.getSorItemId());
         batch.bind("sorItemName", input.getSorItemName());
         batch.bind("leftPos", input.getLeftPos());
@@ -197,7 +186,20 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
         batch.bind("isEncrypted", input.getIsEncrypted() != null ? input.getIsEncrypted() : false);
         batch.bind("groupId", input.getGroupId());
         batch.bind("batchId", input.getBatchId());
-        batch.bind("checkbox_data", input.getCheckboxData());
+        batch.bind("sectionAlias", input.getSectionAlias());
+        batch.bind("sorContainerInstance", input.getSorContainerInstance());
+        batch.bind("documentId", input.getDocumentId());
+        batch.bind("paperNo", input.getPaperNo());
+        batch.bind("score", input.getScore());
+        batch.bind("vqaScore", input.getVqaScore());
+        batch.bind("sorQuestion", input.getSorQuestion());
+        batch.bind("category", input.getCategory());
+        batch.bind("stage", input.getStage());
+        batch.bind("lineItemType", input.getLineItemType());
+        batch.bind("encryptionPolicy", input.getEncryptionPolicy());
+        batch.bind("isRemovedAfterFiltering", input.getIsRemovedAfterFiltering());
+        batch.bind("message", input.getMessage());
+        batch.bind("isMultiEntityEnabled", input.getIsMultiEntityEnabled());
         batch.add();
       });
       int[] counts = batch.execute();
@@ -210,20 +212,18 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
 
   private String buildInsertSQL() {
     return "INSERT INTO " + documentWisePostProcessing.getOutputTable() + " (" +
-            "created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, " +
-            "encode, feature, label, origin_id, precision, predicted_value, " +
-            "question_id, root_pipeline_id, state, synonym_id, " +
-            "tenant_id, transaction_id, truth_id, channel_id, " +
-            "csv_file_path, sor_container_id, truth_entity_id, currency_ascii_value, currency_value, " +
-            "paragraph_section, sor_item_id, sor_item_name, left_pos, right_pos, lower_pos, upper_pos, " +
-            "is_encrypted, group_id, batch_id) VALUES (" +
-            ":createdOn, :createdUserId, :lastUpdatedOn, :lastUpdatedUserId, :status, :version, " +
-            ":encode, :feature, :label, :originId, :precision, :predictedValue, " +
-            ":questionId, :rootPipelineId, :state, :synonymId, " +
-            ":tenantId, :transactionId, :truthId, :channelId, " +
-            ":csvFilePath, :sorContainerId, :truthEntityId, :currencyAsciiValue, :currencyValue, " +
-            ":paragraphSection, :sorItemId, :sorItemName, :leftPos, :rightPos, :lowerPos, :upperPos, " +
-            ":isEncrypted, :groupId, :batchId)";
+            "transaction_id, created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, " +
+            "feature, label, left_pos, lower_pos, right_pos, upper_pos, precision_val, answer, " +
+            "section_alias, sor_container_instance, document_id, truth_id, channel_id, group_id, origin_id, " +
+            "paper_no, question_id, root_pipeline_id, score, sor_item_name, sor_question, synonym_id, tenant_id, " +
+            "vqa_score, category, stage, batch_id, line_item_type, is_encrypted, encryption_policy, " +
+            "is_removed_after_filtering, message, sor_container_id, truth_entity_id, sor_item_id, is_multi_entity_enabled) VALUES (" +
+            ":transactionId, :createdOn, :createdUserId, :lastUpdatedOn, :lastUpdatedUserId, :status, :version, " +
+            ":feature, :label, :leftPos, :lowerPos, :rightPos, :upperPos, :precisionVal, :answer, " +
+            ":sectionAlias, :sorContainerInstance, :documentId, :truthId, :channelId, :groupId, :originId, " +
+            ":paperNo, :questionId, :rootPipelineId, :score, :sorItemName, :sorQuestion, :synonymId, :tenantId, " +
+            ":vqaScore, :category, :stage, :batchId, :lineItemType, :isEncrypted, :encryptionPolicy, " +
+            ":isRemovedAfterFiltering, :message, :sorContainerId, :truthEntityId, :sorItemId, :isMultiEntityEnabled)";
   }
 
   @Override
