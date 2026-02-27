@@ -168,7 +168,7 @@ public class LabelWithPriorityProcessor {
             // Find min priority value across CURRENT candidates using SECTION ALIAS
             Integer minPriority = null;
             for (SelectionFilteringInputTable r : candidates) {
-                Integer p = getSectionPriority(r, priorityRules);
+                Integer p = getLabelPriority(r, priorityRules);
                 if (p != null) {
                     if (minPriority == null || p < minPriority) {
                         minPriority = p;
@@ -181,7 +181,7 @@ public class LabelWithPriorityProcessor {
                 logger.info("[{}] Best Section Priority found: {}", contextKey, best);
                 List<SelectionFilteringInputTable> priorityWinners = candidates.stream()
                         .filter(r -> {
-                            Integer p = getSectionPriority(r, priorityRules);
+                            Integer p = getLabelPriority(r, priorityRules);
                             return p != null && p == best;
                         })
                         .collect(Collectors.toList());
@@ -303,13 +303,13 @@ public class LabelWithPriorityProcessor {
         return winner;
     }
 
-    private Integer getSectionPriority(SelectionFilteringInputTable row, List<WhitelistLabelPriority> rules) {
+    private Integer getLabelPriority(SelectionFilteringInputTable row, List<WhitelistLabelPriority> rules) {
         return getPriority(row, rules);
     }
 
     private Integer getPriority(SelectionFilteringInputTable row, List<WhitelistLabelPriority> rules) {
         // SQL join: tsw.whitelist_key = t.sor_item_label
-        String label = row.getSectionAlias();
+        String label = row.getSorItemLabel();
         if (label == null)
             return null; // Or try sectionAlias? sticking to label as per SQL
 
