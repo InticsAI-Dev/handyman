@@ -764,6 +764,64 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
             return repo.findAllByTenantId(tenantId);
         });
     }
+    @Override
+    public ActionExecutionAudit leaseNextAction(
+            String workerId) {
+
+        checkJDBIConnection();
+
+        return JDBI.withHandle(handle -> {
+
+            var repo =
+                    handle.attach(ActionExecutionAuditRepo.class);
+
+            return repo.leaseNext(workerId)
+                    .orElse(null);
+        });
+    }
+
+    @Override
+    public void extendLease(
+            Long actionId,
+            String workerId) {
+
+        checkJDBIConnection();
+
+        JDBI.useHandle(handle -> {
+
+            var repo =
+                    handle.attach(ActionExecutionAuditRepo.class);
+
+            repo.extendLease(actionId, workerId);
+        });
+    }
+    @Override
+    public void releaseExpiredLeases() {
+
+        checkJDBIConnection();
+
+        JDBI.useHandle(handle -> {
+
+            var repo =
+                    handle.attach(ActionExecutionAuditRepo.class);
+
+            repo.releaseExpired();
+        });
+    }
+    @Override
+    public void retryFailedActions() {
+
+        checkJDBIConnection();
+
+        JDBI.useHandle(handle -> {
+
+            var repo =
+                    handle.attach(ActionExecutionAuditRepo.class);
+
+            repo.retryFailed();
+        });
+    }
+
 
 
 }

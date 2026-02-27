@@ -210,7 +210,9 @@ public class LambdaEngine {
             toAction(action, pipelineExecutionAudit);
 
 
-            doAction(action, actionContext);
+            HandymanActorSystemAccess.insert(action);
+            action.updateExecutionStatusId(ExecutionStatus.STAGED.getId());
+            HandymanActorSystemAccess.update(action);
 
 
         });
@@ -334,6 +336,96 @@ public class LambdaEngine {
             }
         }
         throw new HandymanException("Unknown ActionContext");
+    }
+
+    public static void executeDistributed(
+            ActionExecutionAudit audit) {
+
+        final SubstituteLogger logger =
+                getLogger(audit);
+
+        try {
+
+            IActionExecution execution =
+                    loadFromAudit(audit);
+
+            execute(execution, audit);
+
+        } catch (Exception e) {
+
+            logger.error("Execution failed", e);
+            throw e;
+        }
+    }
+
+    private static IActionExecution loadFromAudit(
+            final ActionExecutionAudit audit) {
+
+        final String macroName = audit.getMacroName();
+
+        final Logger logger = getLogger(audit);
+
+        logger.info(
+                "Rebuilding execution from audit for macro {}",
+                macroName
+        );
+
+        try {
+
+            if (!ProcessExecutor.ACTION_CONTEXT_MAP.containsKey(macroName)
+                    || !ProcessExecutor.ACTION_EXECUTION_MAP.containsKey(macroName)) {
+
+                throw new HandymanException(
+                        "Unknown macro : " + macroName
+                );
+            }
+
+            // =============================
+            // Recreate ActionContext
+            // =============================
+            Object actionContext =
+                    MAPPER.convertValue(
+                            audit.getInput(),
+                            ProcessExecutor
+                                    .ACTION_CONTEXT_MAP
+                                    .get(macroName)
+                    );
+
+            logger.info(
+                    "ActionContext restored for {}",
+                    macroName
+            );
+
+            // =============================
+            // Recreate Execution
+            // =============================
+            return (IActionExecution)
+                    ProcessExecutor
+                            .ACTION_EXECUTION_MAP
+                            .get(macroName)
+                            .getConstructor(
+                                    ActionExecutionAudit.class,
+                                    Logger.class,
+                                    Object.class
+                            )
+                            .newInstance(
+                                    audit,
+                                    logger,
+                                    actionContext
+                            );
+
+        } catch (Exception e) {
+
+            logger.error(
+                    "Failed rebuilding execution",
+                    e
+            );
+
+            throw new HandymanException(
+                    "loadFromAudit failed",
+                    e
+            );
+        }
     }
 
     public static void execute(final IActionExecution execution, final ActionExecutionAudit actionExecutionAudit) {

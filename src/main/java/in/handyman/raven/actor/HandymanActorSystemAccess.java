@@ -46,4 +46,28 @@ public class HandymanActorSystemAccess {
         HANDYMAN_REPO.update(actionExecutionAudit);
 
     }
+    public static ActionExecutionAudit lease(
+            String workerId) {
+
+        return HANDYMAN_REPO
+                .leaseNextAction(workerId);
+    }
+
+    public static void extendLease(
+            Long id,
+            String workerId){
+
+        HANDYMAN_REPO
+                .extendLease(id,workerId);
+    }
+
+    public static void recoverLeases(){
+        HANDYMAN_REPO
+                .releaseExpiredLeases();
+    }
+
+    public static void retryFailed(){
+        HANDYMAN_REPO
+                .retryFailedActions();
+    }
 }

@@ -1,0 +1,21 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="SectionFilteringActionTest.testSectionFiltering" type="JUnit" factoryName="JUnit" nameIsGenerated="true">
+    <module name="raven" />
+    <extension name="coverage">
+      <pattern>
+        <option name="PATTERN" value="in.handyman.raven.lib.*" />
+        <option name="ENABLED" value="true" />
+      </pattern>
+    </extension>
+    <option name="PACKAGE_NAME" value="in.handyman.raven.lib" />
+    <option name="MAIN_CLASS_NAME" value="in.handyman.raven.lib.SectionFilteringActionTest" />
+    <option name="METHOD_NAME" value="testSectionFiltering" />
+    <option name="TEST_OBJECT" value="method" />
+    <envs>
+      <env name="JASYPT_ENCRYPTOR_PASSWORD" value="508251fcdde9d040b9b1681ffd088580d489510628" />
+    </envs>
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

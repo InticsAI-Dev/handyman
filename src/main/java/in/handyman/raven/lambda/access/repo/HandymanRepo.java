@@ -137,4 +137,14 @@ public interface HandymanRepo {
     List<SpwBshConfig> findAllBshClassesByTenantId(final Long tenantId);
 
 
+
+
+    ActionExecutionAudit leaseNextAction(String workerId);
+
+    void extendLease(Long actionId,String workerId);
+
+    void releaseExpiredLeases();
+
+    void retryFailedActions();
+
 }

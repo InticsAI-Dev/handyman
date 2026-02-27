@@ -11,6 +11,7 @@ import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface ActionExecutionAuditRepo {
 
@@ -52,4 +53,53 @@ public interface ActionExecutionAuditRepo {
     @SqlQuery("SELECT " + COLUMNS + " FROM  " + DoaConstant.AUDIT_SCHEMA_NAME + DOT + DoaConstant.AEA_TABLE_NAME + " where pipeline_id= :pipelineId and execution_status_id= :executionStatusId ; ")
     @RegisterBeanMapper(value = ActionExecutionAudit.class)
     List<ActionExecutionAudit> findAllActionsByPipelineIdAndExecutionStatusId(Long pipelineId, Integer executionStatusId);
+
+    @SqlQuery(
+            "UPDATE " + DoaConstant.AUDIT_SCHEMA_NAME + DOT + DoaConstant.AEA_TABLE_NAME + " SET " +
+                    " execution_status_id = 2, " +
+                    " worker_id = :workerId, " +
+                    " leased_until = now() + interval '2 minutes' " +
+                    " WHERE action_id = ( " +
+                    "   SELECT action_id FROM " + DoaConstant.AUDIT_SCHEMA_NAME + DOT + DoaConstant.AEA_TABLE_NAME +
+                    "   WHERE execution_status_id = 1 " +
+                    "   AND (leased_until IS NULL OR leased_until < now()) " +
+                    "   ORDER BY created_date " +
+                    "   FOR UPDATE SKIP LOCKED " +
+                    "   LIMIT 1 ) " +
+                    " RETURNING " + COLUMNS
+    )
+    @RegisterBeanMapper(ActionExecutionAudit.class)
+    Optional<ActionExecutionAudit>
+    leaseNext(@Bind("workerId") String workerId);
+
+    @SqlUpdate(
+            "UPDATE " + DoaConstant.AUDIT_SCHEMA_NAME + DOT + DoaConstant.AEA_TABLE_NAME +
+                    " SET leased_until = now() + interval '2 minutes' " +
+                    " WHERE action_id = :actionId " +
+                    " AND worker_id = :workerId"
+    )
+    void extendLease(
+            @Bind("actionId") Long actionId,
+            @Bind("workerId") String workerId);
+
+    @SqlUpdate(
+            "UPDATE " + DoaConstant.AUDIT_SCHEMA_NAME + DOT + DoaConstant.AEA_TABLE_NAME +
+                    " SET execution_status_id = 1, " +
+                    " worker_id = NULL, " +
+                    " leased_until = NULL " +
+                    " WHERE execution_status_id = 2 " +
+                    " AND leased_until < now()"
+    )
+    void releaseExpired();
+
+    @SqlUpdate(
+            "UPDATE " + DoaConstant.AUDIT_SCHEMA_NAME + DOT + DoaConstant.AEA_TABLE_NAME +
+                    " SET execution_status_id = 1, " +
+                    " retry_count = retry_count + 1, " +
+                    " worker_id = NULL, " +
+                    " leased_until = NULL " +
+                    " WHERE execution_status_id = 4 " +
+                    " AND retry_count < max_retry"
+    )
+    void retryFailed();
 }

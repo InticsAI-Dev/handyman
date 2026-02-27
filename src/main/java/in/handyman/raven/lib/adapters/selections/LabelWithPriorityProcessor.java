@@ -375,7 +375,7 @@ public class LabelWithPriorityProcessor {
     public String removeSpecialCharacters(String input) {
         if (input == null)
             return "";
-        return input.replaceAll("[^a-zA-Z0-9]", "").toLowerCase().trim();
+        return input.replaceAll("[^a-zA-Z0-9#]", "").toLowerCase().trim();
     }
 
     // ========================= STAGE 5: MESSAGES =========================
