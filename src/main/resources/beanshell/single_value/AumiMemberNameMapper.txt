@@ -1,0 +1,187 @@
+import org.slf4j.Logger;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput;
+
+public class AumiMemberNameMapper {
+
+    private Logger logger;
+
+    public AumiMemberNameMapper(Logger logger) {
+        this.logger = logger;
+    }
+
+    public MappingResult doCustomPredictionMapping(Map predictionKeyMap, Long rootPipelineId) {
+
+        if (predictionKeyMap == null) {
+            return new MappingResult(new HashMap());
+        }
+
+        PostProcessingFieldsInput fullNameObj =
+                getFirst(predictionKeyMap, "member_full_name");
+        PostProcessingFieldsInput firstNameObj =
+                getFirst(predictionKeyMap, "member_first_name");
+        PostProcessingFieldsInput lastNameObj =
+                getFirst(predictionKeyMap, "member_last_name");
+
+        if (hasValue(fullNameObj)) {
+
+            NameParts parts = split(fullNameObj.getAnswer());
+
+            applyAll(
+                    predictionKeyMap,
+                    fullNameObj,
+                    parts.firstName,
+                    parts.lastName,
+                    fullNameObj.getAnswer()
+            );
+            return new MappingResult(predictionKeyMap);
+        }
+
+        if (hasValue(firstNameObj) && hasValue(lastNameObj)) {
+            applySimple(predictionKeyMap, firstNameObj, lastNameObj);
+            return new MappingResult(predictionKeyMap);
+        }
+
+        if (hasValue(firstNameObj)) {
+            NameParts parts = split(firstNameObj.getAnswer());
+            applyAll(predictionKeyMap, firstNameObj, parts.firstName, parts.lastName, "");
+        } else if (hasValue(lastNameObj)) {
+            NameParts parts = split(lastNameObj.getAnswer());
+            applyAll(predictionKeyMap, lastNameObj, parts.firstName, parts.lastName, "");
+        }
+
+        return new MappingResult(predictionKeyMap);
+    }
+
+    private void applyAll(Map map,
+                          PostProcessingFieldsInput source,
+                          String firstName,
+                          String lastName,
+                          String fullName) {
+
+        updateList(map, "member_first_name", firstName, source);
+        updateList(map, "member_last_name", lastName, source);
+        updateList(map, "member_full_name", fullName, source);
+    }
+
+    private void applySimple(Map map,
+                             PostProcessingFieldsInput first,
+                             PostProcessingFieldsInput last) {
+
+        updateList(map, "member_first_name", first.getAnswer(), first);
+        updateList(map, "member_last_name", last.getAnswer(), last);
+        updateList(map, "member_full_name", "", null);
+    }
+
+    private void updateList(Map map,
+                            String key,
+                            String value,
+                            PostProcessingFieldsInput source) {
+
+        Object obj = map.get(key);
+        if (!(obj instanceof List)) return;
+
+        List list = (List) obj;
+
+        for (int i = 0; i < list.size(); i++) {
+            PostProcessingFieldsInput in =
+                    (PostProcessingFieldsInput) list.get(i);
+
+            in.setAnswer(value);
+
+            if (isEmpty(value)) {
+                clearDependentFields(in);
+            } else if (source != null) {
+                copyDependentFields(source, in);
+            }
+        }
+        map.put(key, list);
+    }
+
+    private void clearDependentFields(PostProcessingFieldsInput in) {
+        in.setLabel("");
+        in.setSectionAlias("");
+        in.setBBox("");
+    }
+
+    private void copyDependentFields(PostProcessingFieldsInput from,
+                                     PostProcessingFieldsInput to) {
+
+        to.setLabel(from.getLabel());
+        to.setSectionAlias(from.getSectionAlias());
+        to.setBBox(from.getBBox());
+    }
+
+    private NameParts split(String value) {
+
+        if (value == null) return new NameParts("", "");
+
+        value = value.trim();
+
+        if (value.indexOf(",") >= 0) {
+            String[] parts = value.split(",", 2);
+            return new NameParts(clean(parts[1]), clean(parts[0]));
+        }
+
+        String[] tokens = value.split("\\s+");
+        if (tokens.length == 1) {
+            return new NameParts(tokens[0], "");
+        }
+
+        StringBuffer first = new StringBuffer();
+        for (int i = 0; i < tokens.length - 1; i++) {
+            first.append(tokens[i]).append(" ");
+        }
+
+        return new NameParts(first.toString().trim(), tokens[tokens.length - 1]);
+    }
+
+    private PostProcessingFieldsInput getFirst(Map map, String key) {
+        Object obj = map.get(key);
+        if (obj instanceof List) {
+            List list = (List) obj;
+            if (!list.isEmpty()) {
+                return (PostProcessingFieldsInput) list.get(0);
+            }
+        }
+        return null;
+    }
+
+    private boolean hasValue(PostProcessingFieldsInput in) {
+        return in != null && !isEmpty(in.getAnswer());
+    }
+
+    private boolean isEmpty(String s) {
+        return s == null || s.trim().length() == 0;
+    }
+
+    private String clean(String s) {
+        return s == null ? "" :
+                s.replaceAll("[0-9]", "")
+                        .replaceAll("\\s+", " ")
+                        .trim();
+    }
+
+    private static class NameParts {
+        String firstName;
+        String lastName;
+
+        NameParts(String f, String l) {
+            this.firstName = f;
+            this.lastName = l;
+        }
+    }
+
+    public static class MappingResult {
+        private Map mappedData;
+        public MappingResult(Map mappedData) {
+            this.mappedData = mappedData != null ? mappedData : new java.util.HashMap();
+        }
+        public Map getMappedData() {
+            return mappedData;
+        }
+    }
+}

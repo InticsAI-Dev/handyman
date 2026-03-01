@@ -194,6 +194,8 @@ action:
     |multiValueMemberMapper
     |ocrTextComparator
     |sectionFiltering
+    |multivalueSorItemHandling
+    |sectionFilteringAfterGrouping
     );
 
 
@@ -1547,6 +1549,25 @@ sectionFiltering:
     'output-table' outputTable=STRING
     'using'  '{'
             querySet=STRING '}'
+    ('on-condition' condition=expression)*  ;
+
+multivalueSorItemHandling:
+    'multivalueSorItemHandling' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'output-table' outputTable=STRING
+    'using'  '{'
+        querySet=STRING
+    '}'
+    ('on-condition' condition=expression)*  ;
+
+
+sectionFilteringAfterGrouping:
+    'sectionFilteringAfterGrouping' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'output-table' outputTable=STRING
+    'using'  '{'
+        querySet=STRING
+    '}'
     ('on-condition' condition=expression)*  ;
 
 //rules
