@@ -53,18 +53,17 @@ public class SectionFilteringAction implements IActionExecution {
   private final Marker aMarker;
 
     public static final String INSERT_INTO = "INSERT INTO ";
-    public static final String INSERT_COLUMNS_UPDATED =
-            "created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, group_id, " +
-                    "root_pipeline_id, batch_id, model_registry, sor_container_id, sor_container_name, " +
-                    "sor_item_name, sor_item_label, section_alias, answer, confidence, bbox, " +
-                    "bbox_asis, paper_no, origin_id, extracted_image_unit, image_dpi, image_height, " +
-                    "image_width, is_label_matching, label_match_message, " +
-                    " is_encrypted, encryption_policy";
+    public static final String INSERT_COLUMNS_UPDATED = "created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, group_id, "
+            +
+            "root_pipeline_id, batch_id, model_registry, sor_container_id, sor_container_name, " +
+            "sor_item_name, sor_item_label, section_alias, answer, confidence, bbox, " +
+            "bbox_asis, paper_no, origin_id, extracted_image_unit, image_dpi, image_height, " +
+            "image_width, is_label_matching, label_match_message, " +
+            " is_encrypted, encryption_policy, sor_container_instance";
 
-    public static final String INSERT_INTO_VALUES_UPDATED =
-            "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?," +
-                    "?, ?, ?, ?, ?, ?, ?, ?, ?, ?," +
-                    " ?, ?, ?, ?, ?, ?, ?::boolean, ?)";
+    public static final String INSERT_INTO_VALUES_UPDATED = "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?," +
+            "?, ?, ?, ?, ?, ?, ?, ?, ?, ?," +
+            " ?, ?, ?, ?, ?, ?, ?::boolean, ?, ?)";
 
     public SectionFilteringAction(final ActionExecutionAudit action, final Logger log,
       final Object sectionFiltering) {
@@ -122,7 +121,13 @@ public class SectionFilteringAction implements IActionExecution {
           log.info(aMarker, "Label with priority processing disabled count {} ", tableInfos.size());
           updatedTableInfos.addAll(tableInfos);
         }else{
-           updatedTableInfos.addAll(LabelWithPriorityProcessor.process(tableInfos));
+
+          List<SelectionFilteringInputTable> input = tableInfos.stream()
+                  .filter(SelectionFilteringInputTable::isLabelMatching)
+                  .collect(Collectors.toList());
+          log.info(aMarker, "Applying label with priority processing on records count {} ", input.size());
+
+           updatedTableInfos.addAll(LabelWithPriorityProcessor.process(input));
           log.info(aMarker, "Label with priority processing completed. Initial count {} and Final count: {} ", tableInfos.size(),updatedTableInfos.size());
       }
 
@@ -174,12 +179,12 @@ public class SectionFilteringAction implements IActionExecution {
                             .bind(20, row.getExtractedImageUnit())
                             .bind(21, row.getImageDpi())
                             .bind(22, row.getImageHeight())
-                            .bind(23,row.getImageWidth())
+                            .bind(23, row.getImageWidth())
                             .bind(24, row.isLabelMatching())
                             .bind(25, row.getLabelMatchMessage())
                             .bind(26, row.getIsEncrypted())
-                            .bind(27,row.getEncryptionPolicy());
-
+                            .bind(27, row.getEncryptionPolicy())
+                            .bind(28, row.getSorContainerInstance());
 
                     batch.add();
                 });
@@ -211,13 +216,14 @@ public class SectionFilteringAction implements IActionExecution {
         return tableInfos.stream()
                 .map(row ->
                         ExtractedField.builder()
-                        .id(Math.toIntExact(row.getId() != null ? row.getId() : null))
+                        .id(Math.toIntExact(row.getId()))
                         .label(row.getSorItemLabel())
                         .sectionAlias(row.getSectionAlias())
                         .value(row.getAnswer())
                         .blacklistedLabels(splitCsvToSet(row.getBlacklistedLabels()))
                         .blacklistedSections(splitCsvToSet(row.getBlacklistedSections()))
                         .whitelistedLabels(parseWhitelistConfig(row.getWhitelistedLabels(),objectMapper))
+                        .sorContainerInstance(row.getSorContainerInstance())
                         .build())
                 .collect(Collectors.toList());
     }
@@ -244,16 +250,16 @@ public class SectionFilteringAction implements IActionExecution {
     }
 
     /**
-     * Applies the blacklist adapter filtering logic
+     * Applies the blacklist blacklistAdapter filtering logic
      */
-    private List<ExtractedField> filterExtractedFields(FieldSelectionAdapter adapter, List<ExtractedField> fields, FieldSelectionAdapter whiteListedAdapter) {
-        if (adapter == null) {
-            log.warn(aMarker, "No adapter found. Skipping filtering step.");
+    private List<ExtractedField> filterExtractedFields(FieldSelectionAdapter blacklistAdapter, List<ExtractedField> fields, FieldSelectionAdapter whiteListedAdapter) {
+        if (blacklistAdapter == null) {
+            log.warn(aMarker, "No blacklistAdapter found. Skipping filtering step.");
             return fields;
         }
 
         try {
-            List<ExtractedField> filtered = adapter.filter(fields);
+            List<ExtractedField> filtered = blacklistAdapter.filter(fields);
             log.info(aMarker, "Adapter filtering completed. Original count: {}, Filtered count: {}",
                     fields.size(), filtered.size());
 
@@ -331,7 +337,7 @@ public class SectionFilteringAction implements IActionExecution {
                 .filter(obj -> obj.getId() != null && obj.getAnswer() != null && !obj.getAnswer().isEmpty())
                 .map(obj -> new EncryptionRequestClass(AES_256, obj.getAnswer(), String.valueOf(obj.getId())))
                 .collect(Collectors.toList());
-        log.info(aMarker, "Total records to decrypt for answers: {}", encryptionRequests.size());
+        log.info(aMarker, "Total records to decrypt for answers : {}", encryptionRequests.size());
         // Step 2: Call external Protegrity API
         List<EncryptionRequestClass> responseList = encryption.decrypt(encryptionRequests);
 
@@ -495,7 +501,7 @@ public class SectionFilteringAction implements IActionExecution {
 
         // Step 1: Convert to EncryptionRequestClass
         List<EncryptionRequestClass> encryptionRequests = inputList.stream()
-                .filter(obj -> obj.getId() != null && obj.getSectionAlias() != null && !obj.getSectionAlias().equals(""))
+                .filter(obj -> obj.getId() != null && obj.getSectionAlias() != null && !obj.getSectionAlias().isEmpty())
                 .map(obj -> new EncryptionRequestClass(AES_256, obj.getSectionAlias(), String.valueOf(obj.getId())))
                 .collect(Collectors.toList());
         log.info(aMarker, "Total records to decrypt for section alias: {}", encryptionRequests.size());

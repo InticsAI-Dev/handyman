@@ -254,6 +254,7 @@ public class AlchemyResponseAction implements IActionExecution {
                     request.setSynonymId(input.getSynonymId());
                     request.setQuestionId(input.getQuestionId());
                     request.setBatchId(input.getBatchId());
+                    request.setSorContainerInstance(input.getSorContainerInstance());
                     break;
 
                 case CHECKBOX_EXTRACTION:
@@ -490,7 +491,7 @@ public class AlchemyResponseAction implements IActionExecution {
         private String upperPos;
         private String rightPos;
         private String lowerPos;
-        private String checkboxData;
+        private String sorContainerInstance;
 
 
         @Override
@@ -530,7 +531,7 @@ public class AlchemyResponseAction implements IActionExecution {
         private String paragraphSection;
         private JsonNode paragraphPoints;
         private String encode;
-        private JsonNode checkboxData;
+        private String sorContainerInstance;
     }
 
 

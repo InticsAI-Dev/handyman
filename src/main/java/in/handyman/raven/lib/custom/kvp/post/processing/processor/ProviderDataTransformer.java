@@ -18,11 +18,11 @@ import in.handyman.raven.lib.model.kvp.llm.jsonparser.LlmJsonParserKvpKrypton;
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonQueryInputTable;
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonQueryOutputTable;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
-
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
 import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
@@ -138,20 +138,38 @@ public class ProviderDataTransformer {
         return requestStr;
     }
 
-
-    private Map<String, Object> parseResponse(String responsePayload, String request, String endpoint, RadonQueryInputTable entity, List<RadonQueryOutputTable> outputList) {
-
-        if (responsePayload == null) {
+    private Map<String, Object> parseResponse(String responsePayload, String request, String endpoint,
+                                              RadonQueryInputTable entity, List<RadonQueryOutputTable> outputList) {
+        if (responsePayload == null || responsePayload.trim().isEmpty()) {
             log.warn("Response payload is null or empty.");
-
             return Map.of();
         }
+
         try {
-            return objectMapper.readValue(responsePayload, new TypeReference<Map<String, Object>>() {
-            });
-        } catch (Exception e) {
-            String errorMessage = "Error parsing response JSON in bean shell script for origin id " + entity.getOriginId() + " and paper no " + entity.getPaperNo() + "message : " + e.getMessage();
-            handleErrorOutputEntity(entity, errorMessage, request, responsePayload, endpoint, e, outputList);
+            // First, try to parse as Map
+            return objectMapper.readValue(responsePayload, new TypeReference<Map<String, Object>>() {});
+        } catch (Exception mapException) {
+            // If it fails, try to parse as array and wrap it
+            try {
+                log.info("Response is not a Map, attempting to parse as array");
+                List<Object> arrayResponse = objectMapper.readValue(responsePayload,
+                        new TypeReference<List<Object>>() {});
+
+                // Wrap the array in a map with a default key
+                Map<String, Object> wrappedResponse = new HashMap<>();
+                wrappedResponse.put("data", arrayResponse);
+                log.info("Successfully wrapped array response with {} items", arrayResponse.size());
+                return wrappedResponse;
+
+            } catch (Exception arrayException) {
+                // If both fail, log error
+                String errorMessage = "Error parsing response JSON in bean shell script for origin id " +
+                        entity.getOriginId() + " and paper no " + entity.getPaperNo() +
+                        " message : " + arrayException.getMessage();
+                log.error(errorMessage, arrayException);
+                handleErrorOutputEntity(entity, errorMessage, request, responsePayload, endpoint,
+                        arrayException, outputList);
+            }
         }
         return Map.of();
     }
@@ -185,6 +203,7 @@ public class ProviderDataTransformer {
     private List<RadonQueryOutputTable> mapOutputTable(
             Object providerMapObject, RadonQueryInputTable entity,
             String request, String apiResponse, String endpoint) {
+        AtomicInteger counter = new AtomicInteger(0);
 
         List<RadonQueryOutputTable> outputList = new ArrayList<>();
 
@@ -197,12 +216,12 @@ public class ProviderDataTransformer {
                 Hashtable item = (Hashtable) providerDataList.get(i);
                 String container = (String) item.get("sorContainerName");
 
+
                 LlmJsonParserKvpKrypton llmJsonParserKvpKrypton = createKvp(item);
 
                 if (kvpContainers.containsKey(container)) {
                     List<LlmJsonParserKvpKrypton> llmJsonParserKvpKryptonList = kvpContainers.get(container);
                     llmJsonParserKvpKryptonList.add(llmJsonParserKvpKrypton);
-                    kvpContainers.put(container, llmJsonParserKvpKryptonList);
                 } else {
                     List<LlmJsonParserKvpKrypton> llmJsonParserKvpKryptonList = new ArrayList<>();
                     llmJsonParserKvpKryptonList.add(llmJsonParserKvpKrypton);
@@ -211,7 +230,7 @@ public class ProviderDataTransformer {
 
             }
             if (kvpContainers.isEmpty()) {
-                outputList.add(buildOutputTable(entity, request, apiResponse, endpoint, String.valueOf(entity.getSorContainerId()), "[]"));
+                outputList.add(buildOutputTable(entity, request, apiResponse, endpoint, String.valueOf(entity.getSorContainerId()), "[]",""));
             }
 
             kvpContainers.forEach((container, kvps) -> {
@@ -221,7 +240,7 @@ public class ProviderDataTransformer {
                         String responseJson = objectMapper.writeValueAsString(kvps);
 
 
-                        outputList.add(buildOutputTable(entity, request, apiResponse, endpoint, containerId, responseJson));
+                        outputList.add(buildOutputTable(entity, request, apiResponse, endpoint, containerId, responseJson,container));
                     } catch (JsonProcessingException e) {
                         String errorMessage = "Error parsing response JSON in bean shell script for origin id " + entity.getOriginId() + " and paper no " + entity.getPaperNo() + "message : " + e.getMessage();
                         handleErrorOutputEntity(entity, errorMessage, request, apiResponse, endpoint, e, outputList);
@@ -249,22 +268,49 @@ public class ProviderDataTransformer {
     private Optional<String> getContainerId(String sorContainerName) {
         log.info("Fetching container ID for {}", sorContainerName);
 
+
+        String normalizedContainerName = normalizeContainerName(sorContainerName);
+
+        log.info("Fetching container ID normalized container name {}", normalizedContainerName);
         String query = "SELECT sor_container_id FROM sor_meta.sor_container " +
                 "WHERE sor_container_name = :sorContainerName " +
                 "AND document_type = :documentType " +
                 "AND tenant_id = :tenantId " +
                 "AND status='ACTIVE'";
 
-        log.info(aMarker, "Fetching container ID for {}", sorContainerName);
+        log.info(aMarker, "Fetching container ID for {}", normalizedContainerName);
 
         Map<String, Object> params = Map.of(
                 "documentType", action.getContext().get("document_type"),
                 "tenantId", Long.valueOf(action.getContext().get("tenant_id")),
-                "sorContainerName", sorContainerName
+                "sorContainerName", normalizedContainerName
         );
 
         return DatabaseUtility.fetchSingleResult(jdbiResourceName, query, params);
     }
+
+    public static String normalizeContainerName(String sorContainerName) {
+        if (sorContainerName == null) return null;
+
+        int lastUnderscore = sorContainerName.lastIndexOf('_');
+
+        // No underscore → return as is
+        if (lastUnderscore == -1) {
+            return sorContainerName;
+        }
+
+        String prefix = sorContainerName.substring(0, lastUnderscore);
+        String lastPart = sorContainerName.substring(lastUnderscore + 1);
+
+        // Check if last part is a number
+        if (lastPart.matches("\\d+")) {
+            return prefix;
+        }
+
+        // Not a number → return as is
+        return sorContainerName;
+    }
+
 
     private String encryptIfRequired(String content) {
 
@@ -284,7 +330,7 @@ public class ProviderDataTransformer {
 
     private RadonQueryOutputTable buildOutputTable(
             RadonQueryInputTable entity, String request, String apiResponse,
-            String endpoint, String containerId, String encryptedContent) {
+            String endpoint, String containerId, String encryptedContent, String containerInstance) {
 
         return RadonQueryOutputTable.builder()
                 .createdOn(entity.getCreatedOn())
@@ -307,11 +353,11 @@ public class ProviderDataTransformer {
                 .batchId(entity.getBatchId())
                 .message("Radon KVP mapping completed")
                 .category(entity.getCategory())
-                .request(encryptReqResIfRequired(request))
-                .response(encryptReqResIfRequired(apiResponse))
+//                .request(encryptReqResIfRequired(request))
+//                .response(encryptReqResIfRequired(apiResponse))
                 .endpoint(endpoint)
                 .sorContainerId(Long.valueOf(containerId))
+                .sorContainerInstance(containerInstance)
                 .build();
     }
 }
-

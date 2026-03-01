@@ -131,4 +131,10 @@ public interface HandymanRepo {
     List<CoproRetryErrorAuditTable> findCoproApiCallsByStage(String stage);
     List<CoproRetryErrorAuditTable> findCoproApiCallsByOriginIdAndStage(String originId, String stage);
     List<CoproRetryErrorAuditTable> findCoproApiCallsByStatusAndStage(String status, String stage);
+
+
+
+    List<SpwBshConfig> findAllBshClassesByTenantId(final Long tenantId);
+
+
 }

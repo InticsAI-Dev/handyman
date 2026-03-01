@@ -7,21 +7,10 @@ import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
-import in.handyman.raven.lib.model.*;
-
-import java.lang.Exception;
-import java.lang.Object;
-import java.lang.Override;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
-
-import in.handyman.raven.lib.model.multi.member.indicator.MultiValueMemberMapperInputTable;
-import in.handyman.raven.lib.model.multi.member.indicator.MultiValueMemberMapperOutputTable;
+import in.handyman.raven.lib.model.MultiValueMemberMapper;
 import in.handyman.raven.lib.model.multi.member.indicator.MultiValueMemberMapperTransformInputTable;
 import in.handyman.raven.lib.model.multi.member.indicator.extractedSorItemList;
+import in.handyman.raven.lib.services.sor.transform.MultiMemberIndicatorInput;
 import in.handyman.raven.util.CommonQueryUtil;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
@@ -30,6 +19,12 @@ import org.jdbi.v3.core.statement.Query;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
+
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
 
@@ -53,11 +48,11 @@ public class MultiValueMemberMapperAction implements IActionExecution {
   public static final String MULTI_MEMBER_CONSUMER_API_COUNT = "multi.member.consumer.API.count";
 
   public static final String INSERT_INTO = "INSERT INTO ";
-  public static final String INSERT_INTO_VALUES_UPDATED = "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+  public static final String INSERT_INTO_VALUES_UPDATED = getInsertIntoValuesUpdated();
 
-  private List<MultiValueMemberMapperOutputTable> multiValueMemberMapperOutputTables;
+  private List<MultiMemberIndicatorInput> MultiMemberIndicatorInputs;
 
-  public static final String INSERT_COLUMNS_UPDATED = "created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, frequency, b_box, confidence_score, extracted_value, filter_score, group_id, maximum_score, origin_id, paper_no, question_id, root_pipeline_id, sor_item_name, synonym_id, tenant_id, model_registry, batch_id";
+  public static final String INSERT_COLUMNS_UPDATED = getColumnNamesForInsert();
 
 
   public MultiValueMemberMapperAction(final ActionExecutionAudit action, final Logger log,
@@ -78,7 +73,7 @@ public class MultiValueMemberMapperAction implements IActionExecution {
 
       String outputTable = multiValueMemberMapper.getOutputTable();
 
-      final List<MultiValueMemberMapperInputTable> multiValueMemberQueryInputTables = new ArrayList<>();
+      final List<MultiMemberIndicatorInput> multiValueMemberQueryInputTables = new ArrayList<>();
 
       jdbi.useTransaction(handle -> {
         final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(multiValueMemberMapper.getQuerySet());
@@ -86,8 +81,8 @@ public class MultiValueMemberMapperAction implements IActionExecution {
         formattedQuery.forEach(sqlToExecute -> {
           log.info(aMarker, "Executing query {} from index {}", sqlToExecute, i.getAndIncrement());
           Query query = handle.createQuery(sqlToExecute);
-          List<MultiValueMemberMapperInputTable> results = query
-                  .mapToBean(MultiValueMemberMapperInputTable.class)
+          List<MultiMemberIndicatorInput> results = query
+                  .mapToBean(MultiMemberIndicatorInput.class)
                   .list();
           multiValueMemberQueryInputTables.addAll(results);
           log.info(aMarker, "Executed query from index {}", i.get());
@@ -107,9 +102,9 @@ public class MultiValueMemberMapperAction implements IActionExecution {
 
       Integer consumerApiCount = Integer.valueOf(action.getContext().get(MULTI_MEMBER_CONSUMER_API_COUNT));
 
-      Map<String, List<MultiValueMemberMapperInputTable>> groupedByOriginId =
+      Map<String, List<MultiMemberIndicatorInput>> groupedByOriginId =
               multiValueMemberQueryInputTables.stream()
-                      .collect(Collectors.groupingBy(MultiValueMemberMapperInputTable::getOriginId));
+                      .collect(Collectors.groupingBy(MultiMemberIndicatorInput::getOriginId));
 
       log.info(aMarker, "Grouped input rows by originId, total groups: {}", groupedByOriginId.size());
 
@@ -121,10 +116,10 @@ public class MultiValueMemberMapperAction implements IActionExecution {
 
       List<MultiValueMemberMapperTransformInputTable> multiValueMemberMapperTransformInputTable = extractedValues(groupedByOriginId, pipelineEndToEndEncryptionActivator, encryption);
 
-      multiValueMemberMapperOutputTables = new MultiValueMemberConsumerProcess(log, aMarker, action, multiValueMemberMapperTransformInputTable, tenantId, consumerApiCount, multiValueMemberMapper).doMultiMemberValidation();
+      MultiMemberIndicatorInputs = new MultiValueMemberConsumerProcess(log, aMarker, action, multiValueMemberMapperTransformInputTable, tenantId, consumerApiCount, multiValueMemberMapper).doMultiMemberValidation();
 
       log.info(aMarker, "Started batch insert into {}", outputTable);
-      jdbi.useHandle(handle -> executeBatchInsert(handle, multiValueMemberMapperOutputTables));
+      jdbi.useHandle(handle -> executeBatchInsert(handle, MultiMemberIndicatorInputs));
       log.info(aMarker, "Batch insert completed into {}", outputTable);
 
       log.info(aMarker, "Multi Value Member Mapper Action has been completed {}", multiValueMemberMapper.getName());
@@ -137,34 +132,37 @@ public class MultiValueMemberMapperAction implements IActionExecution {
   }
 
   private List<MultiValueMemberMapperTransformInputTable> extractedValues(
-          Map<String, List<MultiValueMemberMapperInputTable>> groupedByOriginId,
+          Map<String, List<MultiMemberIndicatorInput>> groupedByOriginId,
           boolean pipelineEndToEndEncryptionActivator,
           InticsIntegrity encryption) {
 
     List<MultiValueMemberMapperTransformInputTable> collect = groupedByOriginId.entrySet().stream()
             .map(entry -> {
               String originId = entry.getKey();
-              List<MultiValueMemberMapperInputTable> inputRows = entry.getValue();
+              List<MultiMemberIndicatorInput> inputRows = entry.getValue();
 
               List<extractedSorItemList> sorItems = inputRows.stream()
                       .map(row -> {
                         extractedSorItemList item = extractedSorItemList.builder()
                                 .groupId(row.getGroupId())
                                 .paperNo(row.getPaperNo())
-                                .paperNo(row.getPaperNo())
                                 .sorItemName(row.getSorItemName())
                                 .predictedValue(processAndDecryptMultiValue(row, pipelineEndToEndEncryptionActivator, encryption))
                                 .bBox(row.getBBox())
-                                .confidenceScore(row.getScoreId())
-                                .frequency(row.getFrequency())
+                                .confidenceScore(row.getScore())
                                 .questionId(row.getQuestionId())
                                 .synonymId(row.getSynonymId())
                                 .tenantId(row.getTenantId())
                                 .modelRegistry(row.getModelRegistry())
                                 .rootPipelineId(row.getRootPipelineId())
                                 .batchId(row.getBatchId())
-                                .documentType(row.getDocumentType())
+                                .sorContainerInstance(row.getSorContainerName())
+                                .transactionId(row.getTransactionId())
+                                .truthId(row.getTruthId())
+                                .message(row.getMessage())
                                 .build();
+
+
 
                         return item;
                       })
@@ -179,60 +177,179 @@ public class MultiValueMemberMapperAction implements IActionExecution {
     return collect;
   }
 
-  private String processAndDecryptMultiValue(MultiValueMemberMapperInputTable row, boolean pipelineEndToEndEncryptionActivator, InticsIntegrity encryption) {
-    String extractedValue = row.getPredictedValue();
+  private String processAndDecryptMultiValue(MultiMemberIndicatorInput row, boolean pipelineEndToEndEncryptionActivator, InticsIntegrity encryption) {
+    String extractedValue = row.getAnswer();
     String sorItemName = row.getSorItemName();
     String encryptionPolicy = row.getEncryptionPolicy();
 
-    if (pipelineEndToEndEncryptionActivator && "t".equalsIgnoreCase(row.getIsEncrypted())) {
+    if (pipelineEndToEndEncryptionActivator && row.getIsEncrypted()) {
       log.info("Decryption the extracted value for the sor item:{} for the multi-member voting", sorItemName);
       String encryptedValue = encryption.decrypt(extractedValue, encryptionPolicy, sorItemName);
-      row.setPredictedValue(encryptedValue);
+      row.setAnswer(encryptedValue);
     } else {
       log.info("Decryption not required for sor item: {}. Setting original extracted value.", sorItemName);
-      row.setPredictedValue(extractedValue);
+      row.setAnswer(extractedValue);
     }
     return extractedValue;
   }
 
-  private void executeBatchInsert(Handle handle, List<MultiValueMemberMapperOutputTable> rows) {
+  private void executeBatchInsert(Handle handle, List<MultiMemberIndicatorInput> rows) {
 
-    String insertQuery = INSERT_INTO + multiValueMemberMapper.getOutputTable() + " ( " + INSERT_COLUMNS_UPDATED + " ) " + INSERT_INTO_VALUES_UPDATED;
+    String insertQuery =
+            INSERT_INTO + multiValueMemberMapper.getOutputTable() +
+                    " ( " + INSERT_COLUMNS_UPDATED + " ) " +
+                    INSERT_INTO_VALUES_UPDATED;
 
     try (PreparedBatch batch = handle.prepareBatch(insertQuery)) {
-      rows.forEach(row -> {
-        batch.bind(0, row.getCreatedOn())
-                .bind(1, row.getTenantId())
-                .bind(2, row.getLastUpdatedOn())
-                .bind(3, row.getTenantId())
-                .bind(4, "ACTIVE")
-                .bind(5, row.getVersion())
-                .bind(6, row.getFrequency())
-                .bind(7, row.getBBox())
-                .bind(8, row.getConfidenceScore())
-                .bind(9, row.getExtractedValue())
-                .bind(10, row.getFilterScore())
-                .bind(11, row.getGroupId())
-                .bind(12, row.getConfidenceScore())
-                .bind(13, row.getOriginId())
-                .bind(14, row.getPaperNo())
-                .bind(15, row.getQuestionId())
-                .bind(16, row.getRootPipelineId())
-                .bind(17, row.getSorItemName())
-                .bind(18, row.getSynonymId())
-                .bind(19, row.getTenantId())
-                .bind(20, row.getModelRegistry())
-                .bind(21, row.getBatchId());
+
+      for (MultiMemberIndicatorInput row : rows) {
+
+        batch
+                // 0–4
+                .bind(0,  row.getTransactionId())
+                .bind(1,  row.getCreatedOn())
+                .bind(2,  row.getCreatedUserId())
+                .bind(3,  row.getLastUpdatedOn())
+                .bind(4,  row.getLastUpdatedUserId())
+
+                // 5–9
+                .bind(5,  row.getRootPipelineId())
+                .bind(6,  row.getTenantId())
+                .bind(7,  row.getDocumentId())
+                .bind(8,  row.getGroupId())
+                .bind(9,  row.getBatchId())
+
+                // 10–14
+                .bind(10, row.getOriginId())
+                .bind(11, row.getPaperNo())
+                .bind(12, row.getTruthId())
+                .bind(13, row.getStatus())
+                .bind(14, row.getStage())
+
+                // 15–19
+                .bind(15, row.getMessage())
+                .bind(16, row.getVersion())
+                .bind(17, row.getExtractedImageUnit())
+                .bind(18, row.getImageDpi())
+                .bind(19, row.getImageHeight())
+
+                // 20–24
+                .bind(20, row.getImageWidth())
+                .bind(21, row.getSectionPriorityAfterFilter())
+                .bind(22, row.getSorContainerId())
+                .bind(23, row.getSorContainerName())
+
+                // 25–29
+                .bind(24, row.getSorContainerInstance())
+                .bind(25, row.getSorItemName())
+                .bind(26, row.getSorItemId())
+                .bind(27, row.getSorItemAttributionId())
+                .bind(28, row.getModelId())
+
+                // 30–34
+                .bind(29, row.getModelInfo())
+                .bind(30, row.getModelRegistry())
+                .bind(31, row.getModelRegistryId())
+                .bind(32, row.getAnswer())
+                .bind(33, row.getVqaScore())
+
+                // 35–39
+                .bind(34, row.getScore())
+                .bind(35, row.getBBox())
+                .bind(36, row.getLabel())
+                .bind(37, row.getSectionAlias())
+                .bind(38, row.getSynonymId())
+
+                // 40–44
+                .bind(39, row.getSorSynonym())
+                .bind(40, row.getQuestionId())
+                .bind(41, row.getSorQuestion())
+                .bind(42, row.getWeight())
+                .bind(43, row.getCategory())
+
+                // 45–48
+                .bind(44, row.getLineItemType())
+                .bind(45, row.getIsMultiEntityEnabled())
+                .bind(46, row.getEncryptionPolicy())
+                .bind(47, row.getIsEncrypted());
+
         batch.add();
-      });
+      }
+
       int[] counts = batch.execute();
       log.info(aMarker, "Batch inserted {} records", counts.length);
+
     } catch (Exception e) {
       log.error(aMarker, "Batch insert failed", e);
-      HandymanException.insertException("Error in batch insert into " + multiValueMemberMapper.getOutputTable(), new HandymanException(e), action);
+      HandymanException.insertException(
+              "Error in batch insert into " + multiValueMemberMapper.getOutputTable(),
+              new HandymanException(e),
+              action
+      );
     }
   }
 
+  public static String getInsertIntoValuesUpdated(){
+    return  "VALUES (" +
+            "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, " +     // 0–9
+            "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, " +     // 10–19
+            "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, " +     // 20–29
+            "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, " +     // 30–39
+            "?, ?, ?, ?, ?, ?, ?, ?" +          // 40–48
+            ")";
+
+  }
+  public static String getColumnNamesForInsert() {
+    return "transaction_id, " +                 // 0
+            "created_on, " +                     // 1
+            "created_user_id, " +                // 2
+            "last_updated_on, " +                // 3
+            "last_updated_user_id, " +            // 4
+            "root_pipeline_id, " +                // 5
+            "tenant_id, " +                      // 6
+            "document_id, " +                    // 7
+            "group_id, " +                       // 8
+            "batch_id, " +                       // 9
+            "origin_id, " +                      // 10
+            "paper_no, " +                       // 11
+            "truth_id, " +                       // 12
+            "status, " +                         // 13
+            "stage, " +                          // 14
+            "message, " +                        // 15
+            "version, " +                        // 16
+            "extracted_image_unit, " +            // 17
+            "image_dpi, " +                      // 18
+            "image_height, " +                   // 19
+            "image_width, " +                    // 20
+            "section_priority_after_filter, " +  // 21
+            "sor_container_id, " +                // 23
+            "sor_container_name, " +              // 24
+            "sor_container_instance, " +          // 25
+            "sor_item_name, " +                   // 26
+            "sor_item_id, " +                     // 27
+            "sor_item_attribution_id, " +          // 28
+            "model_id, " +                        // 29
+            "model_info, " +                      // 30
+            "model_registry, " +                  // 31
+            "model_registry_id, " +               // 32
+            "answer, " +                          // 33
+            "vqa_score, " +                       // 34
+            "score, " +                           // 35
+            "b_box, " +                           // 36
+            "label, " +                           // 37
+            "section_alias, " +                   // 38
+            "synonym_id, " +                      // 39
+            "sor_synonym, " +                     // 40
+            "question_id, " +                     // 41
+            "sor_question, " +                    // 42
+            "weight, " +                          // 43
+            "category, " +                        // 44
+            "line_item_type, " +                  // 45
+            "is_multi_entity_enabled, " +          // 46
+            "encryption_policy, " +               // 47
+            "is_encrypted";                       // 48
+
+  }
 
   @Override
   public boolean executeIf() throws Exception {
