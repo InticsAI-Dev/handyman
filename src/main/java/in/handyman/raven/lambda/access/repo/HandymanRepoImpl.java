@@ -55,11 +55,11 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
     private static final String SQL_INSERT_COPRO_AUDIT = "INSERT INTO macro." + COPRO_RETRY_ERROR_AUDIT + " (" +
             "origin_id, group_id, attempt, tenant_id, process_id, file_path, paper_no, message, status, stage, " +
             "created_on, root_pipeline_id, batch_id, last_updated_on, request, response, endpoint, copro_service_id, " +
-            "computation_details, copro_status_code, copro_log, copro_details" +
+            "computation_details, copro_status_code, copro_log, copro_details, critical_data_present" +
             ") VALUES (" +
             ":originId, :groupId, :attempt, :tenantId, :processId, :filePath, :paperNo, :message, :status, :stage, " +
             ":createdOn, :rootPipelineId, :batchId, NOW(), :request, :response, :endpoint, :coproServiceId ," +
-            ":computationDetails, :coproStatusCode, :coproLog, :coproDetails" +
+            ":computationDetails, :coproStatusCode, :coproLog, :coproDetails, :criticalDataPresent" +
             ")";
 
     static {
