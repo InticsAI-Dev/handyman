@@ -45,16 +45,16 @@ public class LOSGBDValidator {
         this.logger = (logger != null) ? logger : LoggerFactory.getLogger(LOSGBDValidator.class);
     }
 
-    public LOSValidator.MappingResult doCustomPredictionMapping(Map data, Long rootPipelineId) {
+    public MappingResult doCustomPredictionMapping(Map data, Long rootPipelineId) {
         logInfo(rootPipelineId, "Starting Level of Service validation process");
 
         if (data == null) {
             logInfo(rootPipelineId, "Input map is null");
-            return new LOSValidator.MappingResult(data);
+            return new MappingResult(data);
         }
 
         processLevelOfService(data, rootPipelineId);
-        return new LOSValidator.MappingResult(data);
+        return new MappingResult(data);
     }
 
     private void processLevelOfService(Map data, Long rootPipelineId) {

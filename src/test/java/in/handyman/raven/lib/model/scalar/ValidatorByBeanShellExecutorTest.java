@@ -1,5 +1,7 @@
 package in.handyman.raven.lib.model.scalar;
 
+import in.handyman.raven.core.encryption.EncryptionHandlers;
+import in.handyman.raven.core.enums.EncryptionConstants;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lambda.doa.config.SpwBshConfig;
 import in.handyman.raven.lib.PostProcessingExecutorAction;
@@ -32,7 +34,7 @@ class ValidatorByBeanShellExecutorTest {
          actionExecutionAudit = new ActionExecutionAudit();
         actionExecutionAudit.getContext().put("multi.line.item.activator", ""); // To avoid NPE
 
-        actionExecutionAudit.getContext().put("outbound.mapper.bsh.class.order","ServiceCodeValidator");
+        actionExecutionAudit.getContext().put("outbound.mapper.bsh.class.order","DiagnosisCodeValidator");
         List<SpwBshConfig> bshConfigs = getSpwBshConfigs();
         actionExecutionAudit.getContext().put("ProviderZipCodeMapper", "ProviderZipCodeMapper");
         actionExecutionAudit.getContext().put("ProviderNpiTinValidator", "ProviderNpiTinValidator");
@@ -62,10 +64,25 @@ class ValidatorByBeanShellExecutorTest {
         actionExecutionAudit.getContext().put("AuthIdValidator", "AuthIdValidator");
         actionExecutionAudit.getContext().put("FaxReportProcessor", "FaxReportProcessor");
         actionExecutionAudit.getContext().put("ServiceCodeValidator", "ServiceCodeValidator");
+        actionExecutionAudit.getContext().put("DiagnosisCodeValidator", "DiagnosisCodeValidator");
         actionExecutionAudit.getContext().put("tenant_id","1");
         actionExecutionAudit.setRootPipelineId(1L);
         // Default Context
         contextMap.put("multi.line.item.activator", "true");
+        actionExecutionAudit.getContext().putAll(Map.ofEntries(
+                Map.entry("read.batch.size", "1"),
+                Map.entry("outbound.doc.delivery.notify.url", ""),
+                Map.entry("gen_group_id.group_id", "1"),
+                Map.entry("agadia.secretKey", ""),
+                Map.entry("outbound.context.condition", "Product"),
+                Map.entry("consumer.API.count", "1"),
+                Map.entry("kafka.production.activator", "true"),
+                Map.entry(EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION, "false"),
+                Map.entry("date.input.formats", "M/d/yy"),
+                Map.entry("protegrity.dec.api.url", "http://localhost:8190/vulcan/api/encryption/decrypt"),
+                Map.entry("protegrity.enc.api.url", "http://localhost:8190/vulcan/api/encryption/encrypt"),
+                Map.entry("pipeline.encryption.default.holder", EncryptionHandlers.PROTEGRITY_API_ENC.name()),
+                Map.entry("write.batch.size", "1")));
 
         validator = new ValidatorByBeanShellExecutor(inputList, actionExecutionAudit, log, 2, bshConfigs);
 
@@ -79,7 +96,7 @@ class ValidatorByBeanShellExecutorTest {
         postProcessingExecutor.setName("TestExecutor");
         postProcessingExecutor.setCondition(true);
         postProcessingExecutor.setBatchId("BATCH-2");
-        postProcessingExecutor.setResourceConn("intics_zio_db_conn");
+        postProcessingExecutor.setResourceConn("intics_zio_db_conn_tsar");
         postProcessingExecutor.setGroupId("GROUP-2");
         postProcessingExecutor.setOutputTable("sor_transform.vqa_transaction_post_processing_output");
         postProcessingExecutor.setQuerySet("select\n" +
@@ -90,7 +107,7 @@ class ValidatorByBeanShellExecutorTest {
                 "                    score, b_box, label, section_alias, synonym_id, sor_synonym, question_id, sor_question, weight, category, line_item_type,\n" +
                 "                    is_multi_entity_enabled, encryption_policy, is_encrypted, post_processing_code, post_processing_key, aggregated_score\n" +
                 "                   from sor_transform.vqa_transaction_post_processing_input\t\n" +
-                "where origin_id='ORIGIN-118' and sor_container_name ='SERVICE_CODE' and post_processing_field_id in (5014,5019,5020,5021);");
+                "where  origin_id='ORIGIN-1090'  and sor_container_name ='DIAGNOSIS_CODE'");
         PostProcessingExecutorAction postProcessingExecutorAction = new PostProcessingExecutorAction(actionExecutionAudit, log, postProcessingExecutor);
         postProcessingExecutorAction.execute();
     }
@@ -123,7 +140,7 @@ class ValidatorByBeanShellExecutorTest {
         // security settings
         // But for generation purposes, this is the correct logic.
 
-        List<String> classes = Collections.singletonList("AumiMemberNameMapper");
+        List<String> classes = Collections.singletonList("LOSGBDValidator");
         log.info("First and last name split - Command separated");
 
 
