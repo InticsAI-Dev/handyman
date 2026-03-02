@@ -15,7 +15,7 @@ public class BlacklistFilterAdapter implements FieldSelectionAdapter {
             return List.of();
         }
 
-        return fields.stream()
+        List<ExtractedField> filteredItems = fields.stream()
                 // Step 1: Apply Section filtering
                 .map(field -> isLabelValueMatching(field.getBlacklistedSections(), field, "SECTIONS"))
                 // Step 2: Apply Label filtering only if section passed
@@ -26,8 +26,29 @@ public class BlacklistFilterAdapter implements FieldSelectionAdapter {
                     return field;
                 })
                 .collect(Collectors.toList());
+
+        emptyEntryCheck(filteredItems);
+        return filteredItems;
     }
 
+    private boolean isEmpty(String s) {
+        return s == null || s.isEmpty();
+    }
+
+    public void emptyEntryCheck(List<ExtractedField> fields) {
+        for (ExtractedField f : fields) {
+            if (isEmpty(f.getValue())
+                    && isEmpty(f.getLabel())
+                    && isEmpty(f.getSectionAlias())) {
+
+                f.setLabelMatching(true);
+                f.setLabelMatchMessage(
+                        (f.getLabelMatchMessage() == null ? "" : f.getLabelMatchMessage())
+                                + " | Checking for missing Entry check, Empty entry with no value, label or section so allowing them for downstream process."
+                );
+            }
+        }
+    }
     /**
      * Checks if label or section-value pair matches blacklist and adjusts label accordingly.
      */

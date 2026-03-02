@@ -41,9 +41,12 @@ public class SelectionFilteringInputTable {
     private String blacklistedSections;
     private Boolean isEncrypted;
     private String encryptionPolicy;
-    private boolean labelMatching;
+    private Boolean labelMatching;
     private String labelMatchMessage;
     private String whitelistedLabels;
     private String whitelistedLabelsWithPriority;
     private String labelPriorityIdx;
+    private String sorContainerInstance;
+    private String lineItemType;
+    private Boolean isMultiEntityEnabled;
 }

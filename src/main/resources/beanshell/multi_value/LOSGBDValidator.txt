@@ -1,0 +1,167 @@
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.*;
+
+import in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput;
+
+public class LOSGBDValidator {
+
+    private static Set URGENT_KEYWORDS;
+    private static Set BLACKLIST_KEYWORDS;
+
+    static {
+        URGENT_KEYWORDS = new HashSet();
+        URGENT_KEYWORDS.add("asap");
+        URGENT_KEYWORDS.add("urgent");
+        URGENT_KEYWORDS.add("rush");
+        URGENT_KEYWORDS.add("expedite");
+        URGENT_KEYWORDS.add("stat");
+        URGENT_KEYWORDS.add("expedited");
+
+        BLACKLIST_KEYWORDS = new HashSet();
+        BLACKLIST_KEYWORDS.add("dont rush me");
+        BLACKLIST_KEYWORDS.add("urgently");
+        BLACKLIST_KEYWORDS.add("rushing");
+        BLACKLIST_KEYWORDS.add("non-urgent");
+        BLACKLIST_KEYWORDS.add("non urgent");
+        BLACKLIST_KEYWORDS.add("emergency dept");
+        BLACKLIST_KEYWORDS.add("emergency contact");
+        BLACKLIST_KEYWORDS.add("emergency medicine");
+        BLACKLIST_KEYWORDS.add("emergency department");
+        BLACKLIST_KEYWORDS.add("non-emergency");
+        BLACKLIST_KEYWORDS.add("non emergency");
+        BLACKLIST_KEYWORDS.add("non-emergent");
+        BLACKLIST_KEYWORDS.add("non emergent");
+        BLACKLIST_KEYWORDS.add("non-expeditiously");
+        BLACKLIST_KEYWORDS.add("non expeditiously");
+        BLACKLIST_KEYWORDS.add("don't rush me");
+
+    }
+
+    private Logger logger;
+
+    public LOSGBDValidator(Logger logger) {
+        this.logger = (logger != null) ? logger : LoggerFactory.getLogger(LOSGBDValidator.class);
+    }
+
+    public MappingResult doCustomPredictionMapping(Map data, Long rootPipelineId) {
+        logInfo(rootPipelineId, "Starting Level of Service validation process");
+
+        if (data == null) {
+            logInfo(rootPipelineId, "Input map is null");
+            return new MappingResult(data);
+        }
+
+        processLevelOfService(data, rootPipelineId);
+        return new MappingResult(data);
+    }
+
+    private void processLevelOfService(Map data, Long rootPipelineId) {
+        Object levelOfServiceObj = data.get("level_of_service");
+
+        if (!(levelOfServiceObj instanceof List)) {
+            logWarn(rootPipelineId, "level_of_service is not a List: " + levelOfServiceObj);
+            return;
+        }
+
+        List levelOfServiceList = (List) levelOfServiceObj;
+        if (levelOfServiceList.isEmpty()) {
+            logInfo(rootPipelineId, "Empty level_of_service list");
+            return;
+        }
+
+        for (Object obj : levelOfServiceList) {
+            if (!(obj instanceof PostProcessingFieldsInput)) {
+                logWarn(rootPipelineId, "level_of_service list contains non-PostProcessingExecutorInput object: " + obj);
+                continue;
+            }
+
+            PostProcessingFieldsInput input = (PostProcessingFieldsInput) obj;
+            String extractedValue = input.getAnswer();
+
+            if (extractedValue == null || extractedValue.trim().isEmpty()) {
+                input.setAnswer("");
+                input.setLabel("");
+                input.setSectionAlias("");
+                input.setBBox("");
+                continue;
+            }
+
+            String levelOfService = extractedValue.trim();
+            String levelOfServicetoLower = levelOfService.replaceAll("\\s+", " ").toLowerCase();
+            boolean isUrgent = false;
+            boolean blacklistFound = false;
+            for (Object keyword : BLACKLIST_KEYWORDS) {
+                if (levelOfServicetoLower.contains((String) keyword)) {
+                    blacklistFound = true;
+                    logInfo(rootPipelineId, "Blacklist keyword found: " + keyword + ", setting all level_of_service to empty");
+                    break;
+                }
+            }
+            for (Object keyword : URGENT_KEYWORDS) {
+                if (!keyword.equals("er") && !blacklistFound
+                        && levelOfServicetoLower.contains((String) keyword)) {
+                    isUrgent = true;
+                    logInfo(rootPipelineId,
+                            "Valid level_of_service, setting to Urgent due to keyword match");
+                    break;
+                }
+            }
+
+            String finalValue = isUrgent ? "Urgent" : "";
+            input.setAnswer(finalValue);
+            if (finalValue.isEmpty()) {
+                input.setLabel("");
+                input.setSectionAlias("");
+                input.setBBox("");
+            }
+        }
+
+        data.put("level_of_service", levelOfServiceList);
+    }
+
+    private boolean hasOneAuthIdValue(Map data, Long rootPipelineId) {
+        Object authIdObj = data.get("auth_id");
+        if (!(authIdObj instanceof List)) {
+            return false;
+        }
+
+        List authIdList = (List) authIdObj;
+        int validCount = 0;
+        for (Object obj : authIdList) {
+            if (!(obj instanceof PostProcessingFieldsInput)) {
+                logWarn(rootPipelineId, "auth_id list contains non-PostProcessingExecutorInput object: " + obj);
+                continue;
+            }
+
+            PostProcessingFieldsInput input = (PostProcessingFieldsInput) obj;
+            String value = input.getAnswer();
+            if (value != null && !value.trim().isEmpty()) {
+                validCount++;
+            }
+        }
+        return validCount != 0;
+    }
+
+
+    private void logInfo(Long rootPipelineId, String message) {
+        logger.info("[RootPipelineID: " + rootPipelineId + "] " + message);
+    }
+
+    private void logWarn(Long rootPipelineId, String message) {
+        logger.warn("[RootPipelineID: " + rootPipelineId + "] " + message);
+    }
+
+    public static class MappingResult {
+        private Map mappedData;
+
+        public MappingResult(Map mappedData) {
+            this.mappedData = (mappedData != null) ? new HashMap(mappedData) : new HashMap();
+        }
+
+        public Map getMappedData() {
+            return new HashMap(mappedData);
+        }
+    }
+}

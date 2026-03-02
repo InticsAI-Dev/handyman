@@ -376,8 +376,11 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
         String encryptOutputJsonContent = action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION);
         if (Boolean.TRUE.equals(entity.getPostProcess())) {
+            log.info(aMarker, "Post processing is enabled. Invoking provider class for further processing.");
             String providerClassName = action.getContext().get(entity.getPostProcessClassName());
+            log.info(aMarker, "Provider class name fetched from action context: {}", providerClassName);
             Optional<String> sourceCode = fetchBshResultByClassName(jdbiResourceName, providerClassName, tenantId);
+            log.info(aMarker, "Source code fetched for provider class: {}", sourceCode.isPresent() ? "Found" : "Not Found");
             if (sourceCode.isPresent()) {
                 List<RadonQueryOutputTable> providerParentObj = providerDataTransformer.processProviderData(sourceCode.get(), providerClassName, modelResponse.getInferResponse(), entity, jsonInsertRequestEncrypted, response, endpoint);
                 parentObj.addAll(providerParentObj);
@@ -390,6 +393,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 extractedContent = modelResponse.getInferResponse();
             }
 
+            String sorContainerInstance = entity.getSorContainerName() + "_0";
             parentObj.add(RadonQueryOutputTable.builder()
                     .createdOn(entity.getCreatedOn())
                     .createdUserId(tenantId)
@@ -414,6 +418,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     .message("Radon kvp action macro completed")
                     .sorContainerId(entity.getSorContainerId())
                     .endpoint(String.valueOf(endpoint))
+                    .sorContainerInstance(sorContainerInstance)
                     .build()
             );
         }

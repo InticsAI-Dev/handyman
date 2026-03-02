@@ -1,0 +1,203 @@
+import org.slf4j.Logger;
+import java.time.LocalDateTime;
+
+import java.util.List;
+
+public class AumiMemberNameMapper {
+
+    private Logger logger;
+
+    public AumiMemberNameMapper(Logger logger) {
+        this.logger = logger;
+    }
+
+    public List doCustomPredictionMapping(
+            List inputs,
+            Long rootPipelineId) {
+
+        if (inputs == null || inputs.isEmpty()) {
+            return inputs;
+        }
+
+        in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput fullNameObj = getFirst(inputs, "member_full_name");
+        in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput firstNameObj = getFirst(inputs, "member_first_name");
+        in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput lastNameObj = getFirst(inputs, "member_last_name");
+
+        // ---- FULL NAME PRESENT ----
+        if (hasValue(fullNameObj)) {
+
+            NameParts parts = split(fullNameObj.getAnswer());
+
+            applyAll(
+                    inputs,
+                    fullNameObj,
+                    parts.firstName,
+                    parts.lastName,
+                    fullNameObj.getAnswer());
+            return inputs;
+        }
+
+        // ---- FIRST + LAST PRESENT ----
+        if (hasValue(firstNameObj) && hasValue(lastNameObj)) {
+            applySimple(inputs, firstNameObj, lastNameObj);
+            return inputs;
+        }
+
+        // ---- ONLY ONE PRESENT ----
+        if (hasValue(firstNameObj)) {
+            NameParts parts = split(firstNameObj.getAnswer());
+            applyAll(inputs, firstNameObj, parts.firstName, parts.lastName, "");
+        } else if (hasValue(lastNameObj)) {
+            NameParts parts = split(lastNameObj.getAnswer());
+            applyAll(inputs, lastNameObj, parts.firstName, parts.lastName, "");
+        }
+
+        return inputs;
+    }
+
+    // ------------------------------------------------------------------
+    // APPLY METHODS (LOGIC UNCHANGED)
+    // ------------------------------------------------------------------
+
+    private void applyAll(List list,
+            in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput source,
+            String firstName,
+            String lastName,
+            String fullName) {
+
+        updateList(list, "member_first_name", firstName, source);
+        updateList(list, "member_last_name", lastName, source);
+        updateList(list, "member_full_name", fullName, source);
+    }
+
+    private void applySimple(List list,
+            in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput first,
+            in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput last) {
+
+        updateList(list, "member_first_name", first.getAnswer(), first);
+        updateList(list, "member_last_name", last.getAnswer(), last);
+        updateList(list, "member_full_name", "", null);
+    }
+
+    private void updateList(List list,
+            String sorItemName,
+            String value,
+            in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput source) {
+
+        for (in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput in : list) {
+
+            if (!sorItemName.equals(in.getSorItemName())) {
+                continue;
+            }
+
+            in.setAnswer(value);
+            in.setSectionAlias(source.getSectionAlias());
+            in.setLabel(source.getLabel());
+            in.setVqaScore(source.getVqaScore());
+            in.setScore(source.getScore());
+            in.setSorContainerInstance(source.getSorContainerInstance());
+
+            if (isEmpty(value)) {
+                clearDependentFields(in);
+            } else if (source != null) {
+                copyDependentFields(source, in);
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // HELPERS
+    // ------------------------------------------------------------------
+
+    private void clearDependentFields(in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput in) {
+        in.setLabel("");
+        in.setSectionAlias("");
+        in.setBBox("");
+    }
+
+    private void copyDependentFields(in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput from,
+            in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput to) {
+
+        to.setLabel(from.getLabel());
+        to.setSectionAlias(from.getSectionAlias());
+        to.setBBox(from.getBBox());
+    }
+
+    private NameParts split(String value) {
+
+        if (value == null)
+            return new NameParts("", "");
+
+        value = value.trim();
+
+        // LAST, FIRST
+        if (value.contains(",")) {
+            String[] parts = value.split(",", 2);
+            return new NameParts(clean(parts[1]), clean(parts[0]));
+        }
+
+        String[] tokens = value.split("\\s+");
+        if (tokens.length == 1) {
+            return new NameParts(tokens[0], "");
+        }
+
+        StringBuilder first = new StringBuilder();
+        for (int i = 0; i < tokens.length - 1; i++) {
+            first.append(tokens[i]).append(" ");
+        }
+
+        return new NameParts(
+                first.toString().trim(),
+                tokens[tokens.length - 1]);
+    }
+
+    private in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput getFirst(
+            List list,
+            String sorItemName) {
+
+        for (in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput in : list) {
+            if (sorItemName.equals(in.getSorItemName())) {
+                return in;
+            }
+        }
+        return null;
+    }
+
+    private boolean hasValue(in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput in) {
+        return in != null && !isEmpty(in.getAnswer());
+    }
+
+    private boolean isEmpty(String s) {
+        return s == null || s.trim().isEmpty();
+    }
+
+    private String clean(String s) {
+        return s == null ? ""
+                : s.replaceAll("[0-9]", "")
+                        .replaceAll("\\s+", " ")
+                        .trim();
+    }
+
+    private static class NameParts {
+        String firstName;
+        String lastName;
+
+        NameParts(String f, String l) {
+            this.firstName = f;
+            this.lastName = l;
+        }
+    }
+
+    public static class MappingResult {
+        private final List mappedData;
+
+        public MappingResult(List mappedData) {
+            this.mappedData = mappedData;
+        }
+
+        public List getMappedData() {
+            return mappedData;
+        }
+    }
+
+}

@@ -1,0 +1,213 @@
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.util.*;
+import org.slf4j.Logger;
+
+import in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput;
+
+public class FaxFromDateMapper {
+
+    private Logger logger;
+
+    public FaxFromDateMapper(Logger logger) {
+        this.logger = logger;
+    }
+
+    public MappingResult doCustomPredictionMapping(Map predictionKeyMap, Long rootPipelineId) {
+        String logPrefix = "[RootPipelineID: " + rootPipelineId + "] ";
+        logger.info(logPrefix + "Entered FaxFromDateMapper.doCustomPredictionMapping method.");
+
+        if (predictionKeyMap == null) {
+            return new MappingResult(new HashMap());
+        }
+
+        Object faxDateObj = predictionKeyMap.get("fax_received_date");
+        if (faxDateObj instanceof List) {
+            List faxDateList = (List) faxDateObj;
+
+            for (int i = 0; i < faxDateList.size(); i++) {
+                Object obj = faxDateList.get(i);
+                if (obj instanceof PostProcessingFieldsInput) {
+
+                    PostProcessingFieldsInput faxFromDate =
+                            (PostProcessingFieldsInput) obj;
+                    if (faxFromDate.getAnswer() != null && !faxFromDate.getAnswer().isEmpty()) {
+                        String validatedFaxFromDate =
+                                DateValidator(faxFromDate.getAnswer(),
+                                        rootPipelineId);
+
+                        faxFromDate.setAnswer(validatedFaxFromDate);
+                        if (validatedFaxFromDate.isEmpty()) {
+                            faxFromDate.setLabel("");
+                            faxFromDate.setSectionAlias("");
+                            faxFromDate.setBBox("");
+                        }
+                    }
+                }
+            }
+            predictionKeyMap.put("fax_received_date", faxDateList);
+        } else {
+            logger.warn(logPrefix + "'fax_received_date' is not a List. Skipping processing.");
+        }
+        return new MappingResult(predictionKeyMap);
+    }
+
+    public String DateValidator(Object dateValue, Long rootPipelineId) {
+        String logPrefix = "[RootPipelineID: " + rootPipelineId + "] ";
+
+        if (dateValue instanceof String) {
+            String inputDate = ((String) dateValue).trim();
+            if (!inputDate.isEmpty()) {
+                logger.info(logPrefix + "Processing 'date' field (Input type: String).");
+
+                int currentYear = LocalDate.now().getYear();
+                boolean isTwoDigitYear = inputDate.matches("\\d{1,2}[-/:. ]\\d{1,2}[-/:. ]\\d{2}(?!\\d)");
+                logger.debug(logPrefix + "isTwoDigitYear: " + isTwoDigitYear);
+
+                Date parsedDate = parseDate(inputDate);
+                logger.debug(logPrefix + "Parsed date from parseDate: " + parsedDate);
+
+                if (parsedDate != null) {
+                    if (isTwoDigitYear) {
+                        logger.info(logPrefix + "Detected two-digit year in Date:");
+                        parsedDate = convertTwoDigitYearToFourDigit(inputDate, currentYear, logPrefix);
+                        logger.debug(logPrefix + "Date after convertTwoDigitYearToFourDigit:");
+                    }
+
+                    if (parsedDate != null) {
+                        SimpleDateFormat outputFormatter = new SimpleDateFormat("MM-dd-yyyy HH:mm:ss");
+                        String formattedDate = outputFormatter.format(parsedDate);
+                        logger.info(logPrefix + "Date formatted successfully.");
+                        return formattedDate;
+                    } else {
+                        logger.warn(logPrefix + "Date mapping failed after two-digit year conversion.");
+                        return "";
+                    }
+                } else {
+                    logger.warn(logPrefix + "Date mapping failed for 'fax_received_date'. Removed based on configuration.");
+                    return "";
+                }
+            } else {
+                logger.info(logPrefix + "Input is null or empty. Skipping processing.");
+            }
+        } else if (dateValue == null) {
+            logger.info(logPrefix + "Input is null. Skipping processing.");
+            return "";
+        } else {
+            logger.info(logPrefix + "Date is not a String (Type: {}). Skipping processing.", dateValue.getClass().getName());
+            return "";
+        }
+        return "";
+    }
+
+    private Date parseDate(String dateStr) {
+        dateStr = normalizeDateString(dateStr);
+
+        String[] datePatterns = {
+                // --- Time-inclusive patterns (handle AM/PM) ---
+                "MM/dd/yyyy hh:mm:ss a",
+                "M/d/yyyy hh:mm:ss a",
+                "MM-dd-yyyy hh:mm:ss a",
+                "M-d-yyyy hh:mm:ss a",
+                "yyyy-MM-dd hh:mm:ss a",
+                "yyyy/MM/dd hh:mm:ss a",
+                "MM.dd.yyyy hh:mm:ss a",
+
+                // --- 24-hour (railway) formats ---
+                "MM/dd/yyyy HH:mm:ss",
+                "M/d/yyyy HH:mm:ss",
+                "MM-dd-yyyy HH:mm:ss",
+                "M-d-yyyy HH:mm:ss",
+                "yyyy-MM-dd HH:mm:ss",
+                "yyyy/MM/dd HH:mm:ss",
+                "MM.dd.yyyy HH:mm:ss",
+
+                // --- date-only formats (fallbacks) ---
+                "MM/dd/yyyy", "M/d/yyyy", "MM-dd-yyyy", "M-d-yyyy",
+                "yyyy-MM-dd", "yyyy/MM/dd", "MM.dd.yyyy", "M.d.yyyy"
+        };
+
+        for (String pattern : datePatterns) {
+            try {
+                SimpleDateFormat formatter = new SimpleDateFormat(pattern, Locale.ENGLISH);
+                formatter.setLenient(false);
+                return formatter.parse(dateStr);
+            } catch (ParseException e) {
+                // ignore silently
+            }
+        }
+
+        logger.warn("Failed to parse date: " + dateStr);
+        return null;
+    }
+
+    private String normalizeDateString(String dateStr) {
+        if (dateStr == null) return null;
+
+        dateStr = dateStr.replaceAll("\\b(ET|EST|EDT|CST|CDT|PST|PDT|UTC|GMT)\\b", "");
+
+        dateStr = dateStr.replaceAll("(?i)am", "AM").replaceAll("(?i)pm", "PM");
+
+        dateStr = dateStr.replaceAll("[^a-zA-Z0-9:/\\- .]", "").trim();
+
+        dateStr = dateStr.replaceAll(" +", " ");
+
+        return dateStr;
+    }
+
+    public static class MappingResult {
+        private Map mappedData;
+        public MappingResult(Map mappedData) {
+            this.mappedData = mappedData != null ? mappedData : new java.util.HashMap();
+        }
+        public Map getMappedData() {
+            return mappedData;
+        }
+    }
+
+    private Date convertTwoDigitYearToFourDigit(String dob, int currentYear, String logPrefix) {
+        String[] patterns = {"MM/dd/yy", "dd/MM/yy", "MM dd yy", "dd MM yy", "MM-dd-yy", "MM.dd.yy"};
+        Date parsed = null;
+
+        for (String pattern : patterns) {
+            try {
+                SimpleDateFormat fmt = new SimpleDateFormat(pattern, Locale.ENGLISH);
+                fmt.setLenient(false);
+                parsed = fmt.parse(dob);
+                logger.debug(logPrefix + "Parsed successfully with pattern: " + pattern);
+                break;
+            } catch (ParseException ignored) {}
+        }
+
+        if (parsed == null) {
+            logger.error(logPrefix + "Unable to parse DATE. The date is being set as null value.");
+            return null;
+        }
+
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(parsed);
+        int yy = cal.get(Calendar.YEAR);
+
+        if (yy < 100) {
+            int pivot = (currentYear % 100) + 10;
+            int century = currentYear / 100;
+            if (yy <= pivot) {
+                cal.set(Calendar.YEAR, century * 100 + yy);
+            } else {
+                cal.set(Calendar.YEAR, (century - 1) * 100 + yy);
+            }
+            logger.info(logPrefix + "Two-digit year mapped to full year.");
+        }
+
+        Calendar currentCal = Calendar.getInstance();
+        if (cal.after(currentCal)) {
+            cal.add(Calendar.YEAR, -100);
+            logger.info(logPrefix + "Adjusted future year to past.");
+        }
+
+        logger.debug(logPrefix + "Final converted date: " + cal.getTime());
+        return cal.getTime();
+    }
+
+}

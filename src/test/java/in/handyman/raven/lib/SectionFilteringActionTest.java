@@ -33,17 +33,18 @@ public class SectionFilteringActionTest {
         final SectionFiltering build = SectionFiltering.builder()
                 .condition(true)
                 .name("Test section Filtering")
-                .outputTable("sor_transaction.selection_over_filtering_output_audit")
-                .inputTable("transit_data.selection_over_filtering_input_8677")
-                .resourceConn("intics_zio_db_conn")
+                .outputTable("extraction.selection_over_filtering_output_audit")
+                .inputTable("extraction.selection_over_filtering_output_audit")
+                .resourceConn("intics_zio_db_conn_tsar")
                 .querySet("SELECT id, created_on, created_user_id, last_updated_on, last_updated_user_id, tenant_id, group_id,\n" +
                         "                    root_pipeline_id, batch_id, model_registry, sor_container_id, sor_container_name,\n" +
                         "                    sor_item_name, sor_item_label, section_alias, answer, confidence, bbox,\n" +
                         "                    bbox_asis, paper_no, origin_id, extracted_image_unit, image_dpi, image_height,\n" +
                         "                    image_width, blacklisted_labels,\n" +
-                        "                    blacklisted_sections, is_encrypted, encryption_policy,whitelisted_labels,whitelisted_labels_with_priority\n" +
-                        "             from transit_data.selection_over_filtering_input_8677 a;" +
-                        "             ")
+                        "                    blacklisted_sections, is_encrypted, encryption_policy,whitelisted_labels,\n" +
+                        "                    whitelisted_labels_with_priority,sor_container_instance,whitelisted_sections_with_priority,\n" +
+                        "                    'single_value' as line_item_type,false as is_multi_entity_enabled" +
+                        "                 from extraction.selection_over_filtering_input_audit a where origin_id='ORIGIN-500' and sor_item_name='member_id';")
                 .build();
 
         String encryptionUrl = "http://localhost:8190/vulcan/api/encryption/encrypt";
@@ -54,7 +55,7 @@ public class SectionFilteringActionTest {
         action.setProcessId(12345L);
         action.getContext().put("validation.multiverse-mode", "true");
         action.getContext().put("validation.restricted-answers", "No,None of the above");
-        action.getContext().put(ENCRYPT_ITEM_WISE_ENCRYPTION, "true");
+        action.getContext().put(ENCRYPT_ITEM_WISE_ENCRYPTION, "false");
         action.getContext().put("validaiton.char-limit-count", "1");
         action.getContext().put("llm.json.parser.label.encryption", "true");
 
@@ -70,6 +71,7 @@ public class SectionFilteringActionTest {
         action.getContext().put("scalar.adapter.phone_reg.activator", "false");
         action.getContext().put("scalar.adapter.numeric_reg.activator", "false");
         action.getContext().put("temp_schema_name", "transist_data");
+        action.getContext().put("section.filtering.label.with.priority","true");
 
         action.getContext().put("date.input.formats", "M/d/yy;MM/dd/yyyy;MM/dd/yy;MM.dd.yyyy;MM.dd.yy;M.dd.yyyy;M.d.yyyy;MM-dd-yyyy;MM-dd-yy;M-dd-yyyy;M-dd-yy;M/d/yyyy;M/dd/yyyy;yyyy-MM-dd;yyyy/MM/dd;dd-MM-yyyy;dd/MM/yyyy;d/M/yyyy;MMM dd, yyyy;dd-MMM-yyyy;dd/yyyy/MM;dd-yyyy-MM;yyyyMMdd;MMddyyyy;yyyyddMM;dd MMM yyyy;dd.MM.yyyy;dd MMMM yyyy;MMMM dd, yyyy;EEE, dd MMM yyyy;EEEE, MMM dd, yyyy");
         action.getContext().put("pipeline.encryption.default.holder", "PROTEGRITY_API_ENC");

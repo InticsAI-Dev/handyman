@@ -1,0 +1,284 @@
+import java.util.ArrayList;
+import java.util.Hashtable;
+import java.util.List;
+import java.util.Map;
+import org.slf4j.Logger;
+
+/**
+ * VALIDATION ONLY VERSION
+ *
+ * No parsing.
+ * No pipe splitting.
+ * No OCR cleanup logic.
+ *
+ * Assumes values are already separated.
+ */
+public class ServiceCodeValidator {
+
+    private Logger logger;
+
+    private final List serviceCodes = new ArrayList();
+    private final List modifiers = new ArrayList();
+    private final List units = new ArrayList();
+    private final List visits = new ArrayList();
+
+    public ServiceCodeValidator(Logger logger) {
+        this.logger = logger;
+    }
+
+    // =========================================================
+    // MAIN MAPPING
+    // =========================================================
+    public MappingResult doCustomPredictionMapping(
+            Map predictionMap,
+            Long rootPipelineId) {
+
+        if (predictionMap == null)
+            predictionMap = new Hashtable();
+
+        Object svcObj =
+                predictionMap.get("service_code");
+        Object unitObj =
+                predictionMap.get("service_quantity_units");
+        Object visitObj =
+                predictionMap.get("service_quantity_visits");
+        Object modObj =
+                predictionMap.get("service_code_modifier");
+
+        if (svcObj instanceof List
+                && unitObj instanceof List
+                && visitObj instanceof List
+                && modObj instanceof List) {
+
+            List svcList = (List) svcObj;
+            List unitList = (List) unitObj;
+            List visitList = (List) visitObj;
+            List modList = (List) modObj;
+
+            for (int i = 0; i < svcList.size(); i++) {
+
+                in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput svc =
+                        safeGet(svcList, i);
+
+                in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput unit =
+                        safeGet(unitList, i);
+
+                in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput visit =
+                        safeGet(visitList, i);
+
+                in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput mod =
+                        safeGet(modList, i);
+
+                clearLists();
+
+                validateServiceData(
+                        svc != null ? svc.getAnswer() : null,
+                        mod != null ? mod.getAnswer() : null,
+                        unit != null ? unit.getAnswer() : null,
+                        visit != null ? visit.getAnswer() : null);
+
+                if (svc != null)
+                    svc.setAnswer(join(serviceCodes));
+
+                if (unit != null)
+                    unit.setAnswer(join(units));
+
+                if (visit != null)
+                    visit.setAnswer(join(visits));
+
+                if (mod != null)
+                    mod.setAnswer(join(modifiers));
+
+                if (svc != null) ensureStarIfEmpty(svc);
+                if (unit != null) ensureStarIfEmpty(unit);
+                if (visit != null) ensureStarIfEmpty(visit);
+                if (mod != null) ensureStarIfEmpty(mod);
+            }
+
+            predictionMap.put("service_code", svcList);
+            predictionMap.put("service_quantity_units", unitList);
+            predictionMap.put("service_quantity_visits", visitList);
+            predictionMap.put("service_code_modifier", modList);
+        }
+
+        return new MappingResult(
+                new Hashtable(predictionMap),
+                new ArrayList());
+    }
+
+    private in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput safeGet(List list, int index) {
+
+        if (list == null)
+            return null;
+
+        if (index >= list.size())
+            return null;
+
+        Object obj = list.get(index);
+
+        if (obj instanceof
+                in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput)
+            return (in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput) obj;
+
+        return null;
+    }
+
+    // =========================================================
+    // VALIDATION LOGIC ONLY
+    // =========================================================
+    private void validateServiceData(
+            String svc,
+            String mods,
+            String unitStr,
+            String visitStr) {
+
+        if (svc == null || svc.trim().isEmpty()) {
+            addEntry("*", "*", "*", "*");
+            return;
+        }
+
+        String[] codes = splitSafe(svc);
+        String[] modArr = splitSafe(mods);
+        String[] unitArr = splitSafe(unitStr);
+        String[] visitArr = splitSafe(visitStr);
+
+        for (int i = 0; i < codes.length; i++) {
+
+            String code =
+                    normalizeCode(getValue(codes, i));
+
+            String modifier =
+                    normalizeModifier(getValue(modArr, i));
+
+            String unit =
+                    normalizeNumber(getValue(unitArr, i));
+
+            String visit =
+                    normalizeNumber(getValue(visitArr, i));
+
+            addEntry(code, modifier, unit, visit);
+        }
+    }
+
+    // =========================================================
+    // NORMALIZERS
+    // =========================================================
+
+    private String normalizeCode(String code) {
+        if (code == null)
+            return "*";
+
+        code = keepAlnum(code.toUpperCase());
+
+        return code.matches("[A-Z0-9]{5,6}")
+                ? code
+                : "*";
+    }
+
+    private String normalizeModifier(String mod) {
+
+        if (mod == null || mod.trim().isEmpty())
+            return "*";
+
+        mod = mod.trim().toUpperCase();
+
+        return mod.matches("[A-Z0-9]{2}")
+                ? mod
+                : "*";
+    }
+
+    private String normalizeNumber(String val) {
+
+        if (val == null || val.trim().isEmpty())
+            return "*";
+
+        val = val.replaceAll("[^0-9]", "");
+
+        if (val.length() == 0)
+            return "*";
+
+        val = val.replaceFirst("^0+", "");
+
+        return val.length() == 0 ? "0" : val;
+    }
+
+    // =========================================================
+    // HELPERS
+    // =========================================================
+
+    private void addEntry(String c, String m, String u, String v) {
+        serviceCodes.add(c);
+        modifiers.add(m);
+        units.add(u);
+        visits.add(v);
+    }
+
+    private void clearLists() {
+        serviceCodes.clear();
+        modifiers.clear();
+        units.clear();
+        visits.clear();
+    }
+
+    private String[] splitSafe(String input) {
+        if (input == null || input.trim().isEmpty())
+            return new String[0];
+
+        return input.split(",");
+    }
+
+    private String getValue(String[] arr, int index) {
+        return index < arr.length
+                ? arr[index]
+                : "*";
+    }
+
+    private String keepAlnum(String s) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < s.length(); i++)
+            if (Character.isLetterOrDigit(s.charAt(i)))
+                sb.append(s.charAt(i));
+        return sb.toString();
+    }
+
+    private String join(List list) {
+        if (list == null || list.isEmpty())
+            return "*";
+
+        StringBuilder sb = new StringBuilder();
+
+        for (int i = 0; i < list.size(); i++) {
+            if (i > 0) sb.append(",");
+            sb.append(list.get(i));
+        }
+
+        return sb.toString();
+    }
+
+    private void ensureStarIfEmpty(
+            in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput obj) {
+
+        if (obj.getAnswer() == null
+                || obj.getAnswer().trim().isEmpty()) {
+            obj.setAnswer("*");
+        }
+    }
+
+    // =========================================================
+    // RESULT WRAPPER
+    // =========================================================
+    public static class MappingResult {
+
+        private Map data;
+        private List logs;
+
+        public MappingResult(Map d, List l) {
+            this.data = d;
+            this.logs = l;
+        }
+
+        public Map getMappedData() {
+            return data;
+        }
+    }
+}

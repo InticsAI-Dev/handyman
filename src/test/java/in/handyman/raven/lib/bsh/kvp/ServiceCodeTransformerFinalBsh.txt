@@ -1,0 +1,118 @@
+import java.util.*;
+import org.slf4j.Logger;
+
+public class ServiceCodeTransformerFinalBsh {
+
+    private Logger logger;
+
+    public ServiceCodeTransformerFinalBsh() {
+    }
+
+    public ServiceCodeTransformerFinalBsh(Logger logger) {
+        this.logger = logger;
+        if (logger != null) logger.info("ServiceCodeTransformerFinalBsh initialized");
+    }
+
+    public List processProviders(Object input) {
+
+        log("Starting processProviders for service codes");
+
+        List inputList = null;
+
+        // Handle Map input
+        if (input instanceof Map) {
+            Map inputMap = (Map) input;
+
+            if (inputMap.containsKey("service")) {
+                inputList = (List) inputMap.get("service");
+            } else {
+                Collection values = inputMap.values();
+                if (!values.isEmpty() && values.iterator().next() instanceof List) {
+                    inputList = (List) values.iterator().next();
+                }
+            }
+        }
+        // Handle direct List input
+        else if (input instanceof List) {
+            inputList = (List) input;
+        }
+
+        if (inputList == null) {
+            log("No valid list found in input object.");
+            return new ArrayList();
+        }
+
+        List result = new ArrayList();
+
+        for (int i = 0; i < inputList.size(); i++) {
+
+            Object itemObj = inputList.get(i);
+            if (!(itemObj instanceof Map)) continue;
+
+            Map item = (Map) itemObj;
+
+            String serviceCodesRaw = getString(item, "service_code");
+            String modifiersRaw = getString(item, "modifiers");
+            String unitsRaw = getString(item, "units");
+            String visitsRaw = getString(item, "visits");
+            String label = getString(item, "source_label");
+            String sectionAlias = getString(item, "section_alias");
+
+            String[] codes = serviceCodesRaw.split(",");
+            String[] mods = modifiersRaw.split(",");
+            String[] units = unitsRaw.split(",");
+            String[] visits = visitsRaw.split(",");
+
+            for (int k = 0; k < codes.length; k++) {
+
+                String code = codes[k].trim();
+                if (code.length() == 0) continue;
+
+                String mod = (k < mods.length) ? mods[k].trim() : "";
+                String unit = (k < units.length) ? units[k].trim() : "";
+                String visit = (k < visits.length) ? visits[k].trim() : "";
+
+                String containerInstance = "SERVICE_CODE_" + (i + 1);
+
+                // Add each field as separate object
+                result.add(createOutput("service_code", code, label, sectionAlias, containerInstance));
+                result.add(createOutput("service_modifiers", mod, label, sectionAlias, containerInstance));
+                result.add(createOutput("service_units", unit, label, sectionAlias, containerInstance));
+                result.add(createOutput("service_visits", visit, label, sectionAlias, containerInstance));
+            }
+        }
+
+        log("Ended processProviders for service codes");
+        return result;
+    }
+
+    private Hashtable createOutput(String key, String value,
+                                    String label, String sectionAlias,
+                                    String containerInstance) {
+
+        Hashtable outputItem = new Hashtable();
+
+        outputItem.put("key", key);
+        outputItem.put("value", value != null ? value : "");
+        outputItem.put("source_label", label);
+        outputItem.put("section_alias", sectionAlias);
+        outputItem.put("sorContainerName", containerInstance);
+
+        outputItem.put("confidence", Double.valueOf(100.0));
+
+        // Empty boundingBox as Hashtable (important!)
+        Hashtable boundingBox = new Hashtable();
+        outputItem.put("boundingBox", boundingBox);
+
+        return outputItem;
+    }
+
+    private String getString(Map map, String key) {
+        Object val = map.get(key);
+        return val != null ? val.toString() : "";
+    }
+
+    private void log(String msg) {
+        if (logger != null) logger.info(msg);
+    }
+}

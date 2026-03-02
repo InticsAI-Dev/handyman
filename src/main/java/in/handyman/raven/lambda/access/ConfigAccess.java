@@ -2,9 +2,11 @@ package in.handyman.raven.lambda.access;
 
 import in.handyman.raven.lambda.access.repo.HandymanRepo;
 import in.handyman.raven.lambda.access.repo.HandymanRepoImpl;
+import in.handyman.raven.lambda.doa.config.SpwBshConfig;
 import in.handyman.raven.lambda.doa.config.SpwResourceConfig;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -25,6 +27,7 @@ public class ConfigAccess {
         return REPO.getCommonConfig();
     }
 
+
     public static Set<String> getPackageAction() {
         return REPO.getPackageAction();
     }
@@ -36,6 +39,11 @@ public class ConfigAccess {
             }
         }
         return pipelineName;
+    }
+
+
+    public static List<SpwBshConfig> findAllBshClassesByTenantId(Long tenantId) {
+        return REPO.findAllBshClassesByTenantId(tenantId);
     }
 
 }
