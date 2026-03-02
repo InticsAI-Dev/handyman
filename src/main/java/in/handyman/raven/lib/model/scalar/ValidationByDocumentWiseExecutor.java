@@ -63,7 +63,6 @@ public class ValidationByDocumentWiseExecutor {
 
         List<String> scriptClasses = loadScriptOrder();
         List<DocumentWisePostProcessingInput> resultInputs = executeScripts(scriptClasses, originInputs);
-        updateInputs(originInputs, resultInputs);
 
         long duration = System.currentTimeMillis() - start;
         log.info("END validation for origin {} ({} ms)", originId, duration);
@@ -183,74 +182,4 @@ public class ValidationByDocumentWiseExecutor {
         }
     }
 
-    private void updateInputs(List<DocumentWisePostProcessingInput> originalInputs, List<DocumentWisePostProcessingInput> resultInputs) {
-        if (resultInputs == null || resultInputs.isEmpty()) {
-            log.warn("Result inputs list is null or empty, no updates will be made");
-            return;
-        }
-
-        // Create a map using sor_item_id + origin_id + question_id + synonym_id as composite key
-        Map<String, DocumentWisePostProcessingInput> resultMap = resultInputs.stream()
-                .filter(p -> p.getSorItemId() != null && p.getOriginId() != null)
-                .collect(Collectors.toMap(
-                        p -> p.getSorItemId() + "_" + p.getOriginId() + "_" + 
-                             (p.getQuestionId() != null ? p.getQuestionId() : "null") + "_" +
-                             (p.getSynonymId() != null ? p.getSynonymId() : "null"),
-                        p -> p,
-                        (existing, replacement) -> replacement
-                ));
-
-        int updatedCount = 0;
-        for (DocumentWisePostProcessingInput original : originalInputs) {
-            if (original.getSorItemId() != null && original.getOriginId() != null) {
-                String key = original.getSorItemId() + "_" + original.getOriginId() + "_" +
-                            (original.getQuestionId() != null ? original.getQuestionId() : "null") + "_" +
-                            (original.getSynonymId() != null ? original.getSynonymId() : "null");
-                DocumentWisePostProcessingInput updated = resultMap.get(key);
-                if (updated != null) {
-                    updateInputFields(original, updated);
-                    updatedCount++;
-                }
-            }
-        }
-
-        log.info("Updated {} records out of {} original records", updatedCount, originalInputs.size());
-    }
-
-    private void updateInputFields(DocumentWisePostProcessingInput original, DocumentWisePostProcessingInput updated) {
-        if (updated.getPredictedValue() != null) {
-            if (Objects.equals(original.getPredictedValue(), updated.getPredictedValue())) {
-                log.debug("Predicted value unchanged for sorItemId: {}, originId: {}", original.getSorItemId(), original.getOriginId());
-            } else if (!updated.getPredictedValue().isEmpty()) {
-                log.info("Updating predicted value for sorItemId: {}, originId: {} from '{}' to '{}'", 
-                        original.getSorItemId(), original.getOriginId(), original.getPredictedValue(), updated.getPredictedValue());
-                original.setPredictedValue(updated.getPredictedValue());
-            } else {
-                log.info("Predicted value emptied for sorItemId: {}, originId: {}, clearing related fields", 
-                        original.getSorItemId(), original.getOriginId());
-                original.setPredictedValue("");
-                original.setPrecision(0.0);
-                original.setLeftPos(0.0);
-                original.setUpperPos(0.0);
-                original.setRightPos(0.0);
-                original.setLowerPos(0.0);
-            }
-        }
-
-        if (updated.getPrecision() != null) {
-            original.setPrecision(updated.getPrecision());
-        }
-        if (updated.getLeftPos() != null) {
-            original.setLeftPos(updated.getLeftPos());
-        }
-        if (updated.getUpperPos() != null) {
-            original.setUpperPos(updated.getUpperPos());
-        }
-        if (updated.getRightPos() != null) {
-            original.setRightPos(updated.getRightPos());
-        }
-        if (updated.getLowerPos() != null) {
-            original.setLowerPos(updated.getLowerPos());
-        }
-    }
 }
