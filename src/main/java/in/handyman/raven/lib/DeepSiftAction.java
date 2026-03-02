@@ -38,15 +38,14 @@ import static in.handyman.raven.core.enums.FileProcessConstants.COPRO_API_FILE_I
 @ActionExecution(actionName = "DeepSift")
 public class DeepSiftAction implements IActionExecution {
 
-    public static final String INSERT_COLUMNS =
-            "origin_id, group_id, input_file_path, created_on, created_by, root_pipeline_id, " +
-                    "tenant_id, batch_id, extracted_text, paper_no, source_document_type, model_id, " +
-                    "model_name, timetaken_ms, status, request, response, endpoint, word_count, is_blank_page";
+    public static final String INSERT_COLUMNS = "origin_id, group_id, input_file_path, created_on, created_by, root_pipeline_id, "
+            +
+            "tenant_id, batch_id, extracted_text, paper_no, source_document_type, model_id, " +
+            "model_name, timetaken_ms, status, request, response, endpoint, word_count, is_blank_page";
     public static final String INSERT_INTO = "INSERT INTO ";
-    public static final String INSERT_INTO_VALUES =
-            "VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-    public static final String DEEP_SIFT_CONSUMER_API_COUNT = "deep.sift.consumer.API.count";
+    public static final String INSERT_INTO_VALUES = "VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     public static final String PAGE_CONTENT_MIN_LENGTH = "deep.sift.page.content.min.length.threshold";
+    public static final String DEEP_SIFT_ROUTE_TESS4J = "deep.sift.route.tess4j";
     private final ActionExecutionAudit action;
 
     private final Logger log;
@@ -59,7 +58,8 @@ public class DeepSiftAction implements IActionExecution {
         this.DeepSift = (DeepSift) DeepSift;
         this.action = action;
         this.log = log;
-        this.processBase64 = action.getContext().getOrDefault(COPRO_API_FILE_INPUT_FORMAT, ProcessFileFormatE.BASE64.name());
+        this.processBase64 = action.getContext().getOrDefault(COPRO_API_FILE_INPUT_FORMAT,
+                ProcessFileFormatE.BASE64.name());
 
         this.aMarker = MarkerFactory.getMarker(" DeepSift:" + this.DeepSift.getName());
     }
@@ -74,23 +74,28 @@ public class DeepSiftAction implements IActionExecution {
             log.info(aMarker, "Deep Sift Action for {} has been started", DeepSift.getName());
 
             String outputTableName = DeepSift.getResultTable();
-            final String insertQuery = INSERT_INTO + outputTableName + " ( " + INSERT_COLUMNS + " ) " + INSERT_INTO_VALUES;
-            final List<URL> urls = Optional.ofNullable(DeepSift.getEndPoint()).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
-                try {
-                    return new URL(s1);
-                } catch (MalformedURLException e) {
-                    log.error("Error in processing the URL ", e);
-                    throw new HandymanException("Error in processing the URL", e, action);
-                }
-            }).collect(Collectors.toList())).orElse(Collections.emptyList());
+            final String insertQuery = INSERT_INTO + outputTableName + " ( " + INSERT_COLUMNS + " ) "
+                    + INSERT_INTO_VALUES;
+            final List<URL> urls = Optional.ofNullable(DeepSift.getEndPoint())
+                    .map(s -> Arrays.stream(s.split(",")).map(s1 -> {
+                        try {
+                            return new URL(s1);
+                        } catch (MalformedURLException e) {
+                            log.error("Error in processing the URL ", e);
+                            throw new HandymanException("Error in processing the URL", e, action);
+                        }
+                    }).collect(Collectors.toList())).orElse(Collections.emptyList());
 
-            final CoproProcessor<DeepSiftInputTable, DeepSiftOutputTable> coproProcessor = new CoproProcessor<>(new LinkedBlockingQueue<>(), DeepSiftOutputTable.class, DeepSiftInputTable.class, DeepSift.getResourceConn(), log, new DeepSiftInputTable(), urls, action);
+            final CoproProcessor<DeepSiftInputTable, DeepSiftOutputTable> coproProcessor = new CoproProcessor<>(
+                    new LinkedBlockingQueue<>(), DeepSiftOutputTable.class, DeepSiftInputTable.class,
+                    DeepSift.getResourceConn(), log, new DeepSiftInputTable(), urls, action);
 
             Integer readBatchSize = Integer.valueOf(action.getContext().get(DB_SELECT_READ_BATCH_SIZE));
-            final int consumerApiCount = Optional.ofNullable(DeepSift.getForkBatchSize()).map(Integer::valueOf).orElse(0);
+            final int consumerApiCount = Optional.ofNullable(DeepSift.getForkBatchSize()).map(Integer::valueOf)
+                    .orElse(0);
             Integer writeBatchSize = Integer.valueOf(action.getContext().get(DB_INSERT_WRITE_BATCH_SIZE));
-            Integer pageContentMinLength = Integer.valueOf(action.getContext().get(PAGE_CONTENT_MIN_LENGTH));
-            DeepSiftConsumerProcess DeepSiftConsumerProcess = new DeepSiftConsumerProcess(log, aMarker, action, pageContentMinLength, fileProcessingUtils, processBase64);
+            DeepSiftConsumerProcess DeepSiftConsumerProcess = new DeepSiftConsumerProcess(log, aMarker, action,
+                    fileProcessingUtils, processBase64);
 
             coproProcessor.startProducer(DeepSift.getQuerySet(), readBatchSize);
             Thread.sleep(1000);
