@@ -24,10 +24,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-/**
- * Consumer process for table extraction using Qwen VLM model
- * Processes one page at a time and returns markdown table format
- */
+
 public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerProcess<TableExtractionInputTable, TableExtractionOutputTable> {
 
     private final Logger log;
@@ -121,7 +118,7 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                             .pageNumber(entity.getPageNumber())
                             .markdownTable(markdownTable)
                             .status(status)
-                            .modelName("Qwen2-VL-72B-Instruct")
+                            .modelName("")
                             .errorMessage(null)
                             .durationTime(durationSeconds)
                             .batchId(entity.getBatchId())
@@ -154,9 +151,6 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
         return results;
     }
 
-    /**
-     * Read image file and encode to base64
-     */
     private String readAndEncodeImage(String filePath) throws Exception {
         File imageFile = new File(filePath);
         if (!imageFile.exists()) {
@@ -169,10 +163,7 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
         return Base64.getEncoder().encodeToString(imageBytes);
     }
 
-    /**
-     * Build Triton/KServe format payload for table extraction
-     * CRITICAL: Must include "process": "DATA_EXTRACTION" field
-     */
+
     private String buildTritonPayload(TableExtractionInputTable entity, String base64Image) throws Exception {
         // Build nested data structure
         ObjectNode nestedData = mapper.createObjectNode();
@@ -183,7 +174,7 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
         nestedData.put("base64Img", base64Image);
         nestedData.put("userPrompt", entity.getUserPrompt());
         nestedData.put("systemPrompt", entity.getSystemPrompt());
-        nestedData.put("process", "DATA_EXTRACTION");  // CRITICAL for Qwen server
+        nestedData.put("process", "DATA_EXTRACTION");
         nestedData.put("processId", entity.getProcessId());
         nestedData.put("batchId", entity.getBatchId());
         nestedData.put("rootPipelineId", entity.getRootPipelineId());
@@ -201,9 +192,7 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
         return mapper.writeValueAsString(tritonPayload);
     }
 
-    /**
-     * Build failed result output
-     */
+
     private TableExtractionOutputTable buildFailedResult(TableExtractionInputTable entity,
                                                           String errorMessage,
                                                           double durationSeconds) {
@@ -214,7 +203,7 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                 .pageNumber(entity.getPageNumber())
                 .markdownTable(null)
                 .status("FAILED")
-                .modelName("Qwen2-VL-72B-Instruct")
+                .modelName("")
                 .errorMessage(errorMessage)
                 .durationTime(durationSeconds)
                 .batchId(entity.getBatchId())
