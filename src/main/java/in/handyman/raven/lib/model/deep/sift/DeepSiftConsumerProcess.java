@@ -13,7 +13,7 @@ import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.core.encryption.SecurityEngine;
 import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.core.utils.FileProcessingUtils;
-import net.sourceforge.tess4j.TesseractException;
+
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
@@ -26,6 +26,7 @@ import java.util.concurrent.TimeUnit;
 
 import net.sourceforge.tess4j.ITesseract;
 import net.sourceforge.tess4j.Tesseract;
+import net.sourceforge.tess4j.TesseractException;
 
 import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_DEEP_SIFT_OUTPUT;
 import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
