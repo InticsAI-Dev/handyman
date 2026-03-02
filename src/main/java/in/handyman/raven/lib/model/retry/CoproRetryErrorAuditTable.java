@@ -39,5 +39,6 @@ public class CoproRetryErrorAuditTable {
     private String coproLog;
     private String coproDetails;
     private String requestId;
+    private Boolean criticalDataPresent;
 
 }

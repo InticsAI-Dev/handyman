@@ -248,7 +248,6 @@ public class AlchemyResponseAction implements IActionExecution {
         try {
             switch (Feature.valueOf(input.getFeature())) {
                 case KIE:
-                case CHECKBOX_EXTRACTION:
                     request.setBbox(objectMapper.readTree(input.getBbox()));
                     request.setConfidenceScore(input.getConfidenceScore());
                     request.setExtractedValue(input.getExtractedValue());
@@ -256,6 +255,27 @@ public class AlchemyResponseAction implements IActionExecution {
                     request.setQuestionId(input.getQuestionId());
                     request.setBatchId(input.getBatchId());
                     request.setSorContainerInstance(input.getSorContainerInstance());
+                    break;
+
+                case CHECKBOX_EXTRACTION:
+                    if (input.getConfidenceScore() != null) {
+                        request.setConfidenceScore(input.getConfidenceScore());
+                    }
+                    if (input.getSynonymId() != null) {
+                        request.setSynonymId(input.getSynonymId());
+                    }
+                    if (input.getQuestionId() != null) {
+                        request.setQuestionId(input.getQuestionId());
+                    }
+                    if (input.getSorItemId() != null) {
+                        request.setSorItemId(input.getSorItemId());
+                    }
+                    if (input.getBatchId() != null) {
+                        request.setBatchId(input.getBatchId());
+                    }
+                    if (input.getCheckboxData() != null && !input.getCheckboxData().isEmpty()) {
+                        request.setCheckboxData(objectMapper.readTree(input.getCheckboxData()));
+                    }
                     break;
 
                 case TABLE_EXTRACT:
