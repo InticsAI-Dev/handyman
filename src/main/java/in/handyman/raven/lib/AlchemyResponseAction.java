@@ -492,6 +492,7 @@ public class AlchemyResponseAction implements IActionExecution {
         private String rightPos;
         private String lowerPos;
         private String sorContainerInstance;
+        private String checkboxData;
 
 
         @Override
@@ -532,6 +533,7 @@ public class AlchemyResponseAction implements IActionExecution {
         private JsonNode paragraphPoints;
         private String encode;
         private String sorContainerInstance;
+        private JsonNode checkboxData;
     }
 
 
