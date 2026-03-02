@@ -1,6 +1,5 @@
 package in.handyman.raven;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.lambda.access.repo.HandymanRepo;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.retry.CoproRetryErrorAuditTable;
@@ -8,7 +7,6 @@ import in.handyman.raven.lib.model.retry.CoproRetryService;
 import okhttp3.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.slf4j.Logger;
 
 import java.lang.reflect.Method;

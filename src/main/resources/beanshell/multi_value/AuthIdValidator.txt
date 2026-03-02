@@ -1,0 +1,200 @@
+import org.slf4j.Logger;
+import java.util.*;
+
+import in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput;
+public class AuthIdValidator {
+
+    private Logger logger;
+
+    public AuthIdValidator(Logger logger) { this.logger = logger; }
+
+    public MappingResult doCustomPredictionMapping(Map predictionKeyMap, Long rootPipelineId) {
+        logger.info("[RootPipelineID: " + rootPipelineId + "] Starting Auth ID mapping process");
+
+        if (predictionKeyMap != null) {
+            processAuthAndMemberIds(predictionKeyMap, rootPipelineId);
+        } else {
+            logger.info("[RootPipelineID: " + rootPipelineId + "] Input map is null");
+            Map result = new HashMap();
+            result.put("auth_id", new ArrayList());
+            result.put("member_id", "");
+            result.put("additional_auth_properties", new ArrayList());
+            return new MappingResult(result);
+        }
+
+        return new MappingResult(predictionKeyMap);
+    }
+
+    private void processAuthAndMemberIds(Map data, Long rootPipelineId) {
+        Object authIdObj = data.get("auth_id");
+        Object memberIdObj = data.get("member_id");
+        Object additionalAuthProperties = data.get("additional_auth_properties");
+
+        HashSet uniqueAuthIds = null;
+        ArrayList validAuthIds = null;
+        ArrayList validUmIds = null;
+
+        if(authIdObj instanceof List && memberIdObj instanceof List)
+        {
+            List authIdList = (List) authIdObj;
+            PostProcessingFieldsInput authIdInput = null;
+
+            for(int i = 0; i<authIdList.size(); i++)
+            {
+                uniqueAuthIds = new HashSet();
+                validAuthIds = new ArrayList();
+
+                Object obj = authIdList.get(i);
+                if(obj instanceof PostProcessingFieldsInput)
+                {
+                    authIdInput = (PostProcessingFieldsInput) obj;
+                    String authId = authIdInput.getAnswer();
+                    if (authId != null && !authId.equals("")) {
+                        String validatedAuthId = processAuthIds(authId, uniqueAuthIds, validAuthIds, rootPipelineId);
+                        authIdInput.setAnswer(validatedAuthId);
+                    }
+                }
+            }
+
+            validUmIds = new ArrayList();
+
+            List memberIdList = (List) memberIdObj;
+            for(int i = 0; i<memberIdList.size(); i++)
+            {
+                Object obj = memberIdList.get(i);
+                if(obj instanceof PostProcessingFieldsInput)
+                {
+                    PostProcessingFieldsInput memberIdInput = (PostProcessingFieldsInput) obj;
+                    String memberId = memberIdInput.getAnswer();
+
+                    if (memberId != null && !memberId.equals("")) {
+                        processMemberIds(memberId, uniqueAuthIds, validAuthIds, rootPipelineId, validUmIds);
+                        if (!validUmIds.isEmpty()) {
+                            logger.info("[RootPipelineID: " + rootPipelineId + "] member_id starts with UM, reassigning to auth_id");
+                            validAuthIds.addAll(validUmIds);
+
+                            authIdInput = new PostProcessingFieldsInput();
+                            authIdInput.setAnswer(validAuthIds.isEmpty() ? "" : join(validAuthIds, ","));
+                            authIdList.add(authIdInput);
+                            memberIdInput.setAnswer("");
+                        } else if (memberId != null && !memberId.toUpperCase().startsWith("UM")){
+                            String validMemberId = "";
+                            if (isValidMemberId(memberId)) {
+                                validMemberId = memberId;
+                            } else {
+                                logger.info("[RootPipelineID: " + rootPipelineId + "] Invalid member_id (length 9-13 or non-alphanumeric)");
+                            }
+                            memberIdInput.setAnswer(validMemberId);
+                        }
+                    }
+                    else {
+                        memberIdInput.setAnswer("");
+                    }
+                }
+            }
+        }
+    }
+
+    private String processAuthIds(String authId, HashSet uniqueAuthIds, List validAuthIds, Long rootPipelineId)
+    {
+        // Validate auth_id
+        if (authId != null && !authId.equals("")) {
+            String[] authIds = authId.split(",");
+            for (String id : authIds) {
+                if (id != null) {
+                    id = id.trim();
+                    if (!id.equals("") && !uniqueAuthIds.contains(id) && isValidAuthId(id)) {
+                        uniqueAuthIds.add(id);
+                        validAuthIds.add(id);
+                    } else if (!id.equals("")) {
+                        logger.info("[RootPipelineID: " + rootPipelineId + "] Invalid auth_id (must be UM + 8 digits or greater than 8 digits)");
+                    }
+                }
+            }
+        }
+
+        // Set auth_id to comma-separated valid auth IDs or empty string if none are valid
+        return validAuthIds.isEmpty()? "" : join(validAuthIds, ",");
+
+    }
+
+    private void processMemberIds(String memberId, HashSet uniqueAuthIds, List validAuthIds, Long rootPipelineId, List validUmIds)
+    {
+        // Handle member_id
+        if (memberId != null && !memberId.equals("")) {
+            memberId = memberId.trim();
+            if (memberId != null && memberId.toUpperCase().startsWith("UM")) {
+                if (isValidAuthId(memberId) && !uniqueAuthIds.contains(memberId)) {
+                    uniqueAuthIds.add(memberId);
+                    validUmIds.add(memberId);
+                } else {
+                    logger.info("[RootPipelineID: " + rootPipelineId + "] Invalid UM member_id (must be UM + 8 digits or greater than 8 digits)");
+                }
+            }
+        }
+    }
+
+    private boolean isValidAuthId(String id) {
+        if (id == null || id.equals("")) {
+            return false;
+        }
+        // Check for UM followed by 8 or more digits (case-insensitive)
+        if (!id.toUpperCase().startsWith("UM")) {
+            return false;
+        }
+        if (id.length() != 10) { // UM + 8 digits = 10 characters
+            return false;
+        }
+        // Check if remaining characters after UM are digits
+        for (int i = 2; i < id.length(); i++) {
+            if (!Character.isDigit(id.charAt(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean isValidMemberId(String id) {
+        if (id == null || id.equals("")) {
+            return false;
+        }
+        // Check length between 9 and 13
+        int length = id.length();
+        if (length < 9 || length > 13) {
+            return false;
+        }
+        // Check if id contains only alphanumeric characters
+        for (int i = 0; i < id.length(); i++) {
+            char c = id.charAt(i);
+            if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private String join(List list, String separator) {
+        if (list == null || list.isEmpty()) {
+            return "";
+        }
+        StringJoiner joiner = new StringJoiner(separator);
+        for (Object item : list) {
+            if (item != null) {
+                joiner.add(item.toString());
+            }
+        }
+        return joiner.toString();
+    }
+
+    public static class MappingResult {
+        private Map mappedData;
+
+        public MappingResult(Map mappedData) {
+            this.mappedData = mappedData != null ? mappedData : new HashMap();
+        }
+
+        public Map getMappedData() {
+            return mappedData;
+        }
+    }
+}

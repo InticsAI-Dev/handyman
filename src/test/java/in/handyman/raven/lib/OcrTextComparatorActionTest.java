@@ -99,6 +99,95 @@ public class OcrTextComparatorActionTest {
             ocrTextComparatorAction.execute();
         }
 
+
+
+    @Test
+    void executeTest() throws Exception {
+        OcrTextComparator ocrTextComparator = OcrTextComparator.builder()
+                .name("Ocr Text Comparator Action")
+                .batchId("BATCH-71_0")
+                .condition(true)
+                .outputTable("sor_transform.vqa_transaction_ocr_comparision_output")
+                .resourceConn("intics_zio_db_conn")
+                .querySet("SELECT\n" +
+                        "                a.vqa_id,\n" +
+                        "                a.transaction_id,\n" +
+                        "                a.created_on,\n" +
+                        "                a.created_user_id,\n" +
+                        "                a.last_updated_on,\n" +
+                        "                a.last_updated_user_id,\n" +
+                        "                a.root_pipeline_id,\n" +
+                        "                a.tenant_id,\n" +
+                        "                a.document_id,\n" +
+                        "                a.group_id,\n" +
+                        "                a.batch_id,\n" +
+                        "                a.origin_id,\n" +
+                        "                a.paper_no,\n" +
+                        "                a.truth_id,\n" +
+                        "                a.status,\n" +
+                        "                a.stage,\n" +
+                        "                a.message,\n" +
+                        "                a.version,\n" +
+                        "                a.extracted_image_unit,\n" +
+                        "                a.image_dpi,\n" +
+                        "                a.image_height,\n" +
+                        "                a.image_width,\n" +
+                        "                a.section_priority_after_filter,\n" +
+                        "                a.sor_container_id,\n" +
+                        "                a.sor_container_name,\n" +
+                        "                a.sor_container_instance,\n" +
+                        "                a.sor_item_name,\n" +
+                        "                a.sor_item_id,\n" +
+                        "                a.sor_item_attribution_id,\n" +
+                        "                a.model_id,\n" +
+                        "                a.model_info,\n" +
+                        "                a.model_registry,\n" +
+                        "                a.model_registry_id,\n" +
+                        "                a.answer,\n" +
+                        "                a.vqa_score,\n" +
+                        "                a.score,\n" +
+                        "                a.b_box,\n" +
+                        "                a.label,\n" +
+                        "                a.section_alias,\n" +
+                        "                a.synonym_id,\n" +
+                        "                a.sor_synonym,\n" +
+                        "                a.question_id,\n" +
+                        "                a.sor_question,\n" +
+                        "                a.weight,\n" +
+                        "                a.category,\n" +
+                        "                a.line_item_type,\n" +
+                        "                a.is_multi_entity_enabled,\n" +
+                        "                a.encryption_policy,\n" +
+                        "                a.is_encrypted,\n" +
+                        "                a.ocr_field_id,\n" +
+                        "                a.is_ocr_field_comparable,\n" +
+                        "                a.extracted_text,\n" +
+                        "                a.threshold,\n" +
+                        "                a.best_match,\n" +
+                        "                a.best_score,\n" +
+                        "                a.regex_pattern,\n" +
+                        "                a.candidates_list,\n" +
+                        "                a.mismatch_count,\n" +
+                        "                a.match_status,\n" +
+                        "                a.allowed_adapter\n" +
+                        "                FROM sor_transform.vqa_transaction_ocr_comparision_input a\n" +
+                        "           ")
+                .build();
+
+        final ActionExecutionAudit action = ActionExecutionAudit.builder().build();
+        action.getContext().put("tenant_id", "1");
+        action.getContext().put("group_id", "71");
+        action.getContext().put("batch_id", "BATCH-71_0");
+        action.getContext().put("origin_id", "ORIGIN-71_0");
+        action.getContext().put("created_user_id", "1");
+        action.getContext().put(EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION, "false");
+        action.getContext().put("ocr.comparison.fuzzy.match.threshold", "70");
+        action.setRootPipelineId(929L);
+
+        OcrTextComparatorAction ocrTextComparatorAction = new OcrTextComparatorAction(action, log, ocrTextComparator);
+        ocrTextComparatorAction.execute();
+    }
+
     @BeforeEach
     void setup() {
         actionExecutionAudit = new ActionExecutionAudit();
