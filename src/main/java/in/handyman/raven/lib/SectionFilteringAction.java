@@ -122,12 +122,9 @@ public class SectionFilteringAction implements IActionExecution {
           updatedTableInfos.addAll(tableInfos);
         }else{
 
-          List<SelectionFilteringInputTable> input = tableInfos.stream()
-                  .filter(SelectionFilteringInputTable::isLabelMatching)
-                  .collect(Collectors.toList());
-          log.info(aMarker, "Applying label with priority processing on records count {} ", input.size());
+          log.info(aMarker, "Applying label with priority processing on records count {} ", tableInfos.size());
 
-           updatedTableInfos.addAll(LabelWithPriorityProcessor.process(input));
+           updatedTableInfos.addAll(LabelWithPriorityProcessor.process(tableInfos));
           log.info(aMarker, "Label with priority processing completed. Initial count {} and Final count: {} ", tableInfos.size(),updatedTableInfos.size());
       }
 
@@ -180,7 +177,7 @@ public class SectionFilteringAction implements IActionExecution {
                             .bind(21, row.getImageDpi())
                             .bind(22, row.getImageHeight())
                             .bind(23, row.getImageWidth())
-                            .bind(24, row.isLabelMatching())
+                            .bind(24, Boolean.TRUE.equals(row.getLabelMatching()))
                             .bind(25, row.getLabelMatchMessage())
                             .bind(26, row.getIsEncrypted())
                             .bind(27, row.getEncryptionPolicy())

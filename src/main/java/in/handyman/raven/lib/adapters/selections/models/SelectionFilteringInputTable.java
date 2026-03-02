@@ -41,7 +41,7 @@ public class SelectionFilteringInputTable {
     private String blacklistedSections;
     private Boolean isEncrypted;
     private String encryptionPolicy;
-    private boolean labelMatching;
+    private Boolean labelMatching;
     private String labelMatchMessage;
     private String whitelistedLabels;
     private String whitelistedLabelsWithPriority;

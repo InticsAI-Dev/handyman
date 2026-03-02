@@ -52,19 +52,21 @@ public class LabelWithPriorityProcessor {
         logger.info("Processing {} valid rows after null filtering", input.size());
 
         // 1️⃣ Group by originId → sorItemName
+        // NULL is treated as "not yet determined" → include for processing (same as true)
         List<SelectionFilteringInputTable> filtered =
                 input.stream()
                         .filter(Objects::nonNull)
-                        .filter(SelectionFilteringInputTable::isLabelMatching)
+                        .filter(r -> !Boolean.FALSE.equals(r.getLabelMatching()))
                         .collect(Collectors.toList());
 
-        logger.info("Found {} rows with label matching = true", filtered.size());
+        logger.info("Found {} rows with label matching = true or null", filtered.size());
 
         // 1️⃣ Group by originId → sorItemName
+        // Only rows explicitly set to false are considered non-matching
         List<SelectionFilteringInputTable> filteredNotMatching =
                 input.stream()
                         .filter(Objects::nonNull)
-                        .filter(r -> !r.isLabelMatching())
+                        .filter(r -> Boolean.FALSE.equals(r.getLabelMatching()))
                         .collect(Collectors.toList());
 
         logger.info("Found {} rows with label matching = false", filteredNotMatching.size());
