@@ -53,7 +53,8 @@ public class DocumentWisePostProcessingInput {
     private Double precision;
 
     /**
-     * Maps from 'answer' column - this is the predicted value for processing
+     * Maps from 'answer' column from MultivalueSorItemHandlingAction output table
+     * This is the predicted value for processing
      */
     @ColumnName("answer")
     private String predictedValue;

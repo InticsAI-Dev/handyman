@@ -497,7 +497,7 @@ public class MultiValueMemberConsumerProcess {
                 .weight(150)
                 .category("")
                 .lineItemType("")
-                .isMultiEntityEnabled("")
+                .isMultiEntityEnabled(false)
                 .encryptionPolicy("")
                 .isEncrypted(false)
                 .build();
