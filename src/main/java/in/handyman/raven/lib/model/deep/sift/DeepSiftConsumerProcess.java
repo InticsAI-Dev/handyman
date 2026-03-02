@@ -13,6 +13,7 @@ import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import in.handyman.raven.core.encryption.SecurityEngine;
 import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.core.utils.FileProcessingUtils;
+import net.sourceforge.tess4j.TesseractException;
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
@@ -23,12 +24,14 @@ import java.net.URL;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
+import net.sourceforge.tess4j.ITesseract;
+import net.sourceforge.tess4j.Tesseract;
+
 import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_DEEP_SIFT_OUTPUT;
 import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
 import static in.handyman.raven.core.enums.NetworkHandlerConstants.*;
 import static in.handyman.raven.exception.HandymanException.handymanRepo;
-import static in.handyman.raven.lib.DeepSiftAction.DEEP_SIFT_ROUTE_TESS4J;
-import static in.handyman.raven.lib.DeepSiftAction.PAGE_CONTENT_MIN_LENGTH;
+import static in.handyman.raven.lib.DeepSiftAction.*;
 
 import in.handyman.raven.lib.adapters.scalar.WordCountAdapter;
 
@@ -206,8 +209,15 @@ public class DeepSiftConsumerProcess
     private void processWithTess4j(DeepSiftInputTable entity, List<DeepSiftOutputTable> parentObj, File inputFile,
                                    URL endpoint, long startTime) {
         try {
+
             log.info(aMarker, "Executing Tess4J extraction for originId: {}", entity.getOriginId());
-            net.sourceforge.tess4j.ITesseract tesseract = new net.sourceforge.tess4j.Tesseract();
+
+            String tess4jModelPath = action.getContext()
+                    .getOrDefault(DEEP_SIFT_TESS4J_MODEL_PATH, "/usr/share/tesseract-ocr/4.00/tessdata");
+
+            ITesseract tesseract = new Tesseract();
+            tesseract.setDatapath(tess4jModelPath);
+            tesseract.setLanguage("eng");
             String extractedContent = tesseract.doOCR(inputFile);
 
             int wordCount = 0;
@@ -257,7 +267,7 @@ public class DeepSiftConsumerProcess
                     .isBlankPage(isBlankPage)
                     .build());
 
-        } catch (net.sourceforge.tess4j.TesseractException e) {
+        } catch (TesseractException e) {
             log.error(aMarker, "TesseractException occurred while processing request for originId: {}",
                     entity.getOriginId(), e);
             HandymanException handymanException = new HandymanException("Deep sift consumer failed for Tess4J model",
