@@ -7,11 +7,15 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 @Slf4j
 public class DeepSiftActionTest {
 
     @Test
-    void tritonServer() throws Exception {
+    void testTritonServerExecution() throws Exception {
+        // Build the DeepSift configuration
         DeepSift deepSift = DeepSift.builder()
                 .name("deep sift extraction for group_id 579 for batch id BATCH-579_1")
                 .resourceConn("intics_zio_db_conn")
@@ -21,27 +25,30 @@ public class DeepSiftActionTest {
                 .resultTable("deep_sift.deep_sift_output_audit")
                 .forkBatchSize("8")
                 .querySet("SELECT\n" +
-                        "dsi.origin_id,\n" +
-                        "dsi.group_id,\n" +
-                        "dsi.created_on,\n" +
-                        "dsi.created_by,\n" +
-                        "dsi.input_file_path,\n" +
-                        "dsi.root_pipeline_id,\n" +
-                        "dsi.tenant_id,\n" +
-                        "dsi.batch_id,\n" +
-                        "dsi.paper_no,\n" +
-                        "dsi.source_document_type,\n" +
-                        "dsi.model_id,\n" +
-                        "dsi.model_name,\n" +
-                        "dsi.base_prompt,\n" +
-                        "dsi.system_prompt\n" +
+                        "    dsi.origin_id,\n" +
+                        "    dsi.group_id,\n" +
+                        "    dsi.created_on,\n" +
+                        "    dsi.created_by,\n" +
+                        "    dsi.input_file_path,\n" +
+                        "    dsi.root_pipeline_id,\n" +
+                        "    dsi.tenant_id,\n" +
+                        "    dsi.batch_id,\n" +
+                        "    dsi.paper_no,\n" +
+                        "    dsi.source_document_type,\n" +
+                        "    dsi.model_id,\n" +
+                        "    dsi.model_name,\n" +
+                        "    dsi.base_prompt,\n" +
+                        "    dsi.system_prompt\n" +
                         "FROM deep_sift.deep_sift_input_audit dsi\n" +
-                        "WHERE\n" +
-                        "dsi.origin_id = 'ORIGIN-32'\n" +
-                        "AND dsi.tenant_id = 1\n" +
-                        "AND dsi.group_id = '35'\n" +
-                        "AND dsi.model_name = 'XENON' limit 5;")
+                        "WHERE origin_id = 'ORIGIN-1160';")
                 .build();
+
+        // Assert query correctness
+        String query = deepSift.getQuerySet();
+        assertTrue(query.toUpperCase().contains("FROM DEEP_SIFT.DEEP_SIFT_INPUT_AUDIT"), "Query must reference the correct table");
+        assertTrue(query.contains("WHERE origin_id = 'ORIGIN-1160'"), "Query must filter by origin_id");
+
+        // Setup ActionExecutionAudit context
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
         actionExecutionAudit.getContext().put("copro.data-extraction.url", "http://localhost:5432/xenon-textract");
         actionExecutionAudit.setProcessId(5443L);
@@ -57,10 +64,14 @@ public class DeepSiftActionTest {
                 Map.entry("write.batch.size", "5"),
                 Map.entry("deep.sift.page.content.min.length.threshold", "1"),
                 Map.entry("copro.isretry.enabled", "true"),
-                Map.entry("deep.sift.extraction.activator", "true")
+                Map.entry("deep.sift.extraction.activator", "true"),
+                Map.entry("deep.sift.route.tess4j", "true")
         ));
+
+        // Execute DeepSift action
         DeepSiftAction deepSiftAction = new DeepSiftAction(actionExecutionAudit, log, deepSift);
-        deepSiftAction.execute();
+
+        assertDoesNotThrow(deepSiftAction::execute, "Execution should not throw any exceptions");
     }
 
     @Test
@@ -93,7 +104,7 @@ public class DeepSiftActionTest {
                         "dsi.origin_id = 'ORIGIN-32'\n" +
                         "AND dsi.tenant_id = 1\n" +
                         "AND dsi.group_id = '35'\n" +
-                        "AND dsi.model_name = 'XENON' limit 5;" )
+                        "AND dsi.model_name = 'XENON' limit 5;")
                 .forkBatchSize("5")
                 .build();
         ActionExecutionAudit actionExecutionAudit = new ActionExecutionAudit();
