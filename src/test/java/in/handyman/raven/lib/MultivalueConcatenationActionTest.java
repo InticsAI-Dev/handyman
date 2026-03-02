@@ -25,7 +25,7 @@ class MultivalueConcatenationActionTest {
                         "                    score, b_box, label, section_alias, synonym_id, sor_synonym, question_id, sor_question, weight, category, line_item_type,\n" +
                         "                    is_multi_entity_enabled, encryption_policy, is_encrypted::bool\n" +
                         "                    FROM sor_transform.vqa_transaction_multi_value_unifier_input a\n" +
-                        "                    WHERE origin_id='ORIGIN-1098' and sor_container_name ='DIAGNOSIS_CODE';")
+                        "                    WHERE origin_id='ORIGIN-1103' and sor_container_name ='DIAGNOSIS_CODE';")
                 .build();
 
         final ActionExecutionAudit action = ActionExecutionAudit.builder().build();
