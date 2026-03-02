@@ -179,10 +179,7 @@ public class MultivalueConcatenationAction implements IActionExecution {
         }
         logger.debug(logMarker, "Split item {} into {} new records.", currentInput.getSorItemName(), splitRecordCount);
       } else {
-          if(!currentInput.getAnswer().isEmpty()){
-          normalizedMultiValueInputs.add(currentInput);
-        }
-
+        normalizedMultiValueInputs.add(currentInput);
       }
     }
 
