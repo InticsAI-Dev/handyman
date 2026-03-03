@@ -49,6 +49,9 @@ public class DocumentWisePostProcessingInput {
     @ColumnName("upper_pos")
     private Double upperPos;
 
+    @ColumnName("b_box")
+    private String bBox;
+
     @ColumnName("precision")
     private Double precision;
 

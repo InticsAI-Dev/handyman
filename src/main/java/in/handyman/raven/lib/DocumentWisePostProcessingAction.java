@@ -187,6 +187,7 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
         bindings.put("rightPos", input.getRightPos());
         bindings.put("lowerPos", input.getLowerPos());
         bindings.put("upperPos", input.getUpperPos());
+        bindings.put("bBox", input.getBBox());
         bindings.put("isEncrypted", input.getIsEncrypted() != null ? input.getIsEncrypted() : false);
         bindings.put("groupId", input.getGroupId());
         bindings.put("batchId", input.getBatchId());
@@ -217,13 +218,13 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
   private String buildInsertSQL() {
     return "INSERT INTO " + documentWisePostProcessing.getOutputTable() + " (" +
             "transaction_id, created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, " +
-            "feature, label, left_pos, lower_pos, right_pos, upper_pos, precision_val, predicted_value, " +
+            "feature, label, left_pos, lower_pos, right_pos, upper_pos, b_box, precision_val, predicted_value, " +
             "section_alias, sor_container_instance, document_id, truth_id, channel_id, group_id, origin_id, " +
             "paper_no, question_id, root_pipeline_id, score, sor_item_name, sor_question, synonym_id, tenant_id, " +
             "vqa_score, category, stage, batch_id, line_item_type, is_encrypted, encryption_policy, " +
             "is_removed_after_filtering, message, sor_container_id, truth_entity_id, sor_item_id, is_multi_entity_enabled) VALUES (" +
             ":transactionId, :createdOn, :createdUserId, :lastUpdatedOn, :lastUpdatedUserId, :status, :version, " +
-            ":feature, :label, :leftPos, :lowerPos, :rightPos, :upperPos, :precisionVal, :predictedValue, " +
+            ":feature, :label, :leftPos, :lowerPos, :rightPos, :upperPos, :bBox, :precisionVal, :predictedValue, " +
             ":sectionAlias, :sorContainerInstance, :documentId, :truthId, :channelId, :groupId, :originId, " +
             ":paperNo, :questionId, :rootPipelineId, :score, :sorItemName, :sorQuestion, :synonymId, :tenantId, " +
             ":vqaScore, :category, :stage, :batchId, :lineItemType, :isEncrypted, :encryptionPolicy, " +
