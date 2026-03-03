@@ -176,9 +176,17 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         radonKvpExtractionRequest.setRequestId(entity.getRequestId());
         radonKvpExtractionRequest.setCoproMetricsActivator(entity.getCoproMetricsActivator());
 
-        String base64Content = processBase64.equals(ProcessFileFormatE.BASE64.name())
-                ? fileProcessingUtils.convertFileToBase64(filePath)
-                : "";
+        // Always encode file to base64 when calling Copro API since file path may not be accessible from Copro server
+        // The processBase64 setting is for database storage, but API calls to Copro should always include base64
+        String base64Content;
+        try {
+            base64Content = fileProcessingUtils.convertFileToBase64(filePath);
+            log.info(aMarker, "Successfully encoded file to base64 for Copro API call: {}", filePath);
+        } catch (Exception e) {
+            log.error(aMarker, "Failed to encode file to base64: {}", filePath, e);
+            // If encoding fails, try to proceed with empty base64 and let Copro handle it
+            base64Content = "";
+        }
         radonKvpExtractionRequest.setBase64Img(base64Content);
 
         String jsonInputRequest = mapper.writeValueAsString(radonKvpExtractionRequest);
@@ -255,11 +263,20 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                                     log.error(aMarker, "The Exception occurred in converting the response from triton server output {}", ExceptionUtil.toString(e));
                                 }
                             }));
-
+                        } else {
+                            String errorMessage = "Successful response received but outputs are empty for request.";
+                            handleErrorParentObject(entity, parentObj, new IllegalStateException(errorMessage + " response: " + responseBody), "");
+                            HandymanException.insertException(
+                                    "Radon kvp consumer received empty outputs for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(),
+                                    new HandymanException(errorMessage),
+                                    this.action);
+                            log.error(aMarker, "{} Response body: {}", errorMessage, responseBody);
                         }
                     }else{
-                        HandymanException handymanException = new HandymanException(" response code : " + safeResponse.code() + " message : " + "No response body or detail found for the request.");
+                        String errorMessage = "response code : " + safeResponse.code() + " message : " + "No response body or detail found for the request.";
+                        HandymanException handymanException = new HandymanException(errorMessage);
                         HandymanException.insertException("Radon kvp consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
+                        handleErrorParentObject(entity, parentObj, handymanException, "");
                         log.error(aMarker, "Error in getting response from triton api: No response body or detail found for the request.");
                     }
                 } else {
@@ -299,6 +316,12 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException("Radon kvp consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
             log.error(aMarker, "The Exception occurred in getting response  from triton server {}", ExceptionUtil.toString(e));
+        } catch (Exception e) {
+            handleErrorParentObject(entity, parentObj, e, "");
+
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Radon kvp consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
+            log.error(aMarker, "Unexpected exception occurred in tritonRequestBuilder {}", ExceptionUtil.toString(e));
         }
     }
 

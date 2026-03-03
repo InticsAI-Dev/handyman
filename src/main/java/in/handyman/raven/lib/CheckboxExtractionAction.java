@@ -34,9 +34,7 @@ import static in.handyman.raven.core.enums.DatabaseConstants.DB_SELECT_READ_BATC
  * Extracts checkboxes from form images using Krypton VLM model
  * Returns JSON data with checkbox labels and checked/unchecked states
  */
-@ActionExecution(
-        actionName = "CheckboxExtraction"
-)
+@ActionExecution(actionName = "CheckboxExtraction")
 public class CheckboxExtractionAction implements IActionExecution {
     private final ActionExecutionAudit action;
 
@@ -47,7 +45,7 @@ public class CheckboxExtractionAction implements IActionExecution {
     private final Marker aMarker;
 
     public CheckboxExtractionAction(final ActionExecutionAudit action, final Logger log,
-                                    final Object checkboxExtraction) {
+            final Object checkboxExtraction) {
         this.checkboxExtraction = (CheckboxExtraction) checkboxExtraction;
         this.action = action;
         this.log = log;
@@ -62,40 +60,51 @@ public class CheckboxExtractionAction implements IActionExecution {
             final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(checkboxExtraction.getResourceConn());
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
 
-            //5. build insert prepare statement with output table columns (page-level results)
+            // 5. build insert prepare statement with output table columns (page-level
+            // results)
             final String insertQuery = "INSERT INTO " + checkboxExtraction.getResultTable() +
-                    "(origin_id, tenant_id, checkbox_group_id, page_number, checkbox_data, status, model_name, " +
+                    "(origin_id, group_id, root_pipeline_id, tenant_id, page_number, response_json, stage, status, model_name, "
+                    +
                     "error_message, duration_time, batch_id, process_id, created_on) " +
-                    " VALUES(?,?,?,?,?,?,?,?,?,?,?,?)";
+                    " VALUES(?,nullif(cast(? as text), '')::bigint,?,?,?,?,?,?,?,?,?,?,?,?)";
             log.info(aMarker, "checkbox extraction Insert query {}", insertQuery);
 
-            //3. initiate copro processor and copro urls
-            final List<URL> urls = Optional.ofNullable(checkboxExtraction.getEndpoint()).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
-                try {
-                    return new URL(s1);
-                } catch (MalformedURLException e) {
-                    log.error("Error in processing the URL ", e);
-                    throw new HandymanException("Error in processing the URL", e, action);
-                }
-            }).collect(Collectors.toList())).orElse(Collections.emptyList());
+            // 3. initiate copro processor and copro urls
+            final List<URL> urls = Optional.ofNullable(checkboxExtraction.getEndpoint())
+                    .map(s -> Arrays.stream(s.split(",")).map(s1 -> {
+                        try {
+                            return new URL(s1);
+                        } catch (MalformedURLException e) {
+                            log.error("Error in processing the URL ", e);
+                            throw new HandymanException("Error in processing the URL", e, action);
+                        }
+                    }).collect(Collectors.toList())).orElse(Collections.emptyList());
             log.info(aMarker, "checkbox extraction copro urls {}", urls);
 
-            final CoproProcessor<CheckboxExtractionInputTable, CheckboxExtractionOutputTable> coproProcessor =
-                    new CoproProcessor<>(new LinkedBlockingQueue<>(),
-                            CheckboxExtractionOutputTable.class,
-                            CheckboxExtractionInputTable.class,
-                            checkboxExtraction.getResourceConn(), log,
-                            new CheckboxExtractionInputTable(), urls, action);
+            final CoproProcessor<CheckboxExtractionInputTable, CheckboxExtractionOutputTable> coproProcessor = new CoproProcessor<>(
+                    new LinkedBlockingQueue<>(),
+                    CheckboxExtractionOutputTable.class,
+                    CheckboxExtractionInputTable.class,
+                    checkboxExtraction.getResourceConn(), log,
+                    new CheckboxExtractionInputTable(), urls, action);
 
             log.info(aMarker, "checkbox extraction copro coproProcessor initialization  {}", coproProcessor);
 
-            //4. call the method start producer from coproprocessor
-            coproProcessor.startProducer(checkboxExtraction.getQuerySet(), Integer.valueOf(action.getContext().get(DB_SELECT_READ_BATCH_SIZE)));
-            log.info(aMarker, "checkbox extraction copro coproProcessor startProducer called read batch size {}", action.getContext().get(DB_SELECT_READ_BATCH_SIZE));
-            Thread.sleep(1000);
-            coproProcessor.startConsumer(insertQuery, Integer.valueOf(action.getContext().get("checkbox.extraction.consumer.API.count")), Integer.valueOf(action.getContext().get(DB_INSERT_WRITE_BATCH_SIZE)), new CheckboxExtractionConsumerProcess(log, aMarker, action));
-            log.info(aMarker, "checkbox extraction copro coproProcessor startConsumer called consumer count {} write batch count {} ", Integer.valueOf(action.getContext().get("checkbox.extraction.consumer.API.count")), Integer.valueOf(action.getContext().get(DB_INSERT_WRITE_BATCH_SIZE)));
+            int readBatchSize = parseIntFromContext(action.getContext().get(DB_SELECT_READ_BATCH_SIZE), 100);
+            int consumerApiCount = parseIntFromContext(
+                    action.getContext().get("checkbox.extraction.consumer.API.count"), 1);
+            int writeBatchSize = parseIntFromContext(action.getContext().get(DB_INSERT_WRITE_BATCH_SIZE), 50);
 
+            // 4. call the method start producer from coproprocessor
+            coproProcessor.startProducer(checkboxExtraction.getQuerySet(), readBatchSize);
+            log.info(aMarker, "checkbox extraction copro coproProcessor startProducer called read batch size {}",
+                    readBatchSize);
+            Thread.sleep(1000);
+            coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize,
+                    new CheckboxExtractionConsumerProcess(log, aMarker, action));
+            log.info(aMarker,
+                    "checkbox extraction copro coproProcessor startConsumer called consumer count {} write batch count {} ",
+                    consumerApiCount, writeBatchSize);
 
         } catch (Exception ex) {
             log.error(aMarker, "error in execute method for checkbox extraction  ", ex);
@@ -106,5 +115,16 @@ public class CheckboxExtractionAction implements IActionExecution {
     @Override
     public boolean executeIf() throws Exception {
         return checkboxExtraction.getCondition();
+    }
+
+    private static int parseIntFromContext(String value, int defaultValue) {
+        if (value == null || value.trim().isEmpty()) {
+            return defaultValue;
+        }
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
     }
 }

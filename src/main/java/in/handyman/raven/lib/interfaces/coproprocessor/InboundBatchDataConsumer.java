@@ -112,11 +112,12 @@ public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implem
     }
     private void takeAndAddRowsBeforeDbFlush(CoproProcessor.ConsumerProcess<I, O> callable, int index, I take, List<O> processedEntity, Jdbi jdbi) {
         final List<O> results = new ArrayList<>();
+        URL endpoint = null;
         try {
             int nodesSize = nodes.size();
             logger.info("Nodes size {} and index value {}", nodesSize, index);
             if (nodesSize != index) {
-                URL endpoint = nodes.get(index);
+                endpoint = nodes.get(index);
                 final List<O> initialResults = callable.process(endpoint, take);
                 String retryFailedFilesActivator = actionExecutionAudit.getContext().getOrDefault(COPRO_PROCESSOR_RETRY_FAILED_FILES, "false");
                 if ("true".equals(retryFailedFilesActivator)) {
@@ -131,7 +132,14 @@ public class InboundBatchDataConsumer<I, O extends CoproProcessor.Entity> implem
         } catch (Exception e) {
             HandymanException handymanException=new HandymanException(e);
             HandymanException.insertException("Error in callable process in consumer ", handymanException, actionExecutionAudit);
-
+            // If no results were added (exception occurred before processing), ensure we still have a record
+            // The callable.process() should handle adding failed records, but if exception occurs before that,
+            // we log a warning. The callable should always return at least one record (success or failure).
+            if (results.isEmpty()) {
+                logger.warn("Exception occurred in callable.process() and no results were returned. " +
+                        "This may indicate the callable did not properly handle the exception and create a failed record. " +
+                        "Entity: {}, Endpoint: {}", take, endpoint);
+            }
         }
         processedEntity.addAll(results);
     }

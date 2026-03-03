@@ -28,7 +28,8 @@ import java.util.concurrent.TimeUnit;
  * Consumer process for checkbox extraction using Krypton (Qwen VLM model)
  * Processes one page at a time and returns JSON checkbox data
  */
-public class CheckboxExtractionConsumerProcess implements CoproProcessor.ConsumerProcess<CheckboxExtractionInputTable, CheckboxExtractionOutputTable> {
+public class CheckboxExtractionConsumerProcess
+        implements CoproProcessor.ConsumerProcess<CheckboxExtractionInputTable, CheckboxExtractionOutputTable> {
 
     private final Logger log;
     private final Marker aMarker;
@@ -49,9 +50,10 @@ public class CheckboxExtractionConsumerProcess implements CoproProcessor.Consume
     }
 
     @Override
-    public List<CheckboxExtractionOutputTable> process(URL endpoint, CheckboxExtractionInputTable entity) throws Exception {
-        log.info(aMarker, "Checkbox extraction consumer started for page {} of checkbox group {}",
-                entity.getPageNumber(), entity.getCheckboxGroupId());
+    public List<CheckboxExtractionOutputTable> process(URL endpoint, CheckboxExtractionInputTable entity)
+            throws Exception {
+        log.info(aMarker, "Checkbox extraction consumer started for page {}",
+                entity.getPageNumber());
 
         List<CheckboxExtractionOutputTable> results = new ArrayList<>();
         long startTime = System.currentTimeMillis();
@@ -83,9 +85,9 @@ public class CheckboxExtractionConsumerProcess implements CoproProcessor.Consume
 
                     // Extract checkbox data (JSON string)
                     String checkboxData = responseJson.path("checkboxData").asText("[]");
-                    String status = responseJson.path("status").asText("SUCCESS");
-                    String modelName = responseJson.path("modelName").asText("Qwen2-VL-72B-Instruct");
-                    String errorMessage = responseJson.path("errorMessage").asText(null);
+                    String status = normalizeStatus(responseJson.path("status").asText("COMPLETED"));
+                    String modelName = responseJson.path("modelName").asText("KRYPTON_MODEL");
+                    String errorMessage = responseJson.path("errorMessage").asText("");
 
                     log.info(aMarker, "Extracted checkbox data (length={}), status={} for page {}",
                             checkboxData.length(), status, entity.getPageNumber());
@@ -101,17 +103,19 @@ public class CheckboxExtractionConsumerProcess implements CoproProcessor.Consume
                     // 5. Build output
                     results.add(CheckboxExtractionOutputTable.builder()
                             .originId(entity.getOriginId())
+                            .groupId(parseGroupId(entity.getGroupId()))
                             .tenantId(entity.getTenantId())
-                            .checkboxGroupId(entity.getCheckboxGroupId())
+                            .batchId(entity.getBatchId())
+                            .rootPipelineId(entity.getRootPipelineId())
                             .pageNumber(entity.getPageNumber())
                             .checkboxData(checkboxData)
                             .status(status)
                             .modelName(modelName)
                             .errorMessage(errorMessage)
                             .durationTime(durationSeconds)
-                            .batchId(entity.getBatchId())
                             .processId(entity.getProcessId())
                             .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                            .stage("CHECKBOX_EXTRACTION")
                             .build());
 
                 } else {
@@ -130,10 +134,9 @@ public class CheckboxExtractionConsumerProcess implements CoproProcessor.Consume
 
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException(
-                "Checkbox extraction failed for page " + entity.getPageNumber(),
-                handymanException,
-                this.action
-            );
+                    "Checkbox extraction failed for page " + entity.getPageNumber(),
+                    handymanException,
+                    this.action);
         }
 
         return results;
@@ -155,32 +158,48 @@ public class CheckboxExtractionConsumerProcess implements CoproProcessor.Consume
     }
 
     /**
-     * Build request payload for COPRO /extract-checkbox endpoint
+     * Build request payload for COPRO /extract-checkbox endpoint.
+     * Aligned with table extraction: tenantId as string,
+     * processId/rootPipelineId/actionId as integers (Copro API contract).
      */
-    private String buildCheckboxExtractionPayload(CheckboxExtractionInputTable entity, String base64Image) throws Exception {
+    private String buildCheckboxExtractionPayload(CheckboxExtractionInputTable entity, String base64Image)
+            throws Exception {
         ObjectNode payload = mapper.createObjectNode();
 
         payload.put("originId", entity.getOriginId());
-        payload.put("tenantId", entity.getTenantId());
-        payload.put("checkboxGroupId", entity.getCheckboxGroupId());
-        payload.put("pageNumber", entity.getPageNumber());
+        payload.put("tenantId", entity.getTenantId() != null ? String.valueOf(entity.getTenantId()) : null);
+        payload.put("pageNumber", entity.getPageNumber() != null ? entity.getPageNumber() : 1);
         payload.put("base64Image", base64Image);
-        payload.put("userPrompt", entity.getUserPrompt() != null ? entity.getUserPrompt() :
-                "Extract all checkboxes from this image. For each checkbox, provide: " +
-                "1. The label or description associated with the checkbox " +
-                "2. The state (checked or unchecked) " +
-                "3. Any additional context if available " +
-                "Return the results as a JSON array with this format: " +
-                "[{\"label\": \"checkbox label\", \"checked\": true/false, \"context\": \"optional context\"}]");
+        payload.put("userPrompt", entity.getUserPrompt() != null ? entity.getUserPrompt()
+                : "Extract all checkboxes from this image. For each checkbox, provide: " +
+                        "1. The label or description associated with the checkbox " +
+                        "2. The state (checked or unchecked) " +
+                        "3. Any additional context if available " +
+                        "Return the results as a JSON array with this format: " +
+                        "[{\"label\": \"checkbox label\", \"checked\": true/false, \"context\": \"optional context\"}]");
 
         if (entity.getSystemPrompt() != null) {
             payload.put("systemPrompt", entity.getSystemPrompt());
         }
 
-        payload.put("modelName", "Qwen2-VL-72B-Instruct");
-        payload.put("processId", entity.getProcessId());
-        payload.put("batchId", entity.getBatchId());
-        payload.put("rootPipelineId", entity.getRootPipelineId());
+        payload.put("modelName", "KRYPTON_MODEL");
+
+        if (entity.getProcessId() != null && !entity.getProcessId().isEmpty()) {
+            try {
+                payload.put("processId", Integer.parseInt(entity.getProcessId()));
+            } catch (NumberFormatException e) {
+                log.warn(aMarker, "processId not a valid integer: {}", entity.getProcessId());
+            }
+        }
+        if (entity.getBatchId() != null) {
+            payload.put("batchId", entity.getBatchId());
+        }
+        if (entity.getRootPipelineId() != null) {
+            payload.put("rootPipelineId", entity.getRootPipelineId().intValue());
+        }
+        if (action.getActionId() != null) {
+            payload.put("actionId", action.getActionId().intValue());
+        }
 
         return mapper.writeValueAsString(payload);
     }
@@ -189,21 +208,45 @@ public class CheckboxExtractionConsumerProcess implements CoproProcessor.Consume
      * Build failed result output
      */
     private CheckboxExtractionOutputTable buildFailedResult(CheckboxExtractionInputTable entity,
-                                                             String errorMessage,
-                                                             double durationSeconds) {
+            String errorMessage,
+            double durationSeconds) {
         return CheckboxExtractionOutputTable.builder()
                 .originId(entity.getOriginId())
+                .groupId(parseGroupId(entity.getGroupId()))
+                .rootPipelineId(entity.getRootPipelineId())
                 .tenantId(entity.getTenantId())
-                .checkboxGroupId(entity.getCheckboxGroupId())
                 .pageNumber(entity.getPageNumber())
                 .checkboxData("[]") // Empty JSON array for failed extraction
                 .status("FAILED")
-                .modelName("Qwen2-VL-72B-Instruct")
+                .modelName("KRYPTON_MODEL")
                 .errorMessage(errorMessage)
                 .durationTime(durationSeconds)
                 .batchId(entity.getBatchId())
                 .processId(entity.getProcessId())
                 .createdOn(Timestamp.valueOf(LocalDateTime.now()))
+                .stage("CHECKBOX_EXTRACTION")
                 .build();
+    }
+
+    private String normalizeStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return "COMPLETED";
+        }
+        if ("SUCCESS".equalsIgnoreCase(status)) {
+            return "COMPLETED";
+        }
+        return status.toUpperCase();
+    }
+
+    private Long parseGroupId(String groupId) {
+        if (groupId == null || groupId.isBlank()) {
+            return 0L;
+        }
+        try {
+            return Long.parseLong(groupId.trim());
+        } catch (NumberFormatException e) {
+            log.warn(aMarker, "Invalid groupId '{}' for checkbox extraction output. Falling back to 0.", groupId);
+            return 0L;
+        }
     }
 }

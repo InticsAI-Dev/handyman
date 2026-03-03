@@ -31,8 +31,41 @@ public class ActionExecutionAudit extends AbstractAudit implements IAction {
 
     @JsonIgnore
     private final ConcurrentLinkedDeque<SubstituteLoggingEvent> eventQueue = new ConcurrentLinkedDeque<>();
-    private Long actionId ;
+    private Long actionId;
     private String actionName;
+
+    public Long getActionId() {
+        return actionId;
+    }
+
+    public String getActionName() {
+        return actionName;
+    }
+
+    @Override
+    public Long getProcessId() {
+        return super.getProcessId();
+    }
+
+    @Override
+    public Long getCreatedBy() {
+        return super.getCreatedBy();
+    }
+
+    @Override
+    public java.time.LocalDateTime getCreatedDate() {
+        return super.getCreatedDate();
+    }
+
+    @Override
+    public Long getLastModifiedBy() {
+        return super.getLastModifiedBy();
+    }
+
+    @Override
+    public java.time.LocalDateTime getLastModifiedDate() {
+        return super.getLastModifiedDate();
+    }
 
     private String macroName;
     private String modelPath;
@@ -56,9 +89,9 @@ public class ActionExecutionAudit extends AbstractAudit implements IAction {
         HandymanActorSystemAccess.insert(ActionExecutionStatusAudit.builder().actionId(actionId)
                 .rootPipelineId(this.getRootPipelineId())
                 .pipelineId(this.pipelineId).executionStatusId(executionStatusId).build());
-        LambdaEngine.getLogger(this).info("Action audit has been inserted with ActionId {} as {}", this.actionId, ExecutionStatus.get(executionStatusId));
+        LambdaEngine.getLogger(this).info("Action audit has been inserted with ActionId {} as {}", this.actionId,
+                ExecutionStatus.get(executionStatusId));
     }
-
 
     @Override
     public String getCurrentTime() {

@@ -16,20 +16,21 @@ import java.util.List;
 @Builder
 public class CheckboxExtractionInputTable implements CoproProcessor.Entity {
     private String originId;
+    private String groupId;
+    private Integer rootPipelineId;
     private Long tenantId;
-    private String checkboxGroupId;
     private Integer pageNumber;
     private String inputFilePath;
     private String systemPrompt;
     private String userPrompt;
     private String processId;
     private String batchId;
-    private Long rootPipelineId;
 
     @Override
     public String getStatus() {
         return ConsumerProcessApiStatus.ABSENT.getStatusDescription();
     }
+
     @Override
     public List<Object> getRowData() {
         return null;

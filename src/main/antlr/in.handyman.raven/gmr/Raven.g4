@@ -195,6 +195,8 @@ action:
     |multivalueSorItemHandling
     |sectionFilteringAfterGrouping
     |checkboxExtraction
+    |vulcanFallback
+    |visualExtraction
     );
 
 
@@ -1030,6 +1032,16 @@ tableExtraction:
 		querySet=STRING
 	'}' ('on-condition' condition=expression)* ;
 
+visualExtraction:
+	'visualExtraction' 'as' name=STRING
+	'extraction-url' endpoint=STRING
+	'result-table' resultTable=STRING
+	'processId' processId=STRING
+	'resource-conn' resourceConn=STRING
+	'using' '{'
+		querySet=STRING
+	'}' ('on-condition' condition=expression)* ;
+
 checkboxExtraction:
 	'checkboxExtraction' 'as' name=STRING
 	'extraction-url' endpoint=STRING
@@ -1463,6 +1475,13 @@ agenticPaperFilter:
   	'copro-url' endPoint=STRING
   	'process-id' processId=STRING
   	'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ('on-parallel-fielding' forkBatchSize=STRING)*;
+
+vulcanFallback:
+    'VulcanFallback' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'endpoint' endpoint=STRING
+    'using' '{' querySet=STRING '}'
+    ('on-condition' condition=expression)*;
 
 mockServerTest:
     'mockServerTest' 'as' name=STRING

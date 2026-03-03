@@ -20,7 +20,8 @@ public class TableExtractionOutputTable implements CoproProcessor.Entity {
 
     private String originId;
     private Long tenantId;
-    private String tableGroupId;
+    private Long groupId;
+    private Integer rootPipelineId;
     private Integer pageNumber;
     private String markdownTable;
     private String status;
@@ -29,12 +30,41 @@ public class TableExtractionOutputTable implements CoproProcessor.Entity {
     private Double durationTime;
     private String batchId;
     private String processId;
+    private String stage;
     private Timestamp createdOn;
 
     @Override
     public List<Object> getRowData() {
-        return Stream.of(this.originId, this.tenantId, this.tableGroupId, this.pageNumber,
-                this.markdownTable, this.status, this.modelName, this.errorMessage,
-                this.durationTime, this.batchId, this.processId, this.createdOn).collect(Collectors.toList());
+        return Stream.of(
+                defaultString(this.originId),
+                defaultLong(this.groupId),
+                defaultInt(this.rootPipelineId),
+                defaultLong(this.tenantId),
+                defaultInt(this.pageNumber),
+                defaultString(this.markdownTable),
+                defaultString(this.stage),
+                defaultString(this.status),
+                defaultString(this.modelName),
+                defaultString(this.errorMessage),
+                defaultDouble(this.durationTime),
+                defaultString(this.batchId),
+                defaultString(this.processId),
+                this.createdOn != null ? this.createdOn : new Timestamp(System.currentTimeMillis())).collect(Collectors.toList());
+    }
+
+    private static String defaultString(String value) {
+        return value != null ? value : "";
+    }
+
+    private static Integer defaultInt(Integer value) {
+        return value != null ? value : 0;
+    }
+
+    private static Long defaultLong(Long value) {
+        return value != null ? value : 0L;
+    }
+
+    private static Double defaultDouble(Double value) {
+        return value != null ? value : 0.0;
     }
 }

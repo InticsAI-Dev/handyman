@@ -42,7 +42,6 @@ public abstract class AbstractAudit extends Auditable {
 
     private Long processId;
 
-
     private Map<String, String> context = new HashMap<>();
     @JsonIgnore
     private String contextNode;

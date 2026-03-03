@@ -279,7 +279,7 @@ class TableExtractionActionTest {
                     .name("multipage_table_extraction_qwen_test")
                     .condition(true)
                     .resourceConn("intics_zio_db_conn")
-                    .endpoint("http://172.203.90.211:9000/predict")  // Qwen server
+                    .endpoint("http://192.168.10.241:9000/predict")  // Qwen server
                     .resultTable("table_extraction_page_output_" + TEST_PROCESS_ID)
                     .querySet("SELECT origin_id, tenant_id, table_group_id, page_number, " +
                             "input_file_path, system_prompt, user_prompt, process_id, batch_id, root_pipeline_id " +
@@ -409,7 +409,7 @@ class TableExtractionActionTest {
                 assert tenantId.equals(row.get("tenant_id")) : "Tenant ID mismatch";
                 assert tableGroupId.equals(row.get("table_group_id")) : "Table group ID mismatch";
                 assert batchId.equals(row.get("batch_id")) : "Batch ID mismatch";
-                assert "Qwen2-VL-72B-Instruct".equals(row.get("model_name")) : "Model name mismatch";
+                assert "KRYPTON_MODEL".equals(row.get("model_name")) : "Model name mismatch";
                 assert duration != null && duration >= 0 : "Duration should be non-negative";
 
                 if ("SUCCESS".equals(status)) {
