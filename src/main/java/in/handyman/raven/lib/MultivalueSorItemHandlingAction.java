@@ -1666,7 +1666,7 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
         List<EncryptionRequestClass> encryptionRequests = inputList.stream()
                 .filter(VqaTransactionOutput::getIsEncrypted)
                 .filter(obj -> obj.getMultiEntityFilteringId() != null && obj.getAnswer() != null && !obj.getAnswer().isEmpty())
-                .map(obj -> new EncryptionRequestClass(AES_256, obj.getAnswer(), String.valueOf(obj.getMultiEntityFilteringId())))
+                .map(obj -> new EncryptionRequestClass(obj.getEncryptionPolicy(), obj.getAnswer(), String.valueOf(obj.getMultiEntityFilteringId())))
                 .collect(Collectors.toList());
 
         log.info(aMarker, "Total records to decrypt for answers: {}", encryptionRequests.size());
@@ -1765,7 +1765,7 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
         List<EncryptionRequestClass> encryptionRequests = outputList.stream()
                 .filter(MultiEntityFieldHandlingInput::getIsEncrypted)
                 .filter(obj -> obj.getMultiEntityFilteringId() != null && obj.getAnswer() != null && !obj.getAnswer().isEmpty())
-                .map(obj -> new EncryptionRequestClass(AES_256, obj.getAnswer(), String.valueOf(obj.getMultiEntityFilteringId())))
+                .map(obj -> new EncryptionRequestClass(obj.getEncryptionPolicy(), obj.getAnswer(), String.valueOf(obj.getMultiEntityFilteringId())))
                 .collect(Collectors.toList());
 
         log.info(aMarker, "Total records to encrypt for answers: {}", encryptionRequests.size());
