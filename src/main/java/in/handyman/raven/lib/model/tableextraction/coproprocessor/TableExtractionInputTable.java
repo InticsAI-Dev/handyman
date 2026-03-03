@@ -16,19 +16,15 @@ import java.util.List;
 @Builder
 public class TableExtractionInputTable implements CoproProcessor.Entity {
     private String originId;
-    private Long processId;
-    private Integer groupId;
     private Long tenantId;
-    private String templateId;
-    private String filePath;
-    private String outputDir;
-    private Long rootPipelineId;
-    private Long paperNo;
-    private String modelName;
-    private Long truthEntityId;
-    private Long sorContainerId;
-    private Long channelId;
+    private String tableGroupId;
+    private Integer pageNumber;
+    private String inputFilePath;
+    private String systemPrompt;
+    private String userPrompt;
+    private String processId;
     private String batchId;
+    private Long rootPipelineId;
 
     @Override
     public String getStatus() {

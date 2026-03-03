@@ -93,8 +93,8 @@ public class MedicalPayloadGeneration {
         // Build medical payload
         MedicalPayload payload = buildMedicalPayload(predictions, configMap);
 
-        // Build complete response
-        return MedicalOutboundResponse.builder()
+
+        MedicalOutboundResponse response = MedicalOutboundResponse.builder()
                 .requestTxnId(metadataContext.getRequestTxnId())
                 .status(metadataContext.getUploadStatus())
                 .errorMessage(metadataContext.getErrorMessage())
@@ -105,8 +105,8 @@ public class MedicalPayloadGeneration {
                 .metadata(metadata)
                 .aumipayload(payload)
                 .build();
-    }
-
+        return response;
+        }
 
     private OutboundJsonMetaData buildMetadata(MetadataContext context, Map<String, String> configMap) {
         log.info("Building metadata section");

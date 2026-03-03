@@ -213,7 +213,7 @@ public class MultivalueConcatenationAction implements IActionExecution {
 
         appendFilterDecisionMessage(currentInput,
                 "Removed as a duplicate multi_value item (same value/score found in another page/instance).");
-        deduplicatedOutputs.add(currentInput);
+//        deduplicatedOutputs.add(currentInput);
 
         logger.debug(logMarker, "Removed duplicate - SorItemName: {}, DocumentId: {}, GroupId: {}, BatchId: {}",
                 currentInput.getSorItemName(), currentInput.getDocumentId(), currentInput.getGroupId(), currentInput.getBatchId());

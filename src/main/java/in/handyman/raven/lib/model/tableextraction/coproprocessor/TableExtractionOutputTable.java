@@ -19,31 +19,22 @@ import java.util.stream.Stream;
 public class TableExtractionOutputTable implements CoproProcessor.Entity {
 
     private String originId;
-    private Integer groupId;
     private Long tenantId;
-    private Long processId;
-    private String templateId;
-    private String processedFilePath;
-    private String croppedImage;
-    private String bboxes;
-    private Long paperNo;
+    private String tableGroupId;
+    private Integer pageNumber;
+    private String markdownTable;
     private String status;
-    private String stage;
-    private String message;
-    private Timestamp createdOn;
-    private Long rootPipelineId;
-    private String tableResponse;
     private String modelName;
-    private Long truthEntityId;
-    private Long sorContainerId;
-    private Long channelId;
+    private String errorMessage;
+    private Double durationTime;
     private String batchId;
+    private String processId;
+    private Timestamp createdOn;
 
     @Override
     public List<Object> getRowData() {
-        return Stream.of(this.originId, this.groupId, this.tenantId, this.templateId, this.processedFilePath,
-                this.paperNo, this.status, this.stage, this.message, this.createdOn, this.processId,
-                this.rootPipelineId, this.tableResponse, this.bboxes, this.croppedImage, this.modelName,
-                this.truthEntityId, this.sorContainerId, this.channelId,this.batchId).collect(Collectors.toList());
+        return Stream.of(this.originId, this.tenantId, this.tableGroupId, this.pageNumber,
+                this.markdownTable, this.status, this.modelName, this.errorMessage,
+                this.durationTime, this.batchId, this.processId, this.createdOn).collect(Collectors.toList());
     }
 }

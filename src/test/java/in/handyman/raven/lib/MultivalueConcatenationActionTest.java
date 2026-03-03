@@ -17,7 +17,7 @@ class MultivalueConcatenationActionTest {
                 .groupId("2014")
                 .condition(true)
                 .outputTable("sor_transform.vqa_transaction_post_processing_output")
-                .resourceConn("intics_zio_db_conn")
+                .resourceConn("intics_zio_db_conn_tsar")
                 .querySet("SELECT vtmui_field_id as vqa_id, transaction_id, created_on, created_user_id, last_updated_on, last_updated_user_id, root_pipeline_id, tenant_id,\n" +
                         "                    document_id, group_id, batch_id, origin_id, paper_no, truth_id, status, stage, message, version, extracted_image_unit,\n" +
                         "                    image_dpi, image_height, image_width, section_priority_after_filter, sor_container_id, sor_container_name, sor_container_instance,\n" +
@@ -25,7 +25,7 @@ class MultivalueConcatenationActionTest {
                         "                    score, b_box, label, section_alias, synonym_id, sor_synonym, question_id, sor_question, weight, category, line_item_type,\n" +
                         "                    is_multi_entity_enabled, encryption_policy, is_encrypted::bool\n" +
                         "                    FROM sor_transform.vqa_transaction_multi_value_unifier_input a\n" +
-                        "                    WHERE origin_id='ORIGIN-74';")
+                        "                    WHERE origin_id='ORIGIN-1103' and sor_container_name ='DIAGNOSIS_CODE';")
                 .build();
 
         final ActionExecutionAudit action = ActionExecutionAudit.builder().build();

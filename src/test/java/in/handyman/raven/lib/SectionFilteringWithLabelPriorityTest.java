@@ -247,7 +247,7 @@ public class SectionFilteringWithLabelPriorityTest {
                     System.out.println("    Answer            : " + row.getAnswer());
                     System.out.println("    Label             : " + row.getSorItemLabel());
                     System.out.println("    Label PriorityIdx : " + row.getLabelPriorityIdx());
-                    System.out.println("    Label Matching    : " + row.isLabelMatching());
+                    System.out.println("    Label Matching    : " + row.getLabelMatching());
                     System.out.println("    Label Match Msg   : " + row.getLabelMatchMessage());
                     System.out.println("---------------------------------------------------------");
                 }
