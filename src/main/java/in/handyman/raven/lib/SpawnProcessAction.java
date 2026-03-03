@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
@@ -35,7 +36,14 @@ public class SpawnProcessAction implements IActionExecution {
     @Override
     public void execute() throws Exception {
         log.info(aMarker, " id: {}, name: {}", actionExecutionAudit.getActionId(), spawnProcess.getName());
-        var executor = Executors.newWorkStealingPool();
+        ExecutorService executor;
+        if (actionExecutionAudit.getContext().getOrDefault("copro.processor.thread.creator", "WORK_STEALING").equalsIgnoreCase("VIRTUAL_THREAD")) {
+            executor = Executors.newVirtualThreadPerTaskExecutor();
+            log.info("Spawn processor created with Virtual Thread Per Task Executor");
+        } else {
+            executor = Executors.newWorkStealingPool();
+            log.info("Spawn processor created with work stealing pool");
+        }
         final LContext lContext = LContext.builder()
                 .inheritedContext(actionExecutionAudit.getContext())
                 .lambdaName(actionExecutionAudit.getLambdaName())
