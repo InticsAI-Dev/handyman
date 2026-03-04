@@ -48,7 +48,7 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
     @Override
     public List<TableExtractionOutputTable> process(URL endpoint, TableExtractionInputTable entity) throws Exception {
         log.info(aMarker, "Table extraction consumer started for page {} of table group {}",
-                entity.getPageNumber(), entity.getTableGroupId());
+                entity.getPageNumber(), entity.getGroupId());
 
         List<TableExtractionOutputTable> results = new ArrayList<>();
         long startTime = System.currentTimeMillis();
@@ -114,7 +114,7 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                     results.add(TableExtractionOutputTable.builder()
                             .originId(entity.getOriginId())
                             .tenantId(entity.getTenantId())
-                            .tableGroupId(entity.getTableGroupId())
+                            .groupId(parseGroupId(entity.getGroupId()))
                             .pageNumber(entity.getPageNumber())
                             .markdownTable(markdownTable)
                             .status(status)
@@ -169,7 +169,7 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
         ObjectNode nestedData = mapper.createObjectNode();
         nestedData.put("originId", entity.getOriginId());
         nestedData.put("tenantId", entity.getTenantId());
-        nestedData.put("tableGroupId", entity.getTableGroupId());
+        nestedData.put("tableGroupId", entity.getGroupId());
         nestedData.put("pageNumber", entity.getPageNumber());
         nestedData.put("base64Img", base64Image);
         nestedData.put("userPrompt", entity.getUserPrompt());
@@ -199,7 +199,7 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
         return TableExtractionOutputTable.builder()
                 .originId(entity.getOriginId())
                 .tenantId(entity.getTenantId())
-                .tableGroupId(entity.getTableGroupId())
+                .groupId(parseGroupId(entity.getGroupId()))
                 .pageNumber(entity.getPageNumber())
                 .markdownTable(null)
                 .status("FAILED")
@@ -210,5 +210,17 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                 .processId(entity.getProcessId())
                 .createdOn(Timestamp.valueOf(LocalDateTime.now()))
                 .build();
+    }
+
+    private Long parseGroupId(String groupId) {
+        if (groupId == null || groupId.isBlank()) {
+            return 0L;
+        }
+        try {
+            return Long.parseLong(groupId);
+        } catch (NumberFormatException ex) {
+            log.warn(aMarker, "Invalid groupId '{}', defaulting to 0", groupId);
+            return 0L;
+        }
     }
 }
