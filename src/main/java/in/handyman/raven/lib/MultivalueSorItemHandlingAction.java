@@ -342,12 +342,11 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
             groupedByInstance.computeIfAbsent(item.getSorContainerInstance(), k -> new ArrayList<>()).add(item);
         }
 
-        // This set tracks the "Fingerprint" of entire unique instances
         Set<String> seenInstanceFingerprints = new HashSet<>();
 
         groupedByInstance.forEach((instanceId, items) -> {
 
-            // 2. Check if the entire instance is "Empty" (All answers are exactly "*")
+            // 2. All-Star Filter (Dynamic check across all items in this group)
             boolean isAllStars = items.stream()
                     .allMatch(it -> it.getAnswer() != null && it.getAnswer().trim().equals("*"));
 
@@ -356,24 +355,32 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
                 return; // Skip to next instance
             }
 
-            // 3. Clean up the instance: Remove exact duplicate rows (Item+Answer) within this instance
+            // 3. Internal Parallel Deduplication
             List<MultiEntityFieldHandlingInput> uniqueRowsInInstance = new ArrayList<>();
             Set<String> seenRows = new HashSet<>();
+            Map<String, Integer> itemCountMap = new HashMap<>(); // Dynamically counts per Item Name
+
             for (MultiEntityFieldHandlingInput row : items) {
-                if (seenRows.add(row.getSorItemName() + "|" + row.getAnswer())) {
+                String itemName = row.getSorItemName();
+                int occurrence = itemCountMap.getOrDefault(itemName, 0) + 1;
+                itemCountMap.put(itemName, occurrence);
+
+                // Row Key is dynamic: Name + Value + Current Position
+                String rowKey = itemName + "|" + (row.getAnswer() != null ? row.getAnswer() : "") + "|pos:" + occurrence;
+
+                if (seenRows.add(rowKey)) {
                     uniqueRowsInInstance.add(row);
                 }
             }
 
-            // 4. Instance-Level Deduplication: Create a fingerprint for the whole container
-            // We sort by ItemName to ensure comparison works even if rows are in different orders
+            // 4. Cross-Instance Deduplication
+            // We build the fingerprint dynamically based on the current unique list
             String instanceFingerprint = uniqueRowsInInstance.stream()
                     .map(it -> it.getSorItemName() + ":" + it.getAnswer())
                     .sorted()
                     .collect(Collectors.joining("||"));
 
             if (seenInstanceFingerprints.add(instanceFingerprint)) {
-                // This bundle of data is unique across all instances!
                 consolidatedInputs.addAll(uniqueRowsInInstance);
                 log.info(aMarker, "Retained unique instance bundle: {}", instanceId);
             } else {
