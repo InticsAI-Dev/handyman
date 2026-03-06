@@ -198,7 +198,14 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
         log.info(aMarker, "Multi-entity items partitioned - Single value line items: {}, Multi value line items: {}", singleValueLineItems.size(), multiValueLineItems.size());
 
 
-        handleMultiEntitySingleValueLineItems(singleValueLineItems, consolidatedInputs);
+        // Create a temporary list for the "dirty" records
+        List<MultiEntityFieldHandlingInput> rawMultiEntityItems = new ArrayList<>();
+
+        // Fill it using your existing logic
+        handleMultiEntitySingleValueLineItems(singleValueLineItems, rawMultiEntityItems);
+
+        // Apply the new consolidation logic to clean them up before adding to final consolidatedInputs
+        consolidateContainerInstances(rawMultiEntityItems, consolidatedInputs);
 
 
         Map<String, List<MultiEntityFieldHandlingInput>> groupedBySorContainerInstance =
@@ -321,6 +328,60 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
 
         log.info(aMarker, "Finished processing simple single-value items. Added {} records to consolidated inputs.", processedCount);
         log.info(aMarker, "====== HANDLE MULTI ENTITY SINGLE VALUE LINE ITEMS COMPLETED ======");
+    }
+
+    public void consolidateContainerInstances(List<MultiEntityFieldHandlingInput> inputList,
+                                              List<MultiEntityFieldHandlingInput> consolidatedInputs) {
+        log.info(aMarker, "====== CONSOLIDATE CONTAINER INSTANCES (FULL SUITE) STARTED ======");
+
+        if (inputList == null || inputList.isEmpty()) return;
+
+        // 1. Group items by their instance (SERVICE_CODE_1, etc.)
+        Map<String, List<MultiEntityFieldHandlingInput>> groupedByInstance = new LinkedHashMap<>();
+        for (MultiEntityFieldHandlingInput item : inputList) {
+            groupedByInstance.computeIfAbsent(item.getSorContainerInstance(), k -> new ArrayList<>()).add(item);
+        }
+
+        // This set tracks the "Fingerprint" of entire unique instances
+        Set<String> seenInstanceFingerprints = new HashSet<>();
+
+        groupedByInstance.forEach((instanceId, items) -> {
+
+            // 2. Check if the entire instance is "Empty" (All answers are exactly "*")
+            boolean isAllStars = items.stream()
+                    .allMatch(it -> it.getAnswer() != null && it.getAnswer().trim().equals("*"));
+
+            if (isAllStars) {
+                log.info(aMarker, "Discarding instance {} - contains only placeholder '*' values.", instanceId);
+                return; // Skip to next instance
+            }
+
+            // 3. Clean up the instance: Remove exact duplicate rows (Item+Answer) within this instance
+            List<MultiEntityFieldHandlingInput> uniqueRowsInInstance = new ArrayList<>();
+            Set<String> seenRows = new HashSet<>();
+            for (MultiEntityFieldHandlingInput row : items) {
+                if (seenRows.add(row.getSorItemName() + "|" + row.getAnswer())) {
+                    uniqueRowsInInstance.add(row);
+                }
+            }
+
+            // 4. Instance-Level Deduplication: Create a fingerprint for the whole container
+            // We sort by ItemName to ensure comparison works even if rows are in different orders
+            String instanceFingerprint = uniqueRowsInInstance.stream()
+                    .map(it -> it.getSorItemName() + ":" + it.getAnswer())
+                    .sorted()
+                    .collect(Collectors.joining("||"));
+
+            if (seenInstanceFingerprints.add(instanceFingerprint)) {
+                // This bundle of data is unique across all instances!
+                consolidatedInputs.addAll(uniqueRowsInInstance);
+                log.info(aMarker, "Retained unique instance bundle: {}", instanceId);
+            } else {
+                log.info(aMarker, "Discarding instance {} - it is an exact duplicate of another container instance.", instanceId);
+            }
+        });
+
+        log.info(aMarker, "====== CONSOLIDATE CONTAINER INSTANCES COMPLETED ======");
     }
 
     @Nullable
