@@ -55,11 +55,23 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
     private static final String SQL_INSERT_COPRO_AUDIT = "INSERT INTO macro." + COPRO_RETRY_ERROR_AUDIT + " (" +
             "origin_id, group_id, attempt, tenant_id, process_id, file_path, paper_no, message, status, stage, " +
             "created_on, root_pipeline_id, batch_id, last_updated_on, request, response, endpoint, copro_service_id, " +
-            "computation_details, copro_status_code, copro_log, copro_details, critical_data_present" +
+            "computation_details, copro_status_code, copro_log, copro_details, critical_data_present, " +
+            "before_cpu_usage, before_total_cores, before_available_cores, before_used_cores, before_core_utilization_percent, " +
+            "before_ram_usage, before_ram_used_mb, before_ram_total_mb, before_ram_available_mb, before_disk_usage, " +
+            "before_disk_total_gb, before_disk_free_gb, before_disk_total_mb, before_disk_free_mb, before_source, " +
+            "after_cpu_usage, after_total_cores, after_available_cores, after_used_cores, after_core_utilization_percent, " +
+            "after_ram_usage, after_ram_used_mb, after_ram_total_mb, after_ram_available_mb, after_disk_usage, " +
+            "after_disk_total_gb, after_disk_free_gb, after_disk_total_mb, after_disk_free_mb, after_source, duration" +
             ") VALUES (" +
             ":originId, :groupId, :attempt, :tenantId, :processId, :filePath, :paperNo, :message, :status, :stage, " +
             ":createdOn, :rootPipelineId, :batchId, NOW(), :request, :response, :endpoint, :coproServiceId ," +
-            ":computationDetails, :coproStatusCode, :coproLog, :coproDetails, :criticalDataPresent" +
+            ":computationDetails, :coproStatusCode, :coproLog, :coproDetails, :criticalDataPresent, " +
+            ":beforeCpuUsage, :beforeTotalCores, :beforeAvailableCores, :beforeUsedCores, :beforeCoreUtilizationPercent, " +
+            ":beforeRamUsage, :beforeRamUsedMb, :beforeRamTotalMb, :beforeRamAvailableMb, :beforeDiskUsage, " +
+            ":beforeDiskTotalGb, :beforeDiskFreeGb, :beforeDiskTotalMb, :beforeDiskFreeMb, :beforeSource, " +
+            ":afterCpuUsage, :afterTotalCores, :afterAvailableCores, :afterUsedCores, :afterCoreUtilizationPercent, " +
+            ":afterRamUsage, :afterRamUsedMb, :afterRamTotalMb, :afterRamAvailableMb, :afterDiskUsage, " +
+            ":afterDiskTotalGb, :afterDiskFreeGb, :afterDiskTotalMb, :afterDiskFreeMb, :afterSource, :duration" +
             ")";
 
     static {
@@ -670,6 +682,7 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
             if (retryAudit.getCreatedOn() == null) {
                 retryAudit.setCreatedOn(Timestamp.valueOf(LocalDateTime.now()));
             }
+
             return JDBI.withHandle(handle ->
                     handle.createUpdate(SQL_INSERT_COPRO_AUDIT)
                             .bindBean(retryAudit) // Automatically maps bean properties to SQL parameters

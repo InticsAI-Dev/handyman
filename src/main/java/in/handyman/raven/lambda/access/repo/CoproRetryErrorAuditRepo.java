@@ -14,7 +14,14 @@ public interface CoproRetryErrorAuditRepo {
             " id, origin_id, group_id, tenant_id, process_id, file_path, " +
                     " paper_no, status, stage, " +
                     " message, created_on, root_pipeline_id, batch_id, last_updated_on, " +
-                    " request, response, endpoint, attempt, copro_service_id ";
+                    " request, response, endpoint, attempt, copro_service_id, " +
+                    " computation_details, copro_status_code, copro_log, copro_details, critical_data_present, " +
+                    " before_cpu_usage, before_total_cores, before_available_cores, before_used_cores, before_core_utilization_percent, " +
+                    " before_ram_usage, before_ram_used_mb, before_ram_total_mb, before_ram_available_mb, before_disk_usage, " +
+                    " before_disk_total_gb, before_disk_free_gb, before_disk_total_mb, before_disk_free_mb, before_source, " +
+                    " after_cpu_usage, after_total_cores, after_available_cores, after_used_cores, after_core_utilization_percent, " +
+                    " after_ram_usage, after_ram_used_mb, after_ram_total_mb, after_ram_available_mb, after_disk_usage, " +
+                    " after_disk_total_gb, after_disk_free_gb, after_disk_total_mb, after_disk_free_mb, after_source, duration ";
 
     // -----------------------------------------------------------------------
     // 🔹 1. Find all
