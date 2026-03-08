@@ -19,6 +19,7 @@ public class DiagnosisServiceCodeValidator {
     private final List validDiagnosisCode = new ArrayList();
 
     // Regex Patterns for parsing
+    private static final Pattern X_QTY_PATTERN = Pattern.compile("(?i)[Xx*]\\s*(\\d{1,2})");
     private static final Pattern HYPHEN_SINGLE_DIGIT_UNIT = Pattern.compile("-([0-9])$");
     private static final Pattern HYPHEN_TWO_CHAR_MODIFIER = Pattern.compile("-([A-Z0-9]{2})$");
     private static final Pattern X_MULTIPLIER = Pattern.compile("[Xx*]\\s*(\\d{1,2})(?!\\d)");
@@ -88,7 +89,6 @@ public class DiagnosisServiceCodeValidator {
     private static final Pattern FALLBACK_VISITS_HINT = Pattern.compile(
             "[xX*]\\s*(\\d{1,2})\\s*-?visits?", Pattern.CASE_INSENSITIVE);
 
-    // NEW PATTERN FOR CASE 77: Handles "45433 TG * 4", "A1234 * 5" in blocked entries
     private static final Pattern BLOCK_MULTIPLIER_UNITS = Pattern.compile(
             "\\s*([A-Z0-9]{5,6})\\s*(?:([A-Z0-9]{2})\\s*)?[xX*]\\s*(\\d{1,2})(?!\\d)\\s*$",
             Pattern.CASE_INSENSITIVE);
@@ -107,12 +107,15 @@ public class DiagnosisServiceCodeValidator {
         if(svcInputObj instanceof List && diagInputObj instanceof List && qtyUnitsInputObj instanceof List && qtyVisitsInputObj instanceof List && modifiersInputObj instanceof List)
         {
             List svcInputList = (List) svcInputObj;
-            List diagInputList = (List) diagInputObj;
-            List qtyUnitsInputList = (List) qtyUnitsInputObj;
-            List qtyVisitsInputList = (List) qtyVisitsInputObj;
-            List modifiersInputList = (List) modifiersInputObj;
+            int maxSize = svcInputList.size();
 
-            for(int i =0; i < svcInputList.size(); i++)
+            // Fix: Pad all lists to ensure we don't hit IndexOutOfBounds exceptions
+            List diagInputList = padListToSize((List) diagInputObj, maxSize);
+            List qtyUnitsInputList = padListToSize((List) qtyUnitsInputObj, maxSize);
+            List qtyVisitsInputList = padListToSize((List) qtyVisitsInputObj, maxSize);
+            List modifiersInputList = padListToSize((List) modifiersInputObj, maxSize);
+
+            for(int i =0; i < maxSize; i++)
             {
                 if (
                     svcInputList.get(i) instanceof in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput &&
@@ -132,12 +135,20 @@ public class DiagnosisServiceCodeValidator {
                     String diagString = diagInput.getAnswer();
                     String qtyUnitsString = qtyUnitsInput.getAnswer();
                     String qtyVisitsString = qtyVisitsInput.getAnswer();
+                    String modifiersString = modifiersInput.getAnswer();
 
                     clearLists();
                     logger.info("Starting service and diagnosis code mapping");
 
                     processServiceCodes(svcString);
                     processDiagnosisCodes(diagString);
+
+                    while (modifiers.size() < serviceCodes.size()) {
+                        modifiers.add("*");
+                    }
+
+                    String globalModifiers = extractModifiers(modifiersString);
+                    applyGlobalValues(globalModifiers, modifiers);
 
                     String globalUnits = extractNumbers(qtyUnitsString);
                     String globalVisits = extractNumbers(qtyVisitsString);
@@ -165,7 +176,6 @@ public class DiagnosisServiceCodeValidator {
                         finalVisits = (joinedVisits == null || joinedVisits.trim().length() == 0) ? globalVisits : joinedVisits;
                     }
 
-
                     svcInput.setAnswer(join(serviceCodes));
                     diagInput.setAnswer(join(validDiagnosisCode));
                     qtyUnitsInput.setAnswer(join(units));
@@ -181,14 +191,12 @@ public class DiagnosisServiceCodeValidator {
                         modifiersInput.setAnswer(join(finalMods));
                     }
 
-
-
                     ensureEmptyString(svcInput);
                     ensureEmptyString(diagInput);
                     ensureEmptyString(qtyUnitsInput);
                     ensureEmptyString(qtyVisitsInput);
 
-                    if (((String) serviceCodes.get(i)).trim().isEmpty()) {
+                    if (serviceCodes.isEmpty()) {
                         svcInput.setAnswer("*");
                         diagInput.setAnswer("*");
                         qtyUnitsInput.setAnswer("*");
@@ -204,18 +212,110 @@ public class DiagnosisServiceCodeValidator {
             predictionMap.put("service_quantity_units", qtyUnitsInputList);
             predictionMap.put("service_quantity_visits", qtyVisitsInputList);
             predictionMap.put("service_code_modifier", modifiersInputList);
+
+            consolidateContainerInstances(predictionMap);
         }
 
         return new MappingResult(new Hashtable(predictionMap), new ArrayList());
+    }
+
+    public void consolidateContainerInstances(Map predictionMap) {
+        if (logger != null) {
+            logger.info("====== Starting Consolidation Audit ======");
+        }
+
+        String[] keys = new String[] {
+            "service_code",
+            "diagnosis_code",
+            "service_quantity_units",
+            "service_quantity_visits",
+            "service_code_modifier"
+        };
+
+        int totalItemsBefore = 0;
+        int totalItemsAfter = 0;
+
+        for (int k = 0; k < keys.length; k++) {
+            String currentKey = keys[k];
+            Object listObj = predictionMap.get(currentKey);
+
+            if (listObj instanceof java.util.List) {
+                java.util.List inputList = (java.util.List) listObj;
+                int initialSize = inputList.size();
+                totalItemsBefore += initialSize;
+
+                java.util.List cleanList = new java.util.ArrayList();
+                java.util.Set seenRows = new java.util.HashSet();
+                java.util.Map posTracker = new java.util.HashMap();
+
+                for (int i = 0; i < initialSize; i++) {
+                    Object rowObj = inputList.get(i);
+                    in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput row =
+                        (in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput) rowObj;
+
+                    String ans = (row.getAnswer() != null) ? row.getAnswer().trim() : "";
+
+                    // Track occurrence count for this specific field
+                    Integer count = (Integer) posTracker.get(currentKey);
+                    int nextCount = (count == null) ? 1 : count.intValue() + 1;
+                    posTracker.put(currentKey, new Integer(nextCount));
+
+                    // Identity = Key + Value + Position
+                    // Example: service_code_modifier|RR|pos:1
+                    String identity = currentKey + "|" + ans + "|pos:" + nextCount;
+
+                    if (seenRows.add(identity)) {
+                        cleanList.add(row);
+                    }
+                }
+
+                int finalSize = cleanList.size();
+                totalItemsAfter += finalSize;
+
+                if (logger != null && initialSize != finalSize) {
+                    int removed = initialSize - finalSize;
+                    logger.info("Field [" + currentKey + "]: Removed " + removed + " duplicates. (" + initialSize + " -> " + finalSize + ")");
+                }
+
+                predictionMap.put(currentKey, cleanList);
+            }
+        }
+
+        if (logger != null) {
+            int totalDeleted = totalItemsBefore - totalItemsAfter;
+            logger.info("====== Consolidation Summary ======");
+            logger.info("Total Rows Processed: " + totalItemsBefore);
+            logger.info("Total Rows Deleted:   " + totalDeleted);
+            logger.info("Final Cleaned Count:  " + totalItemsAfter);
+            logger.info("====================================");
+        }
+    }
+
+    // New Helper to safely pad missing array lists
+    private List padListToSize(List originalList, int targetSize) {
+        List newList = new ArrayList();
+        if (originalList != null) {
+            newList.addAll(originalList);
+        }
+        while (newList.size() < targetSize) {
+            try {
+                in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput obj =
+                        new in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput();
+                obj.setAnswer("");
+                newList.add(obj);
+            } catch (Throwable t) {
+                if (logger != null) logger.error("PostProcessingFieldsInput not available in runtime", t);
+                newList.add(null);
+            }
+        }
+        return newList;
     }
 
     private void processServiceCodes(String input) {
         if (input == null || input.trim().length() == 0) return;
         String cleaned = input.replaceAll("-+$", "").trim();
 
-        // NEW: Handle repeated pipe-delimited blocks (Case 87)
         if (cleaned.contains("|") && cleaned.contains("--")) {
-            // Split by common noise patterns that separate codes in this context
             String[] blocks = cleaned.split("\\|\\*\\*\\|##\\|--,?|\\|--,?|\\|\\*\\*\\|");
             boolean foundBlocks = false;
             for (int i = 0; i < blocks.length; i++) {
@@ -244,7 +344,7 @@ public class DiagnosisServiceCodeValidator {
             return;
         }
 
-        String[] entries = cleaned.split(",");
+        String[] entries = cleaned.split(",|(?i)\\bor\\b|;");
         for (int i = 0; i < entries.length; i++) {
             String entry = entries[i].trim();
             if (entry.length() == 0) continue;
@@ -261,6 +361,18 @@ public class DiagnosisServiceCodeValidator {
 
             if (DESCRIPTIVE_UNITS_VISITS.matcher(entry).find()) { processDescriptiveSwapped(entry); continue; }
             if (DESCRIPTIVE_VISITS_UNITS.matcher(entry).find()) { processDescriptive(entry); continue; }
+
+            Matcher xMatcher = X_QTY_PATTERN.matcher(entry);
+            if (xMatcher.find()) {
+                String codePart = entry.split("(?i)[Xx*]")[0].trim();
+                String cleanCode = keepAlnum(codePart).toUpperCase();
+                String unitValue = xMatcher.group(1);
+
+                if (cleanCode.length() >= 5 && cleanCode.length() <= 6) {
+                    addEntry(cleanCode, "*", unitValue, "*");
+                    continue;
+                }
+            }
 
             Matcher modEqualsUnitsM = CODE_MOD_EQUALS_UNITS.matcher(entry);
             if (modEqualsUnitsM.find()) {
@@ -279,7 +391,6 @@ public class DiagnosisServiceCodeValidator {
     }
 
     private boolean processSpecificPatterns(String cleaned) {
-        // NEW: Check for code-description(multiplier) pattern FIRST
         Matcher descMultM = CODE_DASH_DESC_PAREN_MULTIPLIER.matcher(cleaned);
         if (descMultM.find()) {
             do {
@@ -329,7 +440,6 @@ public class DiagnosisServiceCodeValidator {
     }
 
     private void processSingleStructuredEntry(String entry) {
-        // FIX for Case 77: Handle simple patterns that appear in isolated blocks after splitting
         Matcher equalsM = CODE_EQUALS_UNITS.matcher(entry);
         if (equalsM.find()) {
             do {
@@ -346,7 +456,6 @@ public class DiagnosisServiceCodeValidator {
             return;
         }
 
-        // NEW: Handle "CODE [MOD] * N" or "CODE [MOD] x N" pattern (e.g., "45433 TG * 4", "A1234 * 5")
         Matcher multM = BLOCK_MULTIPLIER_UNITS.matcher(entry);
         if (multM.find()) {
             String code = multM.group(1).toUpperCase();
@@ -356,7 +465,6 @@ public class DiagnosisServiceCodeValidator {
             return;
         }
 
-        // Original logic continues unchanged
         String[] fields = entry.split("\\|");
         if (fields.length == 0) return;
 
@@ -504,6 +612,22 @@ public class DiagnosisServiceCodeValidator {
         return (a.length() == 5 || a.length() == 6) ? a : null;
     }
 
+    private String extractModifiers(String s) {
+        if (s == null) return "";
+
+        Matcher m = Pattern.compile("\\b[A-Z]{2}\\b").matcher(s.toUpperCase());
+        StringBuilder sb = new StringBuilder();
+        boolean first = true;
+
+        while (m.find()) {
+            if (!first) sb.append(",");
+            sb.append(m.group());
+            first = false;
+        }
+
+        return sb.toString();
+    }
+
     private void clearLists() { serviceCodes.clear(); modifiers.clear(); units.clear(); visits.clear(); validDiagnosisCode.clear(); }
 
     private String extractNumbers(String s) {
@@ -535,29 +659,29 @@ public class DiagnosisServiceCodeValidator {
 
     private String getAsString(List l, int index) { return index < l.size() ? (String) l.get(index) : ""; }
 
-private Object getAsObject(Map m, String k) {
+    private Object getAsObject(Map m, String k) {
 
-    Object o = m.get(k);
-    if (o != null) {
-        return o;
+        Object o = m.get(k);
+        if (o != null) {
+            return o;
+        }
+
+        List list = new ArrayList();
+
+        try {
+            in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput obj =
+                    new in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput();
+
+            obj.setAnswer("");
+            list.add(obj);
+
+        } catch (Throwable t) {
+            logger.error("PostProcessingFieldsInput not available in runtime", t);
+            list.add(null);
+        }
+
+        return list;
     }
-
-    List list = new ArrayList();
-
-    try {
-        in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput obj =
-            new in.handyman.raven.lib.services.sor.transform.PostProcessingFieldsInput();
-
-        obj.setAnswer("");
-        list.add(obj);
-
-    } catch (Throwable t) {
-        logger.error("PostProcessingFieldsInput not available in runtime", t);
-        list.add(null);
-    }
-
-    return list;
-}
 
     private void ensureEmptyString(Map m, String k) { if (getAsString(m, k).length() == 0) m.put(k, ""); }
 
