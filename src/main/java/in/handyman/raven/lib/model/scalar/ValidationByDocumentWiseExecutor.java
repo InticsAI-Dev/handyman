@@ -151,8 +151,7 @@ public class ValidationByDocumentWiseExecutor {
                 log.info("Successfully retrieved list of {} DocumentWisePostProcessingInput objects", resultList.size());
                 return resultList;
             }
-            
-            // Try to get mappedData via getMappedData() method (MappingResult pattern)
+
             try {
                 Method getMappedDataMethod = validatorResultObject.getClass().getMethod("getMappedData");
                 Object mappedData = getMappedDataMethod.invoke(validatorResultObject);
