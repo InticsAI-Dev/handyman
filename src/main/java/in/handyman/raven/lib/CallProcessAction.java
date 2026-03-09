@@ -100,10 +100,7 @@ public class CallProcessAction implements IActionExecution {
             final int forkBatchSize = Optional.ofNullable(callProcess.getForkBatchSize()).map(Integer::valueOf).orElse(0);
             if (forkBatchSize != 0) {
                 ExecutorService executor;
-                if (actionExecutionAudit.getContext().getOrDefault("copro.processor.thread.creator", "WORK_STEALING").equalsIgnoreCase("FIXED_THREAD")) {
-                    executor = Executors.newFixedThreadPool(forkBatchSize);
-                    log.info("Call processor created with fixed thread pool of size {}", forkBatchSize);
-                } else if (actionExecutionAudit.getContext().getOrDefault("copro.processor.thread.creator", "WORK_STEALING").equalsIgnoreCase("VIRTUAL_THREAD")) {
+                if (actionExecutionAudit.getContext().getOrDefault("copro.processor.thread.creator", "WORK_STEALING").equalsIgnoreCase("VIRTUAL_THREAD")) {
                     executor = Executors.newVirtualThreadPerTaskExecutor();
                     log.info("Call processor created with Virtual Thread Per Task Executor");
                 } else {
