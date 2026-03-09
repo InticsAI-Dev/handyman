@@ -198,7 +198,14 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
         log.info(aMarker, "Multi-entity items partitioned - Single value line items: {}, Multi value line items: {}", singleValueLineItems.size(), multiValueLineItems.size());
 
 
-        handleMultiEntitySingleValueLineItems(singleValueLineItems, consolidatedInputs);
+        // Create a temporary list for the "dirty" records
+        List<MultiEntityFieldHandlingInput> rawMultiEntityItems = new ArrayList<>();
+
+        // Fill it using your existing logic
+        handleMultiEntitySingleValueLineItems(singleValueLineItems, rawMultiEntityItems);
+
+        // Apply the new consolidation logic to clean them up before adding to final consolidatedInputs
+        consolidateContainerInstances(rawMultiEntityItems, consolidatedInputs);
 
 
         Map<String, List<MultiEntityFieldHandlingInput>> groupedBySorContainerInstance =
@@ -321,6 +328,67 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
 
         log.info(aMarker, "Finished processing simple single-value items. Added {} records to consolidated inputs.", processedCount);
         log.info(aMarker, "====== HANDLE MULTI ENTITY SINGLE VALUE LINE ITEMS COMPLETED ======");
+    }
+
+    public void consolidateContainerInstances(List<MultiEntityFieldHandlingInput> inputList,
+                                              List<MultiEntityFieldHandlingInput> consolidatedInputs) {
+        log.info(aMarker, "====== CONSOLIDATE CONTAINER INSTANCES (FULL SUITE) STARTED ======");
+
+        if (inputList == null || inputList.isEmpty()) return;
+
+        // 1. Group items by their instance (SERVICE_CODE_1, etc.)
+        Map<String, List<MultiEntityFieldHandlingInput>> groupedByInstance = new LinkedHashMap<>();
+        for (MultiEntityFieldHandlingInput item : inputList) {
+            groupedByInstance.computeIfAbsent(item.getSorContainerInstance(), k -> new ArrayList<>()).add(item);
+        }
+
+        Set<String> seenInstanceFingerprints = new HashSet<>();
+
+        groupedByInstance.forEach((instanceId, items) -> {
+
+            // 2. All-Star Filter (Dynamic check across all items in this group)
+            boolean isAllStars = items.stream()
+                    .allMatch(it -> it.getAnswer() != null && it.getAnswer().trim().equals("*"));
+
+            if (isAllStars) {
+                log.info(aMarker, "Discarding instance {} - contains only placeholder '*' values.", instanceId);
+                return; // Skip to next instance
+            }
+
+            // 3. Internal Parallel Deduplication
+            List<MultiEntityFieldHandlingInput> uniqueRowsInInstance = new ArrayList<>();
+            Set<String> seenRows = new HashSet<>();
+            Map<String, Integer> itemCountMap = new HashMap<>(); // Dynamically counts per Item Name
+
+            for (MultiEntityFieldHandlingInput row : items) {
+                String itemName = row.getSorItemName();
+                int occurrence = itemCountMap.getOrDefault(itemName, 0) + 1;
+                itemCountMap.put(itemName, occurrence);
+
+                // Row Key is dynamic: Name + Value + Current Position
+                String rowKey = itemName + "|" + (row.getAnswer() != null ? row.getAnswer() : "") + "|pos:" + occurrence;
+
+                if (seenRows.add(rowKey)) {
+                    uniqueRowsInInstance.add(row);
+                }
+            }
+
+            // 4. Cross-Instance Deduplication
+            // We build the fingerprint dynamically based on the current unique list
+            String instanceFingerprint = uniqueRowsInInstance.stream()
+                    .map(it -> it.getSorItemName() + ":" + it.getAnswer())
+                    .sorted()
+                    .collect(Collectors.joining("||"));
+
+            if (seenInstanceFingerprints.add(instanceFingerprint)) {
+                consolidatedInputs.addAll(uniqueRowsInInstance);
+                log.info(aMarker, "Retained unique instance bundle: {}", instanceId);
+            } else {
+                log.info(aMarker, "Discarding instance {} - it is an exact duplicate of another container instance.", instanceId);
+            }
+        });
+
+        log.info(aMarker, "====== CONSOLIDATE CONTAINER INSTANCES COMPLETED ======");
     }
 
     @Nullable
