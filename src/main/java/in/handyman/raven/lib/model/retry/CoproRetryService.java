@@ -294,7 +294,6 @@ public class CoproRetryService {
                 retryAudit.setMessage("HTTP/2_ERROR: " + message);
             }
         }
-
     }
 
     private void retryAuditMetricSetter(
@@ -309,11 +308,6 @@ public class CoproRetryService {
                 ? mapper.writeValueAsString(metricsNode)
                 : null;
         retryAudit.setComputationDetails(metricsMapping);
-
-        // Extract individual fields from computationDetails JSON
-        if (!metricsNode.isMissingNode() && !metricsNode.isNull() && !metricsNode.isEmpty()) {
-            extractMetricsFields(metricsNode, retryAudit);
-        }
 
         // statusCode
         JsonNode statusNode = root.path("statusCode");
@@ -335,127 +329,6 @@ public class CoproRetryService {
                 ? detailNode.asText()
                 : null;
         retryAudit.setCoproDetails(detailNodeMapping);
-    }
-
-    private void extractMetricsFields(JsonNode computationDetailsNode, CoproRetryErrorAuditTable retryAudit) {
-        try {
-            // Extract duration
-            JsonNode durationNode = computationDetailsNode.path("duration");
-            if (!durationNode.isMissingNode() && !durationNode.isNull()) {
-                retryAudit.setDuration(durationNode.asDouble());
-            }
-
-            // Extract beforeMetricsData
-            JsonNode beforeMetricsNode = computationDetailsNode.path("beforeMetricsData");
-            if (!beforeMetricsNode.isMissingNode() && !beforeMetricsNode.isNull()) {
-                extractMetricsDataFields(beforeMetricsNode, retryAudit, true);
-            }
-
-            // Extract afterMetricsData
-            JsonNode afterMetricsNode = computationDetailsNode.path("afterMetricsData");
-            if (!afterMetricsNode.isMissingNode() && !afterMetricsNode.isNull()) {
-                extractMetricsDataFields(afterMetricsNode, retryAudit, false);
-            }
-        } catch (Exception e) {
-            log.warn("Error extracting metrics fields from computationDetails: {}", e.getMessage());
-        }
-    }
-
-    private void extractMetricsDataFields(JsonNode metricsDataNode, CoproRetryErrorAuditTable retryAudit, boolean isBefore) {
-        String prefix = isBefore ? "before" : "after";
-
-        // CPU metrics
-        setDoubleField(metricsDataNode, "cpuUsage", retryAudit, prefix + "CpuUsage");
-        setIntegerField(metricsDataNode, "totalCores", retryAudit, prefix + "TotalCores");
-        setIntegerField(metricsDataNode, "availableCores", retryAudit, prefix + "AvailableCores");
-        setDoubleField(metricsDataNode, "usedCores", retryAudit, prefix + "UsedCores");
-        setDoubleField(metricsDataNode, "coreUtilizationPercent", retryAudit, prefix + "CoreUtilizationPercent");
-
-        // RAM metrics
-        setDoubleField(metricsDataNode, "ramUsage", retryAudit, prefix + "RamUsage");
-        setStringField(metricsDataNode, "ramUsedMb", retryAudit, prefix + "RamUsedMb");
-        setStringField(metricsDataNode, "ramTotalMb", retryAudit, prefix + "RamTotalMb");
-        setStringField(metricsDataNode, "ramAvailableMb", retryAudit, prefix + "RamAvailableMb");
-
-        // Disk metrics
-        setDoubleField(metricsDataNode, "diskUsage", retryAudit, prefix + "DiskUsage");
-        setStringField(metricsDataNode, "diskTotalGb", retryAudit, prefix + "DiskTotalGb");
-        setStringField(metricsDataNode, "diskFreeGb", retryAudit, prefix + "DiskFreeGb");
-        setStringField(metricsDataNode, "diskTotalMb", retryAudit, prefix + "DiskTotalMb");
-        setStringField(metricsDataNode, "diskFreeMb", retryAudit, prefix + "DiskFreeMb");
-
-        // Source
-        setStringField(metricsDataNode, "source", retryAudit, prefix + "Source");
-    }
-
-    private void setDoubleField(JsonNode node, String fieldName, CoproRetryErrorAuditTable retryAudit, String setterFieldName) {
-        JsonNode fieldNode = node.path(fieldName);
-        if (!fieldNode.isMissingNode() && !fieldNode.isNull()) {
-            try {
-                Double value = fieldNode.asDouble();
-                switch (setterFieldName) {
-                    case "beforeCpuUsage": retryAudit.setBeforeCpuUsage(value); break;
-                    case "beforeUsedCores": retryAudit.setBeforeUsedCores(value); break;
-                    case "beforeCoreUtilizationPercent": retryAudit.setBeforeCoreUtilizationPercent(value); break;
-                    case "beforeRamUsage": retryAudit.setBeforeRamUsage(value); break;
-                    case "beforeDiskUsage": retryAudit.setBeforeDiskUsage(value); break;
-                    case "afterCpuUsage": retryAudit.setAfterCpuUsage(value); break;
-                    case "afterUsedCores": retryAudit.setAfterUsedCores(value); break;
-                    case "afterCoreUtilizationPercent": retryAudit.setAfterCoreUtilizationPercent(value); break;
-                    case "afterRamUsage": retryAudit.setAfterRamUsage(value); break;
-                    case "afterDiskUsage": retryAudit.setAfterDiskUsage(value); break;
-                    case "duration": retryAudit.setDuration(value); break;
-                }
-            } catch (Exception e) {
-                log.debug("Error setting double field {}: {}", setterFieldName, e.getMessage());
-            }
-        }
-    }
-
-    private void setIntegerField(JsonNode node, String fieldName, CoproRetryErrorAuditTable retryAudit, String setterFieldName) {
-        JsonNode fieldNode = node.path(fieldName);
-        if (!fieldNode.isMissingNode() && !fieldNode.isNull()) {
-            try {
-                Integer value = fieldNode.asInt();
-                switch (setterFieldName) {
-                    case "beforeTotalCores": retryAudit.setBeforeTotalCores(value); break;
-                    case "beforeAvailableCores": retryAudit.setBeforeAvailableCores(value); break;
-                    case "afterTotalCores": retryAudit.setAfterTotalCores(value); break;
-                    case "afterAvailableCores": retryAudit.setAfterAvailableCores(value); break;
-                }
-            } catch (Exception e) {
-                log.debug("Error setting integer field {}: {}", setterFieldName, e.getMessage());
-            }
-        }
-    }
-
-    private void setStringField(JsonNode node, String fieldName, CoproRetryErrorAuditTable retryAudit, String setterFieldName) {
-        JsonNode fieldNode = node.path(fieldName);
-        if (!fieldNode.isMissingNode() && !fieldNode.isNull() && !fieldNode.asText().isEmpty()) {
-            try {
-                String value = fieldNode.asText();
-                switch (setterFieldName) {
-                    case "beforeRamUsedMb": retryAudit.setBeforeRamUsedMb(value); break;
-                    case "beforeRamTotalMb": retryAudit.setBeforeRamTotalMb(value); break;
-                    case "beforeRamAvailableMb": retryAudit.setBeforeRamAvailableMb(value); break;
-                    case "beforeDiskTotalGb": retryAudit.setBeforeDiskTotalGb(value); break;
-                    case "beforeDiskFreeGb": retryAudit.setBeforeDiskFreeGb(value); break;
-                    case "beforeDiskTotalMb": retryAudit.setBeforeDiskTotalMb(value); break;
-                    case "beforeDiskFreeMb": retryAudit.setBeforeDiskFreeMb(value); break;
-                    case "beforeSource": retryAudit.setBeforeSource(value); break;
-                    case "afterRamUsedMb": retryAudit.setAfterRamUsedMb(value); break;
-                    case "afterRamTotalMb": retryAudit.setAfterRamTotalMb(value); break;
-                    case "afterRamAvailableMb": retryAudit.setAfterRamAvailableMb(value); break;
-                    case "afterDiskTotalGb": retryAudit.setAfterDiskTotalGb(value); break;
-                    case "afterDiskFreeGb": retryAudit.setAfterDiskFreeGb(value); break;
-                    case "afterDiskTotalMb": retryAudit.setAfterDiskTotalMb(value); break;
-                    case "afterDiskFreeMb": retryAudit.setAfterDiskFreeMb(value); break;
-                    case "afterSource": retryAudit.setAfterSource(value); break;
-                }
-            } catch (Exception e) {
-                log.debug("Error setting string field {}: {}", setterFieldName, e.getMessage());
-            }
-        }
     }
 
 
@@ -529,5 +402,4 @@ public class CoproRetryService {
             }
         }
     }
-
 }
