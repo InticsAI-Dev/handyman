@@ -108,7 +108,7 @@ public class PostProcessingExecutorAction implements IActionExecution {
     private void processEncryption(PostProcessingFieldsInput input, InticsIntegrity crypt, boolean encryptEnabled) {
         if ("multi_value".equalsIgnoreCase(input.getLineItemType())) {
             handleMultiValue(input, crypt, encryptEnabled);
-        } else if (encryptEnabled && input.getIsEncrypted()) {
+        } else if (encryptEnabled && Boolean.TRUE.equals(input.getIsEncrypted()) && input.getAnswer() != null) {
             input.setAnswer(
                     crypt.encrypt(
                             input.getAnswer(),
