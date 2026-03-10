@@ -1,12 +1,8 @@
-package in.handyman.raven.lambda.access.repo;
+package in.handyman.raven.lib.model.retry;
 
 import lombok.Builder;
 import lombok.Data;
 
-/**
- * Holds metrics extracted from computation_details JSON for insertion into triton_results.krypton_model.
- * Fields map to JSON keys: beforeMetricsData, afterMetricsData, and first GPU object when gpus array is non-empty.
- */
 @Data
 @Builder
 public class KryptonModelMetrics {

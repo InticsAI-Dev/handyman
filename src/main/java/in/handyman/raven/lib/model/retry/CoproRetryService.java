@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.MissingNode;
 import in.handyman.raven.core.encryption.SecurityEngine;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.repo.HandymanRepo;
+import in.handyman.raven.lambda.access.repo.HandymanRepoImpl;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
@@ -235,6 +236,9 @@ public class CoproRetryService {
             populateAudit(attempt, retryAudit, requestBody, response, e, action);
             retryAudit.setLastUpdatedOn(CreateTimeStamp.currentTimestamp());
             handymanRepo.insertAuditToDb(retryAudit, action);
+
+            // Copro feature: persist metrics to krypton_model when enabled (activator + success + computation_details)
+            new KryptonModelInsertService(HandymanRepoImpl.getDatabaseConnectionByConnectionType()).insertIfEnabled(retryAudit, action);
         } catch (Exception exception) {
             log.error("Error inserting into retry audit {} for id {} ", ExceptionUtil.toString(exception),retryAudit.getCoproServiceId());
             HandymanException.insertException("Error inserting into copro retry audit for id " + retryAudit.getCoproServiceId(),
