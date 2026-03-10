@@ -32,6 +32,7 @@ public class CoproRetryService {
     private final HandymanRepo handymanRepo;
     private final OkHttpClient httpClient;
     private final Logger log;
+    private final KryptonModelInsertService kryptonModelInsertService;
 
     // HTTP/2 specific error patterns
     private static final List<String> HTTP2_RETRYABLE_ERRORS = Arrays.asList(
@@ -43,10 +44,11 @@ public class CoproRetryService {
             "ENHANCE_YOUR_CALM"
     );
 
-    public CoproRetryService(HandymanRepo handymanRepo, OkHttpClient httpClient,Logger log) {
+    public CoproRetryService(HandymanRepo handymanRepo, OkHttpClient httpClient, Logger log) {
         this.handymanRepo = Objects.requireNonNull(handymanRepo, "handymanRepo");
         this.httpClient = Objects.requireNonNull(httpClient, "httpClient");
-        this.log=log;
+        this.log = log;
+        this.kryptonModelInsertService = new KryptonModelInsertService(HandymanRepoImpl.getDatabaseConnectionByConnectionType());
     }
 
     public Response callCoproApiWithRetry(Request request,
@@ -236,9 +238,7 @@ public class CoproRetryService {
             populateAudit(attempt, retryAudit, requestBody, response, e, action);
             retryAudit.setLastUpdatedOn(CreateTimeStamp.currentTimestamp());
             handymanRepo.insertAuditToDb(retryAudit, action);
-
-            // Copro feature: persist metrics to krypton_model when enabled (activator + success + computation_details)
-            new KryptonModelInsertService(HandymanRepoImpl.getDatabaseConnectionByConnectionType()).insertIfEnabled(retryAudit, action);
+            kryptonModelInsertService.insertIfEnabled(retryAudit, action);
         } catch (Exception exception) {
             log.error("Error inserting into retry audit {} for id {} ", ExceptionUtil.toString(exception),retryAudit.getCoproServiceId());
             HandymanException.insertException("Error inserting into copro retry audit for id " + retryAudit.getCoproServiceId(),
