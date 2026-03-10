@@ -10,7 +10,6 @@ import org.slf4j.Logger;
 
 import java.lang.reflect.Method;
 import java.util.*;
-import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 public class ValidationByDocumentWiseExecutor {
@@ -19,7 +18,6 @@ public class ValidationByDocumentWiseExecutor {
 
     private final ActionExecutionAudit actionExecutionAudit;
     private final Logger log;
-    private final ExecutorService executor;
 
     public ValidationByDocumentWiseExecutor(List<DocumentWisePostProcessingInput> documentWisePostProcessingInputs,
                                             ActionExecutionAudit actionExecutionAudit,
@@ -28,23 +26,18 @@ public class ValidationByDocumentWiseExecutor {
         this.documentWisePostProcessingInputs = documentWisePostProcessingInputs;
         this.actionExecutionAudit = actionExecutionAudit;
         this.log = log;
-        this.executor = Executors.newFixedThreadPool(threadPoolSize);
     }
 
-    public List<DocumentWisePostProcessingInput> doDocumentWiseValidator() throws InterruptedException, ExecutionException {
+    public List<DocumentWisePostProcessingInput> doDocumentWiseValidator() {
         int inputSize = documentWisePostProcessingInputs.size();
         log.info("Starting document-wise validation for {} records", inputSize);
 
         Map<String, List<DocumentWisePostProcessingInput>> byOrigin = groupByOrigin(documentWisePostProcessingInputs);
-        List<CompletableFuture<Void>> originFutures = new ArrayList<>();
+        log.info("Total origins to process: {}", byOrigin.size());
 
-        byOrigin.forEach((origin, originPredictions) -> originFutures.add(
-                CompletableFuture.runAsync(() -> processOrigin(origin, originPredictions), executor)
-        ));
-
-        CompletableFuture.allOf(originFutures.toArray(new CompletableFuture[0])).get();
-        executor.shutdown();
-        executor.awaitTermination(1, TimeUnit.MINUTES);
+        for (Map.Entry<String, List<DocumentWisePostProcessingInput>> originEntry : byOrigin.entrySet()) {
+            processOrigin(originEntry.getKey(), originEntry.getValue());
+        }
 
         log.info("Completed all validations for document-wise post processing.");
         return documentWisePostProcessingInputs;
