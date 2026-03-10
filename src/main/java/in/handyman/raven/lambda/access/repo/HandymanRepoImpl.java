@@ -98,12 +98,12 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
 
             String azureClientId = PropertyHandler.get(AZURE_CLIENT_ID);
             String azureDatabaseUrl = PropertyHandler.get(AZURE_DATABASE_URL);
-            log.debug("Try connecting with this config {} {}", azureDatabaseUrl, azureClientId);
+            log.info("Try connecting with this config {} {}", azureDatabaseUrl, azureClientId);
 
             JDBI=HikariJdbiProvider.getJdbi();
             JDBI.installPlugin(new SqlObjectPlugin());
             try (var ignored = JDBI.open()) {
-                log.debug("Connected {} {}", azureDatabaseUrl, azureClientId);
+                log.info("Connected {} {}", azureDatabaseUrl, azureClientId);
                 return JDBI;
             } catch (Exception e) {
                 log.error("Error in Connecting database with credentials {} {} with exception {}", azureDatabaseUrl, azureClientId, e.getMessage());
@@ -143,7 +143,7 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
         try {
             JDBI.withHandle(handle -> {
                 handle.execute("SELECT 1");
-                log.debug("JDBI connection healthy");
+                log.info("JDBI connection healthy");
                 return null;
             });
         } catch (Exception e) {
@@ -705,9 +705,9 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
                             .one()
             );
 
-            // Insert into triton_results.krypton_model only when message indicates success (200) and computation_details is present
-            if (isSuccessMessage(retryAudit.getMessage()) && retryAudit.getComputationDetails() != null && !retryAudit.getComputationDetails().isBlank()) {
-                insertKryptonModelIfSuccess(retryAudit);
+            // Insert into triton_results.krypton_model only when activator is true, message indicates success (200), and computation_details is present
+            if (isCoproMetricsActivatorEnabled(action) && isSuccessMessage(retryAudit.getMessage()) && retryAudit.getComputationDetails() != null && !retryAudit.getComputationDetails().isBlank()) {
+                insertKryptonModelIfSuccess(retryAudit, action);
             }
 
             return id;
@@ -724,16 +724,23 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
         return message != null && message.contains("200");
     }
 
+    /** Returns true if copro.metrics.activator is true in context (config.spw_instance_config). Default false when not present. */
+    private static boolean isCoproMetricsActivatorEnabled(ActionExecutionAudit action) {
+        if (action == null || action.getContext() == null) return false;
+        String value = action.getContext().getOrDefault("copro.metrics.activator", "false");
+        return Boolean.parseBoolean(value);
+    }
+
     /**
      * Inserts a row into triton_results.krypton_model using data from the copro retry audit.
      * machine_ip from audit.pipeline_execution_audit; all metrics from computation_details JSON (key-value columns).
      */
-    private void insertKryptonModelIfSuccess(CoproRetryErrorAuditTable retryAudit) {
+    private void insertKryptonModelIfSuccess(CoproRetryErrorAuditTable retryAudit, ActionExecutionAudit action) {
         try {
-            String machineIp = getMachineIpByRootPipelineId(retryAudit.getRootPipelineId());
-            KryptonModelMetrics metrics = parseComputationDetailsToMetrics(retryAudit.getComputationDetails());
+            String machineIp = getMachineIpByRootPipelineId(retryAudit.getRootPipelineId(), action);
+            KryptonModelMetrics metrics = parseComputationDetailsToMetrics(retryAudit.getComputationDetails(), action);
             if (metrics == null) {
-                log.debug("Skipping krypton_model insert: could not parse computation_details");
+                log.info("Skipping krypton_model insert: could not parse computation_details");
                 return;
             }
 
@@ -797,14 +804,15 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
                         .bind("processName", (String) null);
                 update.execute();
             });
-            log.debug("Inserted krypton_model row for root_pipeline_id={}, origin_id={}", retryAudit.getRootPipelineId(), retryAudit.getOriginId());
+            log.info("Inserted krypton_model row for root_pipeline_id={}, origin_id={}", retryAudit.getRootPipelineId(), retryAudit.getOriginId());
         } catch (Exception e) {
-            log.warn("Failed to insert into triton_results.krypton_model: {}", ExceptionUtil.toString(e));
+            log.error("Failed to insert into triton_results.krypton_model: {}", ExceptionUtil.toString(e));
+            HandymanException.insertException("Failed to insert into triton_results.krypton_model", new HandymanException(e), action);
         }
     }
 
     /** Fetches machine_ip (host_name) from audit.pipeline_execution_audit by root_pipeline_id. */
-    private String getMachineIpByRootPipelineId(Long rootPipelineId) {
+    private String getMachineIpByRootPipelineId(Long rootPipelineId, ActionExecutionAudit action) {
         if (rootPipelineId == null) return null;
         try {
             List<PipelineExecutionAudit> list = JDBI.withHandle(handle -> {
@@ -815,7 +823,8 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
                 return list.get(0).getHostName();
             }
         } catch (Exception e) {
-            log.debug("Could not resolve machine_ip for root_pipeline_id={}: {}", rootPipelineId, e.getMessage());
+            log.error("Could not resolve machine_ip for root_pipeline_id={}: {}", rootPipelineId, e.getMessage());
+            HandymanException.insertException("Could not resolve machine_ip for root_pipeline_id " + rootPipelineId, new HandymanException(e), action);
         }
         return null;
     }
@@ -824,7 +833,7 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
      * Parses computation_details JSON into KryptonModelMetrics.
      * Extracts beforeMetricsData, afterMetricsData, duration, and first GPU object from each gpus array when non-empty.
      */
-    private KryptonModelMetrics parseComputationDetailsToMetrics(String computationDetails) {
+    private KryptonModelMetrics parseComputationDetailsToMetrics(String computationDetails, ActionExecutionAudit action) {
         if (computationDetails == null || computationDetails.isBlank()) return null;
         try {
             ObjectMapper mapper = new ObjectMapper();
@@ -878,7 +887,8 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
 
             return b.build();
         } catch (Exception e) {
-            log.debug("Could not parse computation_details to metrics: {}", e.getMessage());
+            log.error("Could not parse computation_details to metrics: {}", e.getMessage());
+            HandymanException.insertException("Could not parse computation_details to metrics", new HandymanException(e), action);
             return null;
         }
     }
@@ -902,29 +912,48 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
         }
     }
 
-    private static Double doubleOrNull(JsonNode node, String key) {
+    private Double doubleOrNull(JsonNode node, String key) {
         JsonNode n = node.path(key);
         if (n.isMissingNode() || n.isNull()) return null;
-        try { return n.asDouble(); } catch (Exception e) { return null; }
+        try {
+            Double value = n.asDouble();
+            return value;
+        } catch (Exception e) {
+            log.error("Error parsing double for key {}: {}", key, e.getMessage());
+            return null;
+        }
     }
 
-    private static Integer intOrNull(JsonNode node, String key) {
+    private Integer intOrNull(JsonNode node, String key) {
         JsonNode n = node.path(key);
         if (n.isMissingNode() || n.isNull()) return null;
-        try { return n.asInt(); } catch (Exception e) { return null; }
+        try {
+            Integer value = n.asInt();
+            return value;
+        } catch (Exception e) {
+            log.error("Error parsing integer for key {}: {}", key, e.getMessage());
+            return null;
+        }
     }
 
-    private static Long longOrNull(JsonNode node, String key) {
+    private Long longOrNull(JsonNode node, String key) {
         JsonNode n = node.path(key);
         if (n.isMissingNode() || n.isNull()) return null;
-        try { return n.asLong(); } catch (Exception e) { return null; }
+        try {
+            Long value = n.asLong();
+            return value;
+        } catch (Exception e) {
+            log.error("Error parsing long for key {}: {}", key, e.getMessage());
+            return null;
+        }
     }
 
     private static String textOrNull(JsonNode node, String key) {
         JsonNode n = node.path(key);
         if (n.isMissingNode() || n.isNull()) return null;
         String s = n.asText();
-        return (s == null || s.isEmpty()) ? null : s;
+        String result = (s == null || s.isEmpty()) ? null : s;
+        return result;
     }
 
     @Override
