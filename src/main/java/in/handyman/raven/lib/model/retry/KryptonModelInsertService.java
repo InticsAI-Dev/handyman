@@ -67,7 +67,8 @@ public class KryptonModelInsertService {
     private static boolean isCoproMetricsActivatorEnabled(ActionExecutionAudit action) {
         if (action == null || action.getContext() == null) return false;
         String value = action.getContext().getOrDefault("copro.metrics.activator", "false");
-        return Boolean.parseBoolean(value);
+        boolean enabled = Boolean.parseBoolean(value);
+        return enabled;
     }
 
     private void insertKryptonModelIfSuccess(CoproRetryErrorAuditTable retryAudit, ActionExecutionAudit action) {

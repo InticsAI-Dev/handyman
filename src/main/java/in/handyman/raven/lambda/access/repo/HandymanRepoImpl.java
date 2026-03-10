@@ -117,7 +117,7 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
         try {
             JDBI.withHandle(handle -> {
                 handle.execute("SELECT 1");
-                log.info("JDBI connection healthy");
+                log.debug("JDBI connection healthy");
                 return null;
             });
         } catch (Exception e) {
