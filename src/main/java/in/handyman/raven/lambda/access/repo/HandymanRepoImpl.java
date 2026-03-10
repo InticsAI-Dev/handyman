@@ -72,12 +72,12 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
 
             String azureClientId = PropertyHandler.get(AZURE_CLIENT_ID);
             String azureDatabaseUrl = PropertyHandler.get(AZURE_DATABASE_URL);
-            log.info("Try connecting with this config {} {}", azureDatabaseUrl, azureClientId);
+            log.debug("Try connecting with this config {} {}", azureDatabaseUrl, azureClientId);
 
             JDBI=HikariJdbiProvider.getJdbi();
             JDBI.installPlugin(new SqlObjectPlugin());
             try (var ignored = JDBI.open()) {
-                log.info("Connected {} {}", azureDatabaseUrl, azureClientId);
+                log.debug("Connected {} {}", azureDatabaseUrl, azureClientId);
                 return JDBI;
             } catch (Exception e) {
                 log.error("Error in Connecting database with credentials {} {} with exception {}", azureDatabaseUrl, azureClientId, e.getMessage());
@@ -670,16 +670,13 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
             if (retryAudit.getCreatedOn() == null) {
                 retryAudit.setCreatedOn(Timestamp.valueOf(LocalDateTime.now()));
             }
-
-            long id = JDBI.withHandle(handle ->
+            return JDBI.withHandle(handle ->
                     handle.createUpdate(SQL_INSERT_COPRO_AUDIT)
-                            .bindBean(retryAudit)
+                            .bindBean(retryAudit) // Automatically maps bean properties to SQL parameters
                             .executeAndReturnGeneratedKeys("id")
                             .mapTo(Long.class)
                             .one()
             );
-
-            return id;
         } catch (Exception ex) {
             log.error("Failed to insert copro retry audit", ex);
             HandymanException handymanException = new HandymanException(ex);
