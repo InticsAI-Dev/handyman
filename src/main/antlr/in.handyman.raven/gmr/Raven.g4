@@ -197,6 +197,7 @@ action:
     |checkboxExtraction
     |vulcanFallback
     |visualExtraction
+    |blankPageDetection
     );
 
 

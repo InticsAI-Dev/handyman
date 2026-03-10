@@ -116,6 +116,7 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                             .tenantId(entity.getTenantId())
                             .groupId(parseGroupId(entity.getGroupId()))
                             .pageNumber(entity.getPageNumber())
+                            .rootPipelineId(entity.getRootPipelineId())
                             .markdownTable(markdownTable)
                             .status(status)
                             .modelName("")
@@ -139,7 +140,7 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
         } catch (Exception e) {
             log.error(aMarker, "Exception in table extraction for page {}", entity.getPageNumber(), e);
             results.add(buildFailedResult(entity, e.getMessage(), 0.0));
-
+            
             HandymanException handymanException = new HandymanException(e);
             HandymanException.insertException(
                 "Table extraction failed for page " + entity.getPageNumber(),
@@ -165,31 +166,30 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
 
 
     private String buildTritonPayload(TableExtractionInputTable entity, String base64Image) throws Exception {
-        // Build nested data structure
-        ObjectNode nestedData = mapper.createObjectNode();
-        nestedData.put("originId", entity.getOriginId());
-        nestedData.put("tenantId", entity.getTenantId());
-        nestedData.put("tableGroupId", entity.getGroupId());
-        nestedData.put("pageNumber", entity.getPageNumber());
-        nestedData.put("base64Img", base64Image);
-        nestedData.put("userPrompt", entity.getUserPrompt());
-        nestedData.put("systemPrompt", entity.getSystemPrompt());
-        nestedData.put("process", "DATA_EXTRACTION");
-        nestedData.put("processId", entity.getProcessId());
-        nestedData.put("batchId", entity.getBatchId());
-        nestedData.put("rootPipelineId", entity.getRootPipelineId());
+        // Build payload matching TableExtractionRequest Pydantic model
+        ObjectNode requestData = mapper.createObjectNode();
+        requestData.put("originId", entity.getOriginId());
+        requestData.put("tenantId", String.valueOf(entity.getTenantId()));
+        requestData.put("groupId", entity.getGroupId() != null && !entity.getGroupId().isBlank() ? Integer.parseInt(entity.getGroupId()) : 0);
+        requestData.put("pageNumber", entity.getPageNumber() != null ? entity.getPageNumber() : 1);
+        requestData.put("base64Image", base64Image);
+        requestData.put("userPrompt", entity.getUserPrompt());
+        
+        if (entity.getSystemPrompt() != null && !entity.getSystemPrompt().isBlank()) {
+            requestData.put("systemPrompt", entity.getSystemPrompt());
+        }
+        
+        if (entity.getProcessId() != null && !entity.getProcessId().isBlank()) {
+            requestData.put("processId", Integer.parseInt(entity.getProcessId()));
+        }
+        
+        requestData.put("batchId", entity.getBatchId());
+        
+        if (entity.getRootPipelineId() != null) {
+            requestData.put("rootPipelineId", entity.getRootPipelineId());
+        }
 
-        // Build Triton/KServe wrapper
-        ObjectNode tritonPayload = mapper.createObjectNode();
-        ObjectNode input = mapper.createObjectNode();
-        input.put("name", "KRYPTON START");
-        input.putArray("shape").add(1).add(1);
-        input.put("datatype", "BYTES");
-        input.putArray("data").add(nestedData.toString());
-
-        tritonPayload.putArray("inputs").add(input);
-
-        return mapper.writeValueAsString(tritonPayload);
+        return mapper.writeValueAsString(requestData);
     }
 
 
@@ -201,6 +201,7 @@ public class TableExtractionConsumerProcess implements CoproProcessor.ConsumerPr
                 .tenantId(entity.getTenantId())
                 .groupId(parseGroupId(entity.getGroupId()))
                 .pageNumber(entity.getPageNumber())
+                .rootPipelineId(entity.getRootPipelineId())
                 .markdownTable(null)
                 .status("FAILED")
                 .modelName("")

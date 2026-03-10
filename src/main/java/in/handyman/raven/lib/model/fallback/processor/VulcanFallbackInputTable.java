@@ -14,6 +14,7 @@ import java.util.List;
 @AllArgsConstructor
 public class VulcanFallbackInputTable implements CoproProcessor.Entity {
     private String originId;
+    private Integer paperNo;
     private String sorItemName;
     private String sorQuestion;
     private String documentType;
@@ -22,6 +23,8 @@ public class VulcanFallbackInputTable implements CoproProcessor.Entity {
     private String allowedAdapter;
     private String restrictedAdapter;
     private String description;
+    private Long rootPipelineId;
+    private String rawKvpJson;
 
     @Override
     public List<Object> getRowData() {

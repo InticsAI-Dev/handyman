@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.postgresql.util.PGobject;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -25,17 +26,29 @@ public class VisualExtractionOutputTable implements CoproProcessor.Entity {
     private String status;
     private String modelName;
     private String errorMessage;
-    private Long durationTime;
+    private Double durationTime;
     private String batchId;
-    private String processId;
+    private Long processId;
     private String response;
     private String request;
     private String endpoint;
 
+    private static PGobject toJsonb(String json) {
+        if (json == null) return null;
+        try {
+            PGobject pgo = new PGobject();
+            pgo.setType("jsonb");
+            pgo.setValue(json);
+            return pgo;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     @Override
     public List<Object> getRowData() {
         return Stream.of(originId, groupId, rootPipelineId, tenantId, paperNo, documentType, stage, status, modelName,
-                errorMessage, durationTime, batchId, processId, response, request, endpoint)
+                errorMessage, durationTime, batchId, processId, toJsonb(response), toJsonb(request), endpoint)
                 .collect(Collectors.toList());
     }
 }

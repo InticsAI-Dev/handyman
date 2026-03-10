@@ -45,7 +45,7 @@ public class VulcanFallbackConsumerProcess
         Map<String, Object> payload = new HashMap<>();
         payload.put("tenantId", entity.getTenantId());
         payload.put("originId", entity.getOriginId());
-        payload.put("paperNo", 1);
+        payload.put("paperNo", entity.getPaperNo());
         payload.put("sorItemName", entity.getSorItemName());
         payload.put("sorQuestion", entity.getSorQuestion());
         payload.put("documentType", entity.getDocumentType());
@@ -54,6 +54,8 @@ public class VulcanFallbackConsumerProcess
         payload.put("allowedAdapter", entity.getAllowedAdapter());
         payload.put("restrictedAdapter", entity.getRestrictedAdapter());
         payload.put("description", entity.getDescription());
+        payload.put("rootPipelineId", entity.getRootPipelineId());
+        payload.put("rawKvpJson", entity.getRawKvpJson());
 
         String jsonPayload = objectMapper.writeValueAsString(payload);
         RequestBody body = RequestBody.create(jsonPayload, MediaType.parse("application/json; charset=utf-8"));

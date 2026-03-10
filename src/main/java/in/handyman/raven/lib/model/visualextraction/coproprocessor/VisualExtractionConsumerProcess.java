@@ -50,6 +50,7 @@ public class VisualExtractionConsumerProcess
         requestMap.put("origin_id", entity.getOriginId());
         requestMap.put("tenant_id", String.valueOf(entity.getTenantId()));
         requestMap.put("input_file_path", entity.getFilePath());
+        requestMap.put("model_name", entity.getModelName()); // e.g. YOLO | PYMUPDF | ARGON_DEFAULT
 
         String jsonInputRequest = objectMapper.writeValueAsString(requestMap);
 
@@ -61,6 +62,16 @@ public class VisualExtractionConsumerProcess
                 String responseBody = Objects.requireNonNull(response.body()).string();
                 log.info(aMarker, "VisualExtraction consumer process response successful");
 
+                Double durationTime = null;
+                try {
+                    com.fasterxml.jackson.databind.JsonNode respNode = objectMapper.readTree(responseBody);
+                    com.fasterxml.jackson.databind.JsonNode dtNode = respNode.get("durationTime");
+                    if (dtNode != null && !dtNode.isNull()) {
+                        durationTime = dtNode.asDouble();
+                    }
+                } catch (Exception ignored) {
+                }
+
                 parentObj.add(VisualExtractionOutputTable.builder()
                         .originId(entity.getOriginId())
                         .paperNo(entity.getPaperNo())
@@ -68,11 +79,12 @@ public class VisualExtractionConsumerProcess
                         .groupId(entity.getGroupId())
                         .batchId(entity.getBatchId())
                         .rootPipelineId(entity.getRootPipelineId())
-                        .processId(String.valueOf(action.getProcessId()))
+                        .processId(action.getProcessId())
                         .documentType(entity.getDocumentType())
                         .modelName(entity.getModelName())
                         .status("COMPLETED")
                         .stage("VISUAL_EXTRACTION")
+                        .durationTime(durationTime)
                         .response(responseBody)
                         .request(jsonInputRequest)
                         .endpoint(endpoint.toString())
@@ -86,7 +98,7 @@ public class VisualExtractionConsumerProcess
                         .groupId(entity.getGroupId())
                         .batchId(entity.getBatchId())
                         .rootPipelineId(entity.getRootPipelineId())
-                        .processId(String.valueOf(action.getProcessId()))
+                        .processId(action.getProcessId())
                         .status("FAILED")
                         .stage("VISUAL_EXTRACTION")
                         .errorMessage(response.message())
@@ -103,7 +115,7 @@ public class VisualExtractionConsumerProcess
                     .groupId(entity.getGroupId())
                     .batchId(entity.getBatchId())
                     .rootPipelineId(entity.getRootPipelineId())
-                    .processId(String.valueOf(action.getProcessId()))
+                    .processId(action.getProcessId())
                     .status("FAILED")
                     .stage("VISUAL_EXTRACTION")
                     .errorMessage(exception.getMessage())
