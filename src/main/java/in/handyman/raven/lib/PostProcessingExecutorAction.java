@@ -106,16 +106,28 @@ public class PostProcessingExecutorAction implements IActionExecution {
     }
 
     private void processEncryption(PostProcessingFieldsInput input, InticsIntegrity crypt, boolean encryptEnabled) {
-        if ("multi_value".equalsIgnoreCase(input.getLineItemType())) {
-            handleMultiValue(input, crypt, encryptEnabled);
-        } else if (encryptEnabled && input.getIsEncrypted()) {
-            input.setAnswer(
-                    crypt.encrypt(
-                            input.getAnswer(),
-                            input.getEncryptionPolicy(),
-                            String.valueOf(input.getVqaId())
-                    )
-            );
+        try {
+            if ("multi_value".equalsIgnoreCase(input.getLineItemType())) {
+                handleMultiValue(input, crypt, encryptEnabled);
+            } else if (encryptEnabled && Boolean.TRUE.equals(input.getIsEncrypted()) && input.getAnswer() != null) {
+                input.setAnswer(
+                        crypt.encrypt(
+                                input.getAnswer(),
+                                input.getEncryptionPolicy(),
+                                String.valueOf(input.getVqaId())
+                        )
+                );
+            }
+        } catch (Exception e) {
+            action.getContext().put(input.getSorItemName() + ".isSuccessful", "false");
+            log.error(aMarker, "Error during encryption processing", e);
+
+        HandymanException handymanException = new HandymanException(e);
+        HandymanException.insertException(
+                "Encryption processing failed for VQA ID: " + input.getVqaId() + " SortItemName: " + input.getSorItemName() + ".",
+                handymanException,
+                action
+        );
         }
     }
 
