@@ -27,6 +27,7 @@ import java.net.URL;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
@@ -46,6 +47,11 @@ public class RadonKvpAction implements IActionExecution {
     private static final String DEFAULT_SOCKET_TIMEOUT = "100";
     private static final String THREAD_SLEEP_TIME_DEFAULT = "1000";
     private static final String INSERT_INTO = "INSERT INTO";
+    private static final Map<String, String> MODULE_ASYNC_MODE_KEYS = Map.of(
+            "CHECKBOX_EXTRACTION", "checkbox.extraction.async.mode",
+            "SOR_TRANSACTION_LEGACY", "sor.transaction.legacy.async.mode",
+            "SOR_TRANSACTION", "sor.transaction.async.mode"
+    );
     public static final String COLUMN_LIST = "created_on, created_user_id, last_updated_on, last_updated_user_id, input_file_path," +
             " total_response_json, paper_no, origin_id, process_id, action_id, process, group_id, tenant_id, " +
             "root_pipeline_id, batch_id, model_registry, status, stage, message, category,request,response,endpoint,sor_container_id,sor_container_instance";
@@ -124,6 +130,13 @@ public class RadonKvpAction implements IActionExecution {
 
             ProviderDataTransformer providerDataTransformer = new ProviderDataTransformer(this.log, aMarker, objectMapper, this.action, radonKvp.getResourceConn(), securityEngine);
 
+            String moduleName = action.getContext().getOrDefault("copro.processor.kafka.request.type", "");
+            String asyncModeKey = MODULE_ASYNC_MODE_KEYS.getOrDefault(moduleName, "sor.transaction.async.mode");
+            String asyncMode = action.getContext().getOrDefault(asyncModeKey, "false");
+            if ("true".equalsIgnoreCase(asyncMode)) {
+                action.getContext().put("copro.processor.consumer.route.type", "KAFKA_ASYNC");
+                log.info(aMarker, "RadonKvp running in KAFKA_ASYNC mode for module={}", moduleName);
+            }
 
             log.info(aMarker, "kvp extraction with llm Action for {} has been started", radonKvp.getName());
             FileProcessingUtils fileProcessingUtils = new FileProcessingUtils(log, aMarker, action);
@@ -162,7 +175,8 @@ public class RadonKvpAction implements IActionExecution {
             final CoproProcessor<RadonQueryInputTable, RadonQueryOutputTable> coproProcessor = getTableCoproProcessor(urls);
             Thread.sleep(threadSleepTime);
 
-            final RadonKvpConsumerProcess radonKvpConsumerProcess = new RadonKvpConsumerProcess(log, aMarker, action, this, processBase64, fileProcessingUtils, providerDataTransformer, radonKvp.getResourceConn());
+            String requestType = action.getContext().getOrDefault("copro.processor.kafka.request.type", "SOR_TRANSACTION");
+            final RadonKvpConsumerProcess radonKvpConsumerProcess = new RadonKvpConsumerProcess(log, aMarker, action, this, processBase64, fileProcessingUtils, providerDataTransformer, radonKvp.getResourceConn(), targetTableName, requestType);
             coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, radonKvpConsumerProcess);
             log.info(aMarker, " LLM kvp Action has been completed {}  ", radonKvp.getName());
         } catch (Exception e) {

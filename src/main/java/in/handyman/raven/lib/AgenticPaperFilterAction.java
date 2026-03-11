@@ -86,6 +86,12 @@ public class AgenticPaperFilterAction implements IActionExecution {
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
             log.info(aMarker, "Agentic Paper Filter Action for {} has been started", agenticPaperFilter.getName());
 
+            String asyncMode = action.getContext().getOrDefault("agentic.paper.filter.async.mode", "false");
+            if ("true".equalsIgnoreCase(asyncMode)) {
+                action.getContext().put("copro.processor.consumer.route.type", "KAFKA_ASYNC");
+                log.info(aMarker, "Agentic Paper Filter running in KAFKA_ASYNC mode");
+            }
+
 
             String outputTableName = agenticPaperFilter.getResultTable();
             final String insertQuery = INSERT_INTO + outputTableName + " ( " + INSERT_COLUMNS_UPDATED + " ) " + INSERT_INTO_VALUES_UPDATED;
@@ -134,7 +140,7 @@ public class AgenticPaperFilterAction implements IActionExecution {
             Integer writeBatchSize = Integer.valueOf(action.getContext().get(DB_INSERT_WRITE_BATCH_SIZE));
             Integer pageContentMinLength = Integer.valueOf(action.getContext().get(PAGE_CONTENT_MIN_LENGTH));
             AgenticPaperFilterConsumerProcess agenticPaperFilterConsumerProcess =
-                    new AgenticPaperFilterConsumerProcess(log, aMarker, action, this, pageContentMinLength, fileProcessingUtils, processBase64, agenticPaperFilter.getResourceConn());
+                    new AgenticPaperFilterConsumerProcess(log, aMarker, action, this, pageContentMinLength, fileProcessingUtils, processBase64, agenticPaperFilter.getResourceConn(), outputTableName, "AGENTIC_PAPER_FILTER");
 
 
             coproProcessor.startConsumer(insertQuery, consumerApiCount, writeBatchSize, agenticPaperFilterConsumerProcess);

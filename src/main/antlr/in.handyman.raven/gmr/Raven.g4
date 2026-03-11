@@ -196,8 +196,12 @@ action:
     |sectionFiltering
     |multivalueSorItemHandling
     |sectionFilteringAfterGrouping
+    |stateInfoToJson
     );
 
+
+stateInfoToJson:
+    'stateInfoToJson' 'as' name=STRING 'target-variable' targetVariable=STRING ('on-condition' condition=expression)*;
 
 multitude:
     'multitude' 'as' name=STRING ('on' on= STRING)* 'using'

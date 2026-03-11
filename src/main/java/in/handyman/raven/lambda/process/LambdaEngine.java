@@ -6,6 +6,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import in.handyman.raven.actor.HandymanActorSystemAccess;
 import in.handyman.raven.compiler.RavenParser;
 import in.handyman.raven.exception.HandymanException;
+import in.handyman.raven.exception.PipelineHaltException;
 import in.handyman.raven.lambda.access.ConfigAccess;
 import in.handyman.raven.lambda.access.repo.HandymanRepo;
 import in.handyman.raven.lambda.access.repo.HandymanRepoImpl;
@@ -119,6 +120,9 @@ public class LambdaEngine {
                 pipelineExecutionAudit.updateExecutionStatusId(ExecutionStatus.RUNNING.getId());
                 run(pipelineExecutionAudit, ravenParserContext.getTryContext(), context, ExecutionGroup.TRY);
                 log.info("Pipeline execution has been completed successfully");
+            } catch (PipelineHaltException phe) {
+                log.info("Pipeline halted for async processing: {}", phe.getMessage());
+                pipelineExecutionAudit.updateExecutionStatusId(ExecutionStatus.WAITING_FOR_ASYNC.getId());
             } catch (Exception e) {
                 log.info("Started Executing the catch block");
                 run(pipelineExecutionAudit, ravenParserContext.getCatchContext(), context, ExecutionGroup.CATCH);
@@ -129,17 +133,22 @@ public class LambdaEngine {
                     throw new HandymanException("Failed ", e);
                 }
             } finally {
-                log.info("Executing Finally Block");
-                run(pipelineExecutionAudit, ravenParserContext.getFinallyContext(), context, ExecutionGroup.FINALLY);
                 HandymanActorSystemAccess.update(pipelineExecutionAudit);
-                log.info("Completed execution finally block");
-                if (ExecutionStatus.get(pipelineExecutionAudit.getExecutionStatusId()) == ExecutionStatus.RUNNING) {
-                    final List<ActionExecutionAudit> actionExecutionAudits = REPO.findActions(pipelineExecutionAudit.getPipelineId());
-                    final Integer executionStatusId = actionExecutionAudits.stream().filter(action -> ExecutionStatus.get(pipelineExecutionAudit.getExecutionStatusId()) != ExecutionStatus.COMPLETED)
-                            .findFirst().map(ActionExecutionAudit::getExecutionStatusId).orElse(ExecutionStatus.COMPLETED.getId());
-                    pipelineExecutionAudit.updateExecutionStatusId(executionStatusId);
+                if (ExecutionStatus.get(pipelineExecutionAudit.getExecutionStatusId()) == ExecutionStatus.WAITING_FOR_ASYNC) {
+                    log.info("Pipeline in WAITING_FOR_ASYNC state — skipping finally block execution");
+                } else {
+                    log.info("Executing Finally Block");
+                    run(pipelineExecutionAudit, ravenParserContext.getFinallyContext(), context, ExecutionGroup.FINALLY);
+                    HandymanActorSystemAccess.update(pipelineExecutionAudit);
+                    log.info("Completed execution finally block");
+                    if (ExecutionStatus.get(pipelineExecutionAudit.getExecutionStatusId()) == ExecutionStatus.RUNNING) {
+                        final List<ActionExecutionAudit> actionExecutionAudits = REPO.findActions(pipelineExecutionAudit.getPipelineId());
+                        final Integer executionStatusId = actionExecutionAudits.stream().filter(action -> ExecutionStatus.get(pipelineExecutionAudit.getExecutionStatusId()) != ExecutionStatus.COMPLETED)
+                                .findFirst().map(ActionExecutionAudit::getExecutionStatusId).orElse(ExecutionStatus.COMPLETED.getId());
+                        pipelineExecutionAudit.updateExecutionStatusId(executionStatusId);
+                    }
+                    HandymanActorSystemAccess.update(pipelineExecutionAudit);
                 }
-                HandymanActorSystemAccess.update(pipelineExecutionAudit);
             }
         } catch (Exception e) {
             log.error("Process section failed", e);
@@ -200,7 +209,7 @@ public class LambdaEngine {
                             final List<RavenParser.ActionContext> contexts,
                             final Map<String, String> context,
                             final ExecutionGroup executionGroup) {
-        contexts.forEach(actionContext -> {
+        for (RavenParser.ActionContext actionContext : contexts) {
             var action = ActionExecutionAudit.builder()
                     .executionGroupId(executionGroup.getId())
                     .pipelineId(pipelineExecutionAudit.getPipelineId())
@@ -209,11 +218,16 @@ public class LambdaEngine {
             action.setPipelineId(pipelineExecutionAudit.getPipelineId());
             toAction(action, pipelineExecutionAudit);
 
-
             doAction(action, actionContext);
 
-
-        });
+            if (ExecutionStatus.get(action.getExecutionStatusId()) == ExecutionStatus.WAITING_FOR_ASYNC) {
+                context.put("pipeline.halted.at.action", action.getActionName());
+                log.info("Action {} entered WAITING_FOR_ASYNC — pipeline halting for batch={}",
+                        action.getActionName(), context.getOrDefault("batch_id", "unknown"));
+                pipelineExecutionAudit.updateExecutionStatusId(ExecutionStatus.WAITING_FOR_ASYNC.getId());
+                throw new PipelineHaltException("Async wait at action: " + action.getActionName());
+            }
+        }
     }
 
     private static String getProcessFile(final String processLoadType, final String lambdaName, final Map<String, String> context, final String relativePath) {

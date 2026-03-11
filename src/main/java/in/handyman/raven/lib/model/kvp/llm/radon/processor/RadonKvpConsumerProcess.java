@@ -48,15 +48,20 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
     private final FileProcessingUtils fileProcessingUtils;
     private final String processBase64;
 
-    private String jdbiResourceName;
+    private final String jdbiResourceName;
 
     private final ProviderDataTransformer providerDataTransformer;
 
     private final CoproRetryService coproRetryService;
     private final InticsIntegrity encryption;
-
+    private final String outputTable;
+    private final String requestType;
 
     public RadonKvpConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, RadonKvpAction aAction, final String processBase64, final FileProcessingUtils fileProcessingUtils, ProviderDataTransformer providerDataTransformer, String jdbiResourceName) {
+        this(log, aMarker, action, aAction, processBase64, fileProcessingUtils, providerDataTransformer, jdbiResourceName, null, null);
+    }
+
+    public RadonKvpConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, RadonKvpAction aAction, final String processBase64, final FileProcessingUtils fileProcessingUtils, ProviderDataTransformer providerDataTransformer, String jdbiResourceName, String outputTable, String requestType) {
         LoggingInitializer.initialize();
         
         this.log = log;
@@ -87,89 +92,60 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         this.httpclient = builder.build();
 
         coproRetryService = new CoproRetryService(handymanRepo, httpclient,log);
+        this.outputTable = outputTable;
+        this.requestType = requestType;
     }
 
-
     @Override
-    public List<RadonQueryOutputTable> process(URL endpoint, RadonQueryInputTable entity) throws Exception {
-        List<RadonQueryOutputTable> parentObj = new ArrayList<>();
-        String rootPipelineId = String.valueOf(entity.getRootPipelineId());
+    public String buildJsonForKafka(RadonQueryInputTable entity) throws Exception {
+        return mapper.writeValueAsString(buildTritonInputRequest(entity));
+    }
+
+    private TritonInputRequest buildTritonInputRequest(RadonQueryInputTable entity) throws Exception {
         String filePath = String.valueOf(entity.getInputFilePath());
-        Long actionId = action.getActionId();
-        Long groupId = entity.getGroupId();
-        String userPrompt = "";
+        String userPrompt;
         String systemPrompt = entity.getSystemPrompt();
-        Integer paperNo = entity.getPaperNo();
-        String originId = entity.getOriginId();
-        Long processId = entity.getProcessId();
-        Long tenantId = entity.getTenantId();
-        final UUID requestId = UUID.randomUUID();
-        final Boolean coproMetricsActivator = Boolean.valueOf(action.getContext().getOrDefault("copro.metrics.activator","false"));
-        entity.setRequestId(requestId);
-        entity.setCoproMetricsActivator(coproMetricsActivator);
 
         if (Objects.equals(action.getContext().get("bbox.radon_bbox_activator"), "true")
-                && (Objects.equals(entity.getProcess(), "RADON_KVP_ACTION") || Objects.equals(entity.getProcess(), "CHECKBOX_EXTRACTION"))){
-
-
+                && (Objects.equals(entity.getProcess(), "RADON_KVP_ACTION") || Objects.equals(entity.getProcess(), "CHECKBOX_EXTRACTION"))) {
             String inputResponseJsonstr = entity.getInputResponseJson();
             String inputResponseJson;
             String encryptOutputJsonContent = action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION);
-
-
             if (Objects.equals(encryptOutputJsonContent, "true")) {
                 inputResponseJson = encryption.decrypt(inputResponseJsonstr, "AES256", "RADON_KVP_JSON");
             } else {
-                log.info("Encryption is disabled. Using raw input response JSON.");
                 inputResponseJson = inputResponseJsonstr;
             }
-
             String base64Activator = action.getContext().get("sor.transaction.prompt.base64.activator");
-
             if (Objects.equals(base64Activator, "true")) {
-
                 Base64toActualVaue base64Caller = new Base64toActualVaue();
                 String base64Value = base64Caller.base64toActual(entity.getUserPrompt());
-
-
                 byte[] decodedBytes = Base64.getDecoder().decode(base64Value);
                 String decodedPrompt = new String(decodedBytes);
-
-
                 String updatedPrompt = decodedPrompt.replace(
                         action.getContext().get("prompt.bbox.json.placeholder.name"), inputResponseJson);
-
                 userPrompt = Base64.getEncoder().encodeToString(updatedPrompt.getBytes());
-
             } else {
-                log.info("Base64 activator is OFF. Using plain text prompt.");
-
                 String actualUserPrompt = entity.getUserPrompt();
-
                 userPrompt = actualUserPrompt.replace(
                         action.getContext().get("prompt.bbox.json.placeholder.name"), inputResponseJson);
-
             }
         } else {
             userPrompt = entity.getUserPrompt();
         }
 
-
-        //payload
         RadonKvpExtractionRequest radonKvpExtractionRequest = new RadonKvpExtractionRequest();
-
-        radonKvpExtractionRequest.setRootPipelineId(Long.valueOf(rootPipelineId));
-        radonKvpExtractionRequest.setActionId(actionId);
+        radonKvpExtractionRequest.setRootPipelineId(entity.getRootPipelineId());
+        radonKvpExtractionRequest.setActionId(action.getActionId());
         radonKvpExtractionRequest.setProcess(entity.getProcess());
         radonKvpExtractionRequest.setInputFilePath(filePath);
-        radonKvpExtractionRequest.setGroupId(groupId);
+        radonKvpExtractionRequest.setGroupId(entity.getGroupId());
         radonKvpExtractionRequest.setUserPrompt(userPrompt);
         radonKvpExtractionRequest.setSystemPrompt(systemPrompt);
-        radonKvpExtractionRequest.setBase64Img("");
-        radonKvpExtractionRequest.setProcessId(processId);
-        radonKvpExtractionRequest.setPaperNo(paperNo);
-        radonKvpExtractionRequest.setTenantId(tenantId);
-        radonKvpExtractionRequest.setOriginId(originId);
+        radonKvpExtractionRequest.setProcessId(entity.getProcessId());
+        radonKvpExtractionRequest.setPaperNo(entity.getPaperNo());
+        radonKvpExtractionRequest.setTenantId(entity.getTenantId());
+        radonKvpExtractionRequest.setOriginId(entity.getOriginId());
         radonKvpExtractionRequest.setBatchId(entity.getBatchId());
         radonKvpExtractionRequest.setSorContainerId(entity.getSorContainerId());
         radonKvpExtractionRequest.setModelName(entity.getModelName());
@@ -189,20 +165,53 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         requestBody.setDatatype(TritonDataTypes.BYTES.name());
         requestBody.setData(Collections.singletonList(jsonInputRequest));
 
-
         TritonInputRequest tritonInputRequest = new TritonInputRequest();
         tritonInputRequest.setInputs(Collections.singletonList(requestBody));
 
+        return tritonInputRequest;
+    }
+
+    @Override
+    public String getOutputTable() { return this.outputTable; }
+
+    @Override
+    public String getRequestType() { return this.requestType; }
+
+    @Override
+    public String getKafkaTopic() {
+        if ("CHECKBOX_EXTRACTION".equals(this.requestType)) {
+            String topicName = action.getContext().get("vulcan.copro.kafka.checkbox.extraction.request.topic");
+            log.info(aMarker, "Kafka topic for checkbox extraction is fetched from action context: {}", topicName);
+            return topicName;
+        } else if ("SOR_TRANSACTION".equals(this.requestType) || "SOR_TRANSACTION_LEGACY".equals(this.requestType)) {
+            String topicName = action.getContext().get("vulcan.copro.kafka.sor.transaction.request.topic");
+            log.info(aMarker, "Kafka topic for SOR transaction is fetched from action context: {}", topicName);
+            return topicName;
+        }
+        return null;
+    }
+
+    @Override
+    public List<RadonQueryOutputTable> process(URL endpoint, RadonQueryInputTable entity) throws Exception {
+        List<RadonQueryOutputTable> parentObj = new ArrayList<>();
+
+        final UUID requestId = UUID.randomUUID();
+        final Boolean coproMetricsActivator = Boolean.valueOf(action.getContext().getOrDefault("copro.metrics.activator","false"));
+        entity.setRequestId(requestId);
+        entity.setCoproMetricsActivator(coproMetricsActivator);
+
+        TritonInputRequest tritonInputRequest = buildTritonInputRequest(entity);
         String jsonRequest = mapper.writeValueAsString(tritonInputRequest);
 
-        radonKvpExtractionRequest.setBase64Img("");
-        String jsonInsertRequest = mapper.writeValueAsString(radonKvpExtractionRequest);
-
+        TritonRequest tritonRequest = (TritonRequest) tritonInputRequest.getInputs().get(0);
+        RadonKvpExtractionRequest auditRequest = mapper.readValue(
+                (String) tritonRequest.getData().get(0), RadonKvpExtractionRequest.class);
+        auditRequest.setBase64Img("");
+        String jsonInsertRequest = mapper.writeValueAsString(auditRequest);
 
         if (log.isInfoEnabled()) {
-            log.info(aMarker, "Request has been build with the parameters \n URI : {}, with inputFilePath {} with container Id {}", endpoint, filePath, entity.getSorContainerId());
+            log.info(aMarker, "Request has been build with the parameters \n URI : {}, with inputFilePath {} with container Id {}", endpoint, entity.getInputFilePath(), entity.getSorContainerId());
         }
-        String tritonRequestActivator = action.getContext().get(TRITON_REQUEST_ACTIVATOR);
 
         Request request = new Request.Builder().url(endpoint).post(RequestBody.create(jsonRequest, MEDIA_TYPE_JSON)).build();
         tritonRequestBuilder(entity, request, parentObj, jsonInsertRequest, endpoint);

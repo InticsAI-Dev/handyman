@@ -1,5 +1,8 @@
 package in.handyman.raven.lib.model.agentic.paper.filter;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.lib.CoproProcessor;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -10,11 +13,14 @@ import java.sql.Timestamp;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
 public class AgenticPaperFilterOutput implements CoproProcessor.Entity {
+    private static final ObjectMapper MAPPER = new ObjectMapper()
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     private String originId;
     private Integer groupId;
@@ -44,12 +50,16 @@ public class AgenticPaperFilterOutput implements CoproProcessor.Entity {
     private Integer containerId;
     private String promptType;
 
+    public static AgenticPaperFilterOutput fromJson(JsonNode node) {
+        return MAPPER.convertValue(node, AgenticPaperFilterOutput.class);
+    }
+
     @Override
     public List<Object> getRowData() {
-        return Stream.of(this.originId, this.groupId, this.tenantId,this.templateId
-                ,this.processId,this.filePath, this.extractedText, this.containerName, this.containerValue,this.paperNo,this.fileName
-                ,this.status,this.stage,this.message,this.isBlankPage,this.createdOn
-                ,this.rootPipelineId,this.templateName, this.modelName, this.modelVersion, this.batchId, this.lastUpdatedOn,
-                this.request, this.response, this.endpoint,this.containerId,this.promptType).collect(Collectors.toList());
+        return Stream.of(this.originId, this.groupId, this.tenantId, this.templateId
+                , this.processId, this.filePath, this.extractedText, this.containerName, this.containerValue, this.paperNo, this.fileName
+                , this.status, this.stage, this.message, this.isBlankPage, this.createdOn
+                , this.rootPipelineId, this.templateName, this.modelName, this.modelVersion, this.batchId, this.lastUpdatedOn,
+                this.request, this.response, this.endpoint, this.containerId, this.promptType).collect(Collectors.toList());
     }
 }

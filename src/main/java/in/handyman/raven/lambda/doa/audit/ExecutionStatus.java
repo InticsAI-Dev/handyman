@@ -12,7 +12,7 @@ public enum ExecutionStatus {
 
     STARTED(1), RUNNING(2), STOPPED(3),
     FAILED(4), COMPLETED(5), STAGED(6),
-    WARNING(7);
+    WARNING(7), WAITING_FOR_ASYNC(8);
 
     private final Integer id;
 

@@ -64,8 +64,14 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
     private final FileProcessingUtils fileProcessingUtils;
     private final CoproRetryService coproRetryService;
     private final InticsIntegrity encryption;
+    private final String outputTable;
+    private final String requestType;
 
     public AgenticPaperFilterConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, AgenticPaperFilterAction aAction, Integer pageContentMinLength, FileProcessingUtils fileProcessingUtils, String processBase64, String jdbiResourceName) {
+        this(log, aMarker, action, aAction, pageContentMinLength, fileProcessingUtils, processBase64, jdbiResourceName, null, null);
+    }
+
+    public AgenticPaperFilterConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, AgenticPaperFilterAction aAction, Integer pageContentMinLength, FileProcessingUtils fileProcessingUtils, String processBase64, String jdbiResourceName, String outputTable, String requestType) {
         this.log = log;
         this.aMarker = aMarker;
         this.action = action;
@@ -95,6 +101,30 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
 
         this.jdbiResourceName = jdbiResourceName;
         coproRetryService = new CoproRetryService(handymanRepo, httpclient, log);
+        this.outputTable = outputTable;
+        this.requestType = requestType;
+    }
+
+    @Override
+    public String buildJsonForKafka(AgenticPaperFilterInput entity) throws Exception {
+        RadonKvpExtractionRequest req = getKryptonRequestPayloadFromQuery(entity);
+        String base64Img = processBase64.equals(ProcessFileFormatE.BASE64.name())
+                ? fileProcessingUtils.convertFileToBase64(String.valueOf(entity.getFilePath()))
+                : "";
+        req.setBase64Img(base64Img);
+        String innerJson = mapper.writeValueAsString(req);
+        return getTritonRequestPayload(innerJson);
+    }
+
+    @Override
+    public String getOutputTable() { return this.outputTable; }
+
+    @Override
+    public String getRequestType() { return this.requestType; }
+
+    @Override
+    public String getKafkaTopic() {
+        return action.getContext().get("copro.kafka.paper.filter.request.topic");
     }
 
     @Override
