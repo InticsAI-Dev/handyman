@@ -66,7 +66,13 @@ public class MultitudeAction implements IActionExecution {
                     try {
                         if (isParallel) {
                             log.info(aMarker, "Execution has been started in a Parallel with thread count of {}", threadCount);
-                            executor = threadCount != 0 ? Executors.newFixedThreadPool(threadCount) : Executors.newWorkStealingPool();
+                            if (actionExecutionAudit.getContext().getOrDefault("copro.processor.thread.creator", "WORK_STEALING").equalsIgnoreCase("VIRTUAL_THREAD")) {
+                                executor = Executors.newVirtualThreadPerTaskExecutor();
+                                log.info("Multitude processor created with Virtual Thread Per Task Executor");
+                            } else {
+                                executor = Executors.newWorkStealingPool();
+                                log.info("Multitude processor created with work stealing pool");
+                            }
                             for (ActionCallable actionCallable : collect) {
                                 executor.submit(() -> {
                                     try {

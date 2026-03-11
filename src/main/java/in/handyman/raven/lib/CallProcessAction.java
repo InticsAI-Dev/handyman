@@ -23,6 +23,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
@@ -98,7 +99,14 @@ public class CallProcessAction implements IActionExecution {
         try {
             final int forkBatchSize = Optional.ofNullable(callProcess.getForkBatchSize()).map(Integer::valueOf).orElse(0);
             if (forkBatchSize != 0) {
-                var executor = Executors.newWorkStealingPool(forkBatchSize) ;
+                ExecutorService executor;
+                if (actionExecutionAudit.getContext().getOrDefault("copro.processor.thread.creator", "WORK_STEALING").equalsIgnoreCase("VIRTUAL_THREAD")) {
+                    executor = Executors.newVirtualThreadPerTaskExecutor();
+                    log.info("Call processor created with Virtual Thread Per Task Executor");
+                } else {
+                    executor = Executors.newWorkStealingPool();
+                    log.info("Call processor created with work stealing pool");
+                }
                 var counter = new CountDownLatch(runContext.size());
                 runContext.forEach(lContext -> {
                     final LambdaCallable lambdaCallable = new LambdaCallable(lContext, counter);

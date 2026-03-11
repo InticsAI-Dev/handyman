@@ -14,6 +14,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
@@ -44,7 +45,14 @@ public class DogLegAction implements IActionExecution {
         log.info(aMarker, " id: {}, name: {} given params {}", actionExecutionAudit.getActionId(), dogLeg.getName(), dogLeg);
         var countDownLatch = new CountDownLatch(processList.size());
         var inheritContext = Objects.equals(dogLeg.getInheritContext(), "true");
-        var executor = Executors.newWorkStealingPool();
+        ExecutorService executor;
+        if (actionExecutionAudit.getContext().getOrDefault("copro.processor.thread.creator", "WORK_STEALING").equalsIgnoreCase("VIRTUAL_THREAD")) {
+            executor = Executors.newVirtualThreadPerTaskExecutor();
+            log.info("DogLeg processor created with Virtual Thread Per Task Executor");
+        } else {
+            executor = Executors.newWorkStealingPool();
+            log.info("DogLeg processor created with work stealing pool");
+        }
         final Map<String, String> context = inheritContext ? actionExecutionAudit.getContext() : Collections.emptyMap();
         processList.forEach(startProcess -> {
             var processName = startProcess.getName();
