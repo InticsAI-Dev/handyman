@@ -65,18 +65,18 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
     boolean encryptEnabled = Boolean.parseBoolean(itemWiseEncryptionActivator);
     log.info(aMarker, "DocumentWisePostProcessing started with encryptEnabled: {}", encryptEnabled);
 
+    action.getContext().put("resource.conn", documentWisePostProcessing.getResourceConn());
+
     jdbi.useTransaction(handle -> fetchAndDecryptInputs(handle, crypt, encryptEnabled));
 
     log.info(aMarker, "Fetched {} records for document-wise post-processing", documentWisePostProcessingInputs.size());
-    documentWisePostProcessingInputs = new ValidationByDocumentWiseExecutor(documentWisePostProcessingInputs, action, log, threadCount).doDocumentWiseValidator();
+    String outputTable = documentWisePostProcessing.getOutputTable();
+    documentWisePostProcessingInputs = new ValidationByDocumentWiseExecutor(documentWisePostProcessingInputs, action, log, threadCount, outputTable).doDocumentWiseValidator();
     log.info(aMarker, "Total records present after document-wise post-processing: {}", documentWisePostProcessingInputs.size());
 
     documentWisePostProcessingInputs.forEach(input -> processEncryption(input, crypt, encryptEnabled));
 
-    String outputTable = documentWisePostProcessing.getOutputTable();
-    log.info(aMarker, "Started batch insert into {}", outputTable);
-    jdbi.useHandle(handle -> executeBatchInsert(handle, documentWisePostProcessingInputs));
-    log.info(aMarker, "Batch insert completed into {}", outputTable);
+    log.info(aMarker, "Processing completed. Results were inserted into {} by CoproProcessor", outputTable);
   }
 
   private void fetchAndDecryptInputs(Handle handle, InticsIntegrity crypt, boolean encryptEnabled) {
@@ -93,7 +93,6 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
       String scalarAdapterActivator = action.getContext().getOrDefault("scalar.adapter.activator", "false");
 
       documentWisePostProcessingInputs.forEach(input -> {
-        // Only decrypt if the value is marked as encrypted
         if (input.getPredictedValue() != null && !input.getPredictedValue().isEmpty()
                 && input.getIsEncrypted()) {
           try {
@@ -102,7 +101,6 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
                 : ("false".equalsIgnoreCase(scalarAdapterActivator) ? "AES256" : "AES256");
             log.debug(aMarker, "Using encryption policy: {}", encryptionPolicy);
 
-            // Use sor_item_name if available, otherwise use sor_item_id as identifier
             String itemIdentifier = input.getSorItemName() != null ? input.getSorItemName() : String.valueOf(input.getSorItemId());
             String decryptedValue = crypt.decrypt(input.getPredictedValue(), encryptionPolicy, itemIdentifier);
             input.setPredictedValue(decryptedValue);
@@ -125,14 +123,12 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
   }
 
   private void processEncryption(DocumentWisePostProcessingInput input, InticsIntegrity crypt, boolean encryptEnabled) {
-    // Only encrypt values that were originally encrypted (isEncrypted = 't')
     if (encryptEnabled && input.getPredictedValue() != null && !input.getPredictedValue().isEmpty()
             && input.getIsEncrypted()) {
       try {
         String encryptionPolicy = input.getEncryptionPolicy() != null && !input.getEncryptionPolicy().isEmpty()
             ? input.getEncryptionPolicy() : "AES256";
 
-        // Use sor_item_name if available, otherwise use sor_item_id as identifier
         String itemIdentifier = input.getSorItemName() != null ? input.getSorItemName() : String.valueOf(input.getSorItemId());
         input.setPredictedValue(crypt.encrypt(input.getPredictedValue(), encryptionPolicy, itemIdentifier));
         log.debug(aMarker, "Re-encrypted value for sorItemId: {} with policy: {}", input.getSorItemId(), encryptionPolicy);
@@ -144,91 +140,6 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
       log.debug(aMarker, "Skipping encryption for sorItemId: {} (isEncrypted: {})",
               input.getSorItemId(), input.getIsEncrypted());
     }
-  }
-
-  private void executeBatchInsert(Handle handle, List<DocumentWisePostProcessingInput> inputs) {
-    String sql = buildInsertSQL();
-    String createdUserIdStr = action.getContext().get("created_user_id");
-    Long createdUserIdLong = null;
-    if (createdUserIdStr != null && !createdUserIdStr.isEmpty()) {
-      try {
-        createdUserIdLong = Long.parseLong(createdUserIdStr);
-      } catch (NumberFormatException e) {
-        log.warn(aMarker, "Invalid created_user_id format: {}, using null", createdUserIdStr);
-      }
-    }
-    final Long defaultCreatedUserId = createdUserIdLong;
-    try (PreparedBatch batch = handle.prepareBatch(sql)) {
-      inputs.forEach(input -> {
-        Map<String, Object> bindings = new HashMap<>();
-        bindings.put("transactionId", input.getTransactionId());
-        bindings.put("createdOn", input.getCreatedOn() != null ? input.getCreatedOn() : java.time.LocalDateTime.now());
-        bindings.put("createdUserId", input.getCreatedUserId() != null ? input.getCreatedUserId() : defaultCreatedUserId);
-        bindings.put("lastUpdatedOn", input.getLastUpdatedOn() != null ? input.getLastUpdatedOn() : java.time.LocalDateTime.now());
-        bindings.put("lastUpdatedUserId", input.getLastUpdatedUserId() != null ? input.getLastUpdatedUserId() : defaultCreatedUserId);
-        bindings.put("status", input.getStatus() != null ? input.getStatus() : "ACTIVE");
-        bindings.put("version", input.getVersion());
-        bindings.put("feature", input.getFeature());
-        bindings.put("label", input.getLabel());
-        bindings.put("originId", input.getOriginId());
-        bindings.put("precisionVal", input.getPrecision() != null ? String.valueOf(input.getPrecision()) : null);
-        bindings.put("predictedValue", input.getPredictedValue() != null ? input.getPredictedValue() : "");
-        bindings.put("questionId", input.getQuestionId());
-        bindings.put("rootPipelineId", input.getRootPipelineId() != null ? input.getRootPipelineId() : action.getRootPipelineId());
-        bindings.put("synonymId", input.getSynonymId());
-        bindings.put("tenantId", input.getTenantId());
-        bindings.put("truthId", input.getTruthId());
-        bindings.put("channelId", input.getChannelId());
-        bindings.put("sorContainerId", input.getSorContainerId());
-        bindings.put("truthEntityId", input.getTruthEntityId());
-        bindings.put("sorItemId", input.getSorItemId());
-        bindings.put("sorItemName", input.getSorItemName());
-        bindings.put("leftPos", input.getLeftPos());
-        bindings.put("rightPos", input.getRightPos());
-        bindings.put("lowerPos", input.getLowerPos());
-        bindings.put("upperPos", input.getUpperPos());
-        bindings.put("bBox", input.getBBox());
-        bindings.put("isEncrypted", input.getIsEncrypted() != null ? input.getIsEncrypted() : false);
-        bindings.put("groupId", input.getGroupId());
-        bindings.put("batchId", input.getBatchId());
-        bindings.put("sectionAlias", input.getSectionAlias());
-        bindings.put("sorContainerInstance", input.getSorContainerInstance());
-        bindings.put("documentId", input.getDocumentId());
-        bindings.put("paperNo", input.getPaperNo());
-        bindings.put("score", input.getScore());
-        bindings.put("vqaScore", input.getVqaScore());
-        bindings.put("sorQuestion", input.getSorQuestion());
-        bindings.put("category", input.getCategory());
-        bindings.put("stage", input.getStage());
-        bindings.put("lineItemType", input.getLineItemType());
-        bindings.put("encryptionPolicy", input.getEncryptionPolicy());
-        bindings.put("isRemovedAfterFiltering", input.getIsRemovedAfterFiltering());
-        bindings.put("message", input.getMessage());
-        bindings.put("isMultiEntityEnabled", input.getIsMultiEntityEnabled());
-        batch.bindMap(bindings).add();
-      });
-      int[] counts = batch.execute();
-      log.info(aMarker, "Batch inserted {} records", counts.length);
-    } catch (Exception e) {
-      log.error(aMarker, "Batch insert failed", e);
-      HandymanException.insertException("Error in batch insert into " + documentWisePostProcessing.getOutputTable(), new HandymanException(e), action);
-    }
-  }
-
-  private String buildInsertSQL() {
-    return "INSERT INTO " + documentWisePostProcessing.getOutputTable() + " (" +
-            "transaction_id, created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, " +
-            "feature, label, left_pos, lower_pos, right_pos, upper_pos, b_box, precision_val, predicted_value, " +
-            "section_alias, sor_container_instance, document_id, truth_id, channel_id, group_id, origin_id, " +
-            "paper_no, question_id, root_pipeline_id, score, sor_item_name, sor_question, synonym_id, tenant_id, " +
-            "vqa_score, category, stage, batch_id, line_item_type, is_encrypted, encryption_policy, " +
-            "is_removed_after_filtering, message, sor_container_id, truth_entity_id, sor_item_id, is_multi_entity_enabled) VALUES (" +
-            ":transactionId, :createdOn, :createdUserId, :lastUpdatedOn, :lastUpdatedUserId, :status, :version, " +
-            ":feature, :label, :leftPos, :lowerPos, :rightPos, :upperPos, :bBox, :precisionVal, :predictedValue, " +
-            ":sectionAlias, :sorContainerInstance, :documentId, :truthId, :channelId, :groupId, :originId, " +
-            ":paperNo, :questionId, :rootPipelineId, :score, :sorItemName, :sorQuestion, :synonymId, :tenantId, " +
-            ":vqaScore, :category, :stage, :batchId, :lineItemType, :isEncrypted, :encryptionPolicy, " +
-            ":isRemovedAfterFiltering, :message, :sorContainerId, :truthEntityId, :sorItemId, :isMultiEntityEnabled)";
   }
 
   @Override
