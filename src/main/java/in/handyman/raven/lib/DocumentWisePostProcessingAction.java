@@ -150,7 +150,7 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
     return documentWisePostProcessing.getCondition();
   }
 
-  private List<DocumentWisePostProcessingInput> doDocumentWiseValidator(List<DocumentWisePostProcessingInput> inputs, int threadCount, String outputTable) {
+  private List<DocumentWisePostProcessingInput> doDocumentWiseValidator(List<DocumentWisePostProcessingInput> inputs, int threadCount, String outputTable) throws Exception {
     int inputSize = inputs.size();
     log.info(aMarker, "Starting document-wise validation for {} records", inputSize);
 
@@ -165,7 +165,21 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
   private List<DocumentWisePostProcessingInput> processWithCoproProcessor(List<DocumentWisePostProcessingInput> documentWisePostProcessingInputs, int consumerCount, String outputTable) {
     BlockingQueue<DocumentWisePostProcessingOriginInput> queue = new LinkedBlockingQueue<>();
 
+    // Get CoproProcessor URL from context (database variable)
     List<URL> coproNodes = new ArrayList<>();
+    String coproUrl = action.getContext().get("copro.document.wise.post.processing.url");
+    if (coproUrl == null || coproUrl.isEmpty()) {
+      log.error(aMarker, "CoproProcessor URL not found in context variable 'copro.document.wise.post.processing.url'. Cannot proceed.");
+      return documentWisePostProcessingInputs;
+    }
+    
+    try {
+      coproNodes.add(new URL(coproUrl));
+      log.info(aMarker, "Using CoproProcessor URL from context: {}", coproUrl);
+    } catch (Exception e) {
+      log.error(aMarker, "Failed to create URL from context value '{}' for CoproProcessor: {}", coproUrl, e.getMessage(), e);
+      return documentWisePostProcessingInputs;
+    }
 
     String resourceConn = action.getContext().get("resource.conn");
     if (resourceConn == null || resourceConn.isEmpty()) {
