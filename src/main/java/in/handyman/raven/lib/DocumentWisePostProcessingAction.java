@@ -33,6 +33,8 @@ import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
+import static in.handyman.raven.core.enums.DatabaseConstants.DB_INSERT_WRITE_BATCH_SIZE;
+import static in.handyman.raven.core.enums.DatabaseConstants.DB_SELECT_READ_BATCH_SIZE;
 import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
 
 /**
@@ -87,62 +89,108 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
   }
 
   private void fetchAndDecryptInputs(Handle handle, InticsIntegrity crypt, boolean encryptEnabled) {
-    List<String> queries = CommonQueryUtil.getFormattedQuery(documentWisePostProcessing.getQuerySet());
-    documentWisePostProcessingInputs = queries.stream()
-            .flatMap(sql -> handle.createQuery(sql)
-                    .mapToBean(DocumentWisePostProcessingInput.class)
-                    .stream())
-            .collect(Collectors.toList());
-    log.info(aMarker, "Total records fetched: {}", documentWisePostProcessingInputs.size());
-    
-    if (encryptEnabled) {
-      if ("false".equalsIgnoreCase(action.getContext().getOrDefault("scalar.adapter.activator", "false"))) {
-        log.info(aMarker, "Scalar activator is disabled, running decryption in AES256 mode");
-        documentWisePostProcessingInputs.forEach(input -> {
-          if (input.getIsEncrypted()) {
-            String itemIdentifier = input.getSorItemName() != null ? input.getSorItemName() : String.valueOf(input.getSorItemId());
-            input.setPredictedValue(crypt.decrypt(input.getPredictedValue(), "AES256", itemIdentifier));
-          }
-        });
-      } else {
-        log.info(aMarker, "Scalar activator is enabled, running decryption in policy mode");
-        documentWisePostProcessingInputs.forEach(input -> {
-          if (input.getIsEncrypted()) {
-            String itemIdentifier = input.getSorItemName() != null ? input.getSorItemName() : String.valueOf(input.getSorItemId());
-            input.setPredictedValue(crypt.decrypt(input.getPredictedValue(), input.getEncryptionPolicy(), itemIdentifier));
-          }
-        });
+    try {
+      List<String> queries = CommonQueryUtil.getFormattedQuery(documentWisePostProcessing.getQuerySet());
+      documentWisePostProcessingInputs = queries.stream()
+              .flatMap(sql -> handle.createQuery(sql)
+                      .mapToBean(DocumentWisePostProcessingInput.class)
+                      .stream())
+              .collect(Collectors.toList());
+      log.info(aMarker, "Total records fetched: {}", documentWisePostProcessingInputs.size());
+      
+      if (encryptEnabled) {
+        if ("false".equalsIgnoreCase(action.getContext().getOrDefault("scalar.adapter.activator", "false"))) {
+          log.info(aMarker, "Scalar activator is disabled, running decryption in AES256 mode");
+          documentWisePostProcessingInputs.forEach(input -> {
+            if (input.getIsEncrypted()) {
+              try {
+                String itemIdentifier = input.getSorItemName() != null ? input.getSorItemName() : String.valueOf(input.getSorItemId());
+                input.setPredictedValue(crypt.decrypt(input.getPredictedValue(), "AES256", itemIdentifier));
+              } catch (Exception e) {
+                log.error(aMarker, "Failed to decrypt value for sorItemId: {}", input.getSorItemId(), e);
+                HandymanException handymanException = new HandymanException(e);
+                HandymanException.insertException("Failed to decrypt value for sorItemId: " + input.getSorItemId(), handymanException, action);
+              }
+            }
+          });
+        } else {
+          log.info(aMarker, "Scalar activator is enabled, running decryption in policy mode");
+          documentWisePostProcessingInputs.forEach(input -> {
+            if (input.getIsEncrypted()) {
+              try {
+                String itemIdentifier = input.getSorItemName() != null ? input.getSorItemName() : String.valueOf(input.getSorItemId());
+                input.setPredictedValue(crypt.decrypt(input.getPredictedValue(), input.getEncryptionPolicy(), itemIdentifier));
+              } catch (Exception e) {
+                log.error(aMarker, "Failed to decrypt value for sorItemId: {}", input.getSorItemId(), e);
+                HandymanException handymanException = new HandymanException(e);
+                HandymanException.insertException("Failed to decrypt value for sorItemId: " + input.getSorItemId(), handymanException, action);
+              }
+            }
+          });
+        }
       }
+    } catch (Exception e) {
+      log.error(aMarker, "Error in fetchAndDecryptInputs", e);
+      HandymanException handymanException = new HandymanException(e);
+      HandymanException.insertException("Error in fetchAndDecryptInputs", handymanException, action);
     }
   }
 
   private void processEncryption(DocumentWisePostProcessingInput input, InticsIntegrity crypt, boolean encryptEnabled) {
-    if ("multi_value".equalsIgnoreCase(input.getLineItemType())) {
-      handleMultiValue(input, crypt, encryptEnabled);
-    } else if (encryptEnabled && input.getIsEncrypted()) {
-      String itemIdentifier = input.getSorItemName() != null ? input.getSorItemName() : String.valueOf(input.getSorItemId());
-      input.setPredictedValue(
-              crypt.encrypt(
-                      input.getPredictedValue(),
-                      input.getEncryptionPolicy(),
-                      itemIdentifier
-              )
-      );
+    try {
+      if ("multi_value".equalsIgnoreCase(input.getLineItemType())) {
+        handleMultiValue(input, crypt, encryptEnabled);
+      } else if (encryptEnabled && input.getIsEncrypted()) {
+        String itemIdentifier = input.getSorItemName() != null ? input.getSorItemName() : String.valueOf(input.getSorItemId());
+        input.setPredictedValue(
+                crypt.encrypt(
+                        input.getPredictedValue(),
+                        input.getEncryptionPolicy(),
+                        itemIdentifier
+                )
+        );
+      }
+    } catch (Exception e) {
+      log.error(aMarker, "Failed to encrypt value for sorItemId: {}", input.getSorItemId(), e);
+      HandymanException handymanException = new HandymanException(e);
+      HandymanException.insertException("Failed to encrypt value for sorItemId: " + input.getSorItemId(), handymanException, action);
     }
   }
 
   private void handleMultiValue(DocumentWisePostProcessingInput input, InticsIntegrity crypt, boolean encryptEnabled) {
-    if (input.getPredictedValue() == null || input.getPredictedValue().isEmpty()) {
-      return;
+    try {
+      if (input.getPredictedValue() == null || input.getPredictedValue().isEmpty()) {
+        return;
+      }
+      List<String> cleanedValues = splitAndCleanMultiValue(input.getPredictedValue());
+      List<String> reEncrypted = cleanedValues.stream()
+              .map(val -> {
+                try {
+                  return encryptEnabled && input.getIsEncrypted()
+                          ? crypt.encrypt(val, input.getEncryptionPolicy(), input.getSorItemName() != null ? input.getSorItemName() : String.valueOf(input.getSorItemId()))
+                          : val;
+                } catch (Exception e) {
+                  log.error(aMarker, "Failed to encrypt multi-value part for sorItemId: {}", input.getSorItemId(), e);
+                  HandymanException handymanException = new HandymanException(e);
+                  HandymanException.insertException("Failed to encrypt multi-value part for sorItemId: " + input.getSorItemId(), handymanException, action);
+                  return val;
+                }
+              })
+              .collect(Collectors.toList());
+      input.setPredictedValue(String.join(",", reEncrypted));
+    } catch (Exception e) {
+      log.error(aMarker, "Failed to handle multi-value encryption for sorItemId: {}", input.getSorItemId(), e);
+      HandymanException handymanException = new HandymanException(e);
+      HandymanException.insertException("Failed to handle multi-value encryption for sorItemId: " + input.getSorItemId(), handymanException, action);
     }
-    String[] parts = input.getPredictedValue().split(",");
-    List<String> reEncrypted = java.util.Arrays.stream(parts)
+  }
+
+  private List<String> splitAndCleanMultiValue(String predictedValue) {
+    String[] parts = predictedValue.split(",");
+    return java.util.Arrays.stream(parts)
             .map(String::trim)
-            .map(val -> encryptEnabled && input.getIsEncrypted()
-                    ? crypt.encrypt(val, input.getEncryptionPolicy(), input.getSorItemName() != null ? input.getSorItemName() : String.valueOf(input.getSorItemId()))
-                    : val)
+            .filter(s -> !s.isEmpty())
             .collect(Collectors.toList());
-    input.setPredictedValue(String.join(",", reEncrypted));
   }
 
   @Override
@@ -165,19 +213,14 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
   private List<DocumentWisePostProcessingInput> processWithCoproProcessor(List<DocumentWisePostProcessingInput> documentWisePostProcessingInputs, int consumerCount, String outputTable) {
     BlockingQueue<DocumentWisePostProcessingOriginInput> queue = new LinkedBlockingQueue<>();
 
-    // Get CoproProcessor URL from context (database variable)
     List<URL> coproNodes = new ArrayList<>();
-    String coproUrl = action.getContext().get("copro.document.wise.post.processing.url");
-    if (coproUrl == null || coproUrl.isEmpty()) {
-      log.error(aMarker, "CoproProcessor URL not found in context variable 'copro.document.wise.post.processing.url'. Cannot proceed.");
-      return documentWisePostProcessingInputs;
-    }
-    
     try {
-      coproNodes.add(new URL(coproUrl));
-      log.info(aMarker, "Using CoproProcessor URL from context: {}", coproUrl);
+      coproNodes.add(new URL("http://localhost"));
+      log.info(aMarker, "Using dummy CoproProcessor URL for in-memory processing");
     } catch (Exception e) {
-      log.error(aMarker, "Failed to create URL from context value '{}' for CoproProcessor: {}", coproUrl, e.getMessage(), e);
+      log.error(aMarker, "Failed to create dummy URL for CoproProcessor: {}", e.getMessage(), e);
+      HandymanException handymanException = new HandymanException(e);
+      HandymanException.insertException("Failed to create dummy URL for CoproProcessor", handymanException, action);
       return documentWisePostProcessingInputs;
     }
 
@@ -203,34 +246,30 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
 
     log.info(aMarker, "CoproProcessor initialized for document-wise validation with resource: {}", resourceConn);
 
-    Map<String, List<DocumentWisePostProcessingInput>> originMap = new LinkedHashMap<>();
+    String readBatchSizeDefaultValue = "10";
+    String readBatchSizeValue = action.getContext().getOrDefault(DB_SELECT_READ_BATCH_SIZE, readBatchSizeDefaultValue).trim();
+    int readBatchSize = readBatchSizeValue.isEmpty() ? Integer.parseInt(readBatchSizeDefaultValue) : Integer.parseInt(readBatchSizeValue);
+
+    if (consumerCount >= readBatchSize) {
+        log.info(aMarker, "Consumer count {} is greater than read batch size {}, setting read batch size to consumer count", consumerCount, readBatchSize);
+        readBatchSize = consumerCount;
+    } else {
+        log.info(aMarker, "Consumer count {} is less than or equal to read batch size {}, keeping read batch size as is", consumerCount, readBatchSize);
+    }
+
+    coproProcessor.startProducer(documentWisePostProcessing.getQuerySet(), readBatchSize);
+    log.info(aMarker, "CoproProcessor startProducer called with read batch size: {}", readBatchSize);
     
-    for (DocumentWisePostProcessingInput input : documentWisePostProcessingInputs) {
-        String originId = input.getOriginId();
-        if (originId != null) {
-            originMap.computeIfAbsent(originId, k -> new ArrayList<>()).add(input);
-        }
+    try {
+      Thread.sleep(1000);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      log.warn(aMarker, "Thread interrupted while waiting after startProducer", e);
+      HandymanException handymanException = new HandymanException(e);
+      HandymanException.insertException("Thread interrupted while waiting after startProducer", handymanException, action);
     }
 
-    int originCount = originMap.size();
-    log.info(aMarker, "Found {} unique origins to process", originCount);
-
-    if (originCount == 0) {
-        log.warn(aMarker, "No origins found to process");
-        return documentWisePostProcessingInputs;
-    }
-
-    for (Map.Entry<String, List<DocumentWisePostProcessingInput>> originEntry : originMap.entrySet()) {
-        DocumentWisePostProcessingOriginInput originInput = DocumentWisePostProcessingOriginInput.builder()
-                .originId(originEntry.getKey())
-                .inputs(new ArrayList<>(originEntry.getValue())) // Create a copy to avoid modification issues
-                .build();
-        queue.add(originInput);
-    }
-
-    queue.add(stoppingSeed);
-    log.info(aMarker, "Added {} origins to CoproProcessor queue for multithreaded processing (plus stopping seed)", originCount);
-
+    Integer writeBatchSize = Integer.valueOf(action.getContext().get(DB_INSERT_WRITE_BATCH_SIZE));
     DocumentWisePostProcessingConsumerProcess consumerProcess = 
             new DocumentWisePostProcessingConsumerProcess(action, log);
 
@@ -242,7 +281,7 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
     String insertSql = buildInsertSQL(outputTable);
     log.info(aMarker, "Using insert SQL for output table: {}", outputTable);
 
-    int finalConsumerCount = Math.min(consumerCount, originCount);
+    int finalConsumerCount = consumerCount;
     if (finalConsumerCount <= 0) {
         finalConsumerCount = 1;
     }
@@ -251,11 +290,12 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
     log.info(aMarker, "Queue size before starting consumer: {}", queue.size());
     
     try {
-        coproProcessor.startConsumer(insertSql, finalConsumerCount, 1, consumerProcess);
+        coproProcessor.startConsumer(insertSql, finalConsumerCount, writeBatchSize, consumerProcess);
         log.info(aMarker, "CoproProcessor startConsumer returned successfully");
     } catch (Exception e) {
         log.error(aMarker, "Error during CoproProcessor consumer execution: {}", e.getMessage(), e);
-
+        HandymanException handymanException = new HandymanException(e);
+        HandymanException.insertException("Error during CoproProcessor consumer execution", handymanException, action);
         return documentWisePostProcessingInputs;
     }
 
