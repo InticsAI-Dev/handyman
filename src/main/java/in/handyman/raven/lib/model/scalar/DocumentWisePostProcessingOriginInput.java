@@ -2,6 +2,7 @@ package in.handyman.raven.lib.model.scalar;
 
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.DocumentWisePostProcessingInput;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -33,6 +34,6 @@ public class DocumentWisePostProcessingOriginInput implements CoproProcessor.Ent
     
     @Override
     public String getStatus() {
-        return inputs != null && !inputs.isEmpty() ? "ACTIVE" : "INACTIVE";
+        return ConsumerProcessApiStatus.ABSENT.getStatusDescription();
     }
 }

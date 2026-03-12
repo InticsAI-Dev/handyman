@@ -2,6 +2,7 @@ package in.handyman.raven.lib.model.scalar;
 
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.DocumentWisePostProcessingInput;
+import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -34,7 +35,7 @@ public class DocumentWisePostProcessingOriginOutput implements CoproProcessor.En
         rowData.add(input.getCreatedUserId() != null ? input.getCreatedUserId() : defaultCreatedUserId);
         rowData.add(input.getLastUpdatedOn() != null ? input.getLastUpdatedOn() : LocalDateTime.now());
         rowData.add(input.getLastUpdatedUserId() != null ? input.getLastUpdatedUserId() : defaultCreatedUserId);
-        rowData.add(input.getStatus() != null ? input.getStatus() : "ACTIVE");
+        rowData.add(getStatus());
         rowData.add(input.getVersion());
         rowData.add(input.getFeature());
         rowData.add(input.getLabel());
@@ -79,6 +80,6 @@ public class DocumentWisePostProcessingOriginOutput implements CoproProcessor.En
     
     @Override
     public String getStatus() {
-        return input != null ? "SUCCESS" : "FAILED";
+        return ConsumerProcessApiStatus.ABSENT.getStatusDescription();
     }
 }
