@@ -11,13 +11,20 @@ import in.handyman.raven.lib.model.DocumentWisePostProcessing;
 import java.lang.Exception;
 import java.lang.Object;
 import java.lang.Override;
-import java.util.HashMap;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 
 import in.handyman.raven.lib.model.DocumentWisePostProcessingInput;
-import in.handyman.raven.lib.model.scalar.ValidationByDocumentWiseExecutor;
+import in.handyman.raven.lib.model.scalar.DocumentWisePostProcessingConsumerProcess;
+import in.handyman.raven.lib.model.scalar.DocumentWisePostProcessingOriginInput;
+import in.handyman.raven.lib.model.scalar.DocumentWisePostProcessingOriginOutput;
+import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.util.CommonQueryUtil;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
@@ -71,7 +78,7 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
 
     log.info(aMarker, "Fetched {} records for document-wise post-processing", documentWisePostProcessingInputs.size());
     String outputTable = documentWisePostProcessing.getOutputTable();
-    documentWisePostProcessingInputs = new ValidationByDocumentWiseExecutor(documentWisePostProcessingInputs, action, log, threadCount, outputTable).doDocumentWiseValidator();
+    documentWisePostProcessingInputs = doDocumentWiseValidator(documentWisePostProcessingInputs, threadCount, outputTable);
     log.info(aMarker, "Total records present after document-wise post-processing: {}", documentWisePostProcessingInputs.size());
 
     documentWisePostProcessingInputs.forEach(input -> processEncryption(input, crypt, encryptEnabled));
@@ -87,63 +94,207 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
                     .stream())
             .collect(Collectors.toList());
     log.info(aMarker, "Total records fetched: {}", documentWisePostProcessingInputs.size());
-
+    
     if (encryptEnabled) {
-      log.info(aMarker, "Decrypting only encrypted values before BSH processing");
-      String scalarAdapterActivator = action.getContext().getOrDefault("scalar.adapter.activator", "false");
-
-      documentWisePostProcessingInputs.forEach(input -> {
-        if (input.getPredictedValue() != null && !input.getPredictedValue().isEmpty()
-                && input.getIsEncrypted()) {
-          try {
-            String encryptionPolicy = input.getEncryptionPolicy() != null && !input.getEncryptionPolicy().isEmpty()
-                ? input.getEncryptionPolicy()
-                : ("false".equalsIgnoreCase(scalarAdapterActivator) ? "AES256" : "AES256");
-            log.debug(aMarker, "Using encryption policy: {}", encryptionPolicy);
-
+      if ("false".equalsIgnoreCase(action.getContext().getOrDefault("scalar.adapter.activator", "false"))) {
+        log.info(aMarker, "Scalar activator is disabled, running decryption in AES256 mode");
+        documentWisePostProcessingInputs.forEach(input -> {
+          if (input.getIsEncrypted()) {
             String itemIdentifier = input.getSorItemName() != null ? input.getSorItemName() : String.valueOf(input.getSorItemId());
-            String decryptedValue = crypt.decrypt(input.getPredictedValue(), encryptionPolicy, itemIdentifier);
-            input.setPredictedValue(decryptedValue);
-            log.debug(aMarker, "Decrypted value for sorItemId: {}", input.getSorItemId());
-          } catch (Exception e) {
-            log.warn(aMarker, "Failed to decrypt value for sorItemId: {}, using encrypted value. Error: {}",
-                    input.getSorItemId(), e.getMessage());
+            input.setPredictedValue(crypt.decrypt(input.getPredictedValue(), "AES256", itemIdentifier));
           }
-        } else {
-          log.debug(aMarker, "Skipping decryption for sorItemId: {} (isEncrypted: {})",
-                  input.getSorItemId(), input.getIsEncrypted());
-        }
-      });
-
-      long decryptedCount = documentWisePostProcessingInputs.stream()
-              .filter(DocumentWisePostProcessingInput::getIsEncrypted)
-              .count();
-      log.info(aMarker, "Decrypted {} out of {} records", decryptedCount, documentWisePostProcessingInputs.size());
+        });
+      } else {
+        log.info(aMarker, "Scalar activator is enabled, running decryption in policy mode");
+        documentWisePostProcessingInputs.forEach(input -> {
+          if (input.getIsEncrypted()) {
+            String itemIdentifier = input.getSorItemName() != null ? input.getSorItemName() : String.valueOf(input.getSorItemId());
+            input.setPredictedValue(crypt.decrypt(input.getPredictedValue(), input.getEncryptionPolicy(), itemIdentifier));
+          }
+        });
+      }
     }
   }
 
   private void processEncryption(DocumentWisePostProcessingInput input, InticsIntegrity crypt, boolean encryptEnabled) {
-    if (encryptEnabled && input.getPredictedValue() != null && !input.getPredictedValue().isEmpty()
-            && input.getIsEncrypted()) {
-      try {
-        String encryptionPolicy = input.getEncryptionPolicy() != null && !input.getEncryptionPolicy().isEmpty()
-            ? input.getEncryptionPolicy() : "AES256";
-
-        String itemIdentifier = input.getSorItemName() != null ? input.getSorItemName() : String.valueOf(input.getSorItemId());
-        input.setPredictedValue(crypt.encrypt(input.getPredictedValue(), encryptionPolicy, itemIdentifier));
-        log.debug(aMarker, "Re-encrypted value for sorItemId: {} with policy: {}", input.getSorItemId(), encryptionPolicy);
-      } catch (Exception e) {
-        log.warn(aMarker, "Failed to encrypt value for sorItemId: {}. Error: {}",
-                input.getSorItemId(), e.getMessage());
-      }
-    } else {
-      log.debug(aMarker, "Skipping encryption for sorItemId: {} (isEncrypted: {})",
-              input.getSorItemId(), input.getIsEncrypted());
+    if ("multi_value".equalsIgnoreCase(input.getLineItemType())) {
+      handleMultiValue(input, crypt, encryptEnabled);
+    } else if (encryptEnabled && input.getIsEncrypted()) {
+      String itemIdentifier = input.getSorItemName() != null ? input.getSorItemName() : String.valueOf(input.getSorItemId());
+      input.setPredictedValue(
+              crypt.encrypt(
+                      input.getPredictedValue(),
+                      input.getEncryptionPolicy(),
+                      itemIdentifier
+              )
+      );
     }
+  }
+
+  private void handleMultiValue(DocumentWisePostProcessingInput input, InticsIntegrity crypt, boolean encryptEnabled) {
+    if (input.getPredictedValue() == null || input.getPredictedValue().isEmpty()) {
+      return;
+    }
+    String[] parts = input.getPredictedValue().split(",");
+    List<String> reEncrypted = java.util.Arrays.stream(parts)
+            .map(String::trim)
+            .map(val -> encryptEnabled && input.getIsEncrypted()
+                    ? crypt.encrypt(val, input.getEncryptionPolicy(), input.getSorItemName() != null ? input.getSorItemName() : String.valueOf(input.getSorItemId()))
+                    : val)
+            .collect(Collectors.toList());
+    input.setPredictedValue(String.join(",", reEncrypted));
   }
 
   @Override
   public boolean executeIf() throws Exception {
     return documentWisePostProcessing.getCondition();
+  }
+
+  private List<DocumentWisePostProcessingInput> doDocumentWiseValidator(List<DocumentWisePostProcessingInput> inputs, int threadCount, String outputTable) {
+    int inputSize = inputs.size();
+    log.info(aMarker, "Starting document-wise validation for {} records", inputSize);
+
+    if (inputs.isEmpty()) {
+      log.warn(aMarker, "No inputs found to process");
+      return inputs;
+    }
+
+    return processWithCoproProcessor(inputs, threadCount, outputTable);
+  }
+
+  private List<DocumentWisePostProcessingInput> processWithCoproProcessor(List<DocumentWisePostProcessingInput> documentWisePostProcessingInputs, int consumerCount, String outputTable) {
+    BlockingQueue<DocumentWisePostProcessingOriginInput> queue = new LinkedBlockingQueue<>();
+
+    List<URL> coproNodes = new ArrayList<>();
+
+    String resourceConn = action.getContext().get("resource.conn");
+    if (resourceConn == null || resourceConn.isEmpty()) {
+      log.error(aMarker, "Resource connection not found in context. Cannot proceed with CoproProcessor.");
+      return documentWisePostProcessingInputs;
+    }
+    
+    DocumentWisePostProcessingOriginInput stoppingSeed = new DocumentWisePostProcessingOriginInput();
+    
+    CoproProcessor<DocumentWisePostProcessingOriginInput, DocumentWisePostProcessingOriginOutput> coproProcessor =
+            new CoproProcessor<>(
+                    queue,
+                    DocumentWisePostProcessingOriginOutput.class,
+                    DocumentWisePostProcessingOriginInput.class,
+                    resourceConn,
+                    log,
+                    stoppingSeed,
+                    coproNodes,
+                    action
+            );
+
+    log.info(aMarker, "CoproProcessor initialized for document-wise validation with resource: {}", resourceConn);
+
+    Map<String, List<DocumentWisePostProcessingInput>> originMap = new LinkedHashMap<>();
+    
+    for (DocumentWisePostProcessingInput input : documentWisePostProcessingInputs) {
+        String originId = input.getOriginId();
+        if (originId != null) {
+            originMap.computeIfAbsent(originId, k -> new ArrayList<>()).add(input);
+        }
+    }
+
+    int originCount = originMap.size();
+    log.info(aMarker, "Found {} unique origins to process", originCount);
+
+    if (originCount == 0) {
+        log.warn(aMarker, "No origins found to process");
+        return documentWisePostProcessingInputs;
+    }
+
+    for (Map.Entry<String, List<DocumentWisePostProcessingInput>> originEntry : originMap.entrySet()) {
+        DocumentWisePostProcessingOriginInput originInput = DocumentWisePostProcessingOriginInput.builder()
+                .originId(originEntry.getKey())
+                .inputs(new ArrayList<>(originEntry.getValue())) // Create a copy to avoid modification issues
+                .build();
+        queue.add(originInput);
+    }
+
+    queue.add(stoppingSeed);
+    log.info(aMarker, "Added {} origins to CoproProcessor queue for multithreaded processing (plus stopping seed)", originCount);
+
+    DocumentWisePostProcessingConsumerProcess consumerProcess = 
+            new DocumentWisePostProcessingConsumerProcess(action, log);
+
+    if (outputTable == null || outputTable.isEmpty()) {
+        log.error(aMarker, "Output table is not set. Cannot proceed with CoproProcessor insert.");
+        return documentWisePostProcessingInputs;
+    }
+    
+    String insertSql = buildInsertSQL(outputTable);
+    log.info(aMarker, "Using insert SQL for output table: {}", outputTable);
+
+    int finalConsumerCount = Math.min(consumerCount, originCount);
+    if (finalConsumerCount <= 0) {
+        finalConsumerCount = 1;
+    }
+    
+    log.info(aMarker, "Starting CoproProcessor with {} consumer threads for parallel processing", finalConsumerCount);
+    log.info(aMarker, "Queue size before starting consumer: {}", queue.size());
+    
+    try {
+        coproProcessor.startConsumer(insertSql, finalConsumerCount, 1, consumerProcess);
+        log.info(aMarker, "CoproProcessor startConsumer returned successfully");
+    } catch (Exception e) {
+        log.error(aMarker, "Error during CoproProcessor consumer execution: {}", e.getMessage(), e);
+
+        return documentWisePostProcessingInputs;
+    }
+
+    log.info(aMarker, "CoproProcessor consumer completed multithreaded processing");
+
+    Map<String, List<DocumentWisePostProcessingInput>> resultsMap = consumerProcess.getResultsMap();
+    log.info(aMarker, "Results map contains {} origins after processing", resultsMap.size());
+    resultsMap.forEach((oid, inputs) -> log.info(aMarker, "Origin {} has {} processed records", oid, inputs.size()));
+
+    List<DocumentWisePostProcessingInput> finalResults = new ArrayList<>();
+    int matchedCount = 0;
+    int unmatchedCount = 0;
+    
+    for (DocumentWisePostProcessingInput originalInput : documentWisePostProcessingInputs) {
+        String originId = originalInput.getOriginId();
+        if (originId != null && resultsMap.containsKey(originId)) {
+            List<DocumentWisePostProcessingInput> processedInputs = resultsMap.get(originId);
+
+            DocumentWisePostProcessingInput processedInput = processedInputs.stream()
+                    .filter(input -> input.getSorItemId() != null && 
+                            input.getSorItemId().equals(originalInput.getSorItemId()))
+                    .findFirst()
+                    .orElse(originalInput);
+            
+            if (processedInput != originalInput) {
+                matchedCount++;
+            }
+            finalResults.add(processedInput);
+        } else {
+            unmatchedCount++;
+            log.debug(aMarker, "Origin {} not found in resultsMap, using original input", originId);
+            finalResults.add(originalInput);
+        }
+    }
+
+    log.info(aMarker, "Completed all validations for document-wise post processing. Total: {}, Matched: {}, Unmatched: {}", 
+            finalResults.size(), matchedCount, unmatchedCount);
+    return finalResults;
+  }
+
+  private String buildInsertSQL(String outputTable) {
+    return "INSERT INTO " + outputTable + " (" +
+            "transaction_id, created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, " +
+            "feature, label, left_pos, lower_pos, right_pos, upper_pos, b_box, precision_val, predicted_value, " +
+            "section_alias, sor_container_instance, document_id, truth_id, channel_id, group_id, origin_id, " +
+            "paper_no, question_id, root_pipeline_id, score, sor_item_name, sor_question, synonym_id, tenant_id, " +
+            "vqa_score, category, stage, batch_id, line_item_type, is_encrypted, encryption_policy, " +
+            "is_removed_after_filtering, message, sor_container_id, truth_entity_id, sor_item_id, is_multi_entity_enabled) VALUES (" +
+            "?, ?, ?, ?, ?, ?, ?, " +
+            "?, ?, ?, ?, ?, ?, ?, ?, ?, " +
+            "?, ?, ?, ?, ?, ?, ?, " +
+            "?, ?, ?, ?, ?, ?, ?, ?, " +
+            "?, ?, ?, ?, ?, ?, ?, " +
+            "?, ?, ?, ?, ?, ?)";
   }
 }
