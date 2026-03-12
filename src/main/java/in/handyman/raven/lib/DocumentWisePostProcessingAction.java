@@ -104,7 +104,12 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
           documentWisePostProcessingInputs.forEach(input -> {
             if (input.getIsEncrypted()) {
               try {
-                String itemIdentifier = input.getSorItemName() != null ? input.getSorItemName() : String.valueOf(input.getSorItemId());
+                String itemIdentifier;
+                if (input.getSorItemName() != null) {
+                  itemIdentifier = input.getSorItemName();
+                } else {
+                  itemIdentifier = String.valueOf(input.getSorItemId());
+                }
                 input.setPredictedValue(crypt.decrypt(input.getPredictedValue(), "AES256", itemIdentifier));
               } catch (Exception e) {
                 log.error(aMarker, "Failed to decrypt value for sorItemId: {}", input.getSorItemId(), e);
@@ -118,7 +123,12 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
           documentWisePostProcessingInputs.forEach(input -> {
             if (input.getIsEncrypted()) {
               try {
-                String itemIdentifier = input.getSorItemName() != null ? input.getSorItemName() : String.valueOf(input.getSorItemId());
+                String itemIdentifier;
+                if (input.getSorItemName() != null) {
+                  itemIdentifier = input.getSorItemName();
+                } else {
+                  itemIdentifier = String.valueOf(input.getSorItemId());
+                }
                 input.setPredictedValue(crypt.decrypt(input.getPredictedValue(), input.getEncryptionPolicy(), itemIdentifier));
               } catch (Exception e) {
                 log.error(aMarker, "Failed to decrypt value for sorItemId: {}", input.getSorItemId(), e);
@@ -141,7 +151,12 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
       if ("multi_value".equalsIgnoreCase(input.getLineItemType())) {
         handleMultiValue(input, crypt, encryptEnabled);
       } else if (encryptEnabled && input.getIsEncrypted()) {
-        String itemIdentifier = input.getSorItemName() != null ? input.getSorItemName() : String.valueOf(input.getSorItemId());
+        String itemIdentifier;
+        if (input.getSorItemName() != null) {
+          itemIdentifier = input.getSorItemName();
+        } else {
+          itemIdentifier = String.valueOf(input.getSorItemId());
+        }
         input.setPredictedValue(
                 crypt.encrypt(
                         input.getPredictedValue(),
@@ -166,9 +181,17 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
       List<String> reEncrypted = cleanedValues.stream()
               .map(val -> {
                 try {
-                  return encryptEnabled && input.getIsEncrypted()
-                          ? crypt.encrypt(val, input.getEncryptionPolicy(), input.getSorItemName() != null ? input.getSorItemName() : String.valueOf(input.getSorItemId()))
-                          : val;
+                  if (encryptEnabled && input.getIsEncrypted()) {
+                    String itemIdentifier;
+                    if (input.getSorItemName() != null) {
+                      itemIdentifier = input.getSorItemName();
+                    } else {
+                      itemIdentifier = String.valueOf(input.getSorItemId());
+                    }
+                    return crypt.encrypt(val, input.getEncryptionPolicy(), itemIdentifier);
+                  } else {
+                    return val;
+                  }
                 } catch (Exception e) {
                   log.error(aMarker, "Failed to encrypt multi-value part for sorItemId: {}", input.getSorItemId(), e);
                   HandymanException handymanException = new HandymanException(e);
@@ -187,10 +210,11 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
 
   private List<String> splitAndCleanMultiValue(String predictedValue) {
     String[] parts = predictedValue.split(",");
-    return java.util.Arrays.stream(parts)
+    List<String> cleanedValues = java.util.Arrays.stream(parts)
             .map(String::trim)
             .filter(s -> !s.isEmpty())
             .collect(Collectors.toList());
+    return cleanedValues;
   }
 
   @Override
@@ -207,10 +231,11 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
       return inputs;
     }
 
-    return processWithCoproProcessor(inputs, threadCount, outputTable);
+    List<DocumentWisePostProcessingInput> result = processWithCoproProcessor(inputs, threadCount, outputTable);
+    return result;
   }
 
-  private List<DocumentWisePostProcessingInput> processWithCoproProcessor(List<DocumentWisePostProcessingInput> documentWisePostProcessingInputs, int consumerCount, String outputTable) {
+  private List<DocumentWisePostProcessingInput> processWithCoproProcessor(List<DocumentWisePostProcessingInput> documentWisePostProcessingInputs, int consumerCount, String outputTable) throws Exception {
     BlockingQueue<DocumentWisePostProcessingOriginInput> queue = new LinkedBlockingQueue<>();
 
     List<URL> coproNodes = new ArrayList<>();
@@ -221,13 +246,15 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
       log.error(aMarker, "Failed to create dummy URL for CoproProcessor: {}", e.getMessage(), e);
       HandymanException handymanException = new HandymanException(e);
       HandymanException.insertException("Failed to create dummy URL for CoproProcessor", handymanException, action);
-      return documentWisePostProcessingInputs;
+      List<DocumentWisePostProcessingInput> errorResult = documentWisePostProcessingInputs;
+      return errorResult;
     }
 
     String resourceConn = action.getContext().get("resource.conn");
     if (resourceConn == null || resourceConn.isEmpty()) {
       log.error(aMarker, "Resource connection not found in context. Cannot proceed with CoproProcessor.");
-      return documentWisePostProcessingInputs;
+      List<DocumentWisePostProcessingInput> errorResult = documentWisePostProcessingInputs;
+      return errorResult;
     }
     
     DocumentWisePostProcessingOriginInput stoppingSeed = new DocumentWisePostProcessingOriginInput();
@@ -259,15 +286,8 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
 
     coproProcessor.startProducer(documentWisePostProcessing.getQuerySet(), readBatchSize);
     log.info(aMarker, "CoproProcessor startProducer called with read batch size: {}", readBatchSize);
-    
-    try {
-      Thread.sleep(1000);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      log.warn(aMarker, "Thread interrupted while waiting after startProducer", e);
-      HandymanException handymanException = new HandymanException(e);
-      HandymanException.insertException("Thread interrupted while waiting after startProducer", handymanException, action);
-    }
+
+    Thread.sleep(1000);
 
     Integer writeBatchSize = Integer.valueOf(action.getContext().get(DB_INSERT_WRITE_BATCH_SIZE));
     DocumentWisePostProcessingConsumerProcess consumerProcess = 
@@ -275,7 +295,8 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
 
     if (outputTable == null || outputTable.isEmpty()) {
         log.error(aMarker, "Output table is not set. Cannot proceed with CoproProcessor insert.");
-        return documentWisePostProcessingInputs;
+        List<DocumentWisePostProcessingInput> errorResult = documentWisePostProcessingInputs;
+        return errorResult;
     }
     
     String insertSql = buildInsertSQL(outputTable);
@@ -288,16 +309,8 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
     
     log.info(aMarker, "Starting CoproProcessor with {} consumer threads for parallel processing", finalConsumerCount);
     log.info(aMarker, "Queue size before starting consumer: {}", queue.size());
-    
-    try {
-        coproProcessor.startConsumer(insertSql, finalConsumerCount, writeBatchSize, consumerProcess);
-        log.info(aMarker, "CoproProcessor startConsumer returned successfully");
-    } catch (Exception e) {
-        log.error(aMarker, "Error during CoproProcessor consumer execution: {}", e.getMessage(), e);
-        HandymanException handymanException = new HandymanException(e);
-        HandymanException.insertException("Error during CoproProcessor consumer execution", handymanException, action);
-        return documentWisePostProcessingInputs;
-    }
+
+    coproProcessor.startConsumer(insertSql, finalConsumerCount, writeBatchSize, consumerProcess);
 
     log.info(aMarker, "CoproProcessor consumer completed multithreaded processing");
 
@@ -333,7 +346,8 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
 
     log.info(aMarker, "Completed all validations for document-wise post processing. Total: {}, Matched: {}, Unmatched: {}", 
             finalResults.size(), matchedCount, unmatchedCount);
-    return finalResults;
+    List<DocumentWisePostProcessingInput> result = finalResults;
+    return result;
   }
 
   private String buildInsertSQL(String outputTable) {

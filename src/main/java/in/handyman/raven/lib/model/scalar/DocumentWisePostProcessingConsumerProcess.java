@@ -27,8 +27,7 @@ public class DocumentWisePostProcessingConsumerProcess implements CoproProcessor
         this.log = log;
         this.scriptClassesCache = new HashMap<>();
         this.resultsMap = new ConcurrentHashMap<>();
-        
-        // Get default created_user_id from context
+
         String createdUserIdStr = actionExecutionAudit.getContext().get("created_user_id");
         Long createdUserIdLong = null;
         if (createdUserIdStr != null && !createdUserIdStr.isEmpty()) {
@@ -68,11 +67,9 @@ public class DocumentWisePostProcessingConsumerProcess implements CoproProcessor
             long duration = System.currentTimeMillis() - start;
             log.info("Completed processing origin {} ({} ms). Processed {} records", originId, duration, resultInputs.size());
 
-            // Store results in shared map
             resultsMap.put(originId, resultInputs);
             log.info("Stored {} processed records for origin {} in resultsMap", resultInputs.size(), originId);
 
-            // Return one output entity per input row for CoproProcessor to insert
             List<DocumentWisePostProcessingOriginOutput> outputs = new ArrayList<>();
             for (DocumentWisePostProcessingInput input : resultInputs) {
                 outputs.add(DocumentWisePostProcessingOriginOutput.builder()
@@ -184,10 +181,18 @@ public class DocumentWisePostProcessingConsumerProcess implements CoproProcessor
     @NotNull
     private List<DocumentWisePostProcessingInput> processValidatorResult(Object validatorResultObject) {
         try {
-            // Check if it's already a List<DocumentWisePostProcessingInput>
-            if (validatorResultObject instanceof List) {
-                @SuppressWarnings("unchecked")
-                List<DocumentWisePostProcessingInput> resultList = (List<DocumentWisePostProcessingInput>) validatorResultObject;
+            if (validatorResultObject instanceof List<?>) {
+
+                List<?> rawList = (List<?>) validatorResultObject;
+
+                List<DocumentWisePostProcessingInput> resultList = new ArrayList<>();
+
+                for (Object obj : rawList) {
+                    if (obj instanceof DocumentWisePostProcessingInput) {
+                        resultList.add((DocumentWisePostProcessingInput) obj);
+                    }
+                }
+
                 log.info("Successfully retrieved list of {} DocumentWisePostProcessingInput objects", resultList.size());
                 return resultList;
             }
@@ -196,21 +201,38 @@ public class DocumentWisePostProcessingConsumerProcess implements CoproProcessor
                 Method getMappedDataMethod = validatorResultObject.getClass().getMethod("getMappedData");
                 Object mappedData = getMappedDataMethod.invoke(validatorResultObject);
 
-                if (mappedData instanceof List) {
-                    @SuppressWarnings("unchecked")
-                    List<DocumentWisePostProcessingInput> resultList = (List<DocumentWisePostProcessingInput>) mappedData;
+                if (mappedData instanceof List<?>) {
+
+                    List<?> rawList = (List<?>) mappedData;
+                    List<DocumentWisePostProcessingInput> resultList = new ArrayList<>();
+
+                    for (Object obj : rawList) {
+                        if (obj instanceof DocumentWisePostProcessingInput) {
+                            resultList.add((DocumentWisePostProcessingInput) obj);
+                        }
+                    }
+
                     log.info("Successfully retrieved list of {} DocumentWisePostProcessingInput objects via getMappedData", resultList.size());
                     return resultList;
                 } else {
-                    log.error("Expected mappedData to be a List<DocumentWisePostProcessingInput>, but got: {}", mappedData != null ? mappedData.getClass().getName() : "null");
+                    log.error("Expected mappedData to be List<DocumentWisePostProcessingInput>, but got: {}",
+                            mappedData != null ? mappedData.getClass().getName() : "null");
                     return new ArrayList<>();
                 }
             } catch (NoSuchMethodException e) {
-                // If getMappedData() doesn't exist, assume the object itself is the result
                 log.warn("getMappedData() method not found, treating result object as List");
-                if (validatorResultObject instanceof List) {
-                    @SuppressWarnings("unchecked")
-                    List<DocumentWisePostProcessingInput> resultList = (List<DocumentWisePostProcessingInput>) validatorResultObject;
+
+                if (validatorResultObject instanceof List<?>) {
+
+                    List<?> rawList = (List<?>) validatorResultObject;
+                    List<DocumentWisePostProcessingInput> resultList = new ArrayList<>();
+
+                    for (Object obj : rawList) {
+                        if (obj instanceof DocumentWisePostProcessingInput) {
+                            resultList.add((DocumentWisePostProcessingInput) obj);
+                        }
+                    }
+
                     return resultList;
                 }
                 return new ArrayList<>();
