@@ -35,7 +35,7 @@ public class DocumentWisePostProcessingOriginOutput implements CoproProcessor.En
         rowData.add(input.getCreatedUserId() != null ? input.getCreatedUserId() : defaultCreatedUserId);
         rowData.add(input.getLastUpdatedOn() != null ? input.getLastUpdatedOn() : LocalDateTime.now());
         rowData.add(input.getLastUpdatedUserId() != null ? input.getLastUpdatedUserId() : defaultCreatedUserId);
-        rowData.add(getStatus());
+        rowData.add(input.getStatus());
         rowData.add(input.getVersion());
         rowData.add(input.getFeature());
         rowData.add(input.getLabel());
