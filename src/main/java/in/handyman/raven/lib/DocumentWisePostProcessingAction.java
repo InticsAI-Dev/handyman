@@ -277,12 +277,6 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
     String readBatchSizeValue = action.getContext().getOrDefault(DB_SELECT_READ_BATCH_SIZE, readBatchSizeDefaultValue).trim();
     int readBatchSize = readBatchSizeValue.isEmpty() ? Integer.parseInt(readBatchSizeDefaultValue) : Integer.parseInt(readBatchSizeValue);
 
-    if (consumerCount >= readBatchSize) {
-        log.info(aMarker, "Consumer count {} is greater than read batch size {}, setting read batch size to consumer count", consumerCount, readBatchSize);
-        readBatchSize = consumerCount;
-    } else {
-        log.info(aMarker, "Consumer count {} is less than or equal to read batch size {}, keeping read batch size as is", consumerCount, readBatchSize);
-    }
 
     coproProcessor.startProducer(documentWisePostProcessing.getQuerySet(), readBatchSize);
     log.info(aMarker, "CoproProcessor startProducer called with read batch size: {}", readBatchSize);
