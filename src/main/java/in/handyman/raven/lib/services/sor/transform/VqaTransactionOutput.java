@@ -36,7 +36,7 @@ public class VqaTransactionOutput extends VqaTransactionBase  {
     private Integer weight;
     private String category;
     private String lineItemType;
-    private String isMultiEntityEnabled;
+    private Boolean isMultiEntityEnabled;
     private String encryptionPolicy;
     private Boolean isEncrypted;
 

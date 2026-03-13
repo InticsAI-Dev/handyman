@@ -13,6 +13,7 @@ import in.handyman.raven.lambda.action.ActionExecution;
 import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.model.MultivalueSorItemHandling;
+import in.handyman.raven.lib.model.MultivalueSorItemHandlingInput;
 import in.handyman.raven.lib.services.sor.transform.InstanceFingerprint;
 import in.handyman.raven.lib.services.sor.transform.MultiEntityFieldHandlingInput;
 import in.handyman.raven.lib.services.sor.transform.VqaTransactionOutput;
@@ -155,12 +156,12 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
                 .collect(Collectors.toList());
 
         List<MultiEntityFieldHandlingInput> multiEntityEnabledInputs = nonMmIndicatorInputs.stream()
-                .filter(item -> "true".equals(item.getIsMultiEntityEnabled()))
+                .filter(item -> Boolean.TRUE.equals(item.getIsMultiEntityEnabled()))
                 .collect(Collectors.toList());
 
 
         List<MultiEntityFieldHandlingInput> multiEntityDisabledInputs = nonMmIndicatorInputs.stream()
-                .filter(item -> "false".equals(item.getIsMultiEntityEnabled()))
+                .filter(item -> Boolean.FALSE.equals(item.getIsMultiEntityEnabled()))
                 .collect(Collectors.toList());
 
         log.info(aMarker, "Partitioned inputs - Multi entity enabled: {}, Multi entity disabled: {}, Multi member indicator: {}", multiEntityEnabledInputs.size(), multiEntityDisabledInputs.size(), mmIndicatorInputs.size());
@@ -680,56 +681,87 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
         logOutputRecordsSummary(outputs);
 
         String sql = "INSERT INTO " + outputTable +
-                " (sor_item_name, answer, b_box, group_id, batch_id, category, document_id, line_item_type, model_id, model_info, " +
-                "model_registry, origin_id, paper_no, question_id, sor_item_attribution_id, root_pipeline_id, score, sor_question, " +
-                "stage, status, synonym_id, tenant_id, vqa_score, is_encrypted, encryption_policy," +
-                "sor_container_instance, is_removed_after_filtering, message, section_priority_after_filter, created_on, " +
-                "last_updated_on, label, section_alias, sor_container_name) VALUES" +
-                " (:sorItemName, :answer, :BBox, :groupId, :batchId, :category, :documentId, :lineItemType, " +
-                ":modelId, :modelInfo, :modelRegistry, :originId, :paperNo, :questionId, :sorItemAttributionId, " +
-                ":rootPipelineId, :score, :sorQuestion, :stage, :status, :synonymId, :tenantId, :vqaScore, :isEncrypted, " +
-                " :encryptionPolicy, :sorContainerInstance, :isRemovedAfterFiltering, :message, " +
-                ":sectionPriorityAfterFilter, :createdOn, :lastUpdatedOn ,:label, :sectionAlias, :sorContainerName)";
+                " (transaction_id, created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, " +
+                "answer, b_box, label, section_alias, sor_container_instance, document_id, extracted_image_unit, truth_id, " +
+                "group_id, image_dpi, image_height, image_width, model_id, model_info, origin_id, paper_no, question_id, " +
+                "root_pipeline_id, score, sor_item_attribution_id, sor_item_name, sor_question, synonym_id, tenant_id, " +
+                "vqa_score, weight, model_registry, category, model_registry_id, stage, batch_id, line_item_type, " +
+                "is_encrypted, encryption_policy, is_removed_after_filtering, message, " +
+                "section_priority_after_filter, sor_container_id, sor_container_name, sor_item_id, sor_synonym, is_multi_entity_enabled) VALUES" +
+                " (:transactionId, :createdOn, :createdUserId, :lastUpdatedOn, :lastUpdatedUserId, :status, :version, " +
+                ":answer, :bBox, :label, :sectionAlias, :sorContainerInstance, :documentId, :extractedImageUnit, :truthId, " +
+                ":groupId, :imageDpi, :imageHeight, :imageWidth, :modelId, :modelInfo, :originId, :paperNo, :questionId, " +
+                ":rootPipelineId, :score, :sorItemAttributionId, :sorItemName, :sorQuestion, :synonymId, :tenantId, " +
+                ":vqaScore, :weight, :modelRegistry, :category, :modelRegistryId, :stage, :batchId, :lineItemType, " +
+                ":isEncrypted, :encryptionPolicy, :isRemovedAfterFiltering, :message, " +
+                ":sectionPriorityAfterFilter, :sorContainerId, :sorContainerName, :sorItemId, :sorSynonym, :isMultiEntityEnabled)";
 
         jdbi.useHandle(handle -> {
             var batch = handle.prepareBatch(sql);
             int batchCount = 0;
+            String createdUserIdStr = action.getContext().get("created_user_id");
+            Long createdUserIdLong = null;
+            if (createdUserIdStr != null && !createdUserIdStr.isEmpty()) {
+                try {
+                    createdUserIdLong = Long.parseLong(createdUserIdStr);
+                } catch (NumberFormatException e) {
+                    log.warn(aMarker, "Invalid created_user_id format: {}, using null", createdUserIdStr);
+                }
+            }
+            final Long defaultCreatedUserId = createdUserIdLong;
+            
             for (MultiEntityFieldHandlingInput output : outputs) {
+                LocalDateTime now = LocalDateTime.now();
                 batch
-                        .bind("sorItemName", output.getSorItemName())
+                        .bind("transactionId", output.getTransactionId())
+                        .bind("createdOn", output.getCreatedOn() != null ? output.getCreatedOn() : now)
+                        .bind("createdUserId", output.getCreatedUserId() != null ? output.getCreatedUserId() : defaultCreatedUserId)
+                        .bind("lastUpdatedOn", output.getLastUpdatedOn() != null ? output.getLastUpdatedOn() : now)
+                        .bind("lastUpdatedUserId", output.getLastUpdatedUserId() != null ? output.getLastUpdatedUserId() : defaultCreatedUserId)
+                        .bind("status", output.getStatus())
+                        .bind("version", output.getVersion())
                         .bind("answer", output.getAnswer())
-                        .bind("BBox", output.getBBox())
-                        .bind("groupId", output.getGroupId())
-                        .bind("batchId", output.getBatchId())
-                        .bind("category", output.getCategory())
+                        .bind("bBox", output.getBBox())
+                        .bind("label", output.getLabel())
+                        .bind("sectionAlias", output.getSectionAlias())
+                        .bind("sorContainerInstance", output.getSorContainerInstance())
                         .bind("documentId", output.getDocumentId())
-                        .bind("lineItemType", output.getLineItemType())
+                        .bind("extractedImageUnit", output.getExtractedImageUnit())
+                        .bind("truthId", output.getTruthId())
+                        .bind("groupId", output.getGroupId())
+                        .bind("imageDpi", output.getImageDpi())
+                        .bind("imageHeight", output.getImageHeight())
+                        .bind("imageWidth", output.getImageWidth())
                         .bind("modelId", output.getModelId())
                         .bind("modelInfo", output.getModelInfo())
-                        .bind("modelRegistry", output.getModelRegistry())
                         .bind("originId", output.getOriginId())
                         .bind("paperNo", output.getPaperNo())
                         .bind("questionId", output.getQuestionId())
-                        .bind("sorItemAttributionId", output.getSorItemAttributionId())
                         .bind("rootPipelineId", output.getRootPipelineId())
                         .bind("score", output.getScore())
+                        .bind("sorItemAttributionId", output.getSorItemAttributionId())
+                        .bind("sorItemName", output.getSorItemName())
                         .bind("sorQuestion", output.getSorQuestion())
-                        .bind("stage", output.getStage())
-                        .bind("status", output.getStatus())
                         .bind("synonymId", output.getSynonymId())
                         .bind("tenantId", output.getTenantId())
                         .bind("vqaScore", output.getVqaScore())
+                        .bind("weight", output.getWeight())
+                        .bind("modelRegistry", output.getModelRegistry())
+                        .bind("category", output.getCategory())
+                        .bind("modelRegistryId", output.getModelRegistryId())
+                        .bind("stage", output.getStage())
+                        .bind("batchId", output.getBatchId())
+                        .bind("lineItemType", output.getLineItemType())
                         .bind("isEncrypted", output.getIsEncrypted())
                         .bind("encryptionPolicy", output.getEncryptionPolicy())
-                        .bind("sorContainerInstance", output.getSorContainerInstance())
                         .bind("isRemovedAfterFiltering", output.isRemovedAfterFiltering())
                         .bind("message", output.getMessage())
-                        .bind("createdOn", LocalDateTime.now())
-                        .bind("lastUpdatedOn", LocalDateTime.now())
-                        .bind("label", output.getLabel())
-                        .bind("sectionAlias", output.getSectionAlias())
                         .bind("sectionPriorityAfterFilter", output.getSectionPriorityAfterFilter())
+                        .bind("sorContainerId", output.getSorContainerId())
                         .bind("sorContainerName", output.getSorContainerName())
+                        .bind("sorItemId", output.getSorItemId())
+                        .bind("sorSynonym", output.getSorSynonym())
+                        .bind("isMultiEntityEnabled", output.getIsMultiEntityEnabled())
                         .add();
                 batchCount++;
             }
@@ -1705,8 +1737,13 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
                 log.debug(aMarker, "Query SQL: {}", sqlToExecute);
 
                 Query query = handle.createQuery(sqlToExecute);
-                ResultIterable<MultiEntityFieldHandlingInput> resultIterable = query.mapToBean(MultiEntityFieldHandlingInput.class);
-                List<MultiEntityFieldHandlingInput> processingExecutorInputs = resultIterable.stream()
+                ResultIterable<MultivalueSorItemHandlingInput> resultIterable = query.mapToBean(MultivalueSorItemHandlingInput.class);
+                List<MultivalueSorItemHandlingInput> rawInputs = resultIterable.stream()
+                        .collect(Collectors.toList());
+
+                // Convert MultivalueSorItemHandlingInput to MultiEntityFieldHandlingInput
+                List<MultiEntityFieldHandlingInput> processingExecutorInputs = rawInputs.stream()
+                        .map(this::convertToMultiEntityFieldHandlingInput)
                         .collect(Collectors.toList());
 
                 multivalueConcatenationInputs.addAll(processingExecutorInputs);
@@ -1721,6 +1758,72 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
 
         log.info(aMarker, "====== FETCH VALUES FROM DB COMPLETED ======");
         return multivalueConcatenationInputs;
+    }
+
+    /**
+     * Converts MultivalueSorItemHandlingInput to MultiEntityFieldHandlingInput for processing
+     */
+    private MultiEntityFieldHandlingInput convertToMultiEntityFieldHandlingInput(MultivalueSorItemHandlingInput input) {
+        MultiEntityFieldHandlingInput output = new MultiEntityFieldHandlingInput();
+        
+        // Fields from VqaTransactionBase
+        output.setTransactionId(input.getTransactionId());
+        output.setCreatedOn(input.getCreatedOn());
+        output.setCreatedUserId(input.getCreatedUserId());
+        output.setLastUpdatedOn(input.getLastUpdatedOn());
+        output.setLastUpdatedUserId(input.getLastUpdatedUserId());
+        output.setRootPipelineId(input.getRootPipelineId());
+        output.setTenantId(input.getTenantId());
+        output.setDocumentId(input.getDocumentId());
+        output.setGroupId(input.getGroupId());
+        output.setBatchId(input.getBatchId());
+        output.setOriginId(input.getOriginId());
+        output.setPaperNo(input.getPaperNo());
+        output.setTruthId(input.getTruthId());
+        output.setStatus(input.getStatus());
+        output.setStage(input.getStage());
+        output.setMessage(null); // Will be set during processing
+        output.setVersion(input.getVersion());
+        output.setExtractedImageUnit(input.getExtractedImageUnit());
+        output.setImageDpi(input.getImageDpi());
+        output.setImageHeight(input.getImageHeight());
+        output.setImageWidth(input.getImageWidth());
+        output.setSectionPriorityAfterFilter(null); // Will be set during processing
+        
+        // Fields from VqaTransactionOutput
+        output.setSorContainerId(input.getSorContainerId());
+        output.setSorContainerName(input.getSorContainerName());
+        output.setSorContainerInstance(input.getSorContainerInstance());
+        output.setSorItemName(input.getSorItemName());
+        output.setSorItemId(input.getSorItemId());
+        output.setSorItemAttributionId(input.getSorItemAttributionId());
+        output.setModelId(input.getModelId());
+        output.setModelInfo(input.getModelInfo());
+        output.setModelRegistry(input.getModelRegistry());
+        output.setModelRegistryId(input.getModelRegistryId());
+        output.setAnswer(input.getAnswer());
+        output.setVqaScore(input.getVqaScore());
+        output.setScore(input.getScore());
+        output.setBBox(input.getBBox());
+        output.setLabel(input.getLabel());
+        output.setSectionAlias(input.getSectionAlias());
+        output.setSynonymId(input.getSynonymId());
+        output.setSorSynonym(null); // Not in input table
+        output.setQuestionId(input.getQuestionId());
+        output.setSorQuestion(input.getSorQuestion());
+        output.setWeight(input.getWeight());
+        output.setCategory(input.getCategory());
+        output.setLineItemType(input.getLineItemType());
+        output.setIsMultiEntityEnabled(input.getIsMultiEntityEnabled());
+        output.setEncryptionPolicy(input.getEncryptionPolicy());
+        output.setIsEncrypted(input.getIsEncrypted());
+        
+        // Fields from MultiEntityFieldHandlingInput
+        output.setMultiEntityFilteringId(0); // Map simfi_id to multiEntityFilteringId for encryption/decryption
+        output.setRemovedAfterFiltering(false); // Default to false, will be set during processing
+        output.setWhitelistedSections(input.getWhitelistedSections());
+        
+        return output;
     }
 
     public void decryptAnswers(List<MultiEntityFieldHandlingInput> inputList, InticsIntegrity encryption) {
@@ -1931,7 +2034,10 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
 
         Map<String, Long> multiEntityCounts = inputs.stream()
                 .collect(Collectors.groupingBy(
-                        item -> item.getIsMultiEntityEnabled() != null ? item.getIsMultiEntityEnabled() : "NULL",
+                        item -> {
+                            Boolean isEnabled = item.getIsMultiEntityEnabled();
+                            return isEnabled == null ? "NULL" : String.valueOf(isEnabled);
+                        },
                         Collectors.counting()
                 ));
 
