@@ -54,6 +54,8 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
 
   private List<DocumentWisePostProcessingInput> documentWisePostProcessingInputs;
 
+  private int readBatchSize;
+
   private static final String DOCUMENT_WISE_POST_PROCESSING_THREAD_COUNT = "document.wise.post.processing.thread.count";
 
   public DocumentWisePostProcessingAction(final ActionExecutionAudit action, final Logger log,
@@ -273,10 +275,7 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
 
     log.info(aMarker, "CoproProcessor initialized for document-wise validation with resource: {}", resourceConn);
 
-    String readBatchSizeDefaultValue = "10";
-    String readBatchSizeValue = action.getContext().getOrDefault(DB_SELECT_READ_BATCH_SIZE, readBatchSizeDefaultValue).trim();
-    int readBatchSize = readBatchSizeValue.isEmpty() ? Integer.parseInt(readBatchSizeDefaultValue) : Integer.parseInt(readBatchSizeValue);
-
+    readBatchSize = parseContextValue(action, DB_SELECT_READ_BATCH_SIZE, "10");
 
     coproProcessor.startProducer(documentWisePostProcessing.getQuerySet(), readBatchSize);
     log.info(aMarker, "CoproProcessor startProducer called with read batch size: {}", readBatchSize);
@@ -344,6 +343,19 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
     return result;
   }
 
+  private int parseContextValue(ActionExecutionAudit action, String key, String defaultValue) {
+    String value = action.getContext().getOrDefault(key, defaultValue).trim();
+    int result;
+
+    if (value.isEmpty()) {
+      result = Integer.parseInt(defaultValue);
+      log.debug("Context key '{}' is empty or missing. Using default value: {}", key, defaultValue);
+    } else {
+      result = Integer.parseInt(value);
+      log.debug("Context key '{}' found with value: '{}'. Parsed as integer: {}", key, value, result);
+    }
+    return result;
+  }
   private String buildInsertSQL(String outputTable) {
     return "INSERT INTO " + outputTable + " (" +
             "transaction_id, created_on, created_user_id, last_updated_on, last_updated_user_id, status, version, " +

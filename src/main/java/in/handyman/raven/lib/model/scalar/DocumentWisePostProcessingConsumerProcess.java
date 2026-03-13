@@ -35,6 +35,8 @@ public class DocumentWisePostProcessingConsumerProcess implements CoproProcessor
                 createdUserIdLong = Long.parseLong(createdUserIdStr);
             } catch (NumberFormatException e) {
                 log.warn("Invalid created_user_id format: {}, using null", createdUserIdStr);
+                HandymanException handymanException = new HandymanException(e);
+                HandymanException.insertException("Invalid created_user_id format: " + createdUserIdStr, handymanException, actionExecutionAudit);
             }
         }
         this.defaultCreatedUserId = createdUserIdLong;
@@ -221,6 +223,8 @@ public class DocumentWisePostProcessingConsumerProcess implements CoproProcessor
                 }
             } catch (NoSuchMethodException e) {
                 log.warn("getMappedData() method not found, treating result object as List");
+                HandymanException handymanException = new HandymanException(e);
+                HandymanException.insertException("getMappedData() method not found, treating result object as List", handymanException, actionExecutionAudit);
 
                 if (validatorResultObject instanceof List<?>) {
 
@@ -239,6 +243,8 @@ public class DocumentWisePostProcessingConsumerProcess implements CoproProcessor
             }
         } catch (Exception e) {
             log.error("Error processing validator result: ", e);
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Error processing validator result", handymanException, actionExecutionAudit);
             return new ArrayList<>();
         }
     }
