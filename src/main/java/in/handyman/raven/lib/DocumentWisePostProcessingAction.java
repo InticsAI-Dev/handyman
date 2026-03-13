@@ -11,13 +11,13 @@ import in.handyman.raven.lib.model.DocumentWisePostProcessing;
 import java.lang.Exception;
 import java.lang.Object;
 import java.lang.Override;
+import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.time.LocalDateTime;
+import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import in.handyman.raven.lib.model.DocumentWisePostProcessingInput;
@@ -55,6 +55,8 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
   private List<DocumentWisePostProcessingInput> documentWisePostProcessingInputs;
 
   private int readBatchSize;
+
+  public static final String DUMMY_URL = "http://localhost:10181/copro/preprocess/autorotation";
 
   private static final String DOCUMENT_WISE_POST_PROCESSING_THREAD_COUNT = "document.wise.post.processing.thread.count";
 
@@ -101,26 +103,6 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
       log.info(aMarker, "Total records fetched: {}", documentWisePostProcessingInputs.size());
       
       if (encryptEnabled) {
-        if ("false".equalsIgnoreCase(action.getContext().getOrDefault("scalar.adapter.activator", "false"))) {
-          log.info(aMarker, "Scalar activator is disabled, running decryption in AES256 mode");
-          documentWisePostProcessingInputs.forEach(input -> {
-            if (input.getIsEncrypted()) {
-              try {
-                String itemIdentifier;
-                if (input.getSorItemName() != null) {
-                  itemIdentifier = input.getSorItemName();
-                } else {
-                  itemIdentifier = String.valueOf(input.getSorItemId());
-                }
-                input.setPredictedValue(crypt.decrypt(input.getPredictedValue(), "AES256", itemIdentifier));
-              } catch (Exception e) {
-                log.error(aMarker, "Failed to decrypt value for sorItemId: {}", input.getSorItemId(), e);
-                HandymanException handymanException = new HandymanException(e);
-                HandymanException.insertException("Failed to decrypt value for sorItemId: " + input.getSorItemId(), handymanException, action);
-              }
-            }
-          });
-        } else {
           log.info(aMarker, "Scalar activator is enabled, running decryption in policy mode");
           documentWisePostProcessingInputs.forEach(input -> {
             if (input.getIsEncrypted()) {
@@ -139,7 +121,6 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
               }
             }
           });
-        }
       }
     } catch (Exception e) {
       log.error(aMarker, "Error in fetchAndDecryptInputs", e);
@@ -240,17 +221,14 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
   private List<DocumentWisePostProcessingInput> processWithCoproProcessor(List<DocumentWisePostProcessingInput> documentWisePostProcessingInputs, int consumerCount, String outputTable) throws Exception {
     BlockingQueue<DocumentWisePostProcessingOriginInput> queue = new LinkedBlockingQueue<>();
 
-    List<URL> coproNodes = new ArrayList<>();
-    try {
-      coproNodes.add(new URL("http://localhost"));
-      log.info(aMarker, "Using dummy CoproProcessor URL for in-memory processing");
-    } catch (Exception e) {
-      log.error(aMarker, "Failed to create dummy URL for CoproProcessor: {}", e.getMessage(), e);
-      HandymanException handymanException = new HandymanException(e);
-      HandymanException.insertException("Failed to create dummy URL for CoproProcessor", handymanException, action);
-      List<DocumentWisePostProcessingInput> errorResult = documentWisePostProcessingInputs;
-      return errorResult;
-    }
+    final List<URL> urls = Optional.of(DUMMY_URL).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
+      try {
+        return new URL(s1);
+      } catch (MalformedURLException e) {
+        log.error("Error in processing the URL ", e);
+        throw new HandymanException("Error in processing the URL", e, action);
+      }
+    }).collect(Collectors.toList())).orElse(Collections.emptyList());
 
     String resourceConn = action.getContext().get("resource.conn");
     if (resourceConn == null || resourceConn.isEmpty()) {
@@ -269,7 +247,7 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
                     resourceConn,
                     log,
                     stoppingSeed,
-                    coproNodes,
+                    urls,
                     action
             );
 
@@ -277,7 +255,7 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
 
     readBatchSize = parseContextValue(action, DB_SELECT_READ_BATCH_SIZE, "10");
 
-    coproProcessor.startProducer(documentWisePostProcessing.getQuerySet(), readBatchSize);
+    startProducerWithGrouping(queue, documentWisePostProcessing.getQuerySet(), readBatchSize, stoppingSeed, resourceConn);
     log.info(aMarker, "CoproProcessor startProducer called with read batch size: {}", readBatchSize);
 
     Thread.sleep(1000);
@@ -341,6 +319,63 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
             finalResults.size(), matchedCount, unmatchedCount);
     List<DocumentWisePostProcessingInput> result = finalResults;
     return result;
+  }
+
+  private void startProducerWithGrouping(BlockingQueue<DocumentWisePostProcessingOriginInput> queue, String sqlQuery, Integer readBatchSize, DocumentWisePostProcessingOriginInput stoppingSeed, String resourceConn) {
+    try {
+      Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(resourceConn);
+      List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(sqlQuery);
+      
+      formattedQuery.forEach(sql -> jdbi.useTransaction(handle -> {
+        List<DocumentWisePostProcessingInput> allInputs = handle.createQuery(sql)
+                .mapToBean(DocumentWisePostProcessingInput.class)
+                .list();
+        
+        log.info(aMarker, "Total no of rows fetched from query: {}", allInputs.size());
+
+        Map<String, List<DocumentWisePostProcessingInput>> groupedByOrigin = allInputs.stream()
+                .filter(input -> input.getOriginId() != null)
+                .collect(Collectors.groupingBy(DocumentWisePostProcessingInput::getOriginId));
+        
+        log.info(aMarker, "Grouped {} records into {} origins", allInputs.size(), groupedByOrigin.size());
+
+        List<DocumentWisePostProcessingOriginInput> originInputs = groupedByOrigin.entrySet().stream()
+                .map(entry -> DocumentWisePostProcessingOriginInput.builder()
+                        .originId(entry.getKey())
+                        .inputs(entry.getValue())
+                        .build())
+                .collect(Collectors.toList());
+
+        AtomicInteger counter = new AtomicInteger();
+        Map<Integer, List<DocumentWisePostProcessingOriginInput>> partitions = originInputs.stream()
+                .collect(Collectors.groupingBy(it -> counter.getAndIncrement() / readBatchSize));
+        
+        log.info(aMarker, "Total no of origin groups created: {}", originInputs.size());
+        
+        partitions.forEach((partitionIndex, partition) -> {
+          queue.addAll(partition);
+          log.info(aMarker, "Partition {} added to the queue with {} origin groups", partitionIndex, partition.size());
+          try {
+            Thread.sleep(10);
+          } catch (InterruptedException e) {
+            log.error(aMarker, "Error at Producer sleep", e);
+            Thread.currentThread().interrupt();
+            HandymanException handymanException = new HandymanException(e);
+            HandymanException.insertException("Error at Producer sleep", handymanException, action);
+          }
+        });
+        
+        log.info(aMarker, "Total Partition added to the queue: {}", partitions.size());
+
+        queue.add(stoppingSeed);
+        log.info(aMarker, "Added stopping seed to the queue");
+      }));
+    } catch (Exception e) {
+      log.error(aMarker, "Error in startProducerWithGrouping", e);
+      HandymanException handymanException = new HandymanException(e);
+      HandymanException.insertException("Error in startProducerWithGrouping", handymanException, action);
+      queue.add(stoppingSeed);
+    }
   }
 
   private int parseContextValue(ActionExecutionAudit action, String key, String defaultValue) {
