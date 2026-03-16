@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ContainsComparisonAdapterTest {
 
@@ -88,5 +89,65 @@ class ContainsComparisonAdapterTest {
         );
         Long result = adapter.dataValidation(input, log, audit);
         assertEquals(input.getExtractedValue().length(), result);
+    }
+
+    // --- containsAll fix: single extracted token contained in comma-separated actual ---
+
+    @Test
+    void testSingleExtractedTokenPresentInCommaActual() {
+        // responsible_area scenario: actual has multiple comma-separated auth types,
+        // extracted is one of them — should be NO TOUCH after containsAll fix
+        ControlDataComparisonQueryInputTable input = buildInput(
+                "admission, Inpatient, Observation, mental health, CT", "observation", "single_value"
+        );
+        Long result = adapter.dataValidation(input, log, audit);
+        assertEquals(0L, result, "Extracted token present in actual comma list should return 0");
+    }
+
+    @Test
+    void testAllExtractedTokensPresentInActual() {
+        ControlDataComparisonQueryInputTable input = buildInput(
+                "Inpatient, Outpatient, Emergency", "inpatient,outpatient", "single_value"
+        );
+        Long result = adapter.dataValidation(input, log, audit);
+        assertEquals(0L, result, "All extracted tokens present in actual should return 0");
+    }
+
+    @Test
+    void testExtractedTokenNotInActual() {
+        ControlDataComparisonQueryInputTable input = buildInput(
+                "Inpatient, Outpatient", "Emergency", "single_value"
+        );
+        Long result = adapter.dataValidation(input, log, audit);
+        assertTrue(result > 0, "Token not in actual should return distance > 0");
+    }
+
+    @Test
+    void testExtractedHasOneTokenMissingFromActual() {
+        // "inpatient" matches but "Emergency" does not — containsAll should fail
+        ControlDataComparisonQueryInputTable input = buildInput(
+                "Inpatient, Outpatient", "inpatient,Emergency", "single_value"
+        );
+        Long result = adapter.dataValidation(input, log, audit);
+        assertTrue(result > 0, "If any extracted token missing from actual, should return distance > 0");
+    }
+
+    @Test
+    void testMultiValueSingleExtractedTokenInActual() {
+        // Same containsAll scenario but lineItemType is multi_value
+        ControlDataComparisonQueryInputTable input = buildInput(
+                "admission, Inpatient, Observation, mental health, CT", "Observation", "multi_value"
+        );
+        Long result = adapter.dataValidation(input, log, audit);
+        assertEquals(0L, result, "Single extracted multi_value token present in actual list should return 0");
+    }
+
+    @Test
+    void testFullActualMatchesExtracted() {
+        ControlDataComparisonQueryInputTable input = buildInput(
+                "A, B, C", "A,B,C", "single_value"
+        );
+        Long result = adapter.dataValidation(input, log, audit);
+        assertEquals(0L, result, "All extracted tokens equal to actual tokens should return 0");
     }
 }

@@ -11,9 +11,12 @@ import org.jdbi.v3.core.Jdbi;
 
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 public class ResourceAccess {
+
+    private static final ConcurrentHashMap<String, Jdbi> JDBI_POOL_CACHE = new ConcurrentHashMap<>();
 
     public static HikariDataSource rdbmsConn(final String resourceName) {
         final SpwResourceConfig resource = ConfigAccess.getResourceConfig(resourceName);
@@ -60,19 +63,45 @@ public class ResourceAccess {
 
         String legacyResourceConnection = PropertyHandler.get("legacy.resource.connection.type");
 
-
-        if(legacyResourceConnection.equals("AZURE")){
+        if (legacyResourceConnection.equals("AZURE")) {
             return HikariJdbiProvider.getJdbi();
-        }else if(legacyResourceConnection.equals("LEGACY")){
+        } else if (legacyResourceConnection.equals("LEGACY")) {
             if (Objects.isNull(resource)) {
                 log.warn("{} not found in Resource connections", resourceName);
                 throw new HandymanException("Resource connection is null");
             }
             log.debug("{} found in Resource connections", resource.getConfigName());
-            return resource.get();
-        }else{
+            return JDBI_POOL_CACHE.computeIfAbsent(resourceName, k -> {
+                try {
+                    log.info("Creating pooled JDBI for resource");
+                    HikariDataSource ds = createLegacyJdbiPool(resource.getResourceUrl(),
+                            resource.getDriverClass(), resource.getUserName(), resource.getPassword());
+                    return Jdbi.create(ds);
+                } catch (ClassNotFoundException e) {
+                    throw new HandymanException("Resource failed to connect", e);
+                }
+            });
+        } else {
             throw new HandymanException("Resource connection is null check the legacy.resource.connection.type ");
         }
+    }
+
+    private static HikariDataSource createLegacyJdbiPool(final String url, final String driver,
+            final String user, final String password) throws ClassNotFoundException {
+        Class.forName(driver);
+        final HikariConfig config = new HikariConfig();
+        config.setJdbcUrl(url);
+        config.setUsername(user);
+        config.setPassword(password);
+        config.setMinimumIdle(0);
+        config.setConnectionTimeout(30000);
+        config.setIdleTimeout(35000);
+        config.setMaxLifetime(45000);
+        config.setMaximumPoolSize(Integer.parseInt(PropertyHandler.get("legacy.jdbi.pool.size")));
+        config.addDataSourceProperty("cachePrepStmts", "true");
+        config.addDataSourceProperty("prepStmtCacheSize", "250");
+        config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
+        return new HikariDataSource(config);
     }
 
 }

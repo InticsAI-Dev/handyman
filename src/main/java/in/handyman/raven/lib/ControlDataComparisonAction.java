@@ -24,8 +24,12 @@ import org.slf4j.MarkerFactory;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -380,6 +384,30 @@ public class ControlDataComparisonAction implements IActionExecution {
         return controlDataComparisonQueryInputTables;
     }
 
+    private List<ControlDataComparisonQueryInputTable> groupAndMergeExtractedValues(
+            List<ControlDataComparisonQueryInputTable> records) {
+
+        Map<String, ControlDataComparisonQueryInputTable> representativeMap = new LinkedHashMap<>();
+        Map<String, Set<String>> extractedValuesMap = new LinkedHashMap<>();
+
+        for (ControlDataComparisonQueryInputTable record : records) {
+            String key = record.getOriginId() + "|" + record.getSorItemId();
+            representativeMap.putIfAbsent(key, record);
+            extractedValuesMap.computeIfAbsent(key, k -> new LinkedHashSet<>());
+            String extracted = record.getExtractedValue();
+            if (extracted != null && !extracted.trim().isEmpty()) {
+                extractedValuesMap.get(key).add(extracted.trim());
+            }
+        }
+
+        for (Map.Entry<String, ControlDataComparisonQueryInputTable> entry : representativeMap.entrySet()) {
+            Set<String> extractedSet = extractedValuesMap.get(entry.getKey());
+            entry.getValue().setExtractedValue(String.join(",", extractedSet));
+        }
+
+        return new ArrayList<>(representativeMap.values());
+    }
+
     public void invokeValidationPerRecord(
             List<ControlDataComparisonQueryInputTable> originalRecords,
             Jdbi jdbi,
@@ -392,9 +420,12 @@ public class ControlDataComparisonAction implements IActionExecution {
             return;
         }
 
+        List<ControlDataComparisonQueryInputTable> groupedRecords = groupAndMergeExtractedValues(originalRecords);
+        log.info(aMarker, "After grouping: {} records from {} original records", groupedRecords.size(), originalRecords.size());
+
         // Validate + insert + encrypt in one pipeline
         List<ControlDataComparisonQueryInputTable> processedRecords =
-                originalRecords.stream()
+                groupedRecords.stream()
                         .map(this::doControlDataValidationByAdapters)
                         .collect(Collectors.toList());
         log.info(aMarker, "Completed validation and returned {} records", processedRecords.size());
