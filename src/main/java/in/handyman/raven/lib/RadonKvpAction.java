@@ -79,8 +79,13 @@ public class RadonKvpAction implements IActionExecution {
     private final String processBase64;
     private final int connectTimeout;
     private final int writeTimeout;
+
+    @Getter
     private final int readTimeout;
+
+    @Getter
     private final int callTimeout;
+
     @Getter
     private final String httpClientType;
 
@@ -129,14 +134,6 @@ public class RadonKvpAction implements IActionExecution {
         try {
 
             ProviderDataTransformer providerDataTransformer = new ProviderDataTransformer(this.log, aMarker, objectMapper, this.action, radonKvp.getResourceConn(), securityEngine);
-
-            String moduleName = action.getContext().getOrDefault("copro.processor.kafka.request.type", "");
-            String asyncModeKey = MODULE_ASYNC_MODE_KEYS.getOrDefault(moduleName, "sor.transaction.async.mode");
-            String asyncMode = action.getContext().getOrDefault(asyncModeKey, "false");
-            if ("true".equalsIgnoreCase(asyncMode)) {
-                action.getContext().put("copro.processor.consumer.route.type", "KAFKA_ASYNC");
-                log.info(aMarker, "RadonKvp running in KAFKA_ASYNC mode for module={}", moduleName);
-            }
 
             log.info(aMarker, "kvp extraction with llm Action for {} has been started", radonKvp.getName());
             FileProcessingUtils fileProcessingUtils = new FileProcessingUtils(log, aMarker, action);
@@ -215,11 +212,4 @@ public class RadonKvpAction implements IActionExecution {
         return this.writeTimeout;
     }
 
-    public int getCallTimeout() {
-        return this.callTimeout;
-    }
-
-    public int getReadTimeout() {
-        return this.readTimeout;
-    }
 }

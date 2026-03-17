@@ -17,6 +17,7 @@ import in.handyman.raven.util.PropertyHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
+import org.jetbrains.annotations.NotNull;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
@@ -129,17 +130,9 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
     @Override
     public Map<String, String> getAllConfig(final String pipelineName) {
         final String lambdaName = getLambdaName(pipelineName);
-        final Map<String, String> instanceConfig = findAllByInstance(pipelineName).stream()
-                .collect(Collectors
-                        .toMap((SpwInstanceConfig::getVariable),
-                                SpwInstanceConfig::getValue,
-                                (p, q) -> p));
+        final Map<String, String> instanceConfig = getAllInstanceConfig(pipelineName);
 
-        final Map<String, String> processConfig = findAllByProcess(lambdaName).stream()
-                .collect(Collectors
-                        .toMap((SpwProcessConfig::getVariable),
-                                SpwProcessConfig::getValue,
-                                (p, q) -> p));
+        final Map<String, String> processConfig = getAllProcessConfig(lambdaName);
 
         final Map<String, String> commonConfig = getCommonConfig();
 
@@ -150,6 +143,28 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
 
         return Map.copyOf(finalMap);
     }
+
+    @NotNull
+    public Map<String, String> getAllInstanceConfig(String pipelineName) {
+        final Map<String, String> instanceConfig = findAllByInstance(pipelineName).stream()
+                .collect(Collectors
+                        .toMap((SpwInstanceConfig::getVariable),
+                                SpwInstanceConfig::getValue,
+                                (p, q) -> p));
+        return instanceConfig;
+    }
+
+    @Override
+    @NotNull
+    public Map<String, String> getAllProcessConfig(String lambdaName) {
+        Map<String, String> processConfig = findAllByProcess(lambdaName).stream()
+                .collect(Collectors
+                        .toMap((SpwProcessConfig::getVariable),
+                                SpwProcessConfig::getValue,
+                                (p, q) -> p));
+        return processConfig;
+    }
+
 
     @Override
     public List<SpwInstanceConfig> findAllByInstance(final String instance) {
@@ -573,7 +588,6 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
     public void insertExceptionLog(ActionExecutionAudit actionExecutionAudit, Throwable exception, String message) {
         checkJDBIConnection();
         HandymanExceptionAuditDetails exceptionAuditDetails = HandymanExceptionAuditDetails.builder()
-                //      .groupId(Integer.parseInt(actionExecutionAudit.getContext().get("gen_group_id.group_id")))
                 .rootPipelineId(actionExecutionAudit.getRootPipelineId())
                 .rootPipelineName(actionExecutionAudit.getParentPipelineName())
                 .pipelineName(actionExecutionAudit.getPipelineName())

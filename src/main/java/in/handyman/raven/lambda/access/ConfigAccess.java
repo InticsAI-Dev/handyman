@@ -46,4 +46,7 @@ public class ConfigAccess {
         return REPO.findAllBshClassesByTenantId(tenantId);
     }
 
+    public static Map<String, String> getAllProcessConfig(String pipelineName) {
+        return REPO.getAllProcessConfig(pipelineName);
+    }
 }

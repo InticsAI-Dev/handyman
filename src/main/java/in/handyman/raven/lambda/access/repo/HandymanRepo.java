@@ -16,6 +16,10 @@ public interface HandymanRepo {
 
     Map<String, String> getAllConfig(final String pipelineName);
 
+    Map<String, String> getAllProcessConfig(final String pipelineName);
+
+    Map<String, String> getAllInstanceConfig(final String pipelineName);
+
     Map<String, String> getCommonConfig();
 
     SpwResourceConfig getResourceConfig(final String name);

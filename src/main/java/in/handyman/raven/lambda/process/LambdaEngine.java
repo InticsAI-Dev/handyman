@@ -99,6 +99,7 @@ public class LambdaEngine {
             context.put("process-id", String.valueOf(pipelineExecutionAudit.getPipelineId()));
             context.put("root-ref-id", String.valueOf(pipelineExecutionAudit.getPipelineId()));
             context.putAll(lContext.getInheritedContext());
+            context.putAll(ConfigAccess.getAllProcessConfig(lContext.getPipelineName()));
 //            final Map<String, String> other = getOther(pipeline);
 //            context.putAll(other);
             log.info("Raven context has been populated with inheritedContext");

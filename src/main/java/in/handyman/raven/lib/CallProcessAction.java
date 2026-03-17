@@ -137,7 +137,8 @@ public class CallProcessAction implements IActionExecution {
                     final LambdaCallable lambdaCallable = new LambdaCallable(lContext, null);
                     try {
                         final PipelineExecutionAudit start = lambdaCallable.call();
-                        context.putAll(start.getContext());
+                        start.getContext().forEach(context::putIfAbsent);
+                        //context.putAll(start.getContext());
                     } catch (Exception e) {
                         log.error(aMarker, "Failed process for root pipeline id {} and called file {}", lContext.getRootPipelineId(), lContext.getRelativePath(), e);
                         HandymanException handymanException = new HandymanException("Failed to execute call process action for call process " + callProcess.getName(), e, actionExecutionAudit);

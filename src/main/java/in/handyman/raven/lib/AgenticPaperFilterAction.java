@@ -29,7 +29,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.stream.Collectors;
 
 import static in.handyman.raven.core.enums.DatabaseConstants.DB_INSERT_WRITE_BATCH_SIZE;
 import static in.handyman.raven.core.enums.DatabaseConstants.DB_SELECT_READ_BATCH_SIZE;
@@ -56,7 +55,9 @@ public class AgenticPaperFilterAction implements IActionExecution {
     private final String processBase64;
     private final int connectTimeout;
     private final int writeTimeout;
+    @Getter
     private final int readTimeout;
+    @Getter
     private final int callTimeout;
     @Getter
     private final String httpClientType;
@@ -86,10 +87,12 @@ public class AgenticPaperFilterAction implements IActionExecution {
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
             log.info(aMarker, "Agentic Paper Filter Action for {} has been started", agenticPaperFilter.getName());
 
-            String asyncMode = action.getContext().getOrDefault("agentic.paper.filter.async.mode", "false");
-            if ("true".equalsIgnoreCase(asyncMode)) {
-                action.getContext().put("copro.processor.consumer.route.type", "KAFKA_ASYNC");
+            String asyncMode = action.getContext().getOrDefault("copro.processor.consumer.route.type", "");
+            log.info(aMarker, "Consumer route type from context is {}", asyncMode);
+            if ("KAFKA_ASYNC".equalsIgnoreCase(asyncMode)) {
                 log.info(aMarker, "Agentic Paper Filter running in KAFKA_ASYNC mode");
+            } else {
+                log.info(aMarker, "Agentic Paper Filter running in SYNC mode");
             }
 
 
@@ -102,7 +105,7 @@ public class AgenticPaperFilterAction implements IActionExecution {
                     log.error("Error in processing the URL ", e);
                     throw new HandymanException("Error in processing the URL", e, action);
                 }
-            }).collect(Collectors.toList())).orElse(Collections.emptyList());
+            }).toList()).orElse(Collections.emptyList());
 
             final CoproProcessor<AgenticPaperFilterInput, AgenticPaperFilterOutput> coproProcessor = new CoproProcessor<>(new LinkedBlockingQueue<>(), AgenticPaperFilterOutput.class, AgenticPaperFilterInput.class, agenticPaperFilter.getResourceConn(), log, new AgenticPaperFilterInput(), urls, action);
 
@@ -175,14 +178,6 @@ public class AgenticPaperFilterAction implements IActionExecution {
 
     public int getWriteTimeOut() {
         return this.writeTimeout;
-    }
-
-    public int getCallTimeout() {
-        return this.callTimeout;
-    }
-
-    public int getReadTimeout() {
-        return this.readTimeout;
     }
 
 
