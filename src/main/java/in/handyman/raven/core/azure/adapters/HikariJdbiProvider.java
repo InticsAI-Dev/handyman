@@ -8,6 +8,7 @@ import in.handyman.raven.lambda.access.ConfigAccess;
 import in.handyman.raven.lambda.doa.config.SpwResourceConfig;
 import in.handyman.raven.util.PropertyHandler;
 import org.jdbi.v3.core.Jdbi;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,9 +54,34 @@ public class HikariJdbiProvider {
 
             hikariDataSource = dataSource;
             startMetricsScheduler();
+        } else if ("LEGACY".equalsIgnoreCase(legacyResourceConnection)) {
+            log.info("Initializing legacy HikariDataSource...");
+            SpwResourceConfig resource = ConfigAccess.getResourceConfig("legacyResource");
+            if (resource == null) {
+                throw new HandymanException("legacyResource not found in Resource connections");
+            }
+            HikariConfig config = getHikariConfig(resource);
+
+            hikariDataSource = new HikariDataSource(config);
+            startMetricsScheduler();
         } else {
             throw new HandymanException("Invalid legacy.resource.connection.type. Must be AZURE or LEGACY");
         }
+    }
+
+    @NotNull
+    private static HikariConfig getHikariConfig(SpwResourceConfig resource) {
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl(resource.getResourceUrl());
+        config.setUsername(resource.getUserName());
+        config.setPassword(resource.getPassword());
+        config.setMinimumIdle(MIN_IDLE);
+        config.setMaximumPoolSize(MAX_POOL_SIZE);
+        config.setConnectionTimeout(CONNECTION_TIMEOUT_MS);
+        config.setIdleTimeout(IDLE_TIMEOUT_MS);
+        config.setMaxLifetime(MAX_LIFETIME_MS);
+        config.addDataSourceProperty(APPLICATION_NAME, HANDYMAN_RAVEN_APP);
+        return config;
     }
 
     // Returns Jdbi instance using already-initialized HikariDataSource

@@ -18,7 +18,7 @@ public class ResourceAccess {
     public static HikariDataSource rdbmsConn(final String resourceName) {
         final SpwResourceConfig resource = ConfigAccess.getResourceConfig(resourceName);
         if (Objects.isNull(resource)) {
-            log.warn("{} not found in Resource connections", resourceName);
+            log.warn("{} not found in Resource  connections", resourceName);
         }
         return getHikariDataSource(resource);
     }
@@ -58,12 +58,12 @@ public class ResourceAccess {
 
         final SpwResourceConfig resource = ConfigAccess.getResourceConfig(resourceName);
 
-        String legacyResourceConnection = PropertyHandler.get("legacy.resource.connection.type");
+        String connectionPoolManager = PropertyHandler.get("resource.connection.pool.manager");
 
 
-        if(legacyResourceConnection.equals("AZURE")){
+        if(connectionPoolManager.equals("HIKARI")){
             return HikariJdbiProvider.getJdbi();
-        }else if(legacyResourceConnection.equals("LEGACY")){
+        }else if(connectionPoolManager.equals("JDBI")){
             if (Objects.isNull(resource)) {
                 log.warn("{} not found in Resource connections", resourceName);
                 throw new HandymanException("Resource connection is null");
