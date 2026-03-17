@@ -41,6 +41,11 @@ public class ResourceAccess {
 
     private static HikariDataSource createHP(final String url, final String driver, final String user, final String password)
             throws ClassNotFoundException {
+        return createHP(url, driver, user, password, 2);
+    }
+
+    private static HikariDataSource createHP(final String url, final String driver, final String user, final String password, final int maxPoolSize)
+            throws ClassNotFoundException {
         Class.forName(driver);
         final HikariConfig config = new HikariConfig();
         config.setJdbcUrl(url);
@@ -50,7 +55,7 @@ public class ResourceAccess {
         config.setConnectionTimeout(30000);
         config.setIdleTimeout(35000);
         config.setMaxLifetime(45000);
-        config.setMaximumPoolSize(2);
+        config.setMaximumPoolSize(maxPoolSize);
         config.addDataSourceProperty("cachePrepStmts", "true");
         config.addDataSourceProperty("prepStmtCacheSize", "250");
         config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
@@ -67,15 +72,15 @@ public class ResourceAccess {
             return HikariJdbiProvider.getJdbi();
         } else if (legacyResourceConnection.equals("LEGACY")) {
             if (Objects.isNull(resource)) {
-                log.warn("{} not found in Resource connections", resourceName);
+                log.warn("Resource Name not found in Resource connections");
                 throw new HandymanException("Resource connection is null");
             }
             log.debug("{} found in Resource connections", resource.getConfigName());
             return JDBI_POOL_CACHE.computeIfAbsent(resourceName, k -> {
                 try {
-                    log.info("Creating pooled JDBI for resource");
-                    HikariDataSource ds = createLegacyJdbiPool(resource.getResourceUrl(),
-                            resource.getDriverClass(), resource.getUserName(), resource.getPassword());
+                    int poolSize = Integer.parseInt(PropertyHandler.get("legacy.jdbi.pool.size"));
+                    HikariDataSource ds = createHP(resource.getResourceUrl(), resource.getDriverClass(),
+                            resource.getUserName(), resource.getPassword(), poolSize);
                     return Jdbi.create(ds);
                 } catch (ClassNotFoundException e) {
                     throw new HandymanException("Resource failed to connect", e);
@@ -84,24 +89,6 @@ public class ResourceAccess {
         } else {
             throw new HandymanException("Resource connection is null check the legacy.resource.connection.type ");
         }
-    }
-
-    private static HikariDataSource createLegacyJdbiPool(final String url, final String driver,
-            final String user, final String password) throws ClassNotFoundException {
-        Class.forName(driver);
-        final HikariConfig config = new HikariConfig();
-        config.setJdbcUrl(url);
-        config.setUsername(user);
-        config.setPassword(password);
-        config.setMinimumIdle(0);
-        config.setConnectionTimeout(30000);
-        config.setIdleTimeout(35000);
-        config.setMaxLifetime(45000);
-        config.setMaximumPoolSize(Integer.parseInt(PropertyHandler.get("legacy.jdbi.pool.size")));
-        config.addDataSourceProperty("cachePrepStmts", "true");
-        config.addDataSourceProperty("prepStmtCacheSize", "250");
-        config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
-        return new HikariDataSource(config);
     }
 
 }
