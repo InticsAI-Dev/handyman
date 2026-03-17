@@ -95,7 +95,12 @@ public class HikariJdbiProvider {
     // Optional: provide HikariDataSource directly if needed
     public static HikariDataSource getDataSource() {
         if (hikariDataSource == null) {
-            throw new HandymanException("HikariDataSource not initialized. Call HikariJdbiProvider.init() at startup.");
+            synchronized (HikariJdbiProvider.class) {
+                if (hikariDataSource == null) {
+                    log.info("Initializing HikariDataSource...");
+                    init();
+                }
+            }
         }
         return hikariDataSource;
     }
