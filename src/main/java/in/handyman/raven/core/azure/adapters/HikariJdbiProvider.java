@@ -4,8 +4,6 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import com.zaxxer.hikari.HikariPoolMXBean;
 import in.handyman.raven.exception.HandymanException;
-import in.handyman.raven.lambda.access.ConfigAccess;
-import in.handyman.raven.lambda.doa.config.SpwResourceConfig;
 import in.handyman.raven.util.PropertyHandler;
 import org.jdbi.v3.core.Jdbi;
 import org.slf4j.Logger;
@@ -25,6 +23,8 @@ public class HikariJdbiProvider {
     public static final int MAX_LIFETIME_MS = Integer.parseInt(PropertyHandler.getOrDefault("azure.identity.hcp.max.lifetime","45000"));;
     public static final String APPLICATION_NAME = "applicationName";
     public static final String HANDYMAN_RAVEN_APP = PropertyHandler.getOrDefault("azure.identity.hcp.application.name", "HandymanRavenApp");
+
+    public static final int LEGACY_MAX_POOL_SIZE = Integer.parseInt(PropertyHandler.getOrDefault("legacy.hcp.max.pool.size", "10"));
 
     private static final long METRICS_LOG_INTERVAL_SECONDS = Long.parseLong(PropertyHandler.getOrDefault("hikari.metrics.log.interval.seconds", "60"));
     private static final boolean METRICS_LOG_ENABLED = Boolean.parseBoolean(PropertyHandler.getOrDefault("hikari.metrics.log.enabled", "true"));
@@ -52,6 +52,26 @@ public class HikariJdbiProvider {
 
 
             hikariDataSource = dataSource;
+            startMetricsScheduler();
+        } else if ("LEGACY".equalsIgnoreCase(legacyResourceConnection)) {
+            log.info("Initializing LEGACY HikariDataSource...");
+
+            String url = PropertyHandler.get("raven.db.url");
+            String username = PropertyHandler.get("raven.db.user");
+            String password = PropertyHandler.get("raven.db.password");
+
+            HikariConfig config = new HikariConfig();
+            config.setJdbcUrl(url);
+            config.setUsername(username);
+            config.setPassword(password);
+            config.setMinimumIdle(0);
+            config.setConnectionTimeout(CONNECTION_TIMEOUT_MS);
+            config.setIdleTimeout(IDLE_TIMEOUT_MS);
+            config.setMaxLifetime(MAX_LIFETIME_MS);
+            config.setMaximumPoolSize(LEGACY_MAX_POOL_SIZE);
+            config.addDataSourceProperty(APPLICATION_NAME, HANDYMAN_RAVEN_APP);
+
+            hikariDataSource = new HikariDataSource(config);
             startMetricsScheduler();
         } else {
             throw new HandymanException("Invalid legacy.resource.connection.type. Must be AZURE or LEGACY");
@@ -95,7 +115,6 @@ public class HikariJdbiProvider {
 
         log.info("HikariCP metrics logging scheduler started. Interval: {} seconds", METRICS_LOG_INTERVAL_SECONDS);
     }
-
 
     public static void logHikariMetrics() {
         if (hikariDataSource != null) {

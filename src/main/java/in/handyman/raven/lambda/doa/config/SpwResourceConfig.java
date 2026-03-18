@@ -10,6 +10,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import in.handyman.raven.core.azure.adapters.HikariJdbiProvider;
 import org.jdbi.v3.core.Jdbi;
 
 @Getter
@@ -37,7 +38,7 @@ public class SpwResourceConfig extends Auditable {
     private Integer version;
 
     public Jdbi get() {
-        return Jdbi.create(resourceUrl, userName, password);
+        return HikariJdbiProvider.getJdbi();
     }
 
 }
