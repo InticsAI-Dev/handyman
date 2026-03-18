@@ -4,8 +4,11 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import com.zaxxer.hikari.HikariPoolMXBean;
 import in.handyman.raven.exception.HandymanException;
+import in.handyman.raven.lambda.access.repo.HandymanRepoImpl;
+import in.handyman.raven.lambda.doa.config.SpwResourceConfig;
 import in.handyman.raven.util.PropertyHandler;
 import org.jdbi.v3.core.Jdbi;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,7 +27,6 @@ public class HikariJdbiProvider {
     public static final String APPLICATION_NAME = "applicationName";
     public static final String HANDYMAN_RAVEN_APP = PropertyHandler.getOrDefault("azure.identity.hcp.application.name", "HandymanRavenApp");
 
-    public static final int LEGACY_MAX_POOL_SIZE = Integer.parseInt(PropertyHandler.getOrDefault("legacy.hcp.max.pool.size", "10"));
 
     private static final long METRICS_LOG_INTERVAL_SECONDS = Long.parseLong(PropertyHandler.getOrDefault("hikari.metrics.log.interval.seconds", "60"));
     private static final boolean METRICS_LOG_ENABLED = Boolean.parseBoolean(PropertyHandler.getOrDefault("hikari.metrics.log.enabled", "true"));
@@ -56,26 +58,39 @@ public class HikariJdbiProvider {
         } else if ("LEGACY".equalsIgnoreCase(legacyResourceConnection)) {
             log.info("Initializing LEGACY HikariDataSource...");
 
-            String url = PropertyHandler.get("raven.db.url");
-            String username = PropertyHandler.get("raven.db.user");
-            String password = PropertyHandler.get("raven.db.password");
+            String bootstrapUrl = PropertyHandler.get("raven.db.url");
+            HandymanRepoImpl repo = new HandymanRepoImpl();
+            SpwResourceConfig resourceConfig = repo.findAllResourceConfigs().stream()
+                    .filter(c -> bootstrapUrl.equals(c.getResourceUrl()))
+                    .findFirst()
+                    .map(c -> repo.getResourceConfig(c.getConfigName()))
+                    .orElseThrow(() -> new HandymanException(
+                            "No active resource config found in spw_resource_config matching raven.db.url"));
+            log.info("Using connection details from spw_resource_config [config_name={}] for LEGACY DB connection",
+                    resourceConfig.getConfigName());
 
-            HikariConfig config = new HikariConfig();
-            config.setJdbcUrl(url);
-            config.setUsername(username);
-            config.setPassword(password);
-            config.setMinimumIdle(0);
-            config.setConnectionTimeout(CONNECTION_TIMEOUT_MS);
-            config.setIdleTimeout(IDLE_TIMEOUT_MS);
-            config.setMaxLifetime(MAX_LIFETIME_MS);
-            config.setMaximumPoolSize(LEGACY_MAX_POOL_SIZE);
-            config.addDataSourceProperty(APPLICATION_NAME, HANDYMAN_RAVEN_APP);
+            HikariConfig config = getHikariConfig(resourceConfig);
 
             hikariDataSource = new HikariDataSource(config);
             startMetricsScheduler();
         } else {
             throw new HandymanException("Invalid legacy.resource.connection.type. Must be AZURE or LEGACY");
         }
+    }
+
+    @NotNull
+    private static HikariConfig getHikariConfig(SpwResourceConfig resourceConfig) {
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl(resourceConfig.getResourceUrl());
+        config.setUsername(resourceConfig.getUserName());
+        config.setPassword(resourceConfig.getPassword());
+        config.setMinimumIdle(0);
+        config.setConnectionTimeout(CONNECTION_TIMEOUT_MS);
+        config.setIdleTimeout(IDLE_TIMEOUT_MS);
+        config.setMaxLifetime(MAX_LIFETIME_MS);
+        config.setMaximumPoolSize(MAX_POOL_SIZE);
+        config.addDataSourceProperty(APPLICATION_NAME, HANDYMAN_RAVEN_APP);
+        return config;
     }
 
     // Returns Jdbi instance using already-initialized HikariDataSource
