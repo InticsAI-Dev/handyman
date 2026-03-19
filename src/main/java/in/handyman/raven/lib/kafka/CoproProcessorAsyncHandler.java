@@ -79,6 +79,8 @@ public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
 
         final ConcurrentLinkedQueue<I> failedItems = publishItems(items, callable, topic, outputTable, batchId, requestType, context);
 
+        registerInferenceQueueActive(batchId, requestType, items.size());
+
         if (!failedItems.isEmpty()) {
             handleAsyncPublishFailures(failedItems, batchId, requestType);
         }
@@ -92,19 +94,33 @@ public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
         final Jdbi emptyJdbi = ResourceAccess.rdbmsJDBIConn(jdbiResourceName);
         emptyJdbi.useTransaction(handle -> {
             int inserted = handle.execute(
-                    "INSERT INTO audit.inference_queue_active " +
+                    "INSERT INTO kafka_audit.inference_queue_active " +
                             "(batch_id, root_pipeline_id, request_type, total_requests, completed_requests, failed_requests, status) " +
                             "VALUES (?, ?, ?, 0, 0, 0, 'COMPLETED') ON CONFLICT (batch_id, request_type) DO NOTHING",
                     batchId, actionExecutionAudit.getRootPipelineId(), requestType);
 
             if (inserted > 0) {
                 handle.execute(
-                        "UPDATE audit.inference_batch_barrier " +
+                        "UPDATE kafka_audit.inference_batch_barrier " +
                                 "SET completed_modules = completed_modules + 1, updated_at = NOW() " +
                                 "WHERE batch_id = ? AND status = 'PROCESSING'",
                         batchId);
             }
         });
+    }
+
+    /**
+     * Register the module in inference_queue_active with total_requests = totalItems.
+     * Must be called BEFORE handleAsyncPublishFailures() so the row exists for its UPDATE.
+     */
+    protected void registerInferenceQueueActive(String batchId, String requestType, int totalItems) {
+        final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(jdbiResourceName);
+        jdbi.useHandle(handle -> handle.execute(
+                "INSERT INTO kafka_audit.inference_queue_active " +
+                        "(batch_id, root_pipeline_id, request_type, total_requests, completed_requests, failed_requests, status) " +
+                        "VALUES (?, ?, ?, ?, 0, 0, 'PROCESSING') " +
+                        "ON CONFLICT (batch_id, request_type) DO NOTHING",
+                batchId, actionExecutionAudit.getRootPipelineId(), requestType, totalItems));
     }
 
     protected ConcurrentLinkedQueue<I> publishItems(List<I> items,
@@ -155,28 +171,51 @@ public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
                                                                  String correlationId) {
         @SuppressWarnings("unchecked")
         Map<String, Object> entityFields = new ObjectMapper().convertValue(item, Map.class);
-        String partKey = String.valueOf(entityFields.getOrDefault("originId",
-                entityFields.getOrDefault("origin_id", "")));
+        String partKey = String.valueOf(entityFields.getOrDefault("originId", entityFields.getOrDefault("origin_id", "")));
         String messageKey = partKey.isBlank() ? null : partKey;
 
+        logger.info("Posting to Kafka topic={} with key={} batch={} type={}", topic, messageKey, batchId, requestType);
         ProducerRecord<String, String> recordData = new ProducerRecord<>(topic, messageKey, payload);
         recordData.headers().add("X-Route-OutputTable", outputTable.getBytes(StandardCharsets.UTF_8));
         recordData.headers().add("X-Route-RequestType", requestType.getBytes(StandardCharsets.UTF_8));
         recordData.headers().add("X-Route-BatchId", batchId.getBytes(StandardCharsets.UTF_8));
         recordData.headers().add("X-Route-CorrelationId", correlationId.getBytes(StandardCharsets.UTF_8));
-        recordData.headers().add("X-Route-RootPipelineId",
-                String.valueOf(actionExecutionAudit.getRootPipelineId()).getBytes(StandardCharsets.UTF_8));
-        recordData.headers().add("X-Route-OriginId",
-                messageKey != null ? messageKey.getBytes(StandardCharsets.UTF_8) : new byte[0]);
-        String pageNoVal = String.valueOf(entityFields.getOrDefault("pageNo", entityFields.getOrDefault("page_no", "")));
+        recordData.headers().add("X-Route-RootPipelineId", String.valueOf(actionExecutionAudit.getRootPipelineId()).getBytes(StandardCharsets.UTF_8));
+        recordData.headers().add("X-Route-OriginId", messageKey != null ? messageKey.getBytes(StandardCharsets.UTF_8) : new byte[0]);
+        String pageNoVal = String.valueOf(entityFields.getOrDefault("pageNo", entityFields.getOrDefault("page_no",
+                        entityFields.getOrDefault("paperNo", entityFields.getOrDefault("paper_no", "0")))));
         recordData.headers().add("X-Route-PageNo", pageNoVal.getBytes(StandardCharsets.UTF_8));
-        recordData.headers().add("X-Route-ProcessId",
-                context.getOrDefault("init_process_id.process_id", "").getBytes(StandardCharsets.UTF_8));
-        recordData.headers().add("X-Route-TenantId",
-                context.getOrDefault("tenant_id", "").getBytes(StandardCharsets.UTF_8));
-        recordData.headers().add("X-Route-GroupId",
-                context.getOrDefault("group_id", "").getBytes(StandardCharsets.UTF_8));
+        recordData.headers().add("X-Route-ProcessId", context.getOrDefault("init_process_id.process_id", "").getBytes(StandardCharsets.UTF_8));
+        recordData.headers().add("X-Route-TenantId", context.getOrDefault("tenant_id", "").getBytes(StandardCharsets.UTF_8));
+        recordData.headers().add("X-Route-GroupId", context.getOrDefault("group_id", "").getBytes(StandardCharsets.UTF_8));
+        recordData.headers().add("X-Route-CreatedOn", String.valueOf(System.currentTimeMillis()).getBytes(StandardCharsets.UTF_8));
+
+        addHeaderIfPresent(recordData, entityFields, "X-Route-TemplateId", "templateId");
+        addHeaderIfPresent(recordData, entityFields, "X-Route-TemplateName", "templateName");
+        addHeaderIfPresent(recordData, entityFields, "X-Route-FilePath", "filePath");
+        addHeaderIfPresent(recordData, entityFields, "X-Route-PromptType", "promptType");
+        addHeaderIfPresent(recordData, entityFields, "X-Route-ModelName", "modelName");
+
+        addHeaderIfPresent(recordData, entityFields, "X-Route-Process", "process");
+        addHeaderIfPresent(recordData, entityFields, "X-Route-ModelRegistry", "modelRegistry");
+        addHeaderIfPresent(recordData, entityFields, "X-Route-ApiName", "apiName");
+        addHeaderIfPresent(recordData, entityFields, "X-Route-Category", "category");
+        addHeaderIfPresent(recordData, entityFields, "X-Route-SorContainerId", "sorContainerId");
+        addHeaderIfPresent(recordData, entityFields, "X-Route-SorContainerName", "sorContainerName");
+        addHeaderIfPresent(recordData, entityFields, "X-Route-InputFilePath", "inputFilePath");
+
+        addHeaderIfPresent(recordData, entityFields, "X-Route-PostProcess", "postProcess");
+        addHeaderIfPresent(recordData, entityFields, "X-Route-PostProcessClassName", "postProcessClassName");
+        addHeaderIfPresent(recordData, entityFields, "X-Route-PostProcessClass", "postProcessClass");
+
         return recordData;
+    }
+
+    private void addHeaderIfPresent(ProducerRecord<String, String> record, Map<String, Object> fields, String headerKey, String fieldKey) {
+        Object val = fields.get(fieldKey);
+        if (val != null) {
+            record.headers().add(headerKey, String.valueOf(val).getBytes(StandardCharsets.UTF_8));
+        }
     }
 
     protected void updateActionToWaitingForAsync() {
@@ -207,7 +246,7 @@ public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
                     }
                     String pageNo = String.valueOf(pageNoObj != null ? pageNoObj : "1");
                     handle.execute(
-                            "UPDATE audit.inference_queue_items SET status='DLQ', updated_at=NOW() " +
+                            "UPDATE kafka_audit.inference_queue_items SET status='DLQ', updated_at=NOW() " +
                                     "WHERE batch_id=? AND origin_id=? AND page_no=? AND request_type=?",
                             batchId, originId, pageNo, requestType);
                 } catch (Exception e) {
@@ -216,7 +255,7 @@ public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
             }
 
             handle.execute(
-                    "UPDATE audit.inference_queue_active " +
+                    "UPDATE kafka_audit.inference_queue_active " +
                             "SET total_requests = total_requests - ?, failed_requests = failed_requests + ?, updated_at=NOW() " +
                             "WHERE batch_id=? AND request_type=?",
                     failedItems.size(), failedItems.size(), batchId, requestType);
@@ -228,9 +267,9 @@ public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
      * Persist pipeline_wait_state so PipelineAggregatorService can trigger the continuation script.
      */
     protected void persistAsyncWaitState(String batchId, String requestType, int publishedCount, Map<String, String> context) {
-        String nextScript = context.getOrDefault("next_pipeline_script", "");
+        String nextScript = context.getOrDefault("continuation_pipeline_script", "");
         if (nextScript.isBlank()) {
-            logger.warn("KAFKA_ASYNC: next_pipeline_script not set in context for batch={} type={}. Continuation will not trigger automatically.",
+            logger.warn("KAFKA_ASYNC: continuation_pipeline_script not set in context for batch={} type={}. Continuation will not trigger automatically.",
                     batchId, requestType);
         }
 
@@ -243,7 +282,7 @@ public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
         final String contextFinal = contextJson;
         final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(jdbiResourceName);
         jdbi.useHandle(handle -> handle.execute(
-                "INSERT INTO audit.pipeline_wait_state " +
+                "INSERT INTO kafka_audit.pipeline_wait_state " +
                         "(root_pipeline_id, batch_id, request_type, next_pipeline_script, total_requests, context) " +
                         "VALUES (?, ?, ?, ?, ?, ?::jsonb) " +
                         "ON CONFLICT (root_pipeline_id, batch_id, request_type) DO NOTHING",

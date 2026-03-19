@@ -138,7 +138,13 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
                               final ConsumerProcess<I, O> callable) {
         String route = actionExecutionAudit.getContext().getOrDefault("copro.processor.consumer.route.type", "LEGACY");
         if ("KAFKA_ASYNC".equalsIgnoreCase(route)) {
-            new CoproProcessorAsyncHandler<I, O>(queue, stoppingSeed, actionExecutionAudit, jdbiResourceName, logger).startKafkaAsyncPublisher(callable);
+            if (callable.supportsKafkaAsync()) {
+                new CoproProcessorAsyncHandler<I, O>(queue, stoppingSeed, actionExecutionAudit, jdbiResourceName, logger).startKafkaAsyncPublisher(callable);
+            } else {
+                logger.warn("Consumer {} does not support KAFKA_ASYNC, falling back to MODERN routing",
+                        callable.getClass().getSimpleName());
+                startConsumerModern(insertSql, consumerCount, writeBatchSize, callable);
+            }
         } else if ("MODERN".equalsIgnoreCase(route)) {
             startConsumerModern(insertSql, consumerCount, writeBatchSize, callable);
         } else {
@@ -268,6 +274,10 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
 
         default String getRequestType() {
             return null;
+        }
+
+        default boolean supportsKafkaAsync() {
+            return false;
         }
 
         default String getKafkaTopic() {

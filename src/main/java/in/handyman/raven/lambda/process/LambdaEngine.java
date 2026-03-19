@@ -365,7 +365,9 @@ public class LambdaEngine {
             } else {
                 logger.info("Execution class {} condition failed", actionName);
             }
-            actionExecutionAudit.updateExecutionStatusId(ExecutionStatus.COMPLETED.getId());
+            if (ExecutionStatus.get(actionExecutionAudit.getExecutionStatusId()) != ExecutionStatus.WAITING_FOR_ASYNC) {
+                actionExecutionAudit.updateExecutionStatusId(ExecutionStatus.COMPLETED.getId());
+            }
         } catch (Exception e) {
             logger.trace("Error at Execution " + actionName, e);
             actionExecutionAudit.updateExecutionStatusId(ExecutionStatus.FAILED.getId());

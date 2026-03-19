@@ -47,11 +47,6 @@ public class RadonKvpAction implements IActionExecution {
     private static final String DEFAULT_SOCKET_TIMEOUT = "100";
     private static final String THREAD_SLEEP_TIME_DEFAULT = "1000";
     private static final String INSERT_INTO = "INSERT INTO";
-    private static final Map<String, String> MODULE_ASYNC_MODE_KEYS = Map.of(
-            "CHECKBOX_EXTRACTION", "checkbox.extraction.async.mode",
-            "SOR_TRANSACTION_LEGACY", "sor.transaction.legacy.async.mode",
-            "SOR_TRANSACTION", "sor.transaction.async.mode"
-    );
     public static final String COLUMN_LIST = "created_on, created_user_id, last_updated_on, last_updated_user_id, input_file_path," +
             " total_response_json, paper_no, origin_id, process_id, action_id, process, group_id, tenant_id, " +
             "root_pipeline_id, batch_id, model_registry, status, stage, message, category,request,response,endpoint,sor_container_id,sor_container_instance";
