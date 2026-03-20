@@ -493,12 +493,12 @@ class DocumentWisePostProcessingActionTest {
 
             actionInstance.execute();
 
-            assertEquals("encPredOut", encryptedRow.getPredictedValue());
-            assertEquals("encLabelOut", encryptedRow.getLabel());
+            // Encryption now happens inside consumer processing before DB insert.
+            // In this unit test startConsumer is mocked as no-op, so fetched row stays decrypted.
+            assertEquals("decPred", encryptedRow.getPredictedValue());
+            assertEquals("decLabel", encryptedRow.getLabel());
             verify(crypt).decrypt("encPred", "POLICY_A", "member_id");
-            verify(crypt).encrypt("decPred", "POLICY_A", "member_id");
             verify(crypt).decrypt(anyList());
-            verify(crypt).encrypt(anyList());
             assertFalse(coproConstruction.constructed().isEmpty());
             CoproProcessor<?, ?> constructedProcessor = coproConstruction.constructed().get(0);
             verify(constructedProcessor).startProducer(anyList(), org.mockito.ArgumentMatchers.eq(10));

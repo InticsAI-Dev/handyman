@@ -2,6 +2,8 @@ package in.handyman.raven.lib.model.scalar;
 
 import bsh.EvalError;
 import bsh.Interpreter;
+import in.handyman.raven.core.encryption.impl.EncryptionRequestClass;
+import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
@@ -15,16 +17,33 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class DocumentWisePostProcessingConsumerProcess implements CoproProcessor.ConsumerProcess<DocumentWisePostProcessingOriginInput, DocumentWisePostProcessingOriginOutput> {
+    private static final String AES_256 = "AES256";
 
     private final ActionExecutionAudit actionExecutionAudit;
     private final Logger log;
     private final Map<String, List<String>> scriptClassesCache;
     private final Map<String, List<DocumentWisePostProcessingInput>> resultsMap;
     private final Long defaultCreatedUserId;
+    private final InticsIntegrity encryption;
+    private final boolean encryptEnabled;
+    private final boolean isLabelEncryptionEnabled;
 
     public DocumentWisePostProcessingConsumerProcess(ActionExecutionAudit actionExecutionAudit, Logger log) {
+        this(actionExecutionAudit, log, null, false, false);
+    }
+
+    public DocumentWisePostProcessingConsumerProcess(
+            ActionExecutionAudit actionExecutionAudit,
+            Logger log,
+            InticsIntegrity encryption,
+            boolean encryptEnabled,
+            boolean isLabelEncryptionEnabled
+    ) {
         this.actionExecutionAudit = actionExecutionAudit;
         this.log = log;
+        this.encryption = encryption;
+        this.encryptEnabled = encryptEnabled;
+        this.isLabelEncryptionEnabled = isLabelEncryptionEnabled;
         this.scriptClassesCache = new HashMap<>();
         this.resultsMap = new ConcurrentHashMap<>();
 
@@ -65,6 +84,7 @@ public class DocumentWisePostProcessingConsumerProcess implements CoproProcessor
             log.info("Loaded {} script classes for origin {}", scriptClasses.size(), originId);
             
             List<DocumentWisePostProcessingInput> resultInputs = executeScripts(scriptClasses, originInputs);
+            applyEncryptionBeforeOutput(resultInputs);
 
             long duration = System.currentTimeMillis() - start;
             log.info("Completed processing origin {} ({} ms). Processed {} records", originId, duration, resultInputs.size());
@@ -136,6 +156,93 @@ public class DocumentWisePostProcessingConsumerProcess implements CoproProcessor
             updatedInputs = getPostProcessedValidatorList(className, source, updatedInputs, pipelineId);
         }
         return updatedInputs;
+    }
+
+    private void applyEncryptionBeforeOutput(List<DocumentWisePostProcessingInput> inputs) {
+        if (!encryptEnabled || encryption == null || inputs == null || inputs.isEmpty()) {
+            return;
+        }
+        for (DocumentWisePostProcessingInput input : inputs) {
+            encryptPredictedValue(input);
+        }
+        if (isLabelEncryptionEnabled) {
+            encryptLabels(inputs);
+            encryptSectionAlias(inputs);
+        }
+    }
+
+    private void encryptPredictedValue(DocumentWisePostProcessingInput input) {
+        if (input == null || !Boolean.TRUE.equals(input.getIsEncrypted())) {
+            return;
+        }
+        try {
+            String itemIdentifier = resolveItemIdentifier(input);
+            input.setPredictedValue(
+                    encryption.encrypt(input.getPredictedValue(), input.getEncryptionPolicy(), itemIdentifier)
+            );
+        } catch (Exception e) {
+            log.error("Failed to encrypt value for sorItemId: {}", input.getSorItemId(), e);
+            HandymanException.insertException(
+                    "Failed to encrypt value for sorItemId: " + input.getSorItemId(),
+                    new HandymanException(e),
+                    actionExecutionAudit
+            );
+        }
+    }
+
+    private String resolveItemIdentifier(DocumentWisePostProcessingInput input) {
+        if (input.getSorItemName() != null) {
+            return input.getSorItemName();
+        }
+        return String.valueOf(input.getSorItemId());
+    }
+
+    private void encryptLabels(List<DocumentWisePostProcessingInput> inputList) {
+        List<EncryptionRequestClass> encryptionRequests = new ArrayList<>();
+        Map<String, DocumentWisePostProcessingInput> requestKeyToInput = new LinkedHashMap<>();
+
+        for (int i = 0; i < inputList.size(); i++) {
+            DocumentWisePostProcessingInput input = inputList.get(i);
+            if (input.getLabel() != null && !input.getLabel().isEmpty()) {
+                String key = String.valueOf(i);
+                encryptionRequests.add(new EncryptionRequestClass(AES_256, input.getLabel(), key));
+                requestKeyToInput.put(key, input);
+            }
+        }
+        if (encryptionRequests.isEmpty()) {
+            return;
+        }
+        List<EncryptionRequestClass> responseList = encryption.encrypt(encryptionRequests);
+        for (EncryptionRequestClass item : responseList) {
+            DocumentWisePostProcessingInput input = requestKeyToInput.get(item.getKey());
+            if (input != null) {
+                input.setLabel(item.getValue());
+            }
+        }
+    }
+
+    private void encryptSectionAlias(List<DocumentWisePostProcessingInput> inputList) {
+        List<EncryptionRequestClass> encryptionRequests = new ArrayList<>();
+        Map<String, DocumentWisePostProcessingInput> requestKeyToInput = new LinkedHashMap<>();
+
+        for (int i = 0; i < inputList.size(); i++) {
+            DocumentWisePostProcessingInput input = inputList.get(i);
+            if (input.getSectionAlias() != null && !input.getSectionAlias().isEmpty()) {
+                String key = String.valueOf(i);
+                encryptionRequests.add(new EncryptionRequestClass(AES_256, input.getSectionAlias(), key));
+                requestKeyToInput.put(key, input);
+            }
+        }
+        if (encryptionRequests.isEmpty()) {
+            return;
+        }
+        List<EncryptionRequestClass> responseList = encryption.encrypt(encryptionRequests);
+        for (EncryptionRequestClass item : responseList) {
+            DocumentWisePostProcessingInput input = requestKeyToInput.get(item.getKey());
+            if (input != null) {
+                input.setSectionAlias(item.getValue());
+            }
+        }
     }
 
     private List<DocumentWisePostProcessingInput> getPostProcessedValidatorList(String className, String sourceCode,
