@@ -109,7 +109,7 @@ public class ContainsComparisonAdapter implements ComparisonAdapter{
                 .map(String::toLowerCase)
                 .filter(s -> !s.isEmpty())
                 .collect(Collectors.toSet());
-        if (extractedWords.equals(actualWords)) {
+        if (extractedWords.containsAll(actualWords)) {
             return 0L;
         }
 
