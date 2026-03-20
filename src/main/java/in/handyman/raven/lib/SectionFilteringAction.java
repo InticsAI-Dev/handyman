@@ -89,6 +89,7 @@ public class SectionFilteringAction implements IActionExecution {
       log.info(aMarker, "Total records fetched from input query: {}", tableInfos.size());
 
       // 2 Decrypt values
+      log.info(aMarker, "ENCRYPT_ITEM_WISE_ENCRYPTION is set to: {}", action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION));
       if(action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION).equals("true")){
           decryptAnswers(tableInfos, encryption);
           if(action.getContext().get(KVP_JSON_PARSER_ENCRYPTION).equals("true")){
@@ -143,6 +144,7 @@ public class SectionFilteringAction implements IActionExecution {
       log.info(aMarker, "Cleared answer/label/section for rejected rows");
 
       // 7 Encrypt results before persistence or outbound
+      log.info(aMarker, "ENCRYPT_ITEM_WISE_ENCRYPTION is set to: {}", action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION));
       if(action.getContext().get(ENCRYPT_ITEM_WISE_ENCRYPTION).equals("true")){
           encryptAnswers(updatedTableInfos, encryption);
           if(action.getContext().get(KVP_JSON_PARSER_ENCRYPTION).equals("true")){

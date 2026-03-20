@@ -409,7 +409,8 @@ public class ControlDataComparisonAction implements IActionExecution {
             entry.getValue().setExtractedValue(joined);
         }
 
-        return new ArrayList<>(representativeMap.values());
+        List<ControlDataComparisonQueryInputTable> mergedRecords = new ArrayList<>(representativeMap.values());
+        return mergedRecords;
     }
 
     public void invokeValidationPerRecord(
