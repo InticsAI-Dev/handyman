@@ -402,7 +402,11 @@ public class ControlDataComparisonAction implements IActionExecution {
 
         for (Map.Entry<String, ControlDataComparisonQueryInputTable> entry : representativeMap.entrySet()) {
             Set<String> extractedSet = extractedValuesMap.get(entry.getKey());
-            entry.getValue().setExtractedValue(String.join(",", extractedSet));
+            String lineItemType = entry.getValue().getLineItemType();
+            String joined = "single_value".equalsIgnoreCase(lineItemType)
+                    ? String.join("|", extractedSet)
+                    : String.join(",", extractedSet);
+            entry.getValue().setExtractedValue(joined);
         }
 
         return new ArrayList<>(representativeMap.values());
