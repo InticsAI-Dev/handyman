@@ -151,17 +151,17 @@ public class ProtegrityInticsMockEncryptionImpl implements InticsDataEncryptionA
     private String shiftDate(String input, boolean encrypt, int dynamicShift) throws HandymanException {
         try {
             LocalDate date = LocalDate.parse(input, DATE_FMT);
+
             if (encrypt) {
                 return date.plusYears(100)
-                        .plusMonths(dynamicShift)
                         .plusDays(dynamicShift)
                         .format(DATE_FMT);
             } else {
                 return date.minusYears(100)
-                        .minusMonths(dynamicShift)
                         .minusDays(dynamicShift)
                         .format(DATE_FMT);
             }
+
         } catch (Exception e) {
             throw new HandymanException("Invalid date format, expected yyyy-MM-dd: " + input, e);
         }
