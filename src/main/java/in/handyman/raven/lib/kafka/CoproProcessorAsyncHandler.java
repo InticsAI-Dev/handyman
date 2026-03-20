@@ -189,7 +189,7 @@ public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
         recordData.headers().add("X-Route-TenantId", context.getOrDefault("tenant_id", "").getBytes(StandardCharsets.UTF_8));
         recordData.headers().add("X-Route-GroupId", context.getOrDefault("group_id", "").getBytes(StandardCharsets.UTF_8));
         recordData.headers().add("X-Route-CreatedOn", String.valueOf(System.currentTimeMillis()).getBytes(StandardCharsets.UTF_8));
-
+        recordData.headers().add("X-Route-ActionId", String.valueOf(actionExecutionAudit.getActionId()).getBytes(StandardCharsets.UTF_8));
         addHeaderIfPresent(recordData, entityFields, "X-Route-TemplateId", "templateId");
         addHeaderIfPresent(recordData, entityFields, "X-Route-TemplateName", "templateName");
         addHeaderIfPresent(recordData, entityFields, "X-Route-FilePath", "filePath");

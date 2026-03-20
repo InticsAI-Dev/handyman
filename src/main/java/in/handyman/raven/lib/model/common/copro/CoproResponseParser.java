@@ -201,7 +201,7 @@ public final class CoproResponseParser {
 
         // 3. Build RadonQueryOutputTable
         String sorContainerInstance = radonKvpContext.getSorContainerName() != null
-                ? radonKvpContext.getSorContainerName() + "_0" : null;
+                ? radonKvpContext.getSorContainerName() : null;
 
         results.add(RadonQueryOutputTable.builder()
                 .createdOn(radonKvpContext.getCreatedOn())
