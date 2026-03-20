@@ -81,7 +81,7 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
 
     action.getContext().put("resource.conn", documentWisePostProcessing.getResourceConn());
 
-    jdbi.useTransaction(handle -> fetchAndDecryptInputs(handle, crypt, encryptEnabled));
+    jdbi.useTransaction(handle -> fetchAndDecryptInputs(handle, crypt, encryptEnabled, isLabelEncryptionEnabled));
 
     log.info(aMarker, "Fetched {} records for document-wise post-processing", documentWisePostProcessingInputs.size());
     String outputTable = documentWisePostProcessing.getOutputTable();
@@ -91,12 +91,13 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
     documentWisePostProcessingInputs.forEach(input -> processEncryption(input, crypt, encryptEnabled));
     if(isLabelEncryptionEnabled) {
       encryptLabels(documentWisePostProcessingInputs, crypt);
+      encryptSectionAlias(documentWisePostProcessingInputs, crypt);
     }
 
     log.info(aMarker, "Processing completed. Results were inserted into {} by CoproProcessor", outputTable);
   }
 
-  private void fetchAndDecryptInputs(Handle handle, InticsIntegrity crypt, boolean encryptEnabled) {
+  private void fetchAndDecryptInputs(Handle handle, InticsIntegrity crypt, boolean encryptEnabled, boolean isLabelEncryptionEnabled) {
     try {
       List<String> queries = CommonQueryUtil.getFormattedQuery(documentWisePostProcessing.getQuerySet());
       documentWisePostProcessingInputs = queries.stream()
@@ -120,7 +121,10 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
               }
             }
           });
-          decryptLabels(documentWisePostProcessingInputs, crypt);
+          if(isLabelEncryptionEnabled) {
+            decryptLabels(documentWisePostProcessingInputs, crypt);
+            decryptSectionAlias(documentWisePostProcessingInputs, crypt);
+          }
       }
     } catch (Exception e) {
       log.error(aMarker, "Error in fetchAndDecryptInputs", e);
@@ -214,6 +218,68 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
       DocumentWisePostProcessingInput input = requestKeyToInput.get(item.getKey());
       if (input != null) {
         input.setLabel(item.getValue());
+      }
+    }
+  }
+
+  private void decryptSectionAlias(List<DocumentWisePostProcessingInput> inputList, InticsIntegrity encryption) {
+    if (inputList == null || inputList.isEmpty()) {
+      return;
+    }
+
+    List<EncryptionRequestClass> encryptionRequests = new ArrayList<>();
+    Map<String, DocumentWisePostProcessingInput> requestKeyToInput = new LinkedHashMap<>();
+
+    for (int i = 0; i < inputList.size(); i++) {
+      DocumentWisePostProcessingInput input = inputList.get(i);
+      if (input.getSectionAlias() != null && !input.getSectionAlias().isEmpty()) {
+        String key = String.valueOf(i);
+        encryptionRequests.add(new EncryptionRequestClass(AES_256, input.getSectionAlias(), key));
+        requestKeyToInput.put(key, input);
+      }
+    }
+    log.info(aMarker, "Total records to decrypt for labels: {}", encryptionRequests.size());
+
+    if (encryptionRequests.isEmpty()) {
+      return;
+    }
+
+    List<EncryptionRequestClass> responseList = encryption.decrypt(encryptionRequests);
+    for (EncryptionRequestClass item : responseList) {
+      DocumentWisePostProcessingInput input = requestKeyToInput.get(item.getKey());
+      if (input != null) {
+        input.setSectionAlias(item.getValue());
+      }
+    }
+  }
+
+  private void encryptSectionAlias(List<DocumentWisePostProcessingInput> inputList, InticsIntegrity encryption) {
+    if (inputList == null || inputList.isEmpty()) {
+      return;
+    }
+
+    List<EncryptionRequestClass> encryptionRequests = new ArrayList<>();
+    Map<String, DocumentWisePostProcessingInput> requestKeyToInput = new LinkedHashMap<>();
+
+    for (int i = 0; i < inputList.size(); i++) {
+      DocumentWisePostProcessingInput input = inputList.get(i);
+      if (input.getSectionAlias() != null && !input.getSectionAlias().isEmpty()) {
+        String key = String.valueOf(i);
+        encryptionRequests.add(new EncryptionRequestClass(AES_256, input.getSectionAlias(), key));
+        requestKeyToInput.put(key, input);
+      }
+    }
+    log.info(aMarker, "Total records to encrypt for labels: {}", encryptionRequests.size());
+
+    if (encryptionRequests.isEmpty()) {
+      return;
+    }
+
+    List<EncryptionRequestClass> responseList = encryption.encrypt(encryptionRequests);
+    for (EncryptionRequestClass item : responseList) {
+      DocumentWisePostProcessingInput input = requestKeyToInput.get(item.getKey());
+      if (input != null) {
+        input.setSectionAlias(item.getValue());
       }
     }
   }
