@@ -35,6 +35,7 @@ public class DocumentWisePostProcessingOriginInput implements CoproProcessor.Ent
     
     @Override
     public String getStatus() {
-        return status != null ? status : ConsumerProcessApiStatus.ABSENT.getStatusDescription();
+        String resolvedStatus = status != null ? status : ConsumerProcessApiStatus.ABSENT.getStatusDescription();
+        return resolvedStatus;
     }
 }
