@@ -39,8 +39,8 @@ public class StateInfoToJsonAction implements IActionExecution {
     public void execute() throws Exception {
         String jsonPayload = MAPPER.writeValueAsString(action.getContext());
         action.getContext().put(stateInfoToJson.getTargetVariable(), jsonPayload);
-        String base64Payload = Base64.getEncoder().encodeToString(jsonPayload.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-        action.getContext().put(stateInfoToJson.getTargetVariable() + "_base64", base64Payload);
+        String encodedPayload = Base64.getEncoder().encodeToString(jsonPayload.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        action.getContext().put(stateInfoToJson.getTargetVariable() + "_base64", encodedPayload);
     }
 
     @Override

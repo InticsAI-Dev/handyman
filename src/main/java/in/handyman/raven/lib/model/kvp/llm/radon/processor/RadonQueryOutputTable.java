@@ -1,8 +1,5 @@
 package in.handyman.raven.lib.model.kvp.llm.radon.processor;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.lib.CoproProcessor;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,8 +16,6 @@ import java.util.stream.Stream;
 @NoArgsConstructor
 @Builder
 public class RadonQueryOutputTable implements CoproProcessor.Entity {
-    private static final ObjectMapper MAPPER = new ObjectMapper()
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     private Timestamp createdOn;
     private Long createdUserId;
@@ -48,16 +43,11 @@ public class RadonQueryOutputTable implements CoproProcessor.Entity {
     private Long sorContainerId;
     private String sorContainerInstance;
 
-
-    public static RadonQueryOutputTable fromJson(JsonNode node) {
-        return MAPPER.convertValue(node, RadonQueryOutputTable.class);
-    }
-
     @Override
     public List<Object> getRowData() {
-        return Stream.of(this.createdOn,this.createdUserId,  this.lastUpdatedOn,this.lastUpdatedUserId,
-                this.inputFilePath, this.totalResponseJson,  this.paperNo, this.originId,
-                this.processId,this.actionId, this.process, this.groupId, this.tenantId,  this.rootPipelineId, this.batchId,
+        return Stream.of(this.createdOn, this.createdUserId, this.lastUpdatedOn, this.lastUpdatedUserId,
+                this.inputFilePath, this.totalResponseJson, this.paperNo, this.originId,
+                this.processId, this.actionId, this.process, this.groupId, this.tenantId, this.rootPipelineId, this.batchId,
                 this.modelRegistry, this.status, this.stage, this.message, this.category, this.request, this.response, this.endpoint, this.sorContainerId,
                 this.sorContainerInstance).collect(Collectors.toList());
 

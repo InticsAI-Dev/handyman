@@ -59,10 +59,6 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
     private final String outputTable;
     private final String requestType;
 
-    public RadonKvpConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, RadonKvpAction aAction, final String processBase64, final FileProcessingUtils fileProcessingUtils, ProviderDataTransformer providerDataTransformer, String jdbiResourceName) {
-        this(log, aMarker, action, aAction, processBase64, fileProcessingUtils, providerDataTransformer, jdbiResourceName, null, null);
-    }
-
     public RadonKvpConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, RadonKvpAction aAction, final String processBase64, final FileProcessingUtils fileProcessingUtils, ProviderDataTransformer providerDataTransformer, String jdbiResourceName, String outputTable, String requestType) {
         LoggingInitializer.initialize();
 
@@ -100,19 +96,24 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
 
     @Override
     public String buildJsonForKafka(RadonQueryInputTable entity) throws Exception {
-        if (entity.getRequestId() == null) {
-            entity.setRequestId(UUID.randomUUID());
-        }
-        if (entity.getCoproMetricsActivator() == null) {
-            entity.setCoproMetricsActivator(Boolean.valueOf(action.getContext().getOrDefault("copro.metrics.activator", "false")));
-        }
         return mapper.writeValueAsString(buildTritonInputRequest(entity));
     }
 
     private TritonInputRequest buildTritonInputRequest(RadonQueryInputTable entity) throws Exception {
         String filePath = String.valueOf(entity.getInputFilePath());
-        String userPrompt;
+        Long rootPipelineId = entity.getRootPipelineId();
+        Long actionId = action.getActionId();
+        Long groupId = entity.getGroupId();
+        String userPrompt = "";
         String systemPrompt = entity.getSystemPrompt();
+        Integer paperNo = entity.getPaperNo();
+        String originId = entity.getOriginId();
+        Long processId = entity.getProcessId();
+        Long tenantId = entity.getTenantId();
+        final UUID requestId = UUID.randomUUID();
+        final Boolean coproMetricsActivator = Boolean.valueOf(action.getContext().getOrDefault("copro.metrics.activator","false"));
+        entity.setRequestId(requestId);
+        entity.setCoproMetricsActivator(coproMetricsActivator);
 
         if (Objects.equals(action.getContext().get("bbox.radon_bbox_activator"), "true")
                 && (Objects.equals(entity.getProcess(), "RADON_KVP_ACTION") || Objects.equals(entity.getProcess(), "CHECKBOX_EXTRACTION"))) {
@@ -122,6 +123,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
             if (Objects.equals(encryptOutputJsonContent, "true")) {
                 inputResponseJson = encryption.decrypt(inputResponseJsonstr, "AES256", "RADON_KVP_JSON");
             } else {
+                log.info("Encryption is disabled. Using raw input response JSON.");
                 inputResponseJson = inputResponseJsonstr;
             }
             String base64Activator = action.getContext().get("sor.transaction.prompt.base64.activator");
@@ -134,6 +136,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                         action.getContext().get("prompt.bbox.json.placeholder.name"), inputResponseJson);
                 userPrompt = Base64.getEncoder().encodeToString(updatedPrompt.getBytes());
             } else {
+                log.info("Encryption is disabled. Using raw input response JSON.");
                 String actualUserPrompt = entity.getUserPrompt();
                 userPrompt = actualUserPrompt.replace(
                         action.getContext().get("prompt.bbox.json.placeholder.name"), inputResponseJson);
@@ -143,17 +146,17 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         }
 
         RadonKvpExtractionRequest radonKvpExtractionRequest = new RadonKvpExtractionRequest();
-        radonKvpExtractionRequest.setRootPipelineId(entity.getRootPipelineId());
-        radonKvpExtractionRequest.setActionId(action.getActionId());
+        radonKvpExtractionRequest.setRootPipelineId(rootPipelineId);
+        radonKvpExtractionRequest.setActionId(actionId);
         radonKvpExtractionRequest.setProcess(entity.getProcess());
         radonKvpExtractionRequest.setInputFilePath(filePath);
-        radonKvpExtractionRequest.setGroupId(entity.getGroupId());
+        radonKvpExtractionRequest.setGroupId(groupId);
         radonKvpExtractionRequest.setUserPrompt(userPrompt);
         radonKvpExtractionRequest.setSystemPrompt(systemPrompt);
-        radonKvpExtractionRequest.setProcessId(entity.getProcessId());
-        radonKvpExtractionRequest.setPaperNo(entity.getPaperNo());
-        radonKvpExtractionRequest.setTenantId(entity.getTenantId());
-        radonKvpExtractionRequest.setOriginId(entity.getOriginId());
+        radonKvpExtractionRequest.setProcessId(processId);
+        radonKvpExtractionRequest.setPaperNo(paperNo);
+        radonKvpExtractionRequest.setTenantId(tenantId);
+        radonKvpExtractionRequest.setOriginId(originId);
         radonKvpExtractionRequest.setBatchId(entity.getBatchId());
         radonKvpExtractionRequest.setSorContainerId(entity.getSorContainerId());
         radonKvpExtractionRequest.setModelName(entity.getModelName());
@@ -213,9 +216,9 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         TritonInputRequest tritonInputRequest = buildTritonInputRequest(entity);
         String jsonRequest = mapper.writeValueAsString(tritonInputRequest);
 
-        TritonRequest tritonRequest = (TritonRequest) tritonInputRequest.getInputs().get(0);
+        TritonRequest tritonRequest = (TritonRequest) tritonInputRequest.getInputs().getFirst();
         RadonKvpExtractionRequest auditRequest = mapper.readValue(
-                (String) tritonRequest.getData().get(0), RadonKvpExtractionRequest.class);
+                (String) tritonRequest.getData().getFirst(), RadonKvpExtractionRequest.class);
         auditRequest.setBase64Img("");
         String jsonInsertRequest = mapper.writeValueAsString(auditRequest);
 

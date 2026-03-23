@@ -16,9 +16,9 @@ public interface HandymanRepo {
 
     Map<String, String> getAllConfig(final String pipelineName);
 
-    Map<String, String> getAllProcessConfig(final String pipelineName);
+    Map<String, String> findAllProcessConfig(final String pipelineName);
 
-    Map<String, String> getAllInstanceConfig(final String pipelineName);
+    Map<String, String> findAllInstanceConfig(final String pipelineName);
 
     Map<String, String> getCommonConfig();
 

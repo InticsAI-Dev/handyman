@@ -27,6 +27,5 @@ public class KafkaPublishQueryInput {
     private String batchId;
     private Long tenantId;
     private String transactionId;
-    private String messageKey;
 
 }

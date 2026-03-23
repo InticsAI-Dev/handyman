@@ -40,12 +40,6 @@ public final class CoproResponseParser {
      * Parses an agentic paper filter copro response into output rows.
      * Extracted from AgenticPaperFilterConsumerProcess: extractedKryptonOutputDataRequest()
      * + doOptimusParentObjectBuild() + doKryptonParentObjBuild().
-     *
-     * @param rawResponse          the raw JSON string from copro (may have markdown fences)
-     * @param ctx                  context fields for building output rows
-     * @param pageContentMinLength threshold for blank page detection
-     * @param mapper               ObjectMapper instance
-     * @return list of output rows; empty list if inferResponse is null (caller handles error)
      */
     public static List<AgenticPaperFilterOutput> parseAgenticFilterResponse(
             String rawResponse,
@@ -57,44 +51,34 @@ public final class CoproResponseParser {
 
         String cleanedJson = rawResponse.replace("```json", "").replace("```", "").trim();
 
-        RadonKvpLineItem dataItem = mapper.readValue(cleanedJson, RadonKvpLineItem.class);
-        String inferResponse = dataItem.getInferResponse();
+        RadonKvpLineItem dataExtractionDataItem = mapper.readValue(cleanedJson, RadonKvpLineItem.class);
+        String inferResponse = dataExtractionDataItem.getInferResponse();
 
-        // 3. Return empty list if inferResponse is null (caller handles error)
         if (inferResponse == null) {
             return results;
         }
 
-        // 4. Detect model from "model" field → OPTIMUS vs Krypton
         JSONObject json = new JSONObject(cleanedJson);
         String modelValue = json.has(MODEL) ? json.getString(MODEL) : null;
         boolean isOptimus = MODEL_TYPE.equalsIgnoreCase(modelValue);
 
         JsonNode inferResponseNode;
         if (modelValue == null) {
-            // No model field — default to Krypton behavior but log it
             logger.warn("No '{}' field in copro response — defaulting to Krypton parsing", MODEL);
             inferResponseNode = mapper.readTree(inferResponse);
         } else if (isOptimus) {
-            // OPTIMUS — wrap as text node
             inferResponseNode = TextNode.valueOf(inferResponse.trim());
         } else {
-            // Explicit Krypton or any other model value
             inferResponseNode = mapper.readTree(inferResponse);
         }
 
-        // 5. Blank page detection
         String isBlankPage = (inferResponse.length() > pageContentMinLength) ? PAGE_CONTENT_NO : PAGE_CONTENT_YES;
 
-        // 6. Build output based on model type
         if (isOptimus) {
-            // OPTIMUS: single row
-            buildOptimusOutput(dataItem, ctx, inferResponseNode, isBlankPage, results);
+            buildOptimusOutput(dataExtractionDataItem, ctx, inferResponseNode, isBlankPage, results);
         } else {
-            // KRYPTON: one row per field entry
-            buildKryptonOutput(dataItem, ctx, inferResponseNode, isBlankPage, results);
+            buildKryptonOutput(dataExtractionDataItem, ctx, inferResponseNode, isBlankPage, results);
         }
-
         return results;
     }
 
@@ -171,13 +155,6 @@ public final class CoproResponseParser {
     /**
      * Parses a radon KVP copro response into output rows (non-post-processing path).
      * Extracted from RadonKvpConsumerProcess.extractTritonOutputDataResponse().
-     *
-     * @param rawResponse    the raw JSON string from copro
-     * @param radonKvpContext            context fields for building output rows
-     * @param encryption     InticsIntegrity instance (nullable)
-     * @param encryptItemWise whether item-wise encryption is enabled
-     * @param mapper         ObjectMapper instance
-     * @return list of output rows
      */
     public static List<RadonQueryOutputTable> parseRadonKvpResponse(
             String rawResponse,
@@ -188,20 +165,17 @@ public final class CoproResponseParser {
 
         List<RadonQueryOutputTable> results = new ArrayList<>();
 
-        // 1. Deserialize to RadonKvpLineItem, get inferResponse
         RadonKvpLineItem modelResponse = mapper.readValue(rawResponse, RadonKvpLineItem.class);
         String extractedContent;
 
-        // 2. If encryptItemWise && encryption != null → encrypt
         if (encryptItemWise && encryption != null) {
             extractedContent = encryption.encrypt(modelResponse.getInferResponse(), "AES256", "RADON_KVP_JSON");
         } else {
             extractedContent = modelResponse.getInferResponse();
         }
 
-        // 3. Build RadonQueryOutputTable
         String sorContainerInstance = radonKvpContext.getSorContainerName() != null
-                ? radonKvpContext.getSorContainerName() : null;
+                ? radonKvpContext.getSorContainerName() + "_0" : null;
 
         results.add(RadonQueryOutputTable.builder()
                 .createdOn(radonKvpContext.getCreatedOn())
@@ -238,10 +212,6 @@ public final class CoproResponseParser {
      * error row when {@link #parseAgenticFilterResponse} returns an empty list.
      * The sync path (AgenticPaperFilterConsumerProcess) uses its own handleKryptonErrorResponse()
      * which includes HTTP response details.</p>
-     *
-     * @param agenticFilterContext context fields
-     * @param errorMessage         the error message
-     * @return a single failed output entity
      */
     public static AgenticPaperFilterOutput buildFailedAgenticOutput(
             AgenticFilterContext agenticFilterContext, String errorMessage) {

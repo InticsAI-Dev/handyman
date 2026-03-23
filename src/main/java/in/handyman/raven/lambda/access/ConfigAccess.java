@@ -47,6 +47,6 @@ public class ConfigAccess {
     }
 
     public static Map<String, String> getAllProcessConfig(String pipelineName) {
-        return REPO.getAllProcessConfig(pipelineName);
+        return REPO.findAllProcessConfig(pipelineName);
     }
 }

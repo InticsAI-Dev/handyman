@@ -130,9 +130,9 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
     @Override
     public Map<String, String> getAllConfig(final String pipelineName) {
         final String lambdaName = getLambdaName(pipelineName);
-        final Map<String, String> instanceConfig = getAllInstanceConfig(pipelineName);
+        final Map<String, String> instanceConfig = findAllInstanceConfig(pipelineName);
 
-        final Map<String, String> processConfig = getAllProcessConfig(lambdaName);
+        final Map<String, String> processConfig = findAllProcessConfig(lambdaName);
 
         final Map<String, String> commonConfig = getCommonConfig();
 
@@ -145,23 +145,24 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
     }
 
     @NotNull
-    public Map<String, String> getAllInstanceConfig(String pipelineName) {
+    public Map<String, String> findAllInstanceConfig(String pipelineName) {
         final Map<String, String> instanceConfig = findAllByInstance(pipelineName).stream()
                 .collect(Collectors
                         .toMap((SpwInstanceConfig::getVariable),
                                 SpwInstanceConfig::getValue,
                                 (p, q) -> p));
+        log.debug("Total Instance Config variable found for {} is {}", pipelineName, instanceConfig.size());
         return instanceConfig;
     }
 
-    @Override
     @NotNull
-    public Map<String, String> getAllProcessConfig(String lambdaName) {
+    public Map<String, String> findAllProcessConfig(String lambdaName) {
         Map<String, String> processConfig = findAllByProcess(lambdaName).stream()
                 .collect(Collectors
                         .toMap((SpwProcessConfig::getVariable),
                                 SpwProcessConfig::getValue,
                                 (p, q) -> p));
+        log.debug("Total Process Config variable found for {} is {}", lambdaName, processConfig.size());
         return processConfig;
     }
 

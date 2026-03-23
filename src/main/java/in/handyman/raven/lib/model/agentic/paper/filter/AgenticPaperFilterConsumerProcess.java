@@ -65,10 +65,6 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
     private final String outputTable;
     private final String requestType;
 
-    public AgenticPaperFilterConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, AgenticPaperFilterAction aAction, Integer pageContentMinLength, FileProcessingUtils fileProcessingUtils, String processBase64, String jdbiResourceName) {
-        this(log, aMarker, action, aAction, pageContentMinLength, fileProcessingUtils, processBase64, jdbiResourceName, null, null);
-    }
-
     public AgenticPaperFilterConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, AgenticPaperFilterAction aAction, Integer pageContentMinLength, FileProcessingUtils fileProcessingUtils, String processBase64, String jdbiResourceName, String outputTable, String requestType) {
         this.log = log;
         this.aMarker = aMarker;
@@ -111,12 +107,10 @@ public class AgenticPaperFilterConsumerProcess implements CoproProcessor.Consume
         if (entity.getCoproMetricsActivator() == null) {
             entity.setCoproMetricsActivator(Boolean.valueOf(action.getContext().getOrDefault("copro.metrics.activator", "false")));
         }
-        RadonKvpExtractionRequest req = getKryptonRequestPayloadFromQuery(entity);
-        String base64Img = processBase64.equals(ProcessFileFormatE.BASE64.name())
-                ? fileProcessingUtils.convertFileToBase64(String.valueOf(entity.getFilePath()))
-                : "";
-        req.setBase64Img(base64Img);
-        String innerJson = mapper.writeValueAsString(req);
+        RadonKvpExtractionRequest radonKvpExtractionRequest = getKryptonRequestPayloadFromQuery(entity);
+        String base64Img = processBase64.equals(ProcessFileFormatE.BASE64.name()) ? fileProcessingUtils.convertFileToBase64(String.valueOf(entity.getFilePath())) : "";
+        radonKvpExtractionRequest.setBase64Img(base64Img);
+        String innerJson = mapper.writeValueAsString(radonKvpExtractionRequest);
         return getTritonRequestPayload(innerJson);
     }
 
