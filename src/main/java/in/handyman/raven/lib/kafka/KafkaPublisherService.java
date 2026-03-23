@@ -79,6 +79,7 @@ public class KafkaPublisherService {
 
             String messageNode = objectMapper.writeValueAsString(productJson);
             ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topicName, messageNode);
+
             producer.send(producerRecord, (metadata, exception) -> {
                 if (exception != null) {
                     log.info("Successful in sending the message to kafka topic");

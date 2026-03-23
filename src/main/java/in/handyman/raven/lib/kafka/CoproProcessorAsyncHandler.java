@@ -354,6 +354,8 @@ public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         props.put(ProducerConfig.ACKS_CONFIG, context.getOrDefault(CONTEXT_ACKS, "all"));
+        props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
+        props.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, "10000");
         props.put(ProducerConfig.RETRIES_CONFIG,
                 Integer.parseInt(context.getOrDefault(CONTEXT_RETRIES, "3")));
         props.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG,
@@ -364,6 +366,40 @@ public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
                 context.getOrDefault(CONTEXT_LINGER_MS, "100"));
         props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG,
                 context.getOrDefault(CONTEXT_COMPRESSION_TYPE, "lz4"));
+
+        setAuthProperties(context, props);
         return props;
+    }
+
+    private static void setAuthProperties(Map<String, String> context, Map<String, Object> props) {
+        String securityProtocol = context.getOrDefault("copro.processor.kafka.security.protocol", "PLAINTEXT");
+        if (!"PLAINTEXT".equalsIgnoreCase(securityProtocol)) {
+            props.put(KafkaProps.SECURITY_PROTOCOL, securityProtocol);
+
+            String saslMechanism = context.getOrDefault("copro.processor.kafka.sasl.mechanism", KafkaProps.PLAIN_SASL);
+            props.put(KafkaProps.SASL_MECHANISM, saslMechanism);
+
+            String username = context.getOrDefault("copro.processor.kafka.sasl.username", "");
+            String password = context.getOrDefault("copro.processor.kafka.sasl.password", "");
+            String jaasConfig = String.format(
+                    "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"%s\" password=\"%s\";",
+                    username, password);
+            props.put(KafkaProps.SASL_JAAS_CONFIG, jaasConfig);
+
+            if (securityProtocol.equalsIgnoreCase(KafkaProps.SASL_SSL)) {
+                String sslInclude = context.getOrDefault("copro.processor.kafka.ssl.include", "");
+                if ("certs".equalsIgnoreCase(sslInclude)) {
+                    props.put(KafkaProps.SSL_TRUSTSTORE_TYPE, context.getOrDefault("copro.processor.kafka.ssl.truststore.type", "JKS"));
+                    props.put(KafkaProps.SSL_TRUSTSTORE_LOCATION, context.get("copro.processor.kafka.ssl.truststore.location"));
+                    props.put(KafkaProps.SSL_TRUSTSTORE_PASSWORD, context.get("copro.processor.kafka.ssl.truststore.password"));
+                    props.put(KafkaProps.SSL_KEYSTORE_TYPE, context.getOrDefault("copro.processor.kafka.ssl.keystore.type", "JKS"));
+                    props.put(KafkaProps.SSL_KEYSTORE_LOCATION, context.get("copro.processor.kafka.ssl.keystore.location"));
+                    props.put(KafkaProps.SSL_KEYSTORE_PASSWORD, context.get("copro.processor.kafka.ssl.keystore.password"));
+                    props.put(KafkaProps.SSL_KEY_PASSWORD, context.get("copro.processor.kafka.ssl.key.password"));
+                    props.put(KafkaProps.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM,
+                            context.getOrDefault("copro.processor.kafka.ssl.endpoint.identification.algorithm", ""));
+                }
+            }
+        }
     }
 }

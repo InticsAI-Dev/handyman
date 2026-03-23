@@ -17,7 +17,6 @@ import in.handyman.raven.util.PropertyHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
-import org.jetbrains.annotations.NotNull;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
@@ -144,7 +143,6 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
         return Map.copyOf(finalMap);
     }
 
-    @NotNull
     public Map<String, String> findAllInstanceConfig(String pipelineName) {
         final Map<String, String> instanceConfig = findAllByInstance(pipelineName).stream()
                 .collect(Collectors
@@ -155,7 +153,6 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
         return instanceConfig;
     }
 
-    @NotNull
     public Map<String, String> findAllProcessConfig(String lambdaName) {
         Map<String, String> processConfig = findAllByProcess(lambdaName).stream()
                 .collect(Collectors

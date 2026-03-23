@@ -142,7 +142,7 @@ public class AgenticPaperFilterAction implements IActionExecution {
 
             Integer writeBatchSize = Integer.valueOf(action.getContext().get(DB_INSERT_WRITE_BATCH_SIZE));
             Integer pageContentMinLength = Integer.valueOf(action.getContext().get(PAGE_CONTENT_MIN_LENGTH));
-            String requestType = action.getContext().getOrDefault("agentic.paper.filter.main", "AGENTIC_PAPER_FILTER");
+            String requestType = action.getContext().getOrDefault("copro.processor.kafka.request.type", "AGENTIC_PAPER_FILTER");
             AgenticPaperFilterConsumerProcess agenticPaperFilterConsumerProcess =
                     new AgenticPaperFilterConsumerProcess(log, aMarker, action, this, pageContentMinLength, fileProcessingUtils, processBase64, agenticPaperFilter.getResourceConn(), outputTableName, requestType);
 

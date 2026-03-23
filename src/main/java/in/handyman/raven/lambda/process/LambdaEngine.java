@@ -121,8 +121,8 @@ public class LambdaEngine {
                 pipelineExecutionAudit.updateExecutionStatusId(ExecutionStatus.RUNNING.getId());
                 run(pipelineExecutionAudit, ravenParserContext.getTryContext(), context, ExecutionGroup.TRY);
                 log.info("Pipeline execution has been completed successfully");
-            } catch (PipelineHaltException phe) {
-                log.info("Pipeline halted for async processing: {}", phe.getMessage());
+            } catch (PipelineHaltException pipelineHaltException) {
+                log.info("Pipeline halted for async processing: {}", pipelineHaltException.getMessage());
                 pipelineExecutionAudit.updateExecutionStatusId(ExecutionStatus.WAITING_FOR_ASYNC.getId());
             } catch (Exception e) {
                 log.info("Started Executing the catch block");
