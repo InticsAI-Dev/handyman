@@ -58,21 +58,22 @@ public class CheckboxExtractionCleanUpAction implements IActionExecution {
       final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(checkboxExtractionCleanUp.getResourceConn());
 
       jdbi.useTransaction(handle -> {
+        try {
+          List<PredictionDTO> predictions = queryPredictions(handle);
+          log.info(aMarker, "Total rows returned from the first query {}", predictions.size());
 
-        List<PredictionDTO> predictions = queryPredictions(handle);
-        log.info(aMarker, "Total rows returned from the first query {}", predictions.size());
+          if (predictions.isEmpty()) {
+            log.info(aMarker, "No predictions found, skipping reconciliation");
+            return;
+          }
 
-        // Query checkbox data from second query and merge with predictions
-        mergeCheckboxDataFromSecondQuery(handle, predictions);
-
-        if (predictions.isEmpty()) {
-          log.info(aMarker, "No predictions found, skipping reconciliation");
-          return;
+          reconcileFieldMapWithCheckbox(predictions);
+          batchUpdateReconciledResults(handle, predictions);
+        } catch (Exception e) {
+          log.error(aMarker, "Transaction failed while processing checkbox cleanup", e);
+          HandymanException.insertException("Transaction failed in CheckboxExtractionCleanUp action", new HandymanException(e), action);
+          throw e;
         }
-
-        reconcileFieldMapWithCheckbox(predictions);
-
-        batchUpdateReconciledResults(handle, predictions);
       });
 
       log.info(aMarker, "CheckboxExtractionCleanUp action completed successfully");
@@ -84,142 +85,88 @@ public class CheckboxExtractionCleanUpAction implements IActionExecution {
   }
 
   private List<PredictionDTO> queryPredictions(Handle handle) {
-    List<PredictionDTO> predictions = new ArrayList<>();
+    try {
+      List<PredictionDTO> predictions = new ArrayList<>();
 
-    String querySet = checkboxExtractionCleanUp.getQuerySet();
-    if (querySet == null || querySet.trim().isEmpty()) {
-      log.warn(aMarker, "QuerySet is null or empty, skipping query execution");
-      return predictions;
-    }
+      String querySet = checkboxExtractionCleanUp.getQuerySet();
+      if (querySet == null || querySet.trim().isEmpty()) {
+        log.warn(aMarker, "QuerySet is null or empty, skipping query execution");
+        return predictions;
+      }
 
-    final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(querySet);
-    if (formattedQuery == null || formattedQuery.isEmpty()) {
-      log.warn(aMarker, "No formatted queries found, skipping query execution");
-      return predictions;
-    }
+      final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(querySet);
+      if (formattedQuery == null || formattedQuery.isEmpty()) {
+        log.warn(aMarker, "No formatted queries found, skipping query execution");
+        return predictions;
+      }
 
-    if (formattedQuery.size() > 0) {
-      String firstQuery = formattedQuery.get(0);
-      if (firstQuery != null && !firstQuery.trim().isEmpty()) {
-        log.info(aMarker, "Executing first query: {}", firstQuery);
-        try {
+      if (formattedQuery.size() > 0) {
+        String firstQuery = formattedQuery.get(0);
+        if (firstQuery != null && !firstQuery.trim().isEmpty()) {
+          log.info(aMarker, "Executing first query: {}", firstQuery);
           List<PredictionDTO> queryResults = handle.createQuery(firstQuery)
                   .mapToBean(PredictionDTO.class)
                   .stream()
                   .collect(Collectors.toList());
           predictions.addAll(queryResults);
           log.info(aMarker, "Executed first query, returned {} rows", queryResults.size());
-        } catch (Exception e) {
-          log.error(aMarker, "Error executing first query: {}", firstQuery, e);
-          throw e;
         }
       }
-    }
-
-    return predictions;
-  }
-
-  private void mergeCheckboxDataFromSecondQuery(Handle handle, List<PredictionDTO> predictions) {
-    String querySet = checkboxExtractionCleanUp.getQuerySet();
-    if (querySet == null || querySet.trim().isEmpty()) {
-      log.warn(aMarker, "QuerySet is null or empty, skipping second query");
-      return;
-    }
-
-    final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(querySet);
-    if (formattedQuery == null || formattedQuery.size() < 2) {
-      log.info(aMarker, "No second query found, skipping checkbox data merge");
-      return;
-    }
-
-    String secondQuery = formattedQuery.get(1);
-    if (secondQuery == null || secondQuery.trim().isEmpty()) {
-      log.warn(aMarker, "Second query is empty, skipping checkbox data merge");
-      return;
-    }
-
-    log.info(aMarker, "Executing second query to fetch checkbox_data: {}", secondQuery);
-    try {
-      List<PredictionDTO> checkboxDataResults = handle.createQuery(secondQuery)
-              .mapToBean(PredictionDTO.class)
-              .stream()
-              .collect(Collectors.toList());
-
-      log.info(aMarker, "Executed second query, returned {} rows", checkboxDataResults.size());
-
-      Map<Long, String> checkboxDataMap = new HashMap<>();
-      for (PredictionDTO row : checkboxDataResults) {
-        Long sorItemId = row.getSorItemId();
-        String checkboxData = row.getCheckboxData();
-
-        if (sorItemId != null && checkboxData != null && !checkboxData.trim().isEmpty()) {
-          checkboxDataMap.put(sorItemId, checkboxData);
-          log.debug(aMarker, "Mapped checkbox_data for sor_item_id={}", sorItemId);
-        }
-      }
-
-      int mergedCount = 0;
-      for (PredictionDTO prediction : predictions) {
-        Long sorItemId = prediction.getSorItemId();
-        if (sorItemId != null && checkboxDataMap.containsKey(sorItemId)) {
-          String checkboxData = checkboxDataMap.get(sorItemId);
-          prediction.setCheckboxData(checkboxData);
-          mergedCount++;
-          log.debug(aMarker, "Merged checkbox_data for sor_item_id={}", sorItemId);
-        }
-      }
-
-      log.info(aMarker, "Merged checkbox_data for {} predictions", mergedCount);
-
+      return predictions;
     } catch (Exception e) {
-      log.error(aMarker, "Error executing second query: {}", secondQuery, e);
+      log.error(aMarker, "Failed while querying predictions for CheckboxExtractionCleanUp", e);
+      HandymanException.insertException("Failed while querying predictions for CheckboxExtractionCleanUp", new HandymanException(e), action);
       throw e;
     }
   }
 
-
   private void reconcileFieldMapWithCheckbox(
           List<PredictionDTO> predictions) {
+    try {
+      log.info(aMarker, "Starting KIE vs CHECKBOX reconciliation (multi-checkbox safe)");
 
-    log.info(aMarker, "Starting KIE vs CHECKBOX reconciliation (multi-checkbox safe)");
-
-    if (predictions == null || predictions.isEmpty()) {
-      log.info(aMarker, "No predictions to reconcile");
-      return;
-    }
-
-    Map<Long, List<PredictionDTO>> predictionsBySorItem =
-            groupPredictionsBySorItem(predictions);
-
-    int totalRemovals = 0;
-
-    for (Map.Entry<Long, List<PredictionDTO>> entry : predictionsBySorItem.entrySet()) {
-
-      Long sorItemId = entry.getKey();
-      List<PredictionDTO> sorItemPredictions = entry.getValue();
-
-      Set<String> uncheckedLabels =
-              extractUncheckedLabels(sorItemPredictions);
-
-      if (uncheckedLabels.isEmpty()) {
-        log.debug(aMarker, "No unchecked labels found for sorItemId={}", sorItemId);
-        continue;
+      if (predictions == null || predictions.isEmpty()) {
+        log.info(aMarker, "No predictions to reconcile");
+        return;
       }
 
-      int removed = reconcileFieldValues(sorItemPredictions, uncheckedLabels);
+      Map<Long, List<PredictionDTO>> predictionsBySorItem =
+              groupPredictionsBySorItem(predictions);
 
-      if (removed > 0) {
-        log.info(aMarker, "Reconciled sorItemId={} | valuesRemoved={}", sorItemId, removed);
+      int totalRemovals = 0;
+
+      for (Map.Entry<Long, List<PredictionDTO>> entry : predictionsBySorItem.entrySet()) {
+
+        Long sorItemId = entry.getKey();
+        List<PredictionDTO> sorItemPredictions = entry.getValue();
+
+        Set<String> uncheckedLabels =
+                extractUncheckedLabels(sorItemPredictions);
+
+        if (uncheckedLabels.isEmpty()) {
+          log.debug(aMarker, "No unchecked labels found for sorItemId={}", sorItemId);
+          continue;
+        }
+
+        int removed = reconcileFieldValues(sorItemPredictions, uncheckedLabels);
+
+        if (removed > 0) {
+          log.info(aMarker, "Reconciled sorItemId={} | valuesRemoved={}", sorItemId, removed);
+        }
+
+        totalRemovals += removed;
       }
 
-      totalRemovals += removed;
-    }
-
-    if (totalRemovals > 0) {
-      log.info(aMarker, "KIE vs CHECKBOX reconciliation completed | totalValuesRemoved={}",
-              totalRemovals);
-    } else {
-      log.info(aMarker, "KIE vs CHECKBOX reconciliation completed | no values removed");
+      if (totalRemovals > 0) {
+        log.info(aMarker, "KIE vs CHECKBOX reconciliation completed | totalValuesRemoved={}",
+                totalRemovals);
+      } else {
+        log.info(aMarker, "KIE vs CHECKBOX reconciliation completed | no values removed");
+      }
+    } catch (Exception e) {
+      log.error(aMarker, "Failed during reconciliation in CheckboxExtractionCleanUp", e);
+      HandymanException.insertException("Failed during reconciliation in CheckboxExtractionCleanUp", new HandymanException(e), action);
+      throw e;
     }
   }
 
@@ -340,82 +287,80 @@ public class CheckboxExtractionCleanUpAction implements IActionExecution {
   }
 
   private void batchUpdateReconciledResults(Handle handle, List<PredictionDTO> predictions) {
-    log.info(aMarker, "Starting batch update of reconciled results in {}",
-            checkboxExtractionCleanUp.getOutputTable());
+    try {
+      log.info(aMarker, "Starting batch update of reconciled results in {}",
+              checkboxExtractionCleanUp.getOutputTable());
 
-    List<PredictionDTO> updateData = new ArrayList<>();
-    Set<String> processedKeys = new HashSet<>();
+      List<PredictionDTO> updateData = new ArrayList<>();
+      Set<String> processedKeys = new HashSet<>();
 
-    for (PredictionDTO prediction : predictions) {
-      String feature = prediction.getFeature();
-      if (!"KIE".equalsIgnoreCase(feature)) {
-        continue;
-      }
-
-      String originId = prediction.getOriginId();
-      Long sorItemId = prediction.getSorItemId();
-      Long tenantId = prediction.getTenantId();
-      String transactionId = prediction.getTransactionId();
-
-      if (sorItemId == null || originId == null || tenantId == null) {
-        log.warn(aMarker, "Skipping prediction with missing required fields: origin_id={}, sor_item_id={}, tenant_id={}",
-                originId, sorItemId, tenantId);
-        continue;
-      }
-
-      String uniqueKey = originId + "_" + sorItemId + "_" + (transactionId != null ? transactionId : "NULL");
-      if (processedKeys.contains(uniqueKey)) {
-        log.debug(aMarker, "Skipping duplicate prediction: {}", uniqueKey);
-        continue;
-      }
-      processedKeys.add(uniqueKey);
-
-      String predictedValue = prediction.getPredictedValue();
-      String checkboxData = prediction.getCheckboxData();
-
-      updateData.add(prediction);
-      log.debug(aMarker, "Prepared update for origin_id={}, sor_item_id={}, predicted_value={}",
-              originId, sorItemId, predictedValue);
-    }
-
-    if (updateData.isEmpty()) {
-      log.info(aMarker, "No data to update");
-      return;
-    }
-
-    String updateSql = buildUpdateSql();
-    try (PreparedBatch batch = handle.prepareBatch(updateSql)) {
-      String lastUpdatedUserIdStr = action.getContext().get("created_user_id");
-      Long lastUpdatedUserIdLong = null;
-      if (lastUpdatedUserIdStr != null && !lastUpdatedUserIdStr.isEmpty()) {
-        try {
-          lastUpdatedUserIdLong = Long.parseLong(lastUpdatedUserIdStr);
-        } catch (NumberFormatException e) {
-          log.warn(aMarker, "Invalid created_user_id format: {}, using null", lastUpdatedUserIdStr);
+      for (PredictionDTO prediction : predictions) {
+        String feature = prediction.getFeature();
+        if (!"KIE".equalsIgnoreCase(feature)) {
+          continue;
         }
+
+        Long predictionId = prediction.getPredictionId();
+        String originId = prediction.getOriginId();
+        Long sorItemId = prediction.getSorItemId();
+        Long tenantId = prediction.getTenantId();
+
+        if (predictionId == null) {
+          log.warn(aMarker, "Skipping prediction with missing required field: prediction_id | origin_id={}, sor_item_id={}, tenant_id={}",
+                  originId, sorItemId, tenantId);
+          continue;
+        }
+
+        String uniqueKey = String.valueOf(predictionId);
+        if (processedKeys.contains(uniqueKey)) {
+          log.debug(aMarker, "Skipping duplicate prediction: {}", uniqueKey);
+          continue;
+        }
+        processedKeys.add(uniqueKey);
+
+        String predictedValue = prediction.getPredictedValue();
+        updateData.add(prediction);
+        log.debug(aMarker, "Prepared update for origin_id={}, sor_item_id={}, predicted_value={}",
+                originId, sorItemId, predictedValue);
       }
 
-      for (PredictionDTO prediction : updateData) {
-        batch.bind("predictedValue", prediction.getPredictedValue() != null ? prediction.getPredictedValue() : "");
-        batch.bind("checkboxData", prediction.getCheckboxData());
-        batch.bind("lastUpdatedOn", LocalDateTime.now());
-        batch.bind("lastUpdatedUserId", lastUpdatedUserIdLong);
-        batch.bind("originId", prediction.getOriginId());
-        batch.bind("tenantId", prediction.getTenantId());
-        batch.bind("sorItemId", prediction.getSorItemId());
-        batch.bind("transactionId", prediction.getTransactionId());
-        batch.add();
+      if (updateData.isEmpty()) {
+        log.info(aMarker, "No data to update");
+        return;
       }
 
-      int[] counts = batch.execute();
-      log.info(aMarker, "Batch updated {} records", counts.length);
+      String updateSql = buildUpdateSql();
+      try (PreparedBatch batch = handle.prepareBatch(updateSql)) {
+        String lastUpdatedUserIdStr = action.getContext().get("created_user_id");
+        Long lastUpdatedUserIdLong = null;
+        if (lastUpdatedUserIdStr != null && !lastUpdatedUserIdStr.isEmpty()) {
+          try {
+            lastUpdatedUserIdLong = Long.parseLong(lastUpdatedUserIdStr);
+          } catch (NumberFormatException e) {
+            log.warn(aMarker, "Invalid created_user_id format: {}, using null", lastUpdatedUserIdStr);
+          }
+        }
+
+        for (PredictionDTO prediction : updateData) {
+          batch.bind("predictedValue", prediction.getPredictedValue() != null ? prediction.getPredictedValue() : "");
+          batch.bind("checkboxData", prediction.getCheckboxData());
+          batch.bind("lastUpdatedOn", LocalDateTime.now());
+          batch.bind("lastUpdatedUserId", lastUpdatedUserIdLong);
+          batch.bind("predictionId", prediction.getPredictionId());
+          batch.add();
+        }
+
+        int[] counts = batch.execute();
+        log.info(aMarker, "Batch updated {} records", counts.length);
+      }
+
+      log.info(aMarker, "Completed batch update of {} total rows", updateData.size());
     } catch (Exception e) {
-      log.error(aMarker, "Batch update failed", e);
-      HandymanException.insertException("Error in batch update in " + checkboxExtractionCleanUp.getOutputTable(), new HandymanException(e), action);
+      log.error(aMarker, "Batch update failed in CheckboxExtractionCleanUp action", e);
+      HandymanException.insertException("Error in batch update in " + checkboxExtractionCleanUp.getOutputTable(),
+              new HandymanException(e), action);
       throw e;
     }
-
-    log.info(aMarker, "Completed batch update of {} total rows", updateData.size());
   }
 
   private String buildUpdateSql() {
@@ -424,10 +369,7 @@ public class CheckboxExtractionCleanUpAction implements IActionExecution {
             "checkbox_data = CAST(:checkboxData AS JSONB), " +
             "last_updated_on = :lastUpdatedOn, " +
             "last_updated_user_id = :lastUpdatedUserId " +
-            "WHERE origin_id = :originId " +
-            "AND tenant_id = :tenantId " +
-            "AND sor_item_id = :sorItemId " +
-            "AND (transaction_id = :transactionId OR (:transactionId IS NULL AND transaction_id IS NULL))";
+            "WHERE prediction_id = :predictionId";
   }
 
   @Override
