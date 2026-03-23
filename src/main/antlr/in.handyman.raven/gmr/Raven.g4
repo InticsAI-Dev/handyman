@@ -197,7 +197,6 @@ action:
     |multivalueSorItemHandling
     |sectionFilteringAfterGrouping
     |documentWisePostProcessing
-    |checkboxExtractionCleanUp
     );
 
 
@@ -1534,16 +1533,6 @@ multiValueMemberMapper:
     'using' '{'
     	querySet=STRING
     '}' ('on-condition' condition=expression)* ;
-
-checkboxExtractionCleanUp:
-    'checkboxExtractionCleanUp' 'as' name=STRING
-    'on-resource-conn' resourceConn=STRING
-    'output-table' outputTable=STRING
-    'batch-id' batchId=STRING
-    'using' '{'
-        querySet=STRING
-    '}'
-    ('on-condition' condition=expression)*  ;
 
 ocrTextComparator:
     'ocrTextComparator' 'as' name=STRING
