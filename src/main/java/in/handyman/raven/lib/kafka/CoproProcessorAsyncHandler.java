@@ -25,6 +25,8 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
 
+    private static final ObjectMapper SHARED_MAPPER = new ObjectMapper();
+
     private final BlockingQueue<I> queue;
     private final I stoppingSeed;
     private final ActionExecutionAudit actionExecutionAudit;
@@ -106,7 +108,7 @@ public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
             throw new HandymanException("copro.processor.kafka.request.type must be set in context for KAFKA_ASYNC route", null, actionExecutionAudit);
         }
         if (topic == null || topic.isBlank()) {
-            throw new HandymanException("copro.processor.kafka.topic.key must resolve to a valid topic name in context", null, actionExecutionAudit);
+            throw new HandymanException("copro.processor.kafka.topic must be set in context for KAFKA_ASYNC route", null, actionExecutionAudit);
         }
 
         final List<I> items = new ArrayList<>();
@@ -139,9 +141,9 @@ public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
         emptyJdbi.useTransaction(handle -> {
             int inserted = handle.execute(
                     "INSERT INTO kafka_audit.inference_queue_active " +
-                            "(batch_id, root_pipeline_id, request_type, total_requests, completed_requests, failed_requests, status) " +
-                            "VALUES (?, ?, ?, 0, 0, 0, 'COMPLETED') ON CONFLICT (batch_id, request_type) DO NOTHING",
-                    batchId, actionExecutionAudit.getRootPipelineId(), requestType);
+                            "(batch_id, root_pipeline_id, request_type, total_requests, completed_requests, failed_requests, status, action_id) " +
+                            "VALUES (?, ?, ?, 0, 0, 0, 'COMPLETED', ?) ON CONFLICT (batch_id, request_type) DO NOTHING",
+                    batchId, actionExecutionAudit.getRootPipelineId(), requestType, actionExecutionAudit.getActionId());
 
             if (inserted > 0) {
                 handle.execute(
@@ -161,10 +163,11 @@ public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
         final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(jdbiResourceName);
         jdbi.useHandle(handle -> handle.execute(
                 "INSERT INTO kafka_audit.inference_queue_active " +
-                        "(batch_id, root_pipeline_id, request_type, total_requests, completed_requests, failed_requests, status) " +
-                        "VALUES (?, ?, ?, ?, 0, 0, 'PROCESSING') " +
-                        "ON CONFLICT (batch_id, request_type) DO NOTHING",
-                batchId, actionExecutionAudit.getRootPipelineId(), requestType, totalItems));
+                        "(batch_id, root_pipeline_id, request_type, total_requests, completed_requests, failed_requests, status, action_id) " +
+                        "VALUES (?, ?, ?, ?, 0, 0, 'PROCESSING', ?) " +
+                        "ON CONFLICT (batch_id, request_type) DO UPDATE SET " +
+                        "total_requests = EXCLUDED.total_requests, status = 'PROCESSING', action_id = EXCLUDED.action_id, updated_at = NOW()",
+                batchId, actionExecutionAudit.getRootPipelineId(), requestType, totalItems, actionExecutionAudit.getActionId()));
     }
 
     protected ConcurrentLinkedQueue<I> publishItems(List<I> items,
@@ -218,7 +221,7 @@ public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
                                                                  I item,
                                                                  String correlationId) {
         @SuppressWarnings("unchecked")
-        Map<String, Object> entityFields = new ObjectMapper().convertValue(item, Map.class);
+        Map<String, Object> entityFields = SHARED_MAPPER.convertValue(item, Map.class);
         String partKey = String.valueOf(entityFields.getOrDefault("originId", entityFields.getOrDefault("origin_id", "")));
         String messageKey = partKey.isBlank() ? null : partKey;
 
@@ -276,11 +279,10 @@ public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
      */
     protected void handleAsyncPublishFailures(ConcurrentLinkedQueue<I> failedItems, String batchId, String requestType) {
         final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(jdbiResourceName);
-        final ObjectMapper mapper = new ObjectMapper();
 
         jdbi.useTransaction(handle -> {
             for (I item : failedItems) {
-                updateDlqStatusForFailedItems(batchId, requestType, handle, item, mapper);
+                updateDlqStatusForFailedItems(batchId, requestType, handle, item);
             }
 
             handle.execute(
@@ -292,9 +294,9 @@ public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
         logger.error("KAFKA_ASYNC: {} items moved to DLQ for batch={} type={}", failedItems.size(), batchId, requestType);
     }
 
-    private void updateDlqStatusForFailedItems(String batchId, String requestType, Handle handle, I item, ObjectMapper mapper) {
+    private void updateDlqStatusForFailedItems(String batchId, String requestType, Handle handle, I item) {
         try {
-            Map<?, ?> fields = mapper.convertValue(item, Map.class);
+            Map<?, ?> fields = SHARED_MAPPER.convertValue(item, Map.class);
             Object originIdObj = fields.get("origin_id");
             if (originIdObj == null) {
                 originIdObj = fields.get("originId");
@@ -327,7 +329,7 @@ public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
 
         String contextJson;
         try {
-            contextJson = new ObjectMapper().writeValueAsString(context);
+            contextJson = SHARED_MAPPER.writeValueAsString(context);
         } catch (Exception exception) {
             logger.error("KAFKA_ASYNC: failed to serialize context to JSON for batch={} type={}. Context will be empty in pipeline_wait_state.", batchId, requestType, exception);
             throw new HandymanException("Failed to serialize context to JSON for pipeline_wait_state", exception, actionExecutionAudit);
