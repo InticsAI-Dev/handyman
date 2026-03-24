@@ -112,6 +112,42 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
         })));
     }
 
+    public void startProducer(final List<I> inputBatch, final Integer readBatchSize) {
+        final LocalDateTime startTime = LocalDateTime.now();
+        if (inputBatch == null || inputBatch.isEmpty()) {
+            logger.info("No rows available for producer");
+            queue.add(stoppingSeed);
+            return;
+        }
+
+        final AtomicInteger counter = new AtomicInteger();
+        final Map<Integer, List<I>> partitions = inputBatch.stream()
+                .collect(Collectors.groupingBy(it -> counter.getAndIncrement() / readBatchSize));
+        logger.info("Total no of rows created {}", counter.get());
+
+        executorService.submit(() -> {
+            try {
+                partitions.forEach((integer, ts) -> {
+                    queue.addAll(ts);
+                    insertRowsReadIntoStatementAudit(ts, startTime);
+                    logger.info("Partition {} added to the queue", integer);
+                    try {
+                        Thread.sleep(10);
+                    } catch (InterruptedException e) {
+                        logger.error("Error at Producer sleep", e);
+                        HandymanException handymanException = new HandymanException(e);
+                        HandymanException.insertException("Error at Producer sleep", handymanException, actionExecutionAudit);
+                    }
+                });
+                logger.info("Total Partition added to the queue: {} ", partitions.size());
+                insertCompletionIntoStatementAudit(startTime);
+            } finally {
+                queue.add(stoppingSeed);
+                logger.info("Added stopping seed to the queue");
+            }
+        });
+    }
+
     private void insertRowsReadIntoStatementAudit(List<I> ts, LocalDateTime startTime) {
         final StatementExecutionAudit audit = StatementExecutionAudit.builder()
                 .rootPipelineId(actionExecutionAudit.getRootPipelineId())

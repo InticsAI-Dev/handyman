@@ -1,6 +1,7 @@
 package in.handyman.raven.lib;
 
 import in.handyman.raven.core.encryption.SecurityEngine;
+import in.handyman.raven.core.encryption.impl.EncryptionRequestClass;
 import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
@@ -59,6 +60,8 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
   public static final String DUMMY_URL = "http://localhost:10181/copro/preprocess/autorotation";
 
   private static final String DOCUMENT_WISE_POST_PROCESSING_THREAD_COUNT = "document.wise.post.processing.thread.count";
+  private static final String LLM_JSON_PARSER_LABEL_ENCRYPTION = "llm.json.parser.label.encryption";
+  private static final String AES_256 = "AES256";
 
   public DocumentWisePostProcessingAction(final ActionExecutionAudit action, final Logger log,
                                           final Object documentWisePostProcessing) {
@@ -74,25 +77,30 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
     InticsIntegrity crypt = SecurityEngine.getInticsIntegrityMethod(action, log);
     String itemWiseEncryptionActivator = action.getContext().getOrDefault(ENCRYPT_ITEM_WISE_ENCRYPTION, "true");
     int threadCount = Integer.parseInt(action.getContext().getOrDefault(DOCUMENT_WISE_POST_PROCESSING_THREAD_COUNT, "10"));
-
+    boolean isLabelEncryptionEnabled = Boolean.parseBoolean(action.getContext().getOrDefault(LLM_JSON_PARSER_LABEL_ENCRYPTION, "false"));
     boolean encryptEnabled = Boolean.parseBoolean(itemWiseEncryptionActivator);
     log.info(aMarker, "DocumentWisePostProcessing started with encryptEnabled: {}", encryptEnabled);
 
     action.getContext().put("resource.conn", documentWisePostProcessing.getResourceConn());
 
-    jdbi.useTransaction(handle -> fetchAndDecryptInputs(handle, crypt, encryptEnabled));
+    jdbi.useTransaction(handle -> fetchAndDecryptInputs(handle, crypt, encryptEnabled, isLabelEncryptionEnabled));
 
     log.info(aMarker, "Fetched {} records for document-wise post-processing", documentWisePostProcessingInputs.size());
     String outputTable = documentWisePostProcessing.getOutputTable();
-    documentWisePostProcessingInputs = doDocumentWiseValidator(documentWisePostProcessingInputs, threadCount, outputTable);
+    documentWisePostProcessingInputs = doDocumentWiseValidator(
+            documentWisePostProcessingInputs,
+            threadCount,
+            outputTable,
+            crypt,
+            encryptEnabled,
+            isLabelEncryptionEnabled
+    );
     log.info(aMarker, "Total records present after document-wise post-processing: {}", documentWisePostProcessingInputs.size());
-
-    documentWisePostProcessingInputs.forEach(input -> processEncryption(input, crypt, encryptEnabled));
 
     log.info(aMarker, "Processing completed. Results were inserted into {} by CoproProcessor", outputTable);
   }
 
-  private void fetchAndDecryptInputs(Handle handle, InticsIntegrity crypt, boolean encryptEnabled) {
+  private void fetchAndDecryptInputs(Handle handle, InticsIntegrity crypt, boolean encryptEnabled, boolean isLabelEncryptionEnabled) {
     try {
       List<String> queries = CommonQueryUtil.getFormattedQuery(documentWisePostProcessing.getQuerySet());
       documentWisePostProcessingInputs = queries.stream()
@@ -103,16 +111,11 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
       log.info(aMarker, "Total records fetched: {}", documentWisePostProcessingInputs.size());
       
       if (encryptEnabled) {
-          log.info(aMarker, "Scalar activator is enabled, running decryption in policy mode");
+          log.info(aMarker, "running decryption in policy mode");
           documentWisePostProcessingInputs.forEach(input -> {
             if (input.getIsEncrypted()) {
               try {
-                String itemIdentifier;
-                if (input.getSorItemName() != null) {
-                  itemIdentifier = input.getSorItemName();
-                } else {
-                  itemIdentifier = String.valueOf(input.getSorItemId());
-                }
+                String itemIdentifier = resolveItemIdentifier(input);
                 input.setPredictedValue(crypt.decrypt(input.getPredictedValue(), input.getEncryptionPolicy(), itemIdentifier));
               } catch (Exception e) {
                 log.error(aMarker, "Failed to decrypt value for sorItemId: {}", input.getSorItemId(), e);
@@ -121,6 +124,10 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
               }
             }
           });
+          if(isLabelEncryptionEnabled) {
+            decryptLabels(documentWisePostProcessingInputs, crypt);
+            decryptSectionAlias(documentWisePostProcessingInputs, crypt);
+          }
       }
     } catch (Exception e) {
       log.error(aMarker, "Error in fetchAndDecryptInputs", e);
@@ -129,75 +136,73 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
     }
   }
 
-  private void processEncryption(DocumentWisePostProcessingInput input, InticsIntegrity crypt, boolean encryptEnabled) {
-    try {
-      if ("multi_value".equalsIgnoreCase(input.getLineItemType())) {
-        handleMultiValue(input, crypt, encryptEnabled);
-      } else if (encryptEnabled && input.getIsEncrypted()) {
-        String itemIdentifier;
-        if (input.getSorItemName() != null) {
-          itemIdentifier = input.getSorItemName();
-        } else {
-          itemIdentifier = String.valueOf(input.getSorItemId());
-        }
-        input.setPredictedValue(
-                crypt.encrypt(
-                        input.getPredictedValue(),
-                        input.getEncryptionPolicy(),
-                        itemIdentifier
-                )
-        );
+  private String resolveItemIdentifier(DocumentWisePostProcessingInput input) {
+    if (input.getSorItemName() != null) {
+      return input.getSorItemName();
+    }
+    return String.valueOf(input.getSorItemId());
+  }
+
+  private void decryptLabels(List<DocumentWisePostProcessingInput> inputList, InticsIntegrity encryption) {
+    if (inputList == null || inputList.isEmpty()) {
+      return;
+    }
+
+    List<EncryptionRequestClass> encryptionRequests = new ArrayList<>();
+    Map<String, DocumentWisePostProcessingInput> requestKeyToInput = new LinkedHashMap<>();
+
+    for (int i = 0; i < inputList.size(); i++) {
+      DocumentWisePostProcessingInput input = inputList.get(i);
+      if (input.getLabel() != null && !input.getLabel().isEmpty()) {
+        String key = String.valueOf(i);
+        encryptionRequests.add(new EncryptionRequestClass(AES_256, input.getLabel(), key));
+        requestKeyToInput.put(key, input);
       }
-    } catch (Exception e) {
-      log.error(aMarker, "Failed to encrypt value for sorItemId: {}", input.getSorItemId(), e);
-      HandymanException handymanException = new HandymanException(e);
-      HandymanException.insertException("Failed to encrypt value for sorItemId: " + input.getSorItemId(), handymanException, action);
+    }
+    log.info(aMarker, "Total records to decrypt for labels: {}", encryptionRequests.size());
+
+    if (encryptionRequests.isEmpty()) {
+      return;
+    }
+
+    List<EncryptionRequestClass> responseList = encryption.decrypt(encryptionRequests);
+    for (EncryptionRequestClass item : responseList) {
+      DocumentWisePostProcessingInput input = requestKeyToInput.get(item.getKey());
+      if (input != null) {
+        input.setLabel(item.getValue());
+      }
     }
   }
 
-  private void handleMultiValue(DocumentWisePostProcessingInput input, InticsIntegrity crypt, boolean encryptEnabled) {
-    try {
-      if (input.getPredictedValue() == null || input.getPredictedValue().isEmpty()) {
-        return;
-      }
-      List<String> cleanedValues = splitAndCleanMultiValue(input.getPredictedValue());
-      List<String> reEncrypted = cleanedValues.stream()
-              .map(val -> {
-                try {
-                  if (encryptEnabled && input.getIsEncrypted()) {
-                    String itemIdentifier;
-                    if (input.getSorItemName() != null) {
-                      itemIdentifier = input.getSorItemName();
-                    } else {
-                      itemIdentifier = String.valueOf(input.getSorItemId());
-                    }
-                    return crypt.encrypt(val, input.getEncryptionPolicy(), itemIdentifier);
-                  } else {
-                    return val;
-                  }
-                } catch (Exception e) {
-                  log.error(aMarker, "Failed to encrypt multi-value part for sorItemId: {}", input.getSorItemId(), e);
-                  HandymanException handymanException = new HandymanException(e);
-                  HandymanException.insertException("Failed to encrypt multi-value part for sorItemId: " + input.getSorItemId(), handymanException, action);
-                  return val;
-                }
-              })
-              .collect(Collectors.toList());
-      input.setPredictedValue(String.join(",", reEncrypted));
-    } catch (Exception e) {
-      log.error(aMarker, "Failed to handle multi-value encryption for sorItemId: {}", input.getSorItemId(), e);
-      HandymanException handymanException = new HandymanException(e);
-      HandymanException.insertException("Failed to handle multi-value encryption for sorItemId: " + input.getSorItemId(), handymanException, action);
+  private void decryptSectionAlias(List<DocumentWisePostProcessingInput> inputList, InticsIntegrity encryption) {
+    if (inputList == null || inputList.isEmpty()) {
+      return;
     }
-  }
 
-  private List<String> splitAndCleanMultiValue(String predictedValue) {
-    String[] parts = predictedValue.split(",");
-    List<String> cleanedValues = java.util.Arrays.stream(parts)
-            .map(String::trim)
-            .filter(s -> !s.isEmpty())
-            .collect(Collectors.toList());
-    return cleanedValues;
+    List<EncryptionRequestClass> encryptionRequests = new ArrayList<>();
+    Map<String, DocumentWisePostProcessingInput> requestKeyToInput = new LinkedHashMap<>();
+
+    for (int i = 0; i < inputList.size(); i++) {
+      DocumentWisePostProcessingInput input = inputList.get(i);
+      if (input.getSectionAlias() != null && !input.getSectionAlias().isEmpty()) {
+        String key = String.valueOf(i);
+        encryptionRequests.add(new EncryptionRequestClass(AES_256, input.getSectionAlias(), key));
+        requestKeyToInput.put(key, input);
+      }
+    }
+    log.info(aMarker, "Total records to decrypt for labels: {}", encryptionRequests.size());
+
+    if (encryptionRequests.isEmpty()) {
+      return;
+    }
+
+    List<EncryptionRequestClass> responseList = encryption.decrypt(encryptionRequests);
+    for (EncryptionRequestClass item : responseList) {
+      DocumentWisePostProcessingInput input = requestKeyToInput.get(item.getKey());
+      if (input != null) {
+        input.setSectionAlias(item.getValue());
+      }
+    }
   }
 
   @Override
@@ -205,7 +210,14 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
     return documentWisePostProcessing.getCondition();
   }
 
-  private List<DocumentWisePostProcessingInput> doDocumentWiseValidator(List<DocumentWisePostProcessingInput> inputs, int threadCount, String outputTable) throws Exception {
+  private List<DocumentWisePostProcessingInput> doDocumentWiseValidator(
+          List<DocumentWisePostProcessingInput> inputs,
+          int threadCount,
+          String outputTable,
+          InticsIntegrity crypt,
+          boolean encryptEnabled,
+          boolean isLabelEncryptionEnabled
+  ) throws Exception {
     int inputSize = inputs.size();
     log.info(aMarker, "Starting document-wise validation for {} records", inputSize);
 
@@ -214,11 +226,25 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
       return inputs;
     }
 
-    List<DocumentWisePostProcessingInput> result = processWithCoproProcessor(inputs, threadCount, outputTable);
+    List<DocumentWisePostProcessingInput> result = processWithCoproProcessor(
+            inputs,
+            threadCount,
+            outputTable,
+            crypt,
+            encryptEnabled,
+            isLabelEncryptionEnabled
+    );
     return result;
   }
 
-  private List<DocumentWisePostProcessingInput> processWithCoproProcessor(List<DocumentWisePostProcessingInput> documentWisePostProcessingInputs, int consumerCount, String outputTable) throws Exception {
+  private List<DocumentWisePostProcessingInput> processWithCoproProcessor(
+          List<DocumentWisePostProcessingInput> documentWisePostProcessingInputs,
+          int consumerCount,
+          String outputTable,
+          InticsIntegrity crypt,
+          boolean encryptEnabled,
+          boolean isLabelEncryptionEnabled
+  ) throws Exception {
     BlockingQueue<DocumentWisePostProcessingOriginInput> queue = new LinkedBlockingQueue<>();
 
     final List<URL> urls = Optional.of(DUMMY_URL).map(s -> Arrays.stream(s.split(",")).map(s1 -> {
@@ -254,15 +280,28 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
     log.info(aMarker, "CoproProcessor initialized for document-wise validation with resource: {}", resourceConn);
 
     readBatchSize = parseContextValue(action, DB_SELECT_READ_BATCH_SIZE, "10");
+    Map<String, List<DocumentWisePostProcessingInput>> groupedByOrigin = documentWisePostProcessingInputs.stream()
+            .collect(Collectors.groupingBy(
+                    input -> input.getOriginId() == null ? "UNKNOWN_ORIGIN" : input.getOriginId(),
+                    LinkedHashMap::new,
+                    Collectors.toList()
+            ));
+    List<DocumentWisePostProcessingOriginInput> producerInputs = groupedByOrigin.entrySet().stream()
+            .map(entry -> DocumentWisePostProcessingOriginInput.builder()
+                    .originId(entry.getKey())
+                    .inputs(entry.getValue())
+                    .build())
+            .collect(Collectors.toList());
 
-    startProducerWithGrouping(queue, documentWisePostProcessing.getQuerySet(), readBatchSize, stoppingSeed, resourceConn);
-    log.info(aMarker, "CoproProcessor startProducer called with read batch size: {}", readBatchSize);
+    coproProcessor.startProducer(producerInputs, readBatchSize);
+    log.info(aMarker, "CoproProcessor startProducer called with grouped origin payloads. Origins: {}, read batch size: {}",
+            producerInputs.size(), readBatchSize);
 
     Thread.sleep(1000);
 
     Integer writeBatchSize = Integer.valueOf(action.getContext().get(DB_INSERT_WRITE_BATCH_SIZE));
-    DocumentWisePostProcessingConsumerProcess consumerProcess = 
-            new DocumentWisePostProcessingConsumerProcess(action, log);
+    DocumentWisePostProcessingConsumerProcess consumerProcess =
+            new DocumentWisePostProcessingConsumerProcess(action, log, crypt, encryptEnabled, isLabelEncryptionEnabled);
 
     if (outputTable == null || outputTable.isEmpty()) {
         log.error(aMarker, "Output table is not set. Cannot proceed with CoproProcessor insert.");
@@ -406,4 +445,5 @@ public class DocumentWisePostProcessingAction implements IActionExecution {
             "?, ?, ?, ?, ?, ?, ?, " +
             "?, ?, ?, ?, ?, ?)";
   }
+
 }

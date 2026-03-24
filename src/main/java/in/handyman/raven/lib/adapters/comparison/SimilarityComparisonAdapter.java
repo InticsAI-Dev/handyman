@@ -78,11 +78,11 @@ public class SimilarityComparisonAdapter implements ComparisonAdapter{
         if (distance == 0) {
             return 0L;
         }
-        Set<String> extractedWords = Arrays.stream(extractedData.replaceAll("[^a-zA-Z0-9,]", "").toLowerCase().split("[\\s,]+"))
+        Set<String> extractedWords = Arrays.stream(extractedData.replaceAll("[^a-zA-Z0-9]", " ").toLowerCase().split("\\s+"))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .collect(Collectors.toSet());
-        Set<String> actualWords = Arrays.stream(actualData.replaceAll("[^a-zA-Z0-9,]", "").toLowerCase().split("[\\s,]+"))
+        Set<String> actualWords = Arrays.stream(actualData.replaceAll("[^a-zA-Z0-9]", " ").toLowerCase().split("\\s+"))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .collect(Collectors.toSet());

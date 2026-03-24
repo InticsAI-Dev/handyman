@@ -23,6 +23,7 @@ public class DocumentWisePostProcessingOriginInput implements CoproProcessor.Ent
     
     private String originId;
     private List<DocumentWisePostProcessingInput> inputs;
+    private String status;
     
     @Override
     public List<Object> getRowData() {
@@ -34,6 +35,7 @@ public class DocumentWisePostProcessingOriginInput implements CoproProcessor.Ent
     
     @Override
     public String getStatus() {
-        return ConsumerProcessApiStatus.ABSENT.getStatusDescription();
+        String resolvedStatus = status != null ? status : ConsumerProcessApiStatus.ABSENT.getStatusDescription();
+        return resolvedStatus;
     }
 }
