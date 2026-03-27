@@ -32,7 +32,7 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
     private static final String CONFIG_USER = "raven.db.user";
     private static final String MAX_CONNECTION = "raven.max.connection";
 
-    private static Jdbi JDBI;
+    private static volatile Jdbi JDBI;
 
     public static final String LEGACY_RESOURCE_CONNECTION_TYPE = "legacy.resource.connection.type";
 
@@ -74,8 +74,9 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
             String azureDatabaseUrl = PropertyHandler.get(AZURE_DATABASE_URL);
             log.debug("Try connecting with this config {} {}", azureDatabaseUrl, azureClientId);
 
-            JDBI=HikariJdbiProvider.getJdbi();
-            JDBI.installPlugin(new SqlObjectPlugin());
+            Jdbi jdbi = HikariJdbiProvider.getJdbi();
+            jdbi.installPlugin(new SqlObjectPlugin());
+            JDBI = jdbi;
             try (var ignored = JDBI.open()) {
                 log.debug("Connected {} {}", azureDatabaseUrl, azureClientId);
                 return JDBI;
@@ -101,8 +102,9 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
             config.setMaximumPoolSize(maxConnection);
             HikariDataSource hikariDataSource = new HikariDataSource(config);
 
-            JDBI = Jdbi.create(hikariDataSource);
-            JDBI.installPlugin(new SqlObjectPlugin());
+            Jdbi jdbi = Jdbi.create(hikariDataSource);
+            jdbi.installPlugin(new SqlObjectPlugin());
+            JDBI = jdbi;
             try (var ignored = JDBI.open()) {
                 log.info("Connected {} {}", url, username);
                 return JDBI;
