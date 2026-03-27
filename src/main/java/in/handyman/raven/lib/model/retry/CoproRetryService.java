@@ -33,6 +33,7 @@ public class CoproRetryService {
     private final OkHttpClient httpClient;
     private final Logger log;
     private final KryptonModelInsertService kryptonModelInsertService;
+    private final GpuTelemetryInsertService gpuTelemetryInsertService;
 
     // HTTP/2 specific error patterns
     private static final List<String> HTTP2_RETRYABLE_ERRORS = Arrays.asList(
@@ -49,6 +50,7 @@ public class CoproRetryService {
         this.httpClient = Objects.requireNonNull(httpClient, "httpClient");
         this.log = log;
         this.kryptonModelInsertService = new KryptonModelInsertService(HandymanRepoImpl.getDatabaseConnectionByConnectionType());
+        this.gpuTelemetryInsertService = new GpuTelemetryInsertService(HandymanRepoImpl.getDatabaseConnectionByConnectionType());
     }
 
     public Response callCoproApiWithRetry(Request request,
@@ -239,6 +241,7 @@ public class CoproRetryService {
             retryAudit.setLastUpdatedOn(CreateTimeStamp.currentTimestamp());
             handymanRepo.insertAuditToDb(retryAudit, action);
             kryptonModelInsertService.insertIfEnabled(retryAudit, action);
+            gpuTelemetryInsertService.insertIfEnabled(retryAudit, action);
         } catch (Exception exception) {
             log.error("Error inserting into retry audit {} for id {} ", ExceptionUtil.toString(exception),retryAudit.getCoproServiceId());
             HandymanException.insertException("Error inserting into copro retry audit for id " + retryAudit.getCoproServiceId(),
