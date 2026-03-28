@@ -2,6 +2,7 @@ package in.handyman.raven.lib.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.actor.HandymanActorSystemAccess;
+import in.handyman.raven.core.utils.ConfigEncryptionUtils;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.ResourceAccess;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
@@ -61,16 +62,16 @@ public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
     private static final String HEADER_POST_PROCESS_CLASS_NAME = "X-Route-PostProcessClassName";
     private static final String HEADER_POST_PROCESS_CLASS = "X-Route-PostProcessClass";
 
-    private static final String CONTEXT_REQUEST_TYPE = "copro.processor.kafka.request.type";
-    private static final String CONTEXT_TOPIC = "copro.processor.kafka.topic";
-    private static final String CONTEXT_OUTPUT_TABLE = "copro.processor.kafka.output.table";
-    private static final String CONTEXT_BOOTSTRAP_SERVERS = "copro.processor.kafka.bootstrap.servers";
-    private static final String CONTEXT_ACKS = "copro.processor.kafka.producer.acks";
-    private static final String CONTEXT_RETRIES = "copro.processor.kafka.producer.retries";
-    private static final String CONTEXT_REQUEST_TIMEOUT = "copro.processor.kafka.request.timeout.ms";
-    private static final String CONTEXT_DELIVERY_TIMEOUT = "copro.processor.kafka.delivery.timeout.ms";
-    private static final String CONTEXT_LINGER_MS = "copro.processor.kafka.producer.linger.ms";
-    private static final String CONTEXT_COMPRESSION_TYPE = "copro.processor.kafka.producer.compression.type";
+    private static final String CONTEXT_REQUEST_TYPE = "vulcan.copro.processor.consumer.route.type";
+    private static final String CONTEXT_TOPIC = "vulcan.copro.kafka.inference.response.topic";
+    private static final String CONTEXT_BOOTSTRAP_SERVERS = "vulcan.copro.processor.kafka.bootstrap.servers";
+    private static final String CONTEXT_ACKS = "vulcan.copro.processor.kafka.producer.acks";
+    private static final String CONTEXT_RETRIES = "vulcan.copro.processor.kafka.producer.retries";
+    private static final String CONTEXT_REQUEST_TIMEOUT = "vulcan.copro.processor.kafka.request.timeout.ms";
+    private static final String CONTEXT_DELIVERY_TIMEOUT = "vulcan.copro.processor.kafka.delivery.timeout.ms";
+    private static final String CONTEXT_LINGER_MS = "vulcan.copro.processor.kafka.producer.linger.ms";
+    private static final String CONTEXT_COMPRESSION_TYPE = "vulcan.copro.processor.kafka.producer.compression.type";
+
     private static final String CONTEXT_NEXT_SCRIPT = "continuation_pipeline_script";
     private static final String CONTEXT_INIT_PROCESS_ID = "init_process_id.process_id";
     private static final String CONTEXT_TENANT_ID = "tenant_id";
@@ -102,13 +103,13 @@ public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
             topic = context.get(CONTEXT_TOPIC);
         }
         final String batchId = context.get("batch_id");
-        final String outputTable = callable.getOutputTable() != null ? callable.getOutputTable() : context.getOrDefault(CONTEXT_OUTPUT_TABLE, "");
+        final String outputTable = callable.getOutputTable();
 
         if (requestType == null || requestType.isBlank()) {
-            throw new HandymanException("copro.processor.kafka.request.type must be set in context for KAFKA_ASYNC route", null, actionExecutionAudit);
+            throw new HandymanException(CONTEXT_REQUEST_TYPE + " must be set in context for KAFKA_ASYNC route", null, actionExecutionAudit);
         }
         if (topic == null || topic.isBlank()) {
-            throw new HandymanException("copro.processor.kafka.topic must be set in context for KAFKA_ASYNC route", null, actionExecutionAudit);
+            throw new HandymanException(CONTEXT_TOPIC + " must be set in context for KAFKA_ASYNC route", null, actionExecutionAudit);
         }
 
         final List<I> items = new ArrayList<>();
@@ -155,10 +156,6 @@ public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
         });
     }
 
-    /**
-     * Register the module in inference_queue_active with total_requests = totalItems.
-     * Must be called BEFORE handleAsyncPublishFailures() so the row exists for its UPDATE.
-     */
     protected void registerInferenceQueueActive(String batchId, String requestType, int totalItems) {
         final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(jdbiResourceName);
         jdbi.useHandle(handle -> handle.execute(
@@ -237,9 +234,9 @@ public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
         String pageNoVal = String.valueOf(entityFields.getOrDefault("pageNo", entityFields.getOrDefault("page_no",
                 entityFields.getOrDefault("paperNo", entityFields.getOrDefault("paper_no", "0")))));
         recordData.headers().add(HEADER_PAGE_NO, pageNoVal.getBytes(StandardCharsets.UTF_8));
-        recordData.headers().add(HEADER_PROCESS_ID, context.getOrDefault(CONTEXT_INIT_PROCESS_ID, "").getBytes(StandardCharsets.UTF_8));
-        recordData.headers().add(HEADER_TENANT_ID, context.getOrDefault(CONTEXT_TENANT_ID, "").getBytes(StandardCharsets.UTF_8));
-        recordData.headers().add(HEADER_GROUP_ID, context.getOrDefault(CONTEXT_GROUP_ID, "").getBytes(StandardCharsets.UTF_8));
+        recordData.headers().add(HEADER_PROCESS_ID, decryptIfNeeded(CONTEXT_INIT_PROCESS_ID, "", context).getBytes(StandardCharsets.UTF_8));
+        recordData.headers().add(HEADER_TENANT_ID, decryptIfNeeded(CONTEXT_TENANT_ID, "", context).getBytes(StandardCharsets.UTF_8));
+        recordData.headers().add(HEADER_GROUP_ID, decryptIfNeeded(CONTEXT_GROUP_ID, "", context).getBytes(StandardCharsets.UTF_8));
         recordData.headers().add(HEADER_CREATED_ON, String.valueOf(System.currentTimeMillis()).getBytes(StandardCharsets.UTF_8));
         recordData.headers().add(HEADER_ACTION_ID, String.valueOf(actionExecutionAudit.getActionId()).getBytes(StandardCharsets.UTF_8));
 
@@ -274,9 +271,6 @@ public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
         HandymanActorSystemAccess.update(actionExecutionAudit);
     }
 
-    /**
-     * Mark failed items as DLQ and decrement total_requests so aggregator barrier can still fire.
-     */
     protected void handleAsyncPublishFailures(ConcurrentLinkedQueue<I> failedItems, String batchId, String requestType) {
         final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(jdbiResourceName);
 
@@ -317,11 +311,8 @@ public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
         }
     }
 
-    /**
-     * Persist pipeline_wait_state so PipelineAggregatorService can trigger the continuation script.
-     */
     protected void persistAsyncWaitState(String batchId, String requestType, int publishedCount, Map<String, String> context) {
-        String nextScript = context.getOrDefault(CONTEXT_NEXT_SCRIPT, "");
+        String nextScript = decryptIfNeeded(CONTEXT_NEXT_SCRIPT, "", context);
         if (nextScript.isBlank()) {
             logger.warn("KAFKA_ASYNC: continuation_pipeline_script not set in context for batch={} type={}. Continuation will not trigger automatically.",
                     batchId, requestType);
@@ -345,63 +336,64 @@ public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
                 actionExecutionAudit.getRootPipelineId(), batchId, requestType, nextScript, publishedCount, contextFinal));
     }
 
-    /**
-     * Build minimal Kafka producer properties for async publish.
-     */
     protected Map<String, Object> buildAsyncKafkaProps(Map<String, String> context) {
-        String bootstrapServers = context.getOrDefault(CONTEXT_BOOTSTRAP_SERVERS, "localhost:9092");
+        String bootstrapServers = decryptIfNeeded(CONTEXT_BOOTSTRAP_SERVERS, "localhost:9092", context);
 
         Map<String, Object> props = new HashMap<>();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        props.put(ProducerConfig.ACKS_CONFIG, context.getOrDefault(CONTEXT_ACKS, "all"));
+        props.put(ProducerConfig.ACKS_CONFIG, decryptIfNeeded(CONTEXT_ACKS, "all", context));
         props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
         props.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, "10000");
         props.put(ProducerConfig.RETRIES_CONFIG,
-                Integer.parseInt(context.getOrDefault(CONTEXT_RETRIES, "3")));
+                Integer.parseInt(decryptIfNeeded(CONTEXT_RETRIES, "3", context)));
         props.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG,
-                context.getOrDefault(CONTEXT_REQUEST_TIMEOUT, "30000"));
+                decryptIfNeeded(CONTEXT_REQUEST_TIMEOUT, "30000", context));
         props.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG,
-                context.getOrDefault(CONTEXT_DELIVERY_TIMEOUT, "120000"));
+                decryptIfNeeded(CONTEXT_DELIVERY_TIMEOUT, "120000", context));
         props.put(ProducerConfig.LINGER_MS_CONFIG,
-                context.getOrDefault(CONTEXT_LINGER_MS, "100"));
+                decryptIfNeeded(CONTEXT_LINGER_MS, "100", context));
         props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG,
-                context.getOrDefault(CONTEXT_COMPRESSION_TYPE, "lz4"));
+                decryptIfNeeded(CONTEXT_COMPRESSION_TYPE, "lz4", context));
 
         setAuthProperties(context, props);
         return props;
     }
 
     private static void setAuthProperties(Map<String, String> context, Map<String, Object> props) {
-        String securityProtocol = context.getOrDefault("copro.processor.kafka.security.protocol", "PLAINTEXT");
+        String securityProtocol = decryptIfNeeded("vulcan.copro.processor.kafka.security.protocol", "PLAINTEXT", context);
         if (!"PLAINTEXT".equalsIgnoreCase(securityProtocol)) {
             props.put(KafkaProps.SECURITY_PROTOCOL, securityProtocol);
 
-            String saslMechanism = context.getOrDefault("copro.processor.kafka.sasl.mechanism", KafkaProps.PLAIN_SASL);
+            String saslMechanism = decryptIfNeeded("vulcan.copro.processor.kafka.sasl.mechanism", KafkaProps.PLAIN_SASL, context);
             props.put(KafkaProps.SASL_MECHANISM, saslMechanism);
 
-            String username = context.getOrDefault("copro.processor.kafka.sasl.username", "");
-            String password = context.getOrDefault("copro.processor.kafka.sasl.password", "");
+            String username = decryptIfNeeded("vulcan.copro.processor.kafka.sasl.username", "", context);
+            String password = decryptIfNeeded("vulcan.copro.processor.kafka.sasl.password", "", context);
             String jaasConfig = String.format(
                     "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"%s\" password=\"%s\";",
                     username, password);
             props.put(KafkaProps.SASL_JAAS_CONFIG, jaasConfig);
 
             if (securityProtocol.equalsIgnoreCase(KafkaProps.SASL_SSL)) {
-                String sslInclude = context.getOrDefault("copro.processor.kafka.ssl.include", "");
+                String sslInclude = decryptIfNeeded("vulcan.copro.processor.kafka.ssl.include", "", context);
                 if ("certs".equalsIgnoreCase(sslInclude)) {
-                    props.put(KafkaProps.SSL_TRUSTSTORE_TYPE, context.getOrDefault("copro.processor.kafka.ssl.truststore.type", "JKS"));
-                    props.put(KafkaProps.SSL_TRUSTSTORE_LOCATION, context.get("copro.processor.kafka.ssl.truststore.location"));
-                    props.put(KafkaProps.SSL_TRUSTSTORE_PASSWORD, context.get("copro.processor.kafka.ssl.truststore.password"));
-                    props.put(KafkaProps.SSL_KEYSTORE_TYPE, context.getOrDefault("copro.processor.kafka.ssl.keystore.type", "JKS"));
-                    props.put(KafkaProps.SSL_KEYSTORE_LOCATION, context.get("copro.processor.kafka.ssl.keystore.location"));
-                    props.put(KafkaProps.SSL_KEYSTORE_PASSWORD, context.get("copro.processor.kafka.ssl.keystore.password"));
-                    props.put(KafkaProps.SSL_KEY_PASSWORD, context.get("copro.processor.kafka.ssl.key.password"));
+                    props.put(KafkaProps.SSL_TRUSTSTORE_TYPE, decryptIfNeeded("vulcan.copro.processor.kafka.ssl.truststore.type", "JKS", context));
+                    props.put(KafkaProps.SSL_TRUSTSTORE_LOCATION, decryptIfNeeded("vulcan.copro.processor.kafka.ssl.truststore.location", "", context));
+                    props.put(KafkaProps.SSL_TRUSTSTORE_PASSWORD, decryptIfNeeded("vulcan.copro.processor.kafka.ssl.truststore.password","", context));
+                    props.put(KafkaProps.SSL_KEYSTORE_TYPE, decryptIfNeeded("vulcan.copro.processor.kafka.ssl.keystore.type", "JKS", context));
+                    props.put(KafkaProps.SSL_KEYSTORE_LOCATION, decryptIfNeeded("vulcan.copro.processor.kafka.ssl.keystore.location","", context));
+                    props.put(KafkaProps.SSL_KEYSTORE_PASSWORD, decryptIfNeeded("vulcan.copro.processor.kafka.ssl.keystore.password","", context));
+                    props.put(KafkaProps.SSL_KEY_PASSWORD, decryptIfNeeded("vulcan.copro.processor.kafka.ssl.key.password","", context));
                     props.put(KafkaProps.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM,
-                            context.getOrDefault("copro.processor.kafka.ssl.endpoint.identification.algorithm", ""));
+                            decryptIfNeeded("vulcan.copro.processor.kafka.ssl.endpoint.identification.algorithm", "", context));
                 }
             }
         }
+    }
+
+    private static String decryptIfNeeded(String value, String defaultVal, Map<String, String> context) {
+        return ConfigEncryptionUtils.fromEnv().decryptProperty(context.getOrDefault(value, defaultVal));
     }
 }

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.core.encryption.SecurityEngine;
 import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.core.utils.DatabaseUtility;
+import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.AgenticPaperFilterAction;
 import in.handyman.raven.lib.RadonKvpAction;
@@ -91,7 +92,7 @@ public final class CoproAsyncResultWriter {
      * Write a CHECKBOX_EXTRACTION result to the output table.
      */
     public static void writeCheckboxExtractionResult(CoproAsyncContext ctx, JsonNode result,
-                                                      String outputTable, Jdbi jdbi) {
+                                                      String outputTable, Map<String, String> savedContext, Jdbi jdbi) {
         if (result == null || result.isNull()) {
             logger.warn("CHECKBOX_EXTRACTION result null for batchId={} originId={}", ctx.getBatchId(), ctx.getOriginId());
             return;
@@ -99,14 +100,17 @@ public final class CoproAsyncResultWriter {
 
         RadonKvpContext radonCtx = buildRadonKvpContext(ctx);
 
+        InticsIntegrity encryption = buildEncryption(savedContext);
+        boolean encryptItemWise = "true".equals(savedContext.get("pipeline.end.to.end.encryption"));
+
         try {
             String rawResponse = objectMapper.writeValueAsString(result);
             List<RadonQueryOutputTable> outputs = CoproResponseParser.parseRadonKvpResponse(
-                    rawResponse, radonCtx, null, false, objectMapper);
+                    rawResponse, radonCtx, encryption, encryptItemWise, objectMapper);
             insertRadonRows(outputs, outputTable, jdbi);
         } catch (Exception e) {
             logger.error("Failed to write CHECKBOX_EXTRACTION for batchId={} originId={}", ctx.getBatchId(), ctx.getOriginId(), e);
-            throw new RuntimeException("CHECKBOX_EXTRACTION write failed", e);
+            throw new HandymanException("CHECKBOX_EXTRACTION write failed", e);
         }
     }
 

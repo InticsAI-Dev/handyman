@@ -87,7 +87,7 @@ public class AgenticPaperFilterAction implements IActionExecution {
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
             log.info(aMarker, "Agentic Paper Filter Action for {} has been started", agenticPaperFilter.getName());
 
-            String asyncMode = action.getContext().getOrDefault("copro.processor.consumer.route.type", "");
+            String asyncMode = action.getContext().getOrDefault("vulcan.copro.processor.consumer.route.type", "");
             log.info(aMarker, "Consumer route type from context is {}", asyncMode);
             if ("KAFKA_ASYNC".equalsIgnoreCase(asyncMode)) {
                 log.info(aMarker, "Agentic Paper Filter running in KAFKA_ASYNC mode");

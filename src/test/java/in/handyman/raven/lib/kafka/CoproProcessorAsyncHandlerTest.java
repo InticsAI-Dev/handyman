@@ -1,7 +1,12 @@
 package in.handyman.raven.lib.kafka;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.ListTopicsOptions;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Header;
@@ -15,9 +20,12 @@ import org.slf4j.LoggerFactory;
 
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
@@ -282,6 +290,24 @@ class CoproProcessorAsyncHandlerTest {
         @Override
         public String buildJsonForKafka(TestEntity item) {
             return "{\"originId\":\"" + (item.getOriginId() != null ? item.getOriginId() : "") + "\"}";
+        }
+    }
+
+    @Test
+    void testKafkaConnectivityWithDecryption() throws JsonProcessingException {
+
+        String contextStr = "";
+        Map<String, String> context = new ObjectMapper().readValue(contextStr, new TypeReference<>() {
+        });
+        context.put("vulcan.copro.processor.kafka.ssl.include", "certs");
+
+        final Map<String, Object> kafkaProducerProps = handler.buildAsyncKafkaProps(context);
+
+        try (AdminClient adminClient = AdminClient.create(kafkaProducerProps)) {
+            var topics = adminClient.listTopics(new ListTopicsOptions().timeoutMs(10000)).names().get(15, TimeUnit.SECONDS);
+            logger.info("Success! Reachable topics: {}", topics);
+        } catch (Exception e) {
+            logger.error("FATAL: SSL Handshake or Connection failed. Check logs above for Diagnostic details.", e);
         }
     }
 }

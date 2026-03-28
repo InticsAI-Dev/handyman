@@ -12,6 +12,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.sql.Timestamp;
+import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -110,7 +111,7 @@ class CoproAsyncResultWriterTest {
     void writeCheckboxExtraction_NullResult_ReturnsEarly() {
         CoproAsyncContext ctx = buildDefaultContext();
 
-        CoproAsyncResultWriter.writeCheckboxExtractionResult(ctx, null, "table", jdbi);
+        CoproAsyncResultWriter.writeCheckboxExtractionResult(ctx, null, "table", new HashMap<>(), jdbi);
 
         verifyNoInteractions(jdbi);
     }
@@ -126,7 +127,7 @@ class CoproAsyncResultWriterTest {
             return null;
         }).when(jdbi).useTransaction(any());
 
-        CoproAsyncResultWriter.writeCheckboxExtractionResult(ctx, result, "output_table", jdbi);
+        CoproAsyncResultWriter.writeCheckboxExtractionResult(ctx, result, "output_table", new HashMap<>(), jdbi);
 
         verify(jdbi).useTransaction(any());
     }

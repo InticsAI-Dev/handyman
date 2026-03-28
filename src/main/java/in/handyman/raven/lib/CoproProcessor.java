@@ -172,7 +172,7 @@ public class CoproProcessor<I, O extends CoproProcessor.Entity> {
 
     public void startConsumer(final String insertSql, final Integer consumerCount, final Integer writeBatchSize,
                               final ConsumerProcess<I, O> callable) {
-        String route = actionExecutionAudit.getContext().getOrDefault("copro.processor.consumer.route.type", "LEGACY");
+        String route = actionExecutionAudit.getContext().getOrDefault("vulcan.copro.processor.consumer.route.type", "LEGACY");
         if ("KAFKA_ASYNC".equalsIgnoreCase(route)) {
             if (callable.supportsKafkaAsync()) {
                 new CoproProcessorAsyncHandler<I, O>(queue, stoppingSeed, actionExecutionAudit, jdbiResourceName, logger).startKafkaAsyncPublisher(callable);
