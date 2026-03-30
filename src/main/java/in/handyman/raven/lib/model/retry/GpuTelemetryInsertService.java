@@ -141,7 +141,6 @@ public class GpuTelemetryInsertService {
     private static boolean isSuccessMessage(String message) {
         boolean isCoproSuccess = message != null && message.contains("200");
         if (!isCoproSuccess) {
-            // Keep the log at an info level since this is a normal control-flow skip (not an error).
             log.info("Skipping GPU telemetry insert: retry audit message does not contain success code 200. message={}", message);
         }
         return isCoproSuccess;
