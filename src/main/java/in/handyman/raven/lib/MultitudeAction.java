@@ -49,7 +49,7 @@ public class MultitudeAction implements IActionExecution {
                 .ifPresent(actionContexts -> {
 
                     final boolean isParallel = Optional.ofNullable(multitude.getOn()).filter(s -> Objects.equals("PARALLEL", s)).isPresent();
-                    final int threadCount = Optional.ofNullable(multitude.getWriteThreadCount()).map(Integer::parseInt).orElse(0);
+                    final int threadCount = Optional.ofNullable(multitude.getWriteThreadCount()).map(Integer::parseInt).orElse(1);
                     log.info(aMarker, "Multitude has been initialized in a {} mode with thread count of {} and countdown ", isParallel, threadCount);
                     final Set<ActionCallable> collect = actionContexts.stream().map(actionContext -> {
                         var vAction = ActionExecutionAudit.builder()
@@ -69,6 +69,9 @@ public class MultitudeAction implements IActionExecution {
                             if (actionExecutionAudit.getContext().getOrDefault("copro.processor.thread.creator", "WORK_STEALING").equalsIgnoreCase("VIRTUAL_THREAD")) {
                                 executor = Executors.newVirtualThreadPerTaskExecutor();
                                 log.info("Multitude processor created with Virtual Thread Per Task Executor");
+                            } else if (actionExecutionAudit.getContext().getOrDefault("copro.processor.thread.creator", "WORK_STEALING").equalsIgnoreCase("FIXED_THREAD")) {
+                                executor = Executors.newFixedThreadPool(threadCount);
+                                log.info("Copro processor created with fixed thread pool of size {}", threadCount);
                             } else {
                                 executor = Executors.newWorkStealingPool();
                                 log.info("Multitude processor created with work stealing pool");

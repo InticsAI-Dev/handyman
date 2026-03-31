@@ -3,6 +3,7 @@ package in.handyman.raven.lib.adapters.selections;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.lib.adapters.selections.models.AggregationEvaluatorInputModel;
+import in.handyman.raven.lib.adapters.selections.models.SelectionFilteringInputTable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -427,5 +428,83 @@ class LabelWithPriorityProcessorTest {
 //        r.setPaperNo(1);
 //        return r;
 //    }
+
+    @Test
+    void testHandlePriorityBasedSelection_instanceTieBreaker() throws Exception {
+
+        ObjectMapper mapper = new ObjectMapper();
+        Logger logger = Mockito.mock(Logger.class);
+
+        LabelWithPriorityProcessor processor =
+                new LabelWithPriorityProcessor(mapper, logger);
+
+        // Prepare rows
+        SelectionFilteringInputTable row1 = new SelectionFilteringInputTable();
+        row1.setId(1L);
+        row1.setOriginId("1");
+        row1.setSorItemName("member");
+        row1.setSorItemLabel("A");
+        row1.setAnswer("value");
+        row1.setPaperNo(1L);
+        row1.setSorContainerInstance("MEMBER_DETAILS_2");
+        row1.setWhitelistedLabelsWithPriority("[{\"whitelistKey\":\"A\",\"labelPriority\":1}]");
+
+        SelectionFilteringInputTable row2 = new SelectionFilteringInputTable();
+        row2.setId(2L);
+        row2.setOriginId("1");
+        row2.setSorItemName("member");
+        row2.setSorItemLabel("A");
+        row2.setAnswer("value");
+        row2.setPaperNo(1L);
+        row2.setSorContainerInstance("MEMBER_DETAILS_0");
+        row2.setWhitelistedLabelsWithPriority("[{\"whitelistKey\":\"A\",\"labelPriority\":1}]");
+
+        SelectionFilteringInputTable row3 = new SelectionFilteringInputTable();
+        row3.setId(3L);
+        row3.setOriginId("1");
+        row3.setSorItemName("member");
+        row3.setSorItemLabel("A");
+        row3.setAnswer("value");
+        row3.setPaperNo(1L);
+        row3.setSorContainerInstance("MEMBER_DETAILS_1");
+        row3.setWhitelistedLabelsWithPriority("[{\"whitelistKey\":\"A\",\"labelPriority\":1}]");
+
+        List<SelectionFilteringInputTable> rows = Arrays.asList(row1, row2, row3);
+
+        // Prepare priority map manually
+        Map<String, Integer> priorityMap = new HashMap<>();
+        priorityMap.put("a", 1); // normalized label
+
+        // Assign priority before calling method (important!)
+        java.lang.reflect.Method assignMethod =
+                LabelWithPriorityProcessor.class.getDeclaredMethod(
+                        "assignPriorities", List.class, Map.class);
+        assignMethod.setAccessible(true);
+        assignMethod.invoke(processor, rows, priorityMap);
+
+        // Access private method
+        java.lang.reflect.Method method =
+                LabelWithPriorityProcessor.class.getDeclaredMethod(
+                        "handlePriorityBasedSelection", List.class, Map.class, List.class);
+        method.setAccessible(true);
+
+        List<String> messages = new ArrayList<>();
+
+        SelectionFilteringInputTable winner =
+                (SelectionFilteringInputTable) method.invoke(processor, rows, priorityMap, messages);
+
+        assertNotNull(winner);
+        assertEquals("MEMBER_DETAILS_0", winner.getSorContainerInstance());
+
+        System.out.println("Winner Instance is "+winner.getSorContainerInstance());
+
+        for (SelectionFilteringInputTable row : rows) {
+            if (row.getSorContainerInstance().equals("MEMBER_DETAILS_0")) {
+                assertTrue(row.getLabelMatching());
+            } else {
+                assertFalse(row.getLabelMatching());
+            }
+        }
+    }
 }
 
