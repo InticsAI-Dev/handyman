@@ -275,8 +275,10 @@ public class LabelWithPriorityProcessor {
                 originId, sorItemName);
 
         SelectionFilteringInputTable winner = rows.stream()
-                .min(Comparator.comparingLong(SelectionFilteringInputTable::getPaperNo)
-                        .thenComparingLong(SelectionFilteringInputTable::getId))
+                .min(Comparator
+                        .comparingLong(SelectionFilteringInputTable::getPaperNo)
+                        .thenComparingInt(r -> extractInstanceIndex(r.getSorContainerInstance()))
+                )
                 .orElseThrow();
 
         logger.info("[originId: {}, sorItemName: {}, paperNo: {}] Winner selected - id: {}",
@@ -286,7 +288,7 @@ public class LabelWithPriorityProcessor {
             r.setLabelMatching(r == winner);
             r.setLabelPriorityIdx("N/A");
             r.setLabelMatchMessage(appendMsg(r,
-                    r == winner ? "No label priority → selected min paperNo/id"
+                    r == winner ? "No label priority → selected min paperNo/Instance"
                             : "No label priority → not selected"));
         });
 
@@ -424,7 +426,16 @@ public class LabelWithPriorityProcessor {
                         .min(Comparator
                                 .comparingLong(SelectionFilteringInputTable::getPaperNo)
                                 .thenComparing((SelectionFilteringInputTable r) -> !hasNonEmptyAnswer(r))
-                                .thenComparingLong(SelectionFilteringInputTable::getId)
+                                .thenComparing((r1, r2) -> {
+                                    // Only apply instance comparison when paperNo is SAME
+                                    if (Objects.equals(r1.getPaperNo(), r2.getPaperNo())) {
+                                        return Integer.compare(
+                                                extractInstanceIndex(r1.getSorContainerInstance()),
+                                                extractInstanceIndex(r2.getSorContainerInstance())
+                                        );
+                                    }
+                                    return 0;
+                                })
                         )
                         .orElseThrow();
 
@@ -438,19 +449,32 @@ public class LabelWithPriorityProcessor {
 
                 if (samePageCount > 1) {
                     winner.setLabelMatchMessage(
-                            appendMsg(winner, "Same label on page " + winnerPageNo +
-                                    " → selected with answer/min id=" + winner.getId())
+                            appendMsg(winner,
+                                    "Same label on page " + winnerPageNo +
+                                            " → selected with answer/min instance=" + winner.getSorContainerInstance()
+                            )
                     );
                 } else {
                     winner.setLabelMatchMessage(
-                            appendMsg(winner, "Same labels → selected min paperNo=" + winner.getPaperNo())
+                            appendMsg(winner,
+                                    "Same labels → selected min paperNo/instance=" + winner.getSorContainerInstance()
+                            )
                     );
                 }
             } else {
                 winner = topPriorityRows.stream()
                         .min(Comparator
                                 .comparing((SelectionFilteringInputTable r) -> !hasNonEmptyAnswer(r))
-                                .thenComparingLong(SelectionFilteringInputTable::getId)
+                                .thenComparing((r1, r2) -> {
+                                    // Apply instance comparison ONLY when paperNo is same
+                                    if (Objects.equals(r1.getPaperNo(), r2.getPaperNo())) {
+                                        return Integer.compare(
+                                                extractInstanceIndex(r1.getSorContainerInstance()),
+                                                extractInstanceIndex(r2.getSorContainerInstance())
+                                        );
+                                    }
+                                    return 0;
+                                })
                         )
                         .orElseThrow();
 
@@ -470,11 +494,11 @@ public class LabelWithPriorityProcessor {
                     );
                 } else if (allEqualAnswers) {
                     winner.setLabelMatchMessage(
-                            appendMsg(winner, "Equal answers → selected min id")
+                            appendMsg(winner, "Equal answers → selected min instance")
                     );
                 } else {
                     winner.setLabelMatchMessage(
-                            appendMsg(winner, "Selected min id (no answers present)")
+                            appendMsg(winner, "Selected min instance (no answers present)")
                     );
                 }
             }
@@ -488,7 +512,7 @@ public class LabelWithPriorityProcessor {
                         appendMsg(r, "Rejected: " +
                                 (hasNonEmptyAnswer(winner) && !hasNonEmptyAnswer(r)
                                         ? "winner has answer"
-                                        : "lower paperNo/id chosen"))
+                                        : "lower paperNo/Instance chosen"))
                 );
             }
         }
@@ -598,5 +622,16 @@ public class LabelWithPriorityProcessor {
         String existing = row.getLabelMatchMessage();
         if (existing == null || existing.isBlank()) return msgWithPriority;
         return existing + " | " + msgWithPriority;
+    }
+
+    private int extractInstanceIndex(String instance) {
+        if (instance == null || instance.isBlank()) return Integer.MAX_VALUE;
+        try {
+            int idx = instance.lastIndexOf("_");
+            if (idx != -1 && idx + 1 < instance.length()) {
+                return Integer.parseInt(instance.substring(idx + 1));
+            }
+        } catch (Exception ignored) {}
+        return Integer.MAX_VALUE;
     }
 }
