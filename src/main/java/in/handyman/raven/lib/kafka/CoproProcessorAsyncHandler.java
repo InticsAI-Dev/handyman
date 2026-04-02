@@ -19,6 +19,7 @@ import org.slf4j.Logger;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
@@ -276,7 +277,14 @@ public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
 
         jdbi.useTransaction(handle -> {
             for (I item : failedItems) {
-                updateDlqStatusForFailedItems(batchId, requestType, handle, item);
+                try {
+                    handle.savepoint("dlq_item");
+                    updateDlqStatusForFailedItems(batchId, requestType, handle, item);
+                    handle.releaseSavepoint("dlq_item");
+                } catch (Exception e) {
+                    handle.rollbackToSavepoint("dlq_item");
+                    logger.warn("Could not mark item as DLQ for batch={} type={}: {}", batchId, requestType, e.getMessage());
+                }
             }
 
             handle.execute(
@@ -289,26 +297,22 @@ public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
     }
 
     private void updateDlqStatusForFailedItems(String batchId, String requestType, Handle handle, I item) {
-        try {
-            Map<?, ?> fields = SHARED_MAPPER.convertValue(item, Map.class);
-            Object originIdObj = fields.get("origin_id");
-            if (originIdObj == null) {
-                originIdObj = fields.get("originId");
-            }
-            String originId = String.valueOf(originIdObj != null ? originIdObj : "");
-
-            Object pageNoObj = fields.get("page_no");
-            if (pageNoObj == null) {
-                pageNoObj = fields.get("pageNo");
-            }
-            String pageNo = String.valueOf(pageNoObj != null ? pageNoObj : "1");
-            handle.execute(
-                    "UPDATE kafka_audit.inference_queue_items SET status='DLQ', updated_at=NOW() " +
-                            "WHERE batch_id=? AND origin_id=? AND page_no=? AND request_type=?",
-                    batchId, originId, pageNo, requestType);
-        } catch (Exception e) {
-            logger.warn("Could not mark item as DLQ for batch={} type={}: {}", batchId, requestType, e.getMessage());
+        Map<?, ?> fields = SHARED_MAPPER.convertValue(item, Map.class);
+        Object originIdObj = fields.get("origin_id");
+        if (originIdObj == null) {
+            originIdObj = fields.get("originId");
         }
+        String originId = String.valueOf(originIdObj != null ? originIdObj : "");
+
+        Object pageNoObj = fields.get("page_no");
+        if (pageNoObj == null) {
+            pageNoObj = fields.get("pageNo");
+        }
+        String pageNo = String.valueOf(pageNoObj != null ? pageNoObj : "1");
+        handle.execute(
+                "UPDATE kafka_audit.inference_queue_items SET status='DLQ', updated_at=NOW() " +
+                        "WHERE batch_id=? AND origin_id=? AND page_no=? AND request_type=?",
+                batchId, originId, pageNo, requestType);
     }
 
     protected void persistAsyncWaitState(String batchId, String requestType, int publishedCount, Map<String, String> context) {
@@ -318,9 +322,11 @@ public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
                     batchId, requestType);
         }
 
+        Map<String, String> slimContext = stripBulkKeys(context);
+
         String contextJson;
         try {
-            contextJson = SHARED_MAPPER.writeValueAsString(context);
+            contextJson = SHARED_MAPPER.writeValueAsString(slimContext);
         } catch (Exception exception) {
             logger.error("KAFKA_ASYNC: failed to serialize context to JSON for batch={} type={}. Context will be empty in pipeline_wait_state.", batchId, requestType, exception);
             throw new HandymanException("Failed to serialize context to JSON for pipeline_wait_state", exception, actionExecutionAudit);
@@ -334,6 +340,20 @@ public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
                         "VALUES (?, ?, ?, ?, ?, ?::jsonb) " +
                         "ON CONFLICT (root_pipeline_id, batch_id, request_type) DO NOTHING",
                 actionExecutionAudit.getRootPipelineId(), batchId, requestType, nextScript, publishedCount, contextFinal));
+    }
+
+    private static Map<String, String> stripBulkKeys(Map<String, String> context) {
+        Map<String, String> slim = new LinkedHashMap<>();
+        for (Map.Entry<String, String> entry : context.entrySet()) {
+            String key = entry.getKey();
+            String value = entry.getValue();
+
+            if (key.endsWith("_base64")) continue;
+            if (key.contains("_context_payload")) continue;
+
+            slim.put(key, value);
+        }
+        return slim;
     }
 
     protected Map<String, Object> buildAsyncKafkaProps(Map<String, String> context) {
