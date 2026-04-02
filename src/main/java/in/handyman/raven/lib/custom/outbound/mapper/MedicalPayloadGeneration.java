@@ -10,8 +10,8 @@ import org.slf4j.Logger;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.Comparator;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -58,16 +58,15 @@ public class MedicalPayloadGeneration {
     private static final String TOTAL_SERVICE_DAYS_SOR_ITEM_NAME = "total_service_days";
     private static final String SERVICE_QUANTITY_VISITS_SOR_ITEM_NAME = "service_quantity_visits";
     private static final String SERVICE_QUANTITY_UNIT_SOR_ITEM_NAME = "service_quantity_units";
-
-    // Newborn information
     private static final String MULTIPLE_MEMBER_SOR_ITEM_NAME = "multiple_member_indicator";
     private static final String NEWBORN_REQUEST_SOR_ITEM_NAME = "newborn_request";
     private static final String NEWBORN_LAST_NAME_SOR_ITEM_NAME = "newborn_last_name";
     private static final String NEWBORN_FIRST_NAME_SOR_ITEM_NAME = "newborn_first_name";
     private static final String NEWBORN_DATE_OF_BIRTH_SOR_ITEM_NAME = "newborn_date_of_birth";
     private static final String NEWBORN_GENDER_SOR_ITEM_NAME = "newborn_gender";
+    private static final String FAX_REPORT_SOR_ITEM_NAME = "fax_report";
+    private static final String CLINICAL_PRESENT_PROP_VALUE = "CLINICAL_PRESENT";
 
-    // Provider suffixes
     private static final String FIRST_NAME_SUFFIX = "_first_name";
     private static final String LAST_NAME_SUFFIX = "_last_name";
     private static final String ADDRESS_LINE1_SUFFIX = "_address_line1";
@@ -81,37 +80,73 @@ public class MedicalPayloadGeneration {
             List<PredictionDTO> predictions,
             Map<String, String> configMap,
             String metadataContextString
-            ) throws JsonProcessingException {
+    ) throws JsonProcessingException {
 
         MetadataContext metadataContext = mapper.readValue(metadataContextString, MetadataContext.class);
 
         log.info("Building complete medical outbound response");
 
-        // Build metadata
         OutboundJsonMetaData metadata = buildMetadata(metadataContext, configMap);
 
-        // Build medical payload
         MedicalPayload payload = buildMedicalPayload(predictions, configMap);
 
+        String uploadStatus = metadataContext.getUploadStatus();
+        String mappedStatus = "SUCCESS";
+        if (uploadStatus != null) {
+            String statusUpper = uploadStatus.toUpperCase();
+            if (statusUpper.contains("FAIL") || statusUpper.contains("ERROR") ||
+                    statusUpper.contains("REJECT") || statusUpper.contains("INVALID")) {
+                mappedStatus = "FAILURE";
+            } else if (statusUpper.equals("SUCCESS") || statusUpper.equals("COMPLETED") ||
+                    statusUpper.equals("COMPLETE") || statusUpper.equals("SUCCEEDED")) {
+                mappedStatus = "SUCCESS";
+            }
+        }
 
-        MedicalOutboundResponse response = MedicalOutboundResponse.builder()
+        MedicalOutboundResponse.MedicalOutboundResponseBuilder responseBuilder = MedicalOutboundResponse.builder()
                 .requestTxnId(metadataContext.getRequestTxnId())
-                .status(metadataContext.getUploadStatus())
-                .errorMessage(metadataContext.getErrorMessage())
-                .errorMessageDetail(metadataContext.getErrorMessageDetail())
-                .errorCd(metadataContext.getErrorCode())
+                .status(mappedStatus)
                 .documentId(metadataContext.getDocumentId())
                 .inboundTransactionId(metadataContext.getInboundTransactionId())
                 .metadata(metadata)
-                .aumipayload(payload)
-                .build();
-        return response;
+                .aumipayload(payload);
+
+        if (metadataContext.getErrorCode() != 200 && metadataContext.getErrorCode() != null) {
+            if (metadataContext.getErrorMessage() != null && !metadataContext.getErrorMessage().trim().isEmpty()) {
+                responseBuilder.errorMessage(metadataContext.getErrorMessage());
+            }
+            if (metadataContext.getErrorMessageDetail() != null && !metadataContext.getErrorMessageDetail().trim().isEmpty()) {
+                responseBuilder.errorMessageDetail(metadataContext.getErrorMessageDetail());
+            }
+            if (metadataContext.getErrorCode() != null) {
+                responseBuilder.errorCd(metadataContext.getErrorCode());
+            }
+        } else {
+            responseBuilder.errorMessage(null)
+                    .errorMessageDetail(null)
+                    .errorCd(null);
         }
+
+        return responseBuilder.build();
+    }
+
 
     private OutboundJsonMetaData buildMetadata(MetadataContext context, Map<String, String> configMap) {
         log.info("Building metadata section");
 
-        Integer overallConfidence = 0; // Can be calculated from predictions if needed
+        Integer overallConfidence = 0;
+        Long processingTimeMs = 0L;
+        if (context.getProcessStartTime() != null && context.getProcessEndTime() != null) {
+            try {
+                java.time.LocalDateTime startTime = java.time.LocalDateTime.parse(context.getProcessStartTime());
+                java.time.LocalDateTime endTime = java.time.LocalDateTime.parse(context.getProcessEndTime());
+                java.time.Duration duration = java.time.Duration.between(startTime, endTime);
+                processingTimeMs = duration.toMillis();
+            } catch (Exception e) {
+                log.warn("Failed to calculate processingTimeMs from timestamps: {} - {}",
+                        context.getProcessStartTime(), context.getProcessEndTime(), e);
+            }
+        }
 
         return OutboundJsonMetaData.builder()
                 .documentExtension(context.getDocumentExtension())
@@ -120,10 +155,10 @@ public class MedicalPayloadGeneration {
                 .documentType(context.getDocumentType())
                 .processStartTime(context.getProcessStartTime())
                 .processEndTime(context.getProcessEndTime())
-                .processingTimeMs(0L) // Can be calculated if needed
+                .processingTimeMs(processingTimeMs)
                 .processedAt(context.getProcessedAt())
-                .pageCount(context.getCandidatePapers().size())
-                .candidatePaper(context.getCandidatePapers())
+                .pageCount(context.getCandidatePapers() != null ? context.getCandidatePapers().size() : 0)
+                .candidatePaper(context.getCandidatePapers() != null ? context.getCandidatePapers() : Collections.emptyList())
                 .overallConfidence(overallConfidence)
                 .build();
     }
@@ -131,10 +166,6 @@ public class MedicalPayloadGeneration {
 
     private MedicalPayload buildMedicalPayload(List<PredictionDTO> predictions, Map<String, String> configMap) {
         log.info("Building medical payload from {} predictions", predictions.size());
-
-        //filter predictions having line item Type is multi_value
-
-
 
         List<PredictionDTO> singleEntityPredictions =  predictions.stream().filter(predictionDTO -> !predictionDTO.getIsMultiEntityEnabled()).collect(Collectors.toList());
 
@@ -150,7 +181,7 @@ public class MedicalPayloadGeneration {
 
 
     private void getSingleEntityMedicalPayload(List<PredictionDTO> predictions, Map<String, String> configMap, MedicalPayload.MedicalPayloadBuilder builder) {
-        // Split predictions by line_item_type
+
         Map<String, List<PredictionDTO>> predictionsByType = predictions.stream()
                 .collect(Collectors.groupingBy(
                         pred -> pred.getLineItemType() != null ? pred.getLineItemType()
@@ -162,32 +193,21 @@ public class MedicalPayloadGeneration {
         List<PredictionDTO> multiValuePredictions = predictionsByType.getOrDefault("multi_value",
                 Collections.emptyList());
 
-        // Build field map from single_value predictions
         Map<String, ExtractedField> singleValueFieldMap = buildSingleValueFieldMap(singleValuePredictions,
                 configMap);
 
-        // Get configuration values
         boolean cleanStatus = Boolean
-                .parseBoolean(configMap.getOrDefault("CUSTOM_MEDICAL_OUTBOUND_CLEANER", "false"));
-        boolean memberEnabler = Boolean
-                .parseBoolean(configMap.getOrDefault("NEWBORN_REQUEST_MEMBER_ENABLER", "false"));
+                .parseBoolean(configMap.getOrDefault("CUSTOM_MEDICAL_OUTBOUND_CLEANER", "true"));
 
-        // Build payload
+        buildMemberSection(builder, singleValueFieldMap, cleanStatus);
 
-
-        // Build member section
-        buildMemberSection(builder, singleValueFieldMap, memberEnabler, cleanStatus);
-
-        // Build authorization section
         buildAuthorizationSection(builder, singleValueFieldMap, cleanStatus);
 
-        // Build service modifiers from multi-value
         List<ServiceModifier> serviceModifiers = buildServiceModifiers(multiValuePredictions, configMap);
         if (!serviceModifiers.isEmpty()) {
             builder.service(serviceModifiers);
         }
 
-        // Build diagnosis from multi-value
         List<Diagonsis> diagnosisList = buildDiagnosisList(multiValuePredictions, singleValueFieldMap,
                 configMap,
                 cleanStatus);
@@ -195,20 +215,17 @@ public class MedicalPayloadGeneration {
             builder.diagnosis(diagnosisList);
         }
 
-        // Build providers
         List<Provider> providers = buildProvidersFromSingleValue(singleValueFieldMap, cleanStatus);
         if (!providers.isEmpty()) {
             builder.provider(providers);
         }
 
-        // Build additional properties
         List<AdditionalProperties> additionalProperties = buildAdditionalProperties(singleValueFieldMap,
                 configMap);
         if (!additionalProperties.isEmpty()) {
             builder.additionalProperties(additionalProperties);
         }
 
-        // Build member additional properties (newborn)
         List<AdditionalProperties> memberAdditionalProperties = buildMemberAdditionalProperties(
                 singleValueFieldMap);
         if (!memberAdditionalProperties.isEmpty()) {
@@ -219,7 +236,7 @@ public class MedicalPayloadGeneration {
 
 
     private void getMultiEntityMedicalPayload(List<PredictionDTO> predictions, Map<String, String> configMap, MedicalPayload.MedicalPayloadBuilder builder) {
-        // Split predictions by line_item_type
+
         Map<String, List<PredictionDTO>> predictionsByType = predictions.stream()
                 .collect(Collectors.groupingBy(
                         pred -> pred.getLineItemType() != null ? pred.getLineItemType()
@@ -233,12 +250,9 @@ public class MedicalPayloadGeneration {
         Map<String, ExtractedField> singleValueFieldMap = buildSingleValueFieldMap(singleValuePredictions,
                 configMap);
 
-        // Get configuration values
         boolean cleanStatus = Boolean
                 .parseBoolean(configMap.getOrDefault("CUSTOM_MEDICAL_OUTBOUND_CLEANER", "false"));
 
-
-        // Build providers
         List<Provider> providers = buildProvidersFromSingleValue(singleValueFieldMap, cleanStatus);
         if (!providers.isEmpty()) {
             builder.provider(providers);
@@ -289,75 +303,281 @@ public class MedicalPayloadGeneration {
                                                         Map<String, String> configMap) {
         log.info("Building service modifiers from multi-value fields");
 
-        Map<String, Map<String, ExtractedField>> groupedByInstance = groupAndExtractFields(
-                multiValuePredictions,
-                configMap);
-        List<ServiceModifier> serviceModifiers = new ArrayList<>();
+        // Build field map from all multi-value predictions
+        Map<String, ExtractedField> extractedFieldMap = new HashMap<>();
+        int confidenceMultiplier = Integer.parseInt(configMap.getOrDefault("CONFIDENCE_SCORE_MULTIPLY_VARIABLE", "100"));
+        int scaledWidth = Integer.parseInt(configMap.getOrDefault("AUMI_BBOX_SCALAR_WIDTH", "1000"));
+        int scaledHeight = Integer.parseInt(configMap.getOrDefault("AUMI_BBOX_SCALAR_HEIGHT", "1000"));
+        int roundingPrecision = Integer.parseInt(configMap.getOrDefault("FLOAT_VALUE_ROUNDING_PRECISION", "2"));
+        boolean reorderPaperNumber = Boolean.parseBoolean(configMap.getOrDefault("aumi.reorder.paper.number", "false"));
 
-        for (Map<String, ExtractedField> fieldMap : groupedByInstance.values()) {
-            ExtractedField serviceCode = fieldMap.getOrDefault(SERVICE_CODE_SOR_ITEM_NAME,
-                    getDefaultExtractedField());
-            // Filter only valid service entries if needed, or if code is mandatory
-            if ((serviceCode.getValue() == null || serviceCode.getValue().isEmpty())
-                    && !fieldMap.containsKey(SERVICE_CODE_SOR_ITEM_NAME)) {
-                // Check if any service related fields exist, if so maybe we should keep it?
-                // For now, if no service code, we might skip or use empty.
-                // Let's assume strictness: if no service code, skip.
-                if (fieldMap.isEmpty())
-                    continue;
-            }
+        for (PredictionDTO prediction : multiValuePredictions) {
+            String itemName = prediction.getSorItemName();
+            String predictedValue = prediction.getPredictedValue();
 
-            // More robust check: if it's not a service container instance (could be
-            // diagnosis), we might want to skip?
-            // Actually, we are iterating over ALL multi-value predictions.
-            // We need to differentiate Service instances from Diagnosis instances.
-            // The groupedByInstance mixes them if we don't filter.
-            // The best way is to check if the instance contains service keys.
-            if (!fieldMap.containsKey(SERVICE_CODE_SOR_ITEM_NAME)
-                    && !fieldMap.containsKey(SERVICE_MODIFIER_SOR_ITEM_NAME)
-                    && !fieldMap.containsKey(SERVICE_QUANTITY_UNIT_SOR_ITEM_NAME)
-                    && !fieldMap.containsKey(SERVICE_QUANTITY_VISITS_SOR_ITEM_NAME)) {
+            if (itemName == null || predictedValue == null) {
+                log.warn("Skipping prediction with null itemName or predictedValue: itemName={}, predictedValue={}",
+                        itemName, predictedValue);
                 continue;
             }
 
-            ExtractedField modifier = fieldMap.getOrDefault(SERVICE_MODIFIER_SOR_ITEM_NAME,
-                    getDefaultExtractedField());
-            List<ServiceModifierWrapper> modifierList = Collections.singletonList(
-                    ServiceModifierWrapper.builder().cd(modifier).build());
+            // Check if this is a multi-value item with comma-separated values
+            boolean isMultiValue = "multi_value".equals(prediction.getLineItemType());
+            boolean hasCommaSeparatedValues = predictedValue.contains(",");
 
-            List<ServiceQuantity> quantities = buildServiceQuantities(fieldMap);
+            if (isMultiValue && hasCommaSeparatedValues) {
+                // Split comma-separated values and create indexed fields
+                String[] values = predictedValue.split(",", -1);
+                for (int i = 0; i < values.length; i++) {
+                    String value = values[i].trim();
 
-            ServiceModifier serviceModifier = ServiceModifier.builder()
-                    .cd(serviceCode)
-                    .modifier(modifierList)
-                    .serviceQuantity(quantities)
-                    .build();
+                    // For service_modifier, service_quantity_units, service_quantity_visits:
+                    // If value is "*", convert to empty string (don't skip, create empty field)
+                    boolean isServiceModifierOrQuantity = itemName != null && (
+                            itemName.startsWith(SERVICE_MODIFIER_SOR_ITEM_NAME) ||
+                                    itemName.startsWith(SERVICE_QUANTITY_UNIT_SOR_ITEM_NAME) ||
+                                    itemName.startsWith(SERVICE_QUANTITY_VISITS_SOR_ITEM_NAME));
 
-            serviceModifiers.add(serviceModifier);
+                    if (isServiceModifierOrQuantity && "*".equals(value)) {
+                        value = ""; // Set to empty for placeholder values
+                    } else if (value.isEmpty() && !isServiceModifierOrQuantity) {
+                        // Skip empty values for non-service fields
+                        continue;
+                    }
+
+                    // Create field with split value (or empty for "*" placeholders)
+                    PredictionDTO splitPrediction = createSplitPrediction(prediction, value);
+                    ExtractedField field = createExtractedFieldFromPrediction(
+                            splitPrediction, confidenceMultiplier, scaledWidth, scaledHeight,
+                            roundingPrecision, reorderPaperNumber);
+
+                    // Create indexed key (e.g., service_code_1, service_code_2)
+                    String key = values.length > 1 ? itemName + "_" + (i + 1) : itemName;
+                    // Also handle container instance if present
+                    if (prediction.getSorContainerInstance() != null && !prediction.getSorContainerInstance().isEmpty()) {
+                        key = key + "_" + prediction.getSorContainerInstance();
+                    }
+                    extractedFieldMap.put(key, field);
+                }
+            } else {
+                // Single value - use as is
+                ExtractedField field = createExtractedFieldFromPrediction(
+                        prediction, confidenceMultiplier, scaledWidth, scaledHeight,
+                        roundingPrecision, reorderPaperNumber);
+                String key = itemName;
+                // Handle indexed fields (e.g., service_code_1, service_code_2)
+                if (prediction.getSorContainerInstance() != null && !prediction.getSorContainerInstance().isEmpty()) {
+                    key = key + "_" + prediction.getSorContainerInstance();
+                }
+                extractedFieldMap.put(key, field);
+            }
         }
 
-        log.info("Built {} service modifiers", serviceModifiers.size());
+        List<ServiceModifier> serviceModifiers = new ArrayList<>();
+
+        try {
+            if (extractedFieldMap == null || extractedFieldMap.isEmpty()) {
+                log.warn("Extracted field map is null or empty");
+                return serviceModifiers;
+            }
+
+            // Filter and validate service code entries
+            List<Map.Entry<String, ExtractedField>> serviceCodeEntries =
+                    extractedFieldMap.entrySet().stream()
+                            .filter(entry ->
+                                    entry.getKey().startsWith(SERVICE_CODE_SOR_ITEM_NAME) &&
+                                            entry.getValue() != null &&
+                                            entry.getValue().getValue() != null &&
+                                            entry.getValue().getValue()
+                                                    .trim()
+                                                    .replaceAll("\\s+", " ")
+                                                    .matches("^[A-Za-z0-9 ]{4,10}$")
+                            )
+                            .sorted(Comparator.comparingInt(e -> extractIndex(e.getKey())))
+                            .collect(Collectors.toList());
+
+            log.debug("Identified {} service code entries", serviceCodeEntries.size());
+
+            // Extract unit quantity fields
+            List<ExtractedField> unitQuantityFields = extractedFieldMap.entrySet().stream()
+                    .filter(e -> e.getKey().startsWith(SERVICE_QUANTITY_UNIT_SOR_ITEM_NAME))
+                    .sorted(Comparator.comparingInt(e -> extractIndex(e.getKey())))
+                    .map(Map.Entry::getValue)
+                    .filter(f -> f != null && !getValueOrEmpty(f).isEmpty())
+                    .collect(Collectors.toList());
+
+            // Extract visit quantity fields
+            List<ExtractedField> visitQuantityFields = extractedFieldMap.entrySet().stream()
+                    .filter(e -> e.getKey().startsWith(SERVICE_QUANTITY_VISITS_SOR_ITEM_NAME))
+                    .sorted(Comparator.comparingInt(e -> extractIndex(e.getKey())))
+                    .map(Map.Entry::getValue)
+                    .filter(f -> f != null && !getValueOrEmpty(f).isEmpty())
+                    .collect(Collectors.toList());
+
+            // Extract modifier code fields
+            List<ExtractedField> modifierCodeFields = extractedFieldMap.entrySet().stream()
+                    .filter(e -> e.getKey().startsWith(SERVICE_MODIFIER_SOR_ITEM_NAME))
+                    .sorted(Comparator.comparingInt(e -> extractIndex(e.getKey())))
+                    .map(Map.Entry::getValue)
+                    .filter(f -> f != null && hasValue(f.getValue()))
+                    .collect(Collectors.toList());
+
+            // Build service modifiers by matching indices
+            for (int index = 0; index < serviceCodeEntries.size(); index++) {
+                Map.Entry<String, ExtractedField> serviceCodeEntry = serviceCodeEntries.get(index);
+                String serviceCodeKey = serviceCodeEntry.getKey();
+                ExtractedField serviceCodeField = serviceCodeEntry.getValue();
+
+                if (serviceCodeField == null ||
+                        serviceCodeField.getValue() == null ||
+                        serviceCodeField.getValue().trim().isEmpty()) {
+                    log.warn("Skipping service entry={} | Reason: service_code empty", serviceCodeKey);
+                    continue;
+                }
+
+                String codeIndex = serviceCodeKey.substring(SERVICE_CODE_SOR_ITEM_NAME.length());
+
+                // Build modifiers by index
+                List<ServiceModifierWrapper> modifierList =
+                        buildServiceModifierByOrder(index, modifierCodeFields);
+
+                // Build quantities by index
+                List<ServiceQuantity> quantityList =
+                        buildServiceQuantities(index, unitQuantityFields, visitQuantityFields);
+
+                ServiceModifier serviceModifier = ServiceModifier.builder()
+                        .cd(serviceCodeField)
+                        .modifier(modifierList.isEmpty() ? null : modifierList)
+                        .serviceQuantity(quantityList.isEmpty() ? null : quantityList)
+                        .build();
+
+                serviceModifiers.add(serviceModifier);
+
+                log.debug("Generated ServiceModifier for service | index={}", codeIndex);
+            }
+
+            log.info("Service modifier generation completed | total={}", serviceModifiers.size());
+
+        } catch (Exception ex) {
+            log.error("Unexpected error while generating service modifiers", ex);
+        }
+
         return serviceModifiers;
     }
 
-    private List<ServiceQuantity> buildServiceQuantities(Map<String, ExtractedField> fieldMap) {
+    private List<ServiceQuantity> buildServiceQuantities(
+            int serviceIndex,
+            List<ExtractedField> unitFields,
+            List<ExtractedField> visitFields) {
+
         List<ServiceQuantity> quantities = new ArrayList<>();
 
-        ExtractedField unitField = fieldMap.getOrDefault(SERVICE_QUANTITY_UNIT_SOR_ITEM_NAME,
-                getDefaultExtractedField());
+        // Handle unit quantity
+        ExtractedField unitField =
+                (serviceIndex < unitFields.size())
+                        ? unitFields.get(serviceIndex)
+                        : null;
+
         quantities.add(ServiceQuantity.builder()
                 .quantityType(SimpleValueField.builder().value("Units").build())
-                .quantityUnits(unitField)
+                .quantityUnits(
+                        (unitField != null && !isInvalidPlaceholder(unitField) && hasValue(unitField.getValue()))
+                                ? unitField
+                                : getEmptyExtractedField()
+                )
                 .build());
 
-        ExtractedField visitField = fieldMap.getOrDefault(SERVICE_QUANTITY_VISITS_SOR_ITEM_NAME,
-                getDefaultExtractedField());
+        // Handle visit quantity
+        ExtractedField visitField = null;
+
+        if (!visitFields.isEmpty()) {
+            visitField = (visitFields.size() == 1)
+                    ? visitFields.get(0)
+                    : (serviceIndex < visitFields.size()
+                    ? visitFields.get(serviceIndex)
+                    : null);
+        }
+
         quantities.add(ServiceQuantity.builder()
                 .quantityType(SimpleValueField.builder().value("Visits").build())
-                .quantityUnits(visitField)
+                .quantityUnits(
+                        (visitField != null && !isInvalidPlaceholder(visitField) && hasValue(visitField.getValue()))
+                                ? visitField
+                                : getEmptyExtractedField()
+                )
                 .build());
 
+        log.debug("Service quantities generated | count={}", quantities.size());
         return quantities;
+    }
+
+    private List<ServiceModifierWrapper> buildServiceModifierByOrder(
+            int serviceIndex,
+            List<ExtractedField> modifierFields) {
+
+        ExtractedField modifier =
+                (serviceIndex < modifierFields.size())
+                        ? modifierFields.get(serviceIndex)
+                        : null;
+
+        // If modifier is null or is a placeholder "*", return empty field
+        ExtractedField modifierField = (modifier != null && !isInvalidPlaceholder(modifier) && hasValue(modifier.getValue()))
+                ? modifier
+                : getEmptyExtractedField();
+
+        return Collections.singletonList(
+                ServiceModifierWrapper.builder()
+                        .cd(modifierField)
+                        .build()
+        );
+    }
+
+    private int extractIndex(String key) {
+        String digits = key.replaceAll("\\D+", "");
+        return digits.isEmpty() ? Integer.MAX_VALUE : Integer.parseInt(digits);
+    }
+
+    private boolean isInvalidPlaceholder(ExtractedField field) {
+        if (field == null || field.getValue() == null) {
+            return true;
+        }
+        return field.getValue().trim().equals("*");
+    }
+
+    private String getValueOrEmpty(ExtractedField field) {
+        return (field != null && field.getValue() != null)
+                ? field.getValue().trim()
+                : "";
+    }
+
+    private PredictionDTO createSplitPrediction(PredictionDTO original, String splitValue) {
+
+        String value = splitValue != null ? splitValue : "";
+
+        return PredictionDTO.builder()
+                .predictionId(original.getPredictionId())
+                .originId(original.getOriginId())
+                .tenantId(original.getTenantId())
+                .groupId(original.getGroupId())
+                .batchId(original.getBatchId())
+                .rootPipelineId(original.getRootPipelineId())
+                .transactionId(original.getTransactionId())
+                .feature(original.getFeature())
+                .paperNo(original.getPaperNo())
+                .lineItemType(original.getLineItemType())
+                .sorItemName(original.getSorItemName())
+                .predictedValue(value)
+                .precision(original.getPrecision())
+                .leftPos(original.getLeftPos())
+                .rightPos(original.getRightPos())
+                .upperPos(original.getUpperPos())
+                .lowerPos(original.getLowerPos())
+                .imageWidth(original.getImageWidth())
+                .imageHeight(original.getImageHeight())
+                .isMultiEntityEnabled(original.getIsMultiEntityEnabled())
+                .sorContainerInstance(original.getSorContainerInstance())
+                .metadataJson(original.getMetadataJson())
+                .build();
     }
 
     private Map<String, Map<String, ExtractedField>> groupAndExtractFields(List<PredictionDTO> predictions,
@@ -382,10 +602,62 @@ public class MedicalPayloadGeneration {
         for (Map.Entry<String, List<PredictionDTO>> entry : byInstance.entrySet()) {
             Map<String, ExtractedField> fieldMap = new HashMap<>();
             for (PredictionDTO p : entry.getValue()) {
-                ExtractedField field = createExtractedFieldFromPrediction(
-                        p, confidenceMultiplier, scaledWidth, scaledHeight,
-                        roundingPrecision, reorderPaperNumber);
-                fieldMap.put(p.getSorItemName(), field);
+                String itemName = p.getSorItemName();
+                String predictedValue = p.getPredictedValue();
+
+                // Check if this is a multi-value item with comma-separated values
+                boolean isMultiValue = "multi_value".equals(p.getLineItemType());
+                boolean hasCommaSeparatedValues = predictedValue != null && predictedValue.contains(",");
+
+                // Check if this is a diagnosis or service field that should be split
+                boolean isDiagnosisField = itemName != null && (
+                        itemName.startsWith(DIAGNOSIS_CODE_SOR_ITEM_NAME) ||
+                                itemName.startsWith(DIAGNOSIS_DESCRIPTION_SOR_ITEM_NAME) ||
+                                itemName.startsWith(CODE_POINTER_SOR_ITEM_NAME));
+                boolean isServiceField = itemName != null && (
+                        itemName.startsWith(SERVICE_CODE_SOR_ITEM_NAME) ||
+                                itemName.startsWith(SERVICE_MODIFIER_SOR_ITEM_NAME) ||
+                                itemName.startsWith(SERVICE_QUANTITY_UNIT_SOR_ITEM_NAME) ||
+                                itemName.startsWith(SERVICE_QUANTITY_VISITS_SOR_ITEM_NAME));
+
+                if (isMultiValue && hasCommaSeparatedValues && (isDiagnosisField || isServiceField)) {
+                    // Split comma-separated values and create indexed fields
+                    String[] values = predictedValue.split(",", -1);
+                    for (int i = 0; i < values.length; i++) {
+                        String value = values[i].trim();
+                        // Skip empty values
+                        if (value.isEmpty()) {
+                            continue;
+                        }
+
+                        // For service_modifier, service_quantity_units, service_quantity_visits:
+                        // If value is "*", convert to empty string
+                        boolean isServiceModifierOrQuantity = itemName != null && (
+                                itemName.startsWith(SERVICE_MODIFIER_SOR_ITEM_NAME) ||
+                                        itemName.startsWith(SERVICE_QUANTITY_UNIT_SOR_ITEM_NAME) ||
+                                        itemName.startsWith(SERVICE_QUANTITY_VISITS_SOR_ITEM_NAME));
+
+                        if (isServiceModifierOrQuantity && "*".equals(value)) {
+                            value = ""; // Set to empty for placeholder values
+                        }
+
+                        // Create field with split value
+                        PredictionDTO splitPrediction = createSplitPrediction(p, value);
+                        ExtractedField field = createExtractedFieldFromPrediction(
+                                splitPrediction, confidenceMultiplier, scaledWidth, scaledHeight,
+                                roundingPrecision, reorderPaperNumber);
+
+                        // Create indexed key (e.g., diagnosis_code_1, diagnosis_code_2)
+                        String key = values.length > 1 ? itemName + "_" + (i + 1) : itemName;
+                        fieldMap.put(key, field);
+                    }
+                } else {
+                    // Single value - use as is
+                    ExtractedField field = createExtractedFieldFromPrediction(
+                            p, confidenceMultiplier, scaledWidth, scaledHeight,
+                            roundingPrecision, reorderPaperNumber);
+                    fieldMap.put(itemName, field);
+                }
             }
             result.put(entry.getKey(), fieldMap);
         }
@@ -397,24 +669,30 @@ public class MedicalPayloadGeneration {
                                                               int scaledWidth, int scaledHeight,
                                                               int roundingPrecision,
                                                               boolean reorderPaperNumber) {
-        int confidence = (int) (Math.round((prediction.getPrecision() * confidenceMultiplier) / 10.0) * 10);
 
-        int paperNumber = prediction.getPaperNo();
+        double precision = prediction.getPrecision() != null ? prediction.getPrecision() : 0.0;
+        int confidence = (int) (Math.round((precision * confidenceMultiplier) / 10.0) * 10);
+
+        Integer paperNo = prediction.getPaperNo();
+        int paperNumber = paperNo != null ? paperNo : 0;
         if (reorderPaperNumber && paperNumber >= 1) {
             paperNumber = paperNumber - 1;
         }
 
         double[] boundingBox = new double[] {
-                prediction.getLeftPos(),
-                prediction.getUpperPos(),
-                prediction.getRightPos(),
-                prediction.getLowerPos()
+                prediction.getLeftPos() != null ? prediction.getLeftPos() : DEFAULT_DOUBLE_VALUE,
+                prediction.getUpperPos() != null ? prediction.getUpperPos() : DEFAULT_DOUBLE_VALUE,
+                prediction.getRightPos() != null ? prediction.getRightPos() : DEFAULT_DOUBLE_VALUE,
+                prediction.getLowerPos() != null ? prediction.getLowerPos() : DEFAULT_DOUBLE_VALUE
         };
+
+        int imageWidth = prediction.getImageWidth() != null ? prediction.getImageWidth() : scaledWidth;
+        int imageHeight = prediction.getImageHeight() != null ? prediction.getImageHeight() : scaledHeight;
 
         double[] rescaledBox = rescaleBoundingBox(
                 boundingBox,
-                prediction.getImageWidth(),
-                prediction.getImageHeight(),
+                imageWidth,
+                imageHeight,
                 scaledWidth,
                 scaledHeight,
                 roundingPrecision);
@@ -456,7 +734,6 @@ public class MedicalPayloadGeneration {
 
     private void buildMemberSection(MedicalPayload.MedicalPayloadBuilder builder,
                                     Map<String, ExtractedField> fieldMap,
-                                    boolean memberEnabler,
                                     boolean cleanStatus) {
         log.info("Building member section");
 
@@ -464,65 +741,30 @@ public class MedicalPayloadGeneration {
             putIfPresent(builder::hcid, fieldMap, MEMBER_ID_SOR_ITEM_NAME);
             putIfPresent(builder::medicaidId, fieldMap, MEDICAID_ID_SOR_ITEM_NAME);
             putIfPresent(builder::groupId, fieldMap, MEMBER_GROUP_ID_SOR_ITEM_NAME);
+            putIfPresent(builder::memberFirstName, fieldMap, MEMBER_FIRST_NAME_SOR_ITEM_NAME);
+            putIfPresent(builder::memberLastName, fieldMap, MEMBER_LAST_NAME_SOR_ITEM_NAME);
+            putIfPresent(builder::memberDOB, fieldMap, MEMBER_DATE_OF_BIRTH_SOR_ITEM_NAME);
+            putIfPresent(builder::memberGender, fieldMap, MEMBER_GENDER_SOR_ITEM_NAME);
             putIfPresent(builder::memberAddressLine1, fieldMap, MEMBER_ADDRESS_LINE_1_SOR_ITEM_NAME);
             putIfPresent(builder::memberCity, fieldMap, MEMBER_CITY_SOR_ITEM_NAME);
-            putIfPresent(builder::memberZipCode, fieldMap, MEMBER_ZIPCODE_SOR_ITEM_NAME);
             putIfPresent(builder::memberState, fieldMap, MEMBER_STATE_SOR_ITEM_NAME);
-
-            if (memberEnabler) {
-                String newbornRequest = getFieldValue(fieldMap, NEWBORN_REQUEST_SOR_ITEM_NAME);
-                if (!"Y".equals(newbornRequest)) {
-                    buildMemberDetailsIfPresent(builder, fieldMap);
-                }
-            } else {
-                buildMemberDetailsIfPresent(builder, fieldMap);
-            }
-        } else {
+            putIfPresent(builder::memberZipCode, fieldMap, MEMBER_ZIPCODE_SOR_ITEM_NAME);
+        }
+        else{
             builder.hcid(fieldMap.getOrDefault(MEMBER_ID_SOR_ITEM_NAME, getDefaultExtractedField()))
-                    .medicaidId(fieldMap.getOrDefault(MEDICAID_ID_SOR_ITEM_NAME,
-                            getDefaultExtractedField()))
-                    .groupId(fieldMap.getOrDefault(MEMBER_GROUP_ID_SOR_ITEM_NAME,
-                            getDefaultExtractedField()))
-                    .memberAddressLine1(
-                            fieldMap.getOrDefault(MEMBER_ADDRESS_LINE_1_SOR_ITEM_NAME,
-                                    getDefaultExtractedField()))
-                    .memberCity(fieldMap.getOrDefault(MEMBER_CITY_SOR_ITEM_NAME,
-                            getDefaultExtractedField()))
-                    .memberZipCode(fieldMap.getOrDefault(MEMBER_ZIPCODE_SOR_ITEM_NAME,
-                            getDefaultExtractedField()))
-                    .memberState(fieldMap.getOrDefault(MEMBER_STATE_SOR_ITEM_NAME,
-                            getDefaultExtractedField()));
-
-            if (memberEnabler) {
-                String newbornRequest = getFieldValue(fieldMap, NEWBORN_REQUEST_SOR_ITEM_NAME);
-                if (!"Y".equals(newbornRequest)) {
-                    buildMemberDetails(builder, fieldMap);
-                }
-            } else {
-                buildMemberDetails(builder, fieldMap);
-            }
+                    .medicaidId(fieldMap.getOrDefault(MEDICAID_ID_SOR_ITEM_NAME, getDefaultExtractedField()))
+                    .groupId(fieldMap.getOrDefault(MEMBER_GROUP_ID_SOR_ITEM_NAME, getDefaultExtractedField()))
+                    .memberFirstName(fieldMap.getOrDefault(MEMBER_FIRST_NAME_SOR_ITEM_NAME, getDefaultExtractedField()))
+                    .memberLastName(fieldMap.getOrDefault(MEMBER_LAST_NAME_SOR_ITEM_NAME, getDefaultExtractedField()))
+                    .memberDOB(fieldMap.getOrDefault(MEMBER_DATE_OF_BIRTH_SOR_ITEM_NAME, getDefaultExtractedField()))
+                    .memberGender(fieldMap.getOrDefault(MEMBER_GENDER_SOR_ITEM_NAME, getDefaultExtractedField()))
+                    .memberAddressLine1(fieldMap.getOrDefault(MEMBER_ADDRESS_LINE_1_SOR_ITEM_NAME, getDefaultExtractedField()))
+                    .memberCity(fieldMap.getOrDefault(MEMBER_CITY_SOR_ITEM_NAME, getDefaultExtractedField()))
+                    .memberState(fieldMap.getOrDefault(MEMBER_STATE_SOR_ITEM_NAME, getDefaultExtractedField()))
+                    .memberZipCode(fieldMap.getOrDefault(MEMBER_ZIPCODE_SOR_ITEM_NAME, getDefaultExtractedField()));
         }
     }
 
-    private void buildMemberDetailsIfPresent(MedicalPayload.MedicalPayloadBuilder builder,
-                                             Map<String, ExtractedField> fieldMap) {
-        putIfPresent(builder::memberLastName, fieldMap, MEMBER_LAST_NAME_SOR_ITEM_NAME);
-        putIfPresent(builder::memberFirstName, fieldMap, MEMBER_FIRST_NAME_SOR_ITEM_NAME);
-        putIfPresent(builder::memberDOB, fieldMap, MEMBER_DATE_OF_BIRTH_SOR_ITEM_NAME);
-        putIfPresent(builder::memberGender, fieldMap, MEMBER_GENDER_SOR_ITEM_NAME);
-    }
-
-    private void buildMemberDetails(MedicalPayload.MedicalPayloadBuilder builder,
-                                    Map<String, ExtractedField> fieldMap) {
-        builder.memberLastName(
-                        fieldMap.getOrDefault(MEMBER_LAST_NAME_SOR_ITEM_NAME, getDefaultExtractedField()))
-                .memberFirstName(fieldMap.getOrDefault(MEMBER_FIRST_NAME_SOR_ITEM_NAME,
-                        getDefaultExtractedField()))
-                .memberDOB(fieldMap.getOrDefault(MEMBER_DATE_OF_BIRTH_SOR_ITEM_NAME,
-                        getDefaultExtractedField()))
-                .memberGender(fieldMap.getOrDefault(MEMBER_GENDER_SOR_ITEM_NAME,
-                        getDefaultExtractedField()));
-    }
 
     private void buildAuthorizationSection(MedicalPayload.MedicalPayloadBuilder builder,
                                            Map<String, ExtractedField> fieldMap,
@@ -534,32 +776,23 @@ public class MedicalPayloadGeneration {
             putIfPresent(builder::levelOfService, fieldMap, LEVEL_OF_SERVICE_SOR_ITEM_NAME);
             putIfPresent(builder::serviceFromDate, fieldMap, SERVICE_FROM_DATE_SOR_ITEM_NAME);
             putIfPresent(builder::serviceToDate, fieldMap, SERVICE_TO_DATE_SOR_ITEM_NAME);
-            putIfPresent(builder::notificationType, fieldMap, NOTIFICATION_TYPE_SOR_ITEM_NAME);
             putIfPresent(builder::authAdmitDate, fieldMap, AUTH_ADMIT_DATE_SOR_ITEM_NAME);
             putIfPresent(builder::authDischargeDate, fieldMap, AUTH_DISCHARGE_DATE_SOR_ITEM_NAME);
             putIfPresent(builder::faxReceivedDate, fieldMap, FAX_RECEIVED_DATE_SOR_ITEM_NAME);
             putIfPresent(builder::totalServiceDays, fieldMap, TOTAL_SERVICE_DAYS_SOR_ITEM_NAME);
+            putIfPresent(builder::notificationType, fieldMap, NOTIFICATION_TYPE_SOR_ITEM_NAME);
+
         } else {
             builder.authId(fieldMap.getOrDefault(AUTH_ID_SOR_ITEM_NAME, getDefaultExtractedField()))
-                    .levelOfService(fieldMap.getOrDefault(LEVEL_OF_SERVICE_SOR_ITEM_NAME,
-                            getDefaultExtractedField()))
-                    .serviceFromDate(fieldMap.getOrDefault(SERVICE_FROM_DATE_SOR_ITEM_NAME,
-                            getDefaultExtractedField()))
-                    .serviceToDate(fieldMap.getOrDefault(SERVICE_TO_DATE_SOR_ITEM_NAME,
-                            getDefaultExtractedField()))
-                    .notificationType(
-                            fieldMap.getOrDefault(NOTIFICATION_TYPE_SOR_ITEM_NAME,
-                                    getDefaultExtractedField()))
-                    .authAdmitDate(fieldMap.getOrDefault(AUTH_ADMIT_DATE_SOR_ITEM_NAME,
-                            getDefaultExtractedField()))
-                    .authDischargeDate(
-                            fieldMap.getOrDefault(AUTH_DISCHARGE_DATE_SOR_ITEM_NAME,
-                                    getDefaultExtractedField()))
-                    .faxReceivedDate(fieldMap.getOrDefault(FAX_RECEIVED_DATE_SOR_ITEM_NAME,
-                            getDefaultExtractedField()))
-                    .totalServiceDays(
-                            fieldMap.getOrDefault(TOTAL_SERVICE_DAYS_SOR_ITEM_NAME,
-                                    getDefaultExtractedField()));
+                    .levelOfService(fieldMap.getOrDefault(LEVEL_OF_SERVICE_SOR_ITEM_NAME, getDefaultExtractedField()))
+                    .serviceFromDate(fieldMap.getOrDefault(SERVICE_FROM_DATE_SOR_ITEM_NAME,getDefaultExtractedField()))
+                    .serviceToDate(fieldMap.getOrDefault(SERVICE_TO_DATE_SOR_ITEM_NAME, getDefaultExtractedField()))
+                    .authAdmitDate(fieldMap.getOrDefault(AUTH_ADMIT_DATE_SOR_ITEM_NAME, getDefaultExtractedField()))
+                    .authDischargeDate(fieldMap.getOrDefault(AUTH_DISCHARGE_DATE_SOR_ITEM_NAME, getDefaultExtractedField()))
+                    .faxReceivedDate(fieldMap.getOrDefault(FAX_RECEIVED_DATE_SOR_ITEM_NAME, getDefaultExtractedField()))
+                    .totalServiceDays(fieldMap.getOrDefault(TOTAL_SERVICE_DAYS_SOR_ITEM_NAME, getDefaultExtractedField()))
+                    .notificationType(fieldMap.getOrDefault(NOTIFICATION_TYPE_SOR_ITEM_NAME, getDefaultExtractedField()));
+
         }
     }
 
@@ -569,55 +802,76 @@ public class MedicalPayloadGeneration {
                                                boolean cleanStatus) {
         log.info("Building diagnosis list from multi-value fields");
 
+        Map<String, ExtractedField> fieldMap = new HashMap<>(singleValueMap);
+
         Map<String, Map<String, ExtractedField>> groupedByInstance = groupAndExtractFields(
                 multiValuePredictions,
                 configMap);
 
-        if (groupedByInstance.isEmpty() && !cleanStatus) {
-            // Fallback for single value logic if needed, though usually multi-value is
-            // expected now
-            ExtractedField desc = singleValueMap.getOrDefault(DIAGNOSIS_DESCRIPTION_SOR_ITEM_NAME,
-                    getDefaultExtractedField());
-            ExtractedField ptr = singleValueMap.getOrDefault(CODE_POINTER_SOR_ITEM_NAME,
-                    getDefaultExtractedField());
-            // Make a default entry if desired, or return empty. Original logic returned a
-            // default if not cleanStatus.
-            return Collections.singletonList(
-                    Diagonsis.builder()
-                            .cd(getDefaultExtractedField())
-                            .desc(desc)
-                            .codePointer(ptr)
-                            .build());
+        for (Map.Entry<String, Map<String, ExtractedField>> instanceEntry : groupedByInstance.entrySet()) {
+            String instanceId = instanceEntry.getKey();
+            Map<String, ExtractedField> instanceFields = instanceEntry.getValue();
+
+            for (Map.Entry<String, ExtractedField> fieldEntry : instanceFields.entrySet()) {
+                String fieldName = fieldEntry.getKey();
+                ExtractedField field = fieldEntry.getValue();
+
+                if ("1".equals(instanceId)) {
+                    if (!fieldMap.containsKey(fieldName)) {
+                        fieldMap.put(fieldName, field);
+                    }
+                } else {
+                    fieldMap.put(fieldName + "_" + instanceId, field);
+                }
+            }
         }
 
         List<Diagonsis> diagnosisList = new ArrayList<>();
 
-        for (Map<String, ExtractedField> fieldMap : groupedByInstance.values()) {
-            ExtractedField code = fieldMap.getOrDefault(DIAGNOSIS_CODE_SOR_ITEM_NAME,
-                    getDefaultExtractedField());
+        // Find all diagnosis code entries (e.g., "diagnosis_code", "diagnosis_code_1", "diagnosis_code_2", etc.)
+        List<Map.Entry<String, ExtractedField>> diagnosisCodeEntries = fieldMap.entrySet().stream()
+                .filter(entry -> entry.getKey().startsWith(DIAGNOSIS_CODE_SOR_ITEM_NAME))
+                .collect(Collectors.toList());
 
-            if (cleanStatus && (code.getValue() == null || code.getValue().isEmpty())) {
-                continue;
+        if (diagnosisCodeEntries.isEmpty()) {
+            if (!cleanStatus) {
+                log.warn("No diagnosis codes found; adding default Diagnosis");
+                Diagonsis.DiagonsisBuilder builder = Diagonsis.builder()
+                        .cd(getDefaultExtractedField())
+                        .desc(fieldMap.getOrDefault(DIAGNOSIS_DESCRIPTION_SOR_ITEM_NAME, getDefaultExtractedField()))
+                        .codePointer(fieldMap.getOrDefault(CODE_POINTER_SOR_ITEM_NAME, getDefaultExtractedField()));
+                diagnosisList.add(builder.build());
+            } else {
+                log.info("No diagnosis codes found; skipped default Diagnosis due to customMedicalOutboundCleaner");
             }
+        } else {
+            for (Map.Entry<String, ExtractedField> entry : diagnosisCodeEntries) {
+                String key = entry.getKey();
+                ExtractedField icd10CodeField = entry.getValue();
 
-            if (!fieldMap.containsKey(DIAGNOSIS_CODE_SOR_ITEM_NAME)
-                    && !fieldMap.containsKey(DIAGNOSIS_DESCRIPTION_SOR_ITEM_NAME)
-                    && !fieldMap.containsKey(CODE_POINTER_SOR_ITEM_NAME)) {
-                continue;
+                if (cleanStatus && (icd10CodeField.getValue() == null || icd10CodeField.getValue().isEmpty())) {
+                    log.info("Skipped Diagnosis for key {} due to empty code value", key);
+                    continue;
+                }
+
+                String descKey = key.replace(DIAGNOSIS_CODE_SOR_ITEM_NAME, DIAGNOSIS_DESCRIPTION_SOR_ITEM_NAME);
+                String codePointerKey = key.replace(DIAGNOSIS_CODE_SOR_ITEM_NAME, CODE_POINTER_SOR_ITEM_NAME);
+
+                ExtractedField description = fieldMap.getOrDefault(descKey,
+                        fieldMap.getOrDefault(DIAGNOSIS_DESCRIPTION_SOR_ITEM_NAME, getDefaultExtractedField()));
+
+                ExtractedField codePointer = fieldMap.getOrDefault(codePointerKey,
+                        fieldMap.getOrDefault(CODE_POINTER_SOR_ITEM_NAME, getDefaultExtractedField()));
+
+                Diagonsis.DiagonsisBuilder builder = Diagonsis.builder();
+                builder.cd(icd10CodeField)
+                        .desc(description)
+                        .codePointer(codePointer);
+
+
+                diagnosisList.add(builder.build());
+                log.info("Generated Diagnosis for key: {}", key);
             }
-
-            ExtractedField desc = fieldMap.getOrDefault(DIAGNOSIS_DESCRIPTION_SOR_ITEM_NAME,
-                    getDefaultExtractedField());
-            ExtractedField pointer = fieldMap.getOrDefault(CODE_POINTER_SOR_ITEM_NAME,
-                    getDefaultExtractedField());
-
-            Diagonsis diagnosis = Diagonsis.builder()
-                    .cd(code)
-                    .desc(desc)
-                    .codePointer(pointer)
-                    .build();
-
-            diagnosisList.add(diagnosis);
         }
 
         log.info("Built {} diagnosis entries", diagnosisList.size());
@@ -657,6 +911,12 @@ public class MedicalPayloadGeneration {
             providers.add(orderingProvider);
         }
 
+        Provider undefinedProvider = buildProviderIfPresent("Undefined Provider", "undefined_provider", fieldMap,
+                cleanStatus);
+        if (undefinedProvider != null) {
+            providers.add(undefinedProvider);
+        }
+
         log.info("Built {} providers", providers.size());
         return providers;
     }
@@ -689,26 +949,26 @@ public class MedicalPayloadGeneration {
                 return null;
             }
         } else {
-            builder.providerNPI(fieldMap.getOrDefault(prefix + "_npi", getDefaultExtractedField()))
-                    .providerTIN(fieldMap.getOrDefault(prefix + "_tin", getDefaultExtractedField()))
-                    .providerFirstName(fieldMap.getOrDefault(prefix + FIRST_NAME_SUFFIX,
-                            getDefaultExtractedField()))
-                    .providerLastName(fieldMap.getOrDefault(prefix + LAST_NAME_SUFFIX,
-                            getDefaultExtractedField()))
-                    .providerAddressLine1(
-                            fieldMap.getOrDefault(prefix + ADDRESS_LINE1_SUFFIX,
-                                    getDefaultExtractedField()))
-                    .providerAddressLine2(
-                            fieldMap.getOrDefault(prefix + ADDRESS_LINE2_SUFFIX,
-                                    getDefaultExtractedField()))
-                    .providerCity(fieldMap.getOrDefault(prefix + CITY_SUFFIX,
-                            getDefaultExtractedField()))
-                    .providerState(fieldMap.getOrDefault(prefix + STATE_SUFFIX,
-                            getDefaultExtractedField()))
-                    .providerZipCode(fieldMap.getOrDefault(prefix + ZIPCODE_SUFFIX,
-                            getDefaultExtractedField()))
-                    .providerSpeciality(fieldMap.getOrDefault(prefix + SPECIALTY_SUFFIX,
-                            getDefaultExtractedField()));
+            // Only set fields that have values, and check if provider has any dat
+            hasData |= putIfPresentProvider(builder::providerNPI, fieldMap, prefix + "_npi");
+            hasData |= putIfPresentProvider(builder::providerTIN, fieldMap, prefix + "_tin");
+            hasData |= putIfPresentProvider(builder::providerFirstName, fieldMap,
+                    prefix + FIRST_NAME_SUFFIX);
+            hasData |= putIfPresentProvider(builder::providerLastName, fieldMap, prefix + LAST_NAME_SUFFIX);
+            hasData |= putIfPresentProvider(builder::providerAddressLine1, fieldMap,
+                    prefix + ADDRESS_LINE1_SUFFIX);
+            hasData |= putIfPresentProvider(builder::providerAddressLine2, fieldMap,
+                    prefix + ADDRESS_LINE2_SUFFIX);
+            hasData |= putIfPresentProvider(builder::providerCity, fieldMap, prefix + CITY_SUFFIX);
+            hasData |= putIfPresentProvider(builder::providerState, fieldMap, prefix + STATE_SUFFIX);
+            hasData |= putIfPresentProvider(builder::providerZipCode, fieldMap, prefix + ZIPCODE_SUFFIX);
+            hasData |= putIfPresentProvider(builder::providerSpeciality, fieldMap,
+                    prefix + SPECIALTY_SUFFIX);
+
+            if (!hasData) {
+                log.debug("Skipping {} - no data present", category);
+                return null;
+            }
         }
 
         builder.providerCategory(CategoryField.builder().value(category).build());
@@ -732,39 +992,11 @@ public class MedicalPayloadGeneration {
 
         List<AdditionalProperties> properties = new ArrayList<>();
 
-        int clinicalPresentPages = Integer
-                .parseInt(configMap.getOrDefault("AUMI_CLINICAL_PRESENT_PAGE_COUNT", "5"));
-        int totalPages = 10;
-        String clinicalValue = totalPages > clinicalPresentPages ? "Y" : "N";
-
-        ExtractedField defaultField = getDefaultExtractedField();
-        properties.add(AdditionalProperties.builder()
-                .propName("CLINICAL_PRESENT")
-                .propValue(clinicalValue)
-                .page(defaultField.getPage())
-                .confidence(Double.valueOf(defaultField.getConfidence()))
-                .boundingBox(defaultField.getBoundingBox())
-                .build());
-
-        ExtractedField levelOfCare = fieldMap.get(LEVEL_OF_SERVICE_SOR_ITEM_NAME);
-        if (levelOfCare != null && levelOfCare.getValue() != null && !levelOfCare.getValue().isEmpty()) {
-            String[] values = levelOfCare.getValue().contains(",")
-                    ? levelOfCare.getValue().split(",")
-                    : new String[] { levelOfCare.getValue() };
-
-            for (String value : values) {
-                value = value.trim();
-                if (!value.isEmpty()) {
-                    properties.add(AdditionalProperties.builder()
-                            .propName("AUTH_KEYWORD")
-                            .propValue(value)
-                            .page(levelOfCare.getPage())
-                            .confidence(Double.valueOf(levelOfCare.getConfidence()))
-                            .boundingBox(levelOfCare.getBoundingBox())
-                            .build());
-                }
-            }
-        }
+        handleClinicalPresent(fieldMap, properties, configMap);
+        handleAuthAdditionalKeyword(fieldMap, properties);
+        handleResponsibleArea(fieldMap, properties);
+        handleLevelOfCare(fieldMap, properties);
+        handleFaxReport(fieldMap, properties);
 
         log.info("Built {} additional properties", properties.size());
         return properties;
@@ -775,60 +1007,26 @@ public class MedicalPayloadGeneration {
 
         List<AdditionalProperties> properties = new ArrayList<>();
 
-        ExtractedField multipleMember = fieldMap.get(MULTIPLE_MEMBER_SOR_ITEM_NAME);
-        if (multipleMember != null && multipleMember.getValue() != null
-                && !multipleMember.getValue().isEmpty()) {
-            properties.add(AdditionalProperties.builder()
-                    .propName("MULTIPLE_MEMBER")
-                    .propValue(multipleMember.getValue())
-                    .page(multipleMember.getPage())
-                    .confidence(Double.valueOf(multipleMember.getConfidence()))
-                    .boundingBox(multipleMember.getBoundingBox())
-                    .build());
-        }
-
-        ExtractedField newbornRequest = fieldMap.get(NEWBORN_REQUEST_SOR_ITEM_NAME);
-        String newbornValue = (newbornRequest != null && "Y".equalsIgnoreCase(newbornRequest.getValue())) ? "Y"
-                : "N";
-
-        ExtractedField baseField = newbornRequest != null ? newbornRequest : getDefaultExtractedField();
-        properties.add(AdditionalProperties.builder()
-                .propName("NEWBORN_REQUEST")
-                .propValue(newbornValue)
-                .page(baseField.getPage())
-                .confidence(Double.valueOf(baseField.getConfidence()))
-                .boundingBox(baseField.getBoundingBox())
-                .build());
-
-        if ("Y".equals(newbornValue)) {
-            addNewbornPropertyIfPresent(properties, "NEWBORN_FIRSTNAME",
-                    fieldMap.get(NEWBORN_FIRST_NAME_SOR_ITEM_NAME));
-            addNewbornPropertyIfPresent(properties, "NEWBORN_LASTNAME",
-                    fieldMap.get(NEWBORN_LAST_NAME_SOR_ITEM_NAME));
-            addNewbornPropertyIfPresent(properties, "NEWBORN_GENDER",
-                    fieldMap.get(NEWBORN_GENDER_SOR_ITEM_NAME));
-
-            ExtractedField newbornDOB = getNewbornDOB(
-                    fieldMap.get(NEWBORN_DATE_OF_BIRTH_SOR_ITEM_NAME),
-                    fieldMap.get(FAX_RECEIVED_DATE_SOR_ITEM_NAME),
-                    fieldMap.get(MEMBER_DATE_OF_BIRTH_SOR_ITEM_NAME));
-            addNewbornPropertyIfPresent(properties, "NEWBORN_DOB", newbornDOB);
-
-            for (AdditionalProperties prop : properties) {
-                if ("MULTIPLE_MEMBER".equals(prop.getPropName())) {
-                    prop.setPropValue("N");
-                    log.info("Overriding MULTIPLE_MEMBER to N due to NEWBORN_REQUEST=Y");
-                }
-            }
-        }
+        addMemberAdditionalPropertiesIfPresent(properties, "MULTIPLE_MEMBER",
+                fieldMap.get(MULTIPLE_MEMBER_SOR_ITEM_NAME));
+        addMemberAdditionalPropertiesIfPresent(properties, "NEWBORN_REQUEST",
+                fieldMap.get(NEWBORN_REQUEST_SOR_ITEM_NAME));
+        addMemberAdditionalPropertiesIfPresent(properties, "NEWBORN_FIRSTNAME",
+                fieldMap.get(NEWBORN_FIRST_NAME_SOR_ITEM_NAME));
+        addMemberAdditionalPropertiesIfPresent(properties, "NEWBORN_LASTNAME",
+                fieldMap.get(NEWBORN_LAST_NAME_SOR_ITEM_NAME));
+        addMemberAdditionalPropertiesIfPresent(properties, "NEWBORN_GENDER",
+                fieldMap.get(NEWBORN_GENDER_SOR_ITEM_NAME));
+        addMemberAdditionalPropertiesIfPresent(properties, "NEWBORN_DOB",
+                fieldMap.get(NEWBORN_DATE_OF_BIRTH_SOR_ITEM_NAME));
 
         log.info("Built {} member additional properties", properties.size());
         return properties;
     }
 
-    private void addNewbornPropertyIfPresent(List<AdditionalProperties> properties,
-                                             String propName,
-                                             ExtractedField field) {
+    private void addMemberAdditionalPropertiesIfPresent(List<AdditionalProperties> properties,
+                                                        String propName,
+                                                        ExtractedField field) {
         if (field != null && field.getValue() != null && !field.getValue().isEmpty()) {
             properties.add(AdditionalProperties.builder()
                     .propName(propName)
@@ -838,73 +1036,6 @@ public class MedicalPayloadGeneration {
                     .boundingBox(field.getBoundingBox())
                     .build());
         }
-    }
-
-    private ExtractedField getNewbornDOB(ExtractedField newbornDOB,
-                                         ExtractedField faxReceivedDate,
-                                         ExtractedField memberDOB) {
-        Date faxDate = parseDateSafe(faxReceivedDate);
-        Date newbornDobDate = parseDateSafe(newbornDOB);
-        Date memberDobDate = parseDateSafe(memberDOB);
-
-        if (faxDate == null) {
-            faxDate = new Date();
-            log.info("fax_received_date missing, using current date");
-        }
-
-        if (newbornDobDate != null && isWithin30Days(newbornDobDate, faxDate)) {
-            log.info("Using newborn DOB as valid");
-            return newbornDOB;
-        } else if (memberDobDate != null && isWithin30Days(memberDobDate, faxDate)) {
-            log.info("Using member DOB as newborn DOB");
-            return memberDOB;
-        } else {
-            log.info("Both DOBs invalid, returning empty");
-            return getDefaultExtractedField();
-        }
-    }
-
-    private Date parseDateSafe(ExtractedField field) {
-        if (field == null || field.getValue() == null)
-            return null;
-
-        try {
-            String ymd = toYMD(field.getValue());
-            if (ymd == null)
-                return null;
-
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-            sdf.setLenient(false);
-            return sdf.parse(ymd);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private String toYMD(String input) {
-        if (input == null || input.trim().isEmpty())
-            return null;
-
-        String datePart = input.trim().split(" ")[0];
-        String cleaned = datePart.replaceAll("[^0-9/\\-]", "");
-
-        if (cleaned.matches("\\d{1,2}[-/]\\d{1,2}[-/]\\d{4}")) {
-            String[] p = cleaned.split("[-/]");
-            return p[2] + "-" +
-                    (p[0].length() == 1 ? "0" + p[0] : p[0]) + "-" +
-                    (p[1].length() == 1 ? "0" + p[1] : p[1]);
-        }
-
-        if (cleaned.matches("\\d{4}-\\d{1,2}-\\d{1,2}")) {
-            return cleaned;
-        }
-
-        return "";
-    }
-
-    private boolean isWithin30Days(Date dob, Date faxDate) {
-        long diffDays = (faxDate.getTime() - dob.getTime()) / (1000L * 60 * 60 * 24);
-        return diffDays >= 0 && diffDays <= 30;
     }
 
     private void putIfPresent(Consumer<ExtractedField> setter,
@@ -935,6 +1066,200 @@ public class MedicalPayloadGeneration {
                 .confidence(0)
                 .boundingBox(boundingBoxJsonNode)
                 .build();
+    }
+
+    private ExtractedField getEmptyExtractedField() {
+        Map<String, Double> boundingBoxMap = new HashMap<>();
+        boundingBoxMap.put("x", DEFAULT_DOUBLE_VALUE);
+        boundingBoxMap.put("y", DEFAULT_DOUBLE_VALUE);
+        boundingBoxMap.put(WIDTH, DEFAULT_DOUBLE_VALUE);
+        boundingBoxMap.put(HEIGHT, DEFAULT_DOUBLE_VALUE);
+        JsonNode boundingBoxJsonNode = mapper.valueToTree(boundingBoxMap);
+
+        // Return empty ExtractedField (same structure but explicitly empty value)
+        return ExtractedField.builder()
+                .value("")
+                .page(0)
+                .confidence(0)
+                .boundingBox(boundingBoxJsonNode)
+                .build();
+    }
+
+
+    private void handleClinicalPresent(Map<String, ExtractedField> fieldMap,
+                                       List<AdditionalProperties> additionalList,
+                                       Map<String, String> configMap) {
+        fieldMap.entrySet().stream()
+                .filter(entry -> entry.getKey().startsWith("clinical_present"))
+                .sorted(Map.Entry.comparingByKey())
+                .forEach(entry -> {
+                    try {
+                        ExtractedField field = entry.getValue();
+
+                        if (field != null && hasValue(field.getValue())) {
+
+                            AdditionalProperties prop = AdditionalProperties.builder()
+                                    .propName(CLINICAL_PRESENT_PROP_VALUE)
+                                    .propValue(field.getValue())
+                                    .page(field.getPage())
+                                    .confidence(Double.valueOf(field.getConfidence()))
+                                    .boundingBox(field.getBoundingBox())
+                                    .build();
+
+                            additionalList.add(prop);
+
+                            log.info("Added Clinical Present property as '{}' since total pages {}",
+                                    field.getValue(), field.getPage());
+                        }
+                    } catch (Exception ex) {
+                        log.error("Error processing clinical_present field: {}", entry.getKey(), ex);
+                    }
+                });
+    }
+
+    private void handleAuthAdditionalKeyword(Map<String, ExtractedField> fieldMap,
+                                             List<AdditionalProperties> additionalList) {
+        fieldMap.entrySet().stream()
+                .filter(entry -> entry.getKey().startsWith("additional_auth_properties"))
+                .sorted(Map.Entry.comparingByKey())
+                .forEach(entry -> {
+                    try {
+                        ExtractedField field = entry.getValue();
+
+                        if (field == null || !hasValue(field.getValue())) {
+                            log.info("AUTH_ADDL_KEYWORD not found or empty");
+                            return;
+                        }
+
+                        String[] keywords = field.getValue().split(",");
+
+                        for (String keyword : keywords) {
+                            String trimmedKeyword = keyword.trim();
+                            if (trimmedKeyword.isEmpty()) continue;
+
+                            AdditionalProperties prop = AdditionalProperties.builder()
+                                    .propName("AUTH_ADDL_KEYWORD")
+                                    .propValue(trimmedKeyword)
+                                    .page(field.getPage())
+                                    .confidence(Double.valueOf(field.getConfidence()))
+                                    .boundingBox(field.getBoundingBox())
+                                    .build();
+
+                            additionalList.add(prop);
+                        }
+
+                        log.info("Added {} AUTH_ADDL_KEYWORD entries", keywords.length);
+
+                    } catch (Exception ex) {
+                        log.error("Error while processing AUTH_ADDL_KEYWORD", ex);
+                    }
+                });
+    }
+
+    private void handleResponsibleArea(Map<String, ExtractedField> fieldMap,
+                                       List<AdditionalProperties> additionalList) {
+
+        fieldMap.entrySet().stream()
+                .filter(entry -> entry.getKey().startsWith("responsible_area"))
+                .sorted(Map.Entry.comparingByKey())
+                .forEach(entry -> {
+                    try {
+                        ExtractedField field = entry.getValue();
+
+                        if (field != null && hasValue(field.getValue())) {
+                            AdditionalProperties prop = AdditionalProperties.builder()
+                                    .propName("SORTING_KEYWORD")
+                                    .propValue(field.getValue())
+                                    .page(field.getPage())
+                                    .confidence(Double.valueOf(field.getConfidence()))
+                                    .boundingBox(field.getBoundingBox())
+                                    .build();
+
+                            additionalList.add(prop);
+                            log.info("Added SORTING_KEYWORD property for responsible_area");
+                        }
+                    } catch (Exception ex) {
+                        log.error("Error processing responsible_area field: {}", entry.getKey(), ex);
+                    }
+                });
+    }
+
+    private void handleLevelOfCare(Map<String, ExtractedField> fieldMap,
+                                   List<AdditionalProperties> additionalList) {
+        List<Map.Entry<String, ExtractedField>> locEntries = fieldMap.entrySet().stream()
+                .filter(entry -> entry.getKey().startsWith("level_of_care"))
+                .sorted(Map.Entry.comparingByKey())
+                .collect(Collectors.toList());
+
+        for (Map.Entry<String, ExtractedField> entry : locEntries) {
+            try {
+                ExtractedField field = entry.getValue();
+
+                if (field != null && hasValue(field.getValue())) {
+                    String[] values = field.getValue().contains(",")
+                            ? field.getValue().split(",")
+                            : new String[]{field.getValue()};
+
+                    doLevelOfCareEntries(entry, values, field, additionalList);
+                }
+
+            } catch (Exception ex) {
+                log.error("Error processing level_of_care entry: {}", entry.getKey(), ex);
+            }
+        }
+    }
+
+    private void handleFaxReport(Map<String, ExtractedField> fieldMap,
+                                 List<AdditionalProperties> additionalList) {
+        try {
+            ExtractedField faxField = fieldMap.get(FAX_REPORT_SOR_ITEM_NAME);
+
+            if (faxField != null && hasValue(faxField.getValue())) {
+                AdditionalProperties prop = AdditionalProperties.builder()
+                        .propName("FAX_REPORT")
+                        .propValue(faxField.getValue().toUpperCase())
+                        .page(faxField.getPage())
+                        .confidence(Double.valueOf(faxField.getConfidence()))
+                        .boundingBox(faxField.getBoundingBox())
+                        .build();
+                additionalList.add(prop);
+                log.info("Added FAX_REPORT property for Commercial");
+
+            } else {
+                log.info("FAX_REPORT missing or empty for Commercial case");
+            }
+
+        } catch (Exception ex) {
+            log.error("Error while processing FAX_REPORT field", ex);
+        }
+    }
+
+    private void doLevelOfCareEntries(Map.Entry<String, ExtractedField> entry,
+                                      String[] levelOfCareValues,
+                                      ExtractedField levelOfCareField,
+                                      List<AdditionalProperties> additionalPropertiesList) {
+        for (String value : levelOfCareValues) {
+            value = value.trim();
+            if (value.isEmpty()) {
+                log.info("Skipped empty level_of_care entry for key: {}", entry.getKey());
+                continue;
+            }
+
+            AdditionalProperties authKeywordProperty = AdditionalProperties.builder()
+                    .propName("AUTH_KEYWORD")
+                    .propValue(value)
+                    .page(levelOfCareField.getPage())
+                    .confidence(Double.valueOf(levelOfCareField.getConfidence()))
+                    .boundingBox(levelOfCareField.getBoundingBox())
+                    .build();
+
+            additionalPropertiesList.add(authKeywordProperty);
+            log.info("Added AUTH_KEYWORD property for level_of_care entry");
+        }
+    }
+
+    private boolean hasValue(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 
 }

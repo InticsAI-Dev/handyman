@@ -197,6 +197,8 @@ action:
     |multivalueSorItemHandling
     |sectionFilteringAfterGrouping
     |documentWisePostProcessing
+    |productResponseGeneration
+    |customResponseGeneration
     );
 
 
@@ -1020,6 +1022,25 @@ productResponse:
      querySet=STRING
     '}'('on-condition' condition=expression)*;
 
+productResponseGeneration:
+    'productResponseGeneration' 'as' name=STRING
+    'tenantId' tenantId=STRING
+    'auth-token' token=STRING
+    'result-table' resultTable=STRING
+    'on-resource-conn' resourceConn=STRING
+    'using'  '{'
+     querySet=STRING
+    '}'('on-condition' condition=expression)*;
+
+customResponseGeneration:
+    'customResponseGeneration' 'as' name=STRING
+    'tenantId' tenantId=STRING
+    'auth-token' token=STRING
+    'result-table' resultTable=STRING
+    'on-resource-conn' resourceConn=STRING
+    'using'  '{'
+     querySet=STRING
+    '}'('on-condition' condition=expression)*;
 
 tableExtraction:
 	'tableExtraction' 'as' name=STRING
