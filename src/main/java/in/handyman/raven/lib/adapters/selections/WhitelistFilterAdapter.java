@@ -13,12 +13,16 @@ public class WhitelistFilterAdapter implements FieldSelectionAdapter {
             return List.of();
         }
 
-
         List<ExtractedField> filteredLabels = fields.stream()
                 .map(field -> {
+
+                    // Default false → treat as true before whitelist
+                    if (!field.isLabelMatching()) {
+                        field.setLabelMatching(true);
+                    }
+
                     if (field.isLabelMatching()) {
                         return isLabelValueMatching(field.getWhitelistedLabels(), field, "LABELS");
-
                     } else {
                         return field;
                     }
@@ -26,7 +30,6 @@ public class WhitelistFilterAdapter implements FieldSelectionAdapter {
                 .collect(Collectors.toList());
         emptyEntryCheck(filteredLabels);
         return filteredLabels;
-
     }
     private boolean isEmpty(String s) {
         return s == null || s.isEmpty();
@@ -48,14 +51,13 @@ public class WhitelistFilterAdapter implements FieldSelectionAdapter {
     }
 
     public ExtractedField isLabelValueMatching(List<WhitelistLabelConfig> whitelistFields,
-                                                   ExtractedField response,
-                                                   String filteringType) {
+                                               ExtractedField response,
+                                               String filteringType) {
 
         if (response == null) {
             return null;
         }
 
-        // If no whitelist provided, allow everything but clearly indicate that
         if (whitelistFields == null || whitelistFields.isEmpty()) {
             response.setLabelMatching(true);
             response.setLabelMatchMessage(
@@ -107,7 +109,6 @@ public class WhitelistFilterAdapter implements FieldSelectionAdapter {
         response.setLabelMatchMessage(message);
         return response;
     }
-
 
     public String safeTrim(String input) {
         return input == null ? "" : input.trim();

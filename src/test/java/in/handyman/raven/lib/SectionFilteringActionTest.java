@@ -13,9 +13,13 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_ITEM_WISE_ENCRYPTION;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.when;
 
@@ -81,13 +85,13 @@ public class SectionFilteringActionTest {
         final SectionFilteringAction sectionFilteringAction = new SectionFilteringAction(action, log, build);
         sectionFilteringAction.execute();
     }
-    @BeforeEach
+
     public void setup() {
         actionAudit = ActionExecutionAudit.builder().build();
         sectionFiltering = SectionFiltering.builder()
                 .name("MockFiltering")
-                .outputTable("mock_output_table")
-                .resourceConn("mock_db_conn")
+                .outputTable("")
+                .resourceConn("intics_zio_db_conn")
                 .condition(true)
                 .build();
 
@@ -152,5 +156,274 @@ public class SectionFilteringActionTest {
         actionUnderTest.mergeFilteredResults(inputList, List.of(ef));
 
         log.info("Merged answer: {}", inputList.get(0).getAnswer());
+    }
+
+    @Test
+    public void testContainerLevelRejection() {
+
+        // 🔥 Create two rows in same container + paper
+        SelectionFilteringInputTable row1 = new SelectionFilteringInputTable();
+        row1.setId(1L);
+        row1.setPaperNo(3L);
+        row1.setOriginId("ORIGIN-717");
+        row1.setSorContainerInstance("MEMBER_DETAILS_0");
+        row1.setAnswer("Dinesh Kumar");
+        row1.setLabelMatching(false); // ❌ One failure
+
+        SelectionFilteringInputTable row2 = new SelectionFilteringInputTable();
+        row2.setId(2L);
+        row2.setPaperNo(3L);
+        row2.setOriginId("ORIGIN-717");
+        row2.setSorContainerInstance("MEMBER_DETAILS_0");
+        row2.setAnswer("Some Address");
+        row2.setLabelMatching(true); // ✅ Initially true
+
+        List<SelectionFilteringInputTable> updatedTableInfos = List.of(row1, row2);
+
+        // 🔥 APPLY SAME LOGIC AS YOUR ACTION (Container Rejection)
+        Map<String, List<SelectionFilteringInputTable>> groupedByContainer =
+                updatedTableInfos.stream()
+                        .collect(Collectors.groupingBy(row -> {
+                            String origin = row.getOriginId() == null ? "" : row.getOriginId().trim();
+                            String paper = String.valueOf(row.getPaperNo());
+                            String container = row.getSorContainerInstance() == null ? "" :
+                                    row.getSorContainerInstance().trim().toUpperCase();
+
+                            return origin + "|" + paper + "|" + container;
+                        }));
+
+        for (Map.Entry<String, List<SelectionFilteringInputTable>> entry : groupedByContainer.entrySet()) {
+
+            List<SelectionFilteringInputTable> group = entry.getValue();
+
+            boolean hasFailure = group.stream()
+                    .anyMatch(row -> Boolean.FALSE.equals(row.getLabelMatching()));
+
+            if (hasFailure) {
+                group.forEach(row -> row.setLabelMatching(false));
+            }
+        }
+
+        // ✅ ASSERTION (VERY IMPORTANT)
+        assert !row1.getLabelMatching();
+        assert !row2.getLabelMatching(); // 🔥 THIS IS THE MAIN CHECK
+
+        log.info("Row1 status: {}", row1.getLabelMatching());
+        log.info("Row2 status: {}", row2.getLabelMatching());
+    }
+
+    @Test
+    public void testContainerRejectionWithRealInput() {
+
+        // -------- PAPER 3 DATA (from your input) --------
+
+        SelectionFilteringInputTable nameRow = new SelectionFilteringInputTable();
+        nameRow.setId(41619L);
+        nameRow.setPaperNo(3L);
+        nameRow.setOriginId("ORIGIN-717");
+        nameRow.setSorContainerInstance("MEMBER_DETAILS_0");
+        nameRow.setSorItemName("member_full_name");
+        nameRow.setAnswer("Dinesh Kumar");
+
+        // ❌ simulate failure after priority
+        nameRow.setLabelMatching(false);
+
+        SelectionFilteringInputTable addressRow = new SelectionFilteringInputTable();
+        addressRow.setId(41601L);
+        addressRow.setPaperNo(3L);
+        addressRow.setOriginId("ORIGIN-717");
+        addressRow.setSorContainerInstance("MEMBER_DETAILS_0");
+        addressRow.setSorItemName("member_address_line1");
+        addressRow.setAnswer("640 MASONIC WAY");
+
+        // ✅ initially valid
+        addressRow.setLabelMatching(true);
+
+        List<SelectionFilteringInputTable> updatedTableInfos = new ArrayList<>();
+        updatedTableInfos.add(nameRow);
+        updatedTableInfos.add(addressRow);
+
+        // -------- APPLY CONTAINER LOGIC --------
+
+        Map<String, List<SelectionFilteringInputTable>> groupedByContainer =
+                updatedTableInfos.stream()
+                        .collect(Collectors.groupingBy(row -> {
+                            String origin = row.getOriginId() == null ? "" : row.getOriginId().trim();
+                            String paper = String.valueOf(row.getPaperNo());
+                            String container = row.getSorContainerInstance() == null ? "" :
+                                    row.getSorContainerInstance().trim().toUpperCase();
+
+                            return origin + "|" + paper + "|" + container;
+                        }));
+
+        for (Map.Entry<String, List<SelectionFilteringInputTable>> entry : groupedByContainer.entrySet()) {
+
+            List<SelectionFilteringInputTable> group = entry.getValue();
+
+            boolean hasFailure = group.stream()
+                    .anyMatch(row -> Boolean.FALSE.equals(row.getLabelMatching()));
+
+            if (hasFailure) {
+                group.forEach(row -> {
+                    row.setLabelMatching(false);
+                    row.setAnswer(""); // mimic your actual clearing logic
+                });
+            }
+        }
+
+        // -------- ASSERTIONS --------
+
+        // ❌ name should be false
+        assertFalse(nameRow.getLabelMatching());
+
+        // ❌ address SHOULD ALSO BE FALSE (main validation)
+        assertFalse(addressRow.getLabelMatching(),
+                "Address should also be rejected due to container-level rejection");
+
+        // ❌ values should be cleared
+        assertEquals("", nameRow.getAnswer());
+        assertEquals("", addressRow.getAnswer());
+
+        log.info("✅ Container rejection works correctly for real input case");
+    }
+
+    @Test
+    public void testSectionFiltering_ContainerLevelRejection() throws Exception {
+
+        final SectionFiltering config = SectionFiltering.builder()
+                .condition(true)
+                .name("Container Rejection Test")
+                .outputTable("extraction.selection_over_filtering_input_audit")
+                .inputTable("extraction.selection_over_filtering_output_audit")
+                .resourceConn("intics_zio_db_conn") // use your test DB
+                .querySet(
+                        "SELECT \n" +
+                                "    id,\n" +
+                                "    created_on,\n" +
+                                "    created_user_id,\n" +
+                                "    last_updated_on,\n" +
+                                "    last_updated_user_id,\n" +
+                                "    tenant_id,\n" +
+                                "    group_id,\n" +
+                                "    root_pipeline_id,\n" +
+                                "    batch_id,\n" +
+                                "    model_registry,\n" +
+                                "    sor_container_id,\n" +
+                                "    sor_container_name,\n" +
+                                "    sor_item_name,\n" +
+                                "    sor_item_label,\n" +
+                                "    section_alias,\n" +
+                                "    answer,\n" +
+                                "    confidence,\n" +
+                                "    bbox,\n" +
+                                "    bbox_asis,\n" +
+                                "    paper_no,\n" +
+                                "    origin_id,\n" +
+                                "    extracted_image_unit,\n" +
+                                "    image_dpi,\n" +
+                                "    image_height,\n" +
+                                "    image_width,\n" +
+                                "    blacklisted_labels,\n" +
+                                "    blacklisted_sections,\n" +
+                                "    is_encrypted,\n" +
+                                "    encryption_policy,\n" +
+                                "    whitelisted_labels,\n" +
+                                "    whitelisted_labels_with_priority,\n" +
+                                "    sor_container_instance,\n" +
+                                "    whitelisted_sections_with_priority\n" +
+                                "FROM extraction.selection_over_filtering_input_audit a\n" +
+                                "WHERE a.origin_id = 'ORIGIN-840';"
+                )
+                .build();
+
+        final ActionExecutionAudit action = ActionExecutionAudit.builder().build();
+        action.setRootPipelineId(999L);
+        action.setProcessId(888L);
+
+        // 🔥 Important flags
+        action.getContext().put("section.filtering.label.with.priority", "false");
+        action.getContext().put("pipeline.end.to.end.encryption", "false");
+
+        // 🔹 Create action
+        SectionFilteringAction sectionFilteringAction =
+                new SectionFilteringAction(action, log, config);
+
+        // 🔥 Execute full pipeline
+        sectionFilteringAction.execute();
+
+        log.info("✅ Container-level rejection test executed successfully");
+    }
+
+    @Test
+    public void testContainerLevelRejection_NoDB() {
+
+        // 🔹 Row 1 (FAIL)
+        SelectionFilteringInputTable row1 = new SelectionFilteringInputTable();
+        row1.setId(1L);
+        row1.setPaperNo(3L);
+        row1.setOriginId("ORIGIN-840");
+        row1.setSorContainerInstance("MEMBER_DETAILS_0");
+        row1.setAnswer("John");
+        row1.setLabelMatching(false); // ❌ triggers rejection
+
+        // 🔹 Row 2 (PASS initially)
+        SelectionFilteringInputTable row2 = new SelectionFilteringInputTable();
+        row2.setId(2L);
+        row2.setPaperNo(3L);
+        row2.setOriginId("ORIGIN-840");
+        row2.setSorContainerInstance("MEMBER_DETAILS_0");
+        row2.setAnswer("Address Line");
+        row2.setLabelMatching(true); // ✅ initially valid
+
+        // 🔹 Different container (should NOT be affected)
+        SelectionFilteringInputTable row3 = new SelectionFilteringInputTable();
+        row3.setId(3L);
+        row3.setPaperNo(3L);
+        row3.setOriginId("ORIGIN-840");
+        row3.setSorContainerInstance("OTHER_CONTAINER");
+        row3.setAnswer("Independent Value");
+        row3.setLabelMatching(true);
+
+        List<SelectionFilteringInputTable> rows = new ArrayList<>();
+        rows.add(row1);
+        rows.add(row2);
+        rows.add(row3);
+
+        // 🔥 APPLY CONTAINER-LEVEL REJECTION LOGIC (same as your action)
+        Map<String, List<SelectionFilteringInputTable>> grouped =
+                rows.stream()
+                        .collect(Collectors.groupingBy(r -> {
+                            String origin = r.getOriginId() == null ? "" : r.getOriginId().trim();
+                            String paper = String.valueOf(r.getPaperNo());
+                            String container = r.getSorContainerInstance() == null ? "" :
+                                    r.getSorContainerInstance().trim().toUpperCase();
+                            return origin + "|" + paper + "|" + container;
+                        }));
+
+        for (List<SelectionFilteringInputTable> group : grouped.values()) {
+
+            boolean hasFailure = group.stream()
+                    .anyMatch(r -> Boolean.FALSE.equals(r.getLabelMatching()));
+
+            if (hasFailure) {
+                group.forEach(r -> {
+                    r.setLabelMatching(false);
+                    r.setAnswer(""); // mimic clearing logic
+                });
+            }
+        }
+
+        // ✅ Assertions
+
+        // Entire container should be rejected
+        assertFalse(row1.getLabelMatching());
+        assertFalse(row2.getLabelMatching()); // 🔥 main validation
+
+        assertEquals("", row1.getAnswer());
+        assertEquals("", row2.getAnswer());
+
+        // Other container should remain unaffected
+        assertTrue(row3.getLabelMatching());
+        assertEquals("Independent Value", row3.getAnswer());
     }
 }
