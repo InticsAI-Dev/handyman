@@ -62,7 +62,6 @@ public class HikariJdbiProvider {
                     resourceConfig.getConfigName());
 
             HikariConfig config = getHikariConfig(resourceConfig);
-
             hikariDataSource = new HikariDataSource(config);
             startMetricsScheduler();
         } else {
@@ -71,7 +70,7 @@ public class HikariJdbiProvider {
     }
 
     @NotNull
-    private static HikariConfig getHikariConfig(SpwResourceConfig resourceConfig) {
+    static HikariConfig getHikariConfig(SpwResourceConfig resourceConfig) {
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl(resourceConfig.getResourceUrl());
         config.setUsername(resourceConfig.getUserName());

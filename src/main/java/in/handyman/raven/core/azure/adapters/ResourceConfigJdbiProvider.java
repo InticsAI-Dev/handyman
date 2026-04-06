@@ -1,5 +1,6 @@
 package in.handyman.raven.core.azure.adapters;
 
+import com.zaxxer.hikari.HikariDataSource;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.access.repo.HandymanRepoImpl;
 import in.handyman.raven.lambda.doa.config.SpwResourceConfig;
@@ -14,7 +15,8 @@ public class ResourceConfigJdbiProvider {
     }
 
     public Jdbi get() {
-        return Jdbi.create(resourceConfig.getResourceUrl(), resourceConfig.getUserName(), resourceConfig.getPassword());
+        HikariDataSource ds = new HikariDataSource(HikariJdbiProvider.getHikariConfig(resourceConfig));
+        return Jdbi.create(ds);
     }
 
     public static SpwResourceConfig fetchResourceConfig() {
