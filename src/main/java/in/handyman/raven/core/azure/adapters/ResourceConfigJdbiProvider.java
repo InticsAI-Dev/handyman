@@ -6,7 +6,11 @@ import in.handyman.raven.lambda.access.repo.HandymanRepoImpl;
 import in.handyman.raven.lambda.doa.config.SpwResourceConfig;
 import org.jdbi.v3.core.Jdbi;
 
+import java.util.concurrent.ConcurrentHashMap;
+
 public class ResourceConfigJdbiProvider {
+
+    private static final ConcurrentHashMap<String, HikariDataSource> poolCache = new ConcurrentHashMap<>();
 
     private final SpwResourceConfig resourceConfig;
 
@@ -15,7 +19,9 @@ public class ResourceConfigJdbiProvider {
     }
 
     public Jdbi get() {
-        HikariDataSource ds = new HikariDataSource(HikariJdbiProvider.getHikariConfig(resourceConfig));
+        HikariDataSource ds = poolCache.computeIfAbsent(
+                resourceConfig.getConfigName(),
+                k -> new HikariDataSource(HikariJdbiProvider.getHikariConfig(resourceConfig)));
         return Jdbi.create(ds);
     }
 
