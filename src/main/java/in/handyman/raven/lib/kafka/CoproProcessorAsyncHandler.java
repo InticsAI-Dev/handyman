@@ -178,19 +178,25 @@ public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
         final ConcurrentLinkedQueue<I> failedItems = new ConcurrentLinkedQueue<>();
         final Map<String, Object> kafkaProducerProps = buildAsyncKafkaProps(context);
 
-        try (KafkaProducer<String, String> producer = new KafkaProducer<>(kafkaProducerProps)) {
-            for (I item : items) {
-                try {
-                    produceKafkaMessage(callable, topic, outputTable, batchId, requestType, context, item, producer, failedItems);
-                } catch (Exception e) {
-                    logger.error("KAFKA_ASYNC: failed to serialize item for batch={} type={}", batchId, requestType, e);
-                    failedItems.add(item);
+        final ClassLoader originalCl = Thread.currentThread().getContextClassLoader();
+        try {
+            Thread.currentThread().setContextClassLoader(StringSerializer.class.getClassLoader());
+            try (KafkaProducer<String, String> producer = new KafkaProducer<>(kafkaProducerProps)) {
+                for (I item : items) {
+                    try {
+                        produceKafkaMessage(callable, topic, outputTable, batchId, requestType, context, item, producer, failedItems);
+                    } catch (Exception e) {
+                        logger.error("KAFKA_ASYNC: failed to serialize item for batch={} type={}", batchId, requestType, e);
+                        failedItems.add(item);
+                    }
                 }
+                producer.flush();
             }
-            producer.flush();
         } catch (Exception e) {
             logger.error("KAFKA_ASYNC: producer error for batch={} type={}", batchId, requestType, e);
             HandymanException.insertException("KAFKA_ASYNC publish failed", new HandymanException(e), actionExecutionAudit);
+        } finally {
+            Thread.currentThread().setContextClassLoader(originalCl);
         }
 
         return failedItems;
