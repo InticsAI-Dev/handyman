@@ -17,11 +17,7 @@ import org.jdbi.v3.core.Jdbi;
 import org.slf4j.Logger;
 
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -72,6 +68,10 @@ public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
     private static final String CONTEXT_DELIVERY_TIMEOUT = "vulcan.copro.processor.kafka.delivery.timeout.ms";
     private static final String CONTEXT_LINGER_MS = "vulcan.copro.processor.kafka.producer.linger.ms";
     private static final String CONTEXT_COMPRESSION_TYPE = "vulcan.copro.processor.kafka.producer.compression.type";
+    private static final String CONTEXT_ENABLE_IDEMPOTENCE = "vulcan.copro.processor.kafka.producer.enable.idempotence";
+    private static final String CONTEXT_MAX_BLOCK_MS = "vulcan.copro.processor.kafka.producer.max.block.ms";
+    private static final String CONTEXT_KEY_SERIALIZER = "vulcan.copro.processor.kafka.producer.key.serializer";
+    private static final String CONTEXT_VALUE_SERIALIZER = "vulcan.copro.processor.kafka.producer.value.serializer";
 
     private static final String CONTEXT_NEXT_SCRIPT = "continuation_pipeline_script";
     private static final String CONTEXT_INIT_PROCESS_ID = "init_process_id.process_id";
@@ -361,11 +361,15 @@ public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
 
         Map<String, Object> props = new HashMap<>();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
+                decryptIfNeeded(CONTEXT_KEY_SERIALIZER, StringSerializer.class.getName(), context));
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
+                decryptIfNeeded(CONTEXT_VALUE_SERIALIZER, StringSerializer.class.getName(), context));
         props.put(ProducerConfig.ACKS_CONFIG, decryptIfNeeded(CONTEXT_ACKS, "all", context));
-        props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
-        props.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, "10000");
+        props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG,
+                Boolean.parseBoolean(decryptIfNeeded(CONTEXT_ENABLE_IDEMPOTENCE, "true", context)));
+        props.put(ProducerConfig.MAX_BLOCK_MS_CONFIG,
+                Long.parseLong(decryptIfNeeded(CONTEXT_MAX_BLOCK_MS, "10000", context)));
         props.put(ProducerConfig.RETRIES_CONFIG,
                 Integer.parseInt(decryptIfNeeded(CONTEXT_RETRIES, "3", context)));
         props.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG,
@@ -401,11 +405,11 @@ public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
                 if ("certs".equalsIgnoreCase(sslInclude)) {
                     props.put(KafkaProps.SSL_TRUSTSTORE_TYPE, decryptIfNeeded("vulcan.copro.processor.kafka.ssl.truststore.type", "JKS", context));
                     props.put(KafkaProps.SSL_TRUSTSTORE_LOCATION, decryptIfNeeded("vulcan.copro.processor.kafka.ssl.truststore.location", "", context));
-                    props.put(KafkaProps.SSL_TRUSTSTORE_PASSWORD, decryptIfNeeded("vulcan.copro.processor.kafka.ssl.truststore.password","", context));
+                    props.put(KafkaProps.SSL_TRUSTSTORE_PASSWORD, decryptIfNeeded("vulcan.copro.processor.kafka.ssl.truststore.password", "", context));
                     props.put(KafkaProps.SSL_KEYSTORE_TYPE, decryptIfNeeded("vulcan.copro.processor.kafka.ssl.keystore.type", "JKS", context));
-                    props.put(KafkaProps.SSL_KEYSTORE_LOCATION, decryptIfNeeded("vulcan.copro.processor.kafka.ssl.keystore.location","", context));
-                    props.put(KafkaProps.SSL_KEYSTORE_PASSWORD, decryptIfNeeded("vulcan.copro.processor.kafka.ssl.keystore.password","", context));
-                    props.put(KafkaProps.SSL_KEY_PASSWORD, decryptIfNeeded("vulcan.copro.processor.kafka.ssl.key.password","", context));
+                    props.put(KafkaProps.SSL_KEYSTORE_LOCATION, decryptIfNeeded("vulcan.copro.processor.kafka.ssl.keystore.location", "", context));
+                    props.put(KafkaProps.SSL_KEYSTORE_PASSWORD, decryptIfNeeded("vulcan.copro.processor.kafka.ssl.keystore.password", "", context));
+                    props.put(KafkaProps.SSL_KEY_PASSWORD, decryptIfNeeded("vulcan.copro.processor.kafka.ssl.key.password", "", context));
                     props.put(KafkaProps.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM,
                             decryptIfNeeded("vulcan.copro.processor.kafka.ssl.endpoint.identification.algorithm", "", context));
                 }
