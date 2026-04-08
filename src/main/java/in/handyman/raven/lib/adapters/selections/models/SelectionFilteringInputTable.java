@@ -44,6 +44,10 @@ public class SelectionFilteringInputTable {
     private Boolean labelMatching;
     private String labelMatchMessage;
     private String whitelistedLabels;
+    private Boolean sectionMatching;
+    private String sectionMatchMessage;
+    private String whitelistedSections;
+    private String whitelistedSectionsWithPriority;
     private String whitelistedLabelsWithPriority;
     private String labelPriorityIdx;
     private String sorContainerInstance;

@@ -27,5 +27,8 @@ public class ExtractedField {
     private boolean isLabelMatching;
     private String labelMatchMessage;
     private List<WhitelistLabelConfig> whitelistedLabels;
+    private boolean isSectionMatching;
+    private String sectionMatchMessage;
+    private List<WhitelistLabelConfig> whitelistedSections;
 
 }
