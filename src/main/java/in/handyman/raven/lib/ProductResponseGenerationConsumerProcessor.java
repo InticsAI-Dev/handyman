@@ -12,6 +12,9 @@ import in.handyman.raven.lib.custom.outbound.dao.MetadataContext;
 import in.handyman.raven.lib.custom.outbound.dao.PredictionDTO;
 import in.handyman.raven.lib.custom.outbound.model.ProductResponseOutputTable;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
@@ -21,7 +24,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class ProductResponseGenerationConsumerProcessor implements CoproProcessor.ConsumerProcess<PredictionDTO, ProductResponseOutputTable> {
+public class ProductResponseGenerationConsumerProcessor implements CoproProcessor.ConsumerProcess<ProductResponseGenerationConsumerProcessor.ProductResponseGenerationInput, ProductResponseOutputTable> {
     private final Logger log;
     private final Marker aMarker;
     private final ActionExecutionAudit action;
@@ -33,19 +36,20 @@ public class ProductResponseGenerationConsumerProcessor implements CoproProcesso
     }
 
     @Override
-    public List<ProductResponseOutputTable> process(URL endpoint, PredictionDTO entity) throws Exception {
-        if (entity == null) {
+    public List<ProductResponseOutputTable> process(URL endpoint, ProductResponseGenerationInput entity) throws Exception {
+        if (entity == null || entity.getPredictions() == null || entity.getPredictions().isEmpty()) {
             return Collections.emptyList();
         }
 
-        final List<PredictionDTO> predictions = Collections.singletonList(entity);
+        final List<PredictionDTO> predictions = entity.getPredictions();
+        final PredictionDTO first = predictions.get(0);
         final String originId = entity.getOriginId();
-        final String metadata = entity.getMetadataJson();
-        final Long groupId = entity.getGroupId();
-        final Long tenantId = entity.getTenantId();
-        final String batchId = entity.getBatchId();
-        final String rootPipelineId = entity.getRootPipelineId();
-        final String transactionId = entity.getTransactionId();
+        final String metadata = first.getMetadataJson();
+        final Long groupId = first.getGroupId();
+        final Long tenantId = first.getTenantId();
+        final String batchId = first.getBatchId();
+        final String rootPipelineId = first.getRootPipelineId();
+        final String transactionId = first.getTransactionId();
 
         ObjectMapper objectMapper = JsonMapper.builder()
                 .addModule(new JavaTimeModule())
@@ -88,6 +92,14 @@ public class ProductResponseGenerationConsumerProcessor implements CoproProcesso
                 .build();
 
         return Collections.singletonList(out);
+    }
+    
+    @Data
+    @Builder
+    @AllArgsConstructor
+    public static class ProductResponseGenerationInput {
+        private String originId;
+        private List<PredictionDTO> predictions;
     }
 
     private JsonNode buildProductResponseJson(

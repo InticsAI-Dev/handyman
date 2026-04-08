@@ -7,6 +7,7 @@ import in.handyman.raven.lambda.action.IActionExecution;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.custom.outbound.dao.PredictionDTO;
 import in.handyman.raven.lib.custom.outbound.model.ProductResponseOutputTable;
+import in.handyman.raven.util.CommonQueryUtil;
 import in.handyman.raven.lib.model.ProductResponseGeneration;
 import java.lang.Exception;
 import java.lang.Object;
@@ -17,6 +18,9 @@ import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 
+import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.core.result.ResultIterable;
+import org.jdbi.v3.core.statement.Query;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
@@ -50,8 +54,23 @@ public class ProductResponseGenerationAction implements IActionExecution {
   @Override
   public void execute() throws Exception {
     try {
-      ResourceAccess.rdbmsJDBIConn(productResponseGeneration.getResourceConn());
+      final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(productResponseGeneration.getResourceConn());
       log.info(aMarker, "Product Response generation Action for {} has been started", productResponseGeneration.getName());
+
+      final List<PredictionDTO> allPredictions = new ArrayList<>();
+      jdbi.useTransaction(handle -> {
+        final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(productResponseGeneration.getQuerySet());
+        int i = 0;
+        for (String sqlToExecute : formattedQuery) {
+          log.info(aMarker, "executing query {} from index {}", sqlToExecute, i++);
+          Query query = handle.createQuery(sqlToExecute);
+          ResultIterable<PredictionDTO> resultIterable = query.mapToBean(PredictionDTO.class);
+          List<PredictionDTO> list = resultIterable.stream().collect(Collectors.toList());
+          allPredictions.addAll(list);
+          log.info(aMarker, "executed query from index {}", i);
+        }
+      });
+      log.info("Product Response generation action total rows returned from the query {}", allPredictions.size());
 
       String endpointConfig = action.getContext().getOrDefault(
               "product.response.generation.consumer.url",
@@ -76,23 +95,35 @@ public class ProductResponseGenerationAction implements IActionExecution {
                       " created_on, last_updated_on) " +
                       " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-      final CoproProcessor<PredictionDTO, ProductResponseOutputTable> coproProcessor =
+      final CoproProcessor<ProductResponseGenerationConsumerProcessor.ProductResponseGenerationInput, ProductResponseOutputTable> coproProcessor =
               new CoproProcessor<>(new LinkedBlockingQueue<>(),
                       ProductResponseOutputTable.class,
-                      PredictionDTO.class,
+                      ProductResponseGenerationConsumerProcessor.ProductResponseGenerationInput.class,
                       productResponseGeneration.getResourceConn(),
                       log,
-                      new PredictionDTO(),
+                      new ProductResponseGenerationConsumerProcessor.ProductResponseGenerationInput("", Collections.emptyList()),
                       urls,
                       action);
 
       int readBatchSize = Integer.parseInt(action.getContext().getOrDefault(DB_SELECT_READ_BATCH_SIZE, "10"));
       int writeBatchSize = Integer.parseInt(action.getContext().getOrDefault(DB_INSERT_WRITE_BATCH_SIZE, "10"));
       int consumerCount = Integer.parseInt(action.getContext().getOrDefault("product.response.generation.consumer.API.count", "1"));
-      CoproProcessor.ConsumerProcess<PredictionDTO, ProductResponseOutputTable> consumerProcess =
+      CoproProcessor.ConsumerProcess<ProductResponseGenerationConsumerProcessor.ProductResponseGenerationInput, ProductResponseOutputTable> consumerProcess =
               new ProductResponseGenerationConsumerProcessor(log, aMarker, action);
 
-      coproProcessor.startProducer(productResponseGeneration.getQuerySet(), readBatchSize);
+      final List<ProductResponseGenerationConsumerProcessor.ProductResponseGenerationInput> grouped =
+              allPredictions.stream()
+                      .collect(Collectors.groupingBy(PredictionDTO::getOriginId))
+                      .entrySet()
+                      .stream()
+                      .filter(e -> e.getValue() != null && !e.getValue().isEmpty())
+                      .map(e -> ProductResponseGenerationConsumerProcessor.ProductResponseGenerationInput.builder()
+                              .originId(e.getKey())
+                              .predictions(e.getValue())
+                              .build())
+                      .collect(Collectors.toList());
+
+      coproProcessor.startProducer(grouped, readBatchSize);
       Thread.sleep(1000);
       coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize, consumerProcess);
       log.info(aMarker, "Product Response generation Action has been completed {}  ", productResponseGeneration.getName());
