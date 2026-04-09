@@ -28,7 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class CustomResponseGenerationConsumerProcessor implements CoproProcessor.ConsumerProcess<PredictionDTO, CustomResponseOutputTable> {
+public class CustomResponseGenerationConsumerProcessor implements CoproProcessor.ConsumerProcess<CustomResponseGenerationConsumerProcessor.CustomResponseGenerationInput, CustomResponseOutputTable> {
     private static final String CUSTOM_JSON_GENERATION_STRUCTURE = "custom.json.generation.structure";
     private final Logger log;
     private final Marker aMarker;
@@ -46,12 +46,12 @@ public class CustomResponseGenerationConsumerProcessor implements CoproProcessor
     }
 
     @Override
-    public List<CustomResponseOutputTable> process(URL endpoint, PredictionDTO entity) throws Exception {
-        if (entity == null) {
+    public List<CustomResponseOutputTable> process(URL endpoint, CustomResponseGenerationInput entity) throws Exception {
+        if (entity == null || entity.getPredictions() == null || entity.getPredictions().isEmpty()) {
             return Collections.emptyList();
         }
 
-        List<PredictionDTO> predictionDTOList = Collections.singletonList(entity);
+        List<PredictionDTO> predictionDTOList = entity.getPredictions();
         PredictionDTO first = predictionDTOList.get(0);
         String originId = entity.getOriginId();
         String metadata = first.getMetadataJson();
@@ -425,6 +425,14 @@ public class CustomResponseGenerationConsumerProcessor implements CoproProcessor
             return "";
         }
         return key.replaceAll("[^A-Za-z0-9]", "").toLowerCase();
+    }
+
+    @Data
+    @Builder
+    @AllArgsConstructor
+    public static class CustomResponseGenerationInput {
+        private String originId;
+        private List<PredictionDTO> predictions;
     }
 
 }

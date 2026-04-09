@@ -8,11 +8,13 @@ import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.custom.outbound.dao.PredictionDTO;
 import in.handyman.raven.lib.custom.outbound.model.CustomResponseOutputTable;
 import in.handyman.raven.lib.model.CustomResponseGeneration;
+import in.handyman.raven.util.CommonQueryUtil;
 import java.lang.Exception;
 import java.lang.Object;
 import java.lang.Override;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -20,6 +22,9 @@ import java.util.Optional;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 
+import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.core.result.ResultIterable;
+import org.jdbi.v3.core.statement.Query;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
@@ -53,8 +58,21 @@ public class CustomResponseGenerationAction implements IActionExecution {
   @Override
   public void execute() throws Exception {
     try {
-      ResourceAccess.rdbmsJDBIConn(customResponseGeneration.getResourceConn());
+      final Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(customResponseGeneration.getResourceConn());
       log.info(aMarker, "Custom Response generation Action for {} has been started", customResponseGeneration.getName());
+      final List<PredictionDTO> allPredictions = new ArrayList<>();
+      jdbi.useTransaction(handle -> {
+        final List<String> formattedQuery = CommonQueryUtil.getFormattedQuery(customResponseGeneration.getQuerySet());
+        int i = 0;
+        for (String sqlToExecute : formattedQuery) {
+          log.info(aMarker, "executing query {} from index {}", sqlToExecute, i++);
+          Query query = handle.createQuery(sqlToExecute);
+          ResultIterable<PredictionDTO> resultIterable = query.mapToBean(PredictionDTO.class);
+          allPredictions.addAll(resultIterable.stream().collect(Collectors.toList()));
+          log.info(aMarker, "executed query from index {}", i);
+        }
+      });
+      log.info("Custom Response generation action total rows returned from the query {}", allPredictions.size());
 
       final String insertQuery =
               "INSERT INTO " + customResponseGeneration.getResultTable() +
@@ -73,23 +91,34 @@ public class CustomResponseGenerationAction implements IActionExecution {
               }).collect(Collectors.toList()))
               .orElse(Collections.singletonList(new URL("http://localhost/")));
 
-      final CoproProcessor<PredictionDTO, CustomResponseOutputTable> coproProcessor =
+      final CoproProcessor<CustomResponseGenerationConsumerProcessor.CustomResponseGenerationInput, CustomResponseOutputTable> coproProcessor =
               new CoproProcessor<>(new LinkedBlockingQueue<>(),
                       CustomResponseOutputTable.class,
-                      PredictionDTO.class,
+                      CustomResponseGenerationConsumerProcessor.CustomResponseGenerationInput.class,
                       customResponseGeneration.getResourceConn(),
                       log,
-                      new PredictionDTO(),
+                      new CustomResponseGenerationConsumerProcessor.CustomResponseGenerationInput("", Collections.emptyList()),
                       urls,
                       action);
 
       int readBatchSize = Integer.parseInt(action.getContext().getOrDefault(DB_SELECT_READ_BATCH_SIZE, "10"));
       int writeBatchSize = Integer.parseInt(action.getContext().getOrDefault(DB_INSERT_WRITE_BATCH_SIZE, "10"));
       int consumerCount = Integer.parseInt(action.getContext().getOrDefault("custom.response.generation.consumer.API.count", "1"));
+      final List<CustomResponseGenerationConsumerProcessor.CustomResponseGenerationInput> groupedInputs =
+              allPredictions.stream()
+                      .collect(Collectors.groupingBy(PredictionDTO::getOriginId))
+                      .entrySet()
+                      .stream()
+                      .filter(e -> e.getValue() != null && !e.getValue().isEmpty())
+                      .map(e -> CustomResponseGenerationConsumerProcessor.CustomResponseGenerationInput.builder()
+                              .originId(e.getKey())
+                              .predictions(e.getValue())
+                              .build())
+                      .collect(Collectors.toList());
 
-      coproProcessor.startProducer(customResponseGeneration.getQuerySet(), readBatchSize);
+      coproProcessor.startProducer(groupedInputs, readBatchSize);
       Thread.sleep(1000);
-      CoproProcessor.ConsumerProcess<PredictionDTO, CustomResponseOutputTable> consumerProcess =
+      CoproProcessor.ConsumerProcess<CustomResponseGenerationConsumerProcessor.CustomResponseGenerationInput, CustomResponseOutputTable> consumerProcess =
               new CustomResponseGenerationConsumerProcessor(log, aMarker, action);
       coproProcessor.startConsumer(insertQuery, consumerCount, writeBatchSize, consumerProcess);
       log.info(aMarker, "Custom Response generation Action has been completed {}  ", customResponseGeneration.getName());

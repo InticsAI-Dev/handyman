@@ -106,7 +106,12 @@ class CustomResponseGenerationConsumerProcessorTest {
                 .metadataJson("{\"requestTxnId\":\"REQ-1\",\"documentId\":\"DOC-1\",\"inboundTransactionId\":\"INB-1\",\"transactionId\":\"TRZ-1\",\"inboundDocumentName\":\"DOC-NAME\",\"documentExtension\":\"pdf\",\"documentType\":\"MEDICAL_GBD\",\"processStartTime\":\"2026-04-03T02:13:06.478281\",\"processEndTime\":\"2026-04-03T02:14:16.110159\",\"processedAt\":\"2026-04-03T02:13:06.478281\",\"candidatePapers\":[1,2,3]}")
                 .build();
 
-        List<CustomResponseOutputTable> output = consumer.process(new URL("http://localhost"), p1);
+        CustomResponseGenerationConsumerProcessor.CustomResponseGenerationInput input =
+                CustomResponseGenerationConsumerProcessor.CustomResponseGenerationInput.builder()
+                        .originId("ORIGIN-1")
+                        .predictions(List.of(p1))
+                        .build();
+        List<CustomResponseOutputTable> output = consumer.process(new URL("http://localhost"), input);
         assertNotNull(output);
         assertEquals(1, output.size());
 
