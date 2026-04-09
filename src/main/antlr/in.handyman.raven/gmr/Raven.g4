@@ -174,6 +174,7 @@ action:
     |validationLlm
     |neonKvp
     |radonKvp
+    |checkboxAttribution
     |llmJsonParser
     |checkboxJsonParser
     |radonKvpBbox
@@ -1325,6 +1326,14 @@ radonKvp:
             querySet=STRING
     '}' ('on-condition' condition=expression)* ;
 
+checkboxAttribution:
+    'checkboxAttribution' 'as' name=STRING
+        'on-resource-conn' resourceConn=STRING
+        'copro-url' endpoint=STRING
+        'output-table' outputTable=STRING
+        'using' '{'
+                querySet=STRING
+        '}' ('on-condition' condition=expression)* ;
 
 llmJsonParser:
     'llmJsonParser' 'as' name=STRING

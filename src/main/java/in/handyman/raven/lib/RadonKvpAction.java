@@ -42,7 +42,7 @@ import static in.handyman.raven.core.enums.NetworkHandlerConstants.*;
 @ActionExecution(
         actionName = "RadonKvp"
 )
-public class RadonKvpAction implements IActionExecution {
+public class RadonKvpAction implements IActionExecution,IRadonCommonAction {
     private static final String DEFAULT_SOCKET_TIMEOUT = "100";
     private static final String THREAD_SLEEP_TIME_DEFAULT = "1000";
     private static final String INSERT_INTO = "INSERT INTO";
