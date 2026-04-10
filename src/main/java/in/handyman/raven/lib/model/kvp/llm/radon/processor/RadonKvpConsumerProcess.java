@@ -11,7 +11,7 @@ import in.handyman.raven.core.utils.ProcessFileFormatE;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
-import in.handyman.raven.lib.RadonKvpAction;
+import in.handyman.raven.lib.IRadonCommonAction;
 import in.handyman.raven.lib.custom.kvp.post.processing.processor.ProviderDataTransformer;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.retry.CoproRetryErrorAuditTable;
@@ -55,8 +55,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
     private final CoproRetryService coproRetryService;
     private final InticsIntegrity encryption;
 
-
-    public RadonKvpConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, RadonKvpAction aAction, final String processBase64, final FileProcessingUtils fileProcessingUtils, ProviderDataTransformer providerDataTransformer, String jdbiResourceName) {
+    public RadonKvpConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action, IRadonCommonAction aAction, final String processBase64, final FileProcessingUtils fileProcessingUtils, ProviderDataTransformer providerDataTransformer, String jdbiResourceName) {
         LoggingInitializer.initialize();
         
         this.log = log;
@@ -230,7 +229,14 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                     : httpclient.newCall(request).execute();
             if (response == null) {
                 String errorMessage = "No response received from API";
-                parentObj.add(RadonQueryOutputTable.builder().sorContainerId(entity.getSorContainerId()).processId(entity.getProcessId()).originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null)).groupId(entity.getGroupId()).paperNo(entity.getPaperNo()).status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME).tenantId(tenantId).processId(processId).createdOn(entity.getCreatedOn()).lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(errorMessage).rootPipelineId(rootPipelineId).endpoint(String.valueOf(endpoint)).build());
+                parentObj.add(RadonQueryOutputTable.builder().sorContainerId(entity.getSorContainerId())
+                        .processId(entity.getProcessId())
+                        .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
+                        .groupId(entity.getGroupId()).paperNo(entity.getPaperNo())
+                        .status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).stage(PROCESS_NAME)
+                        .tenantId(tenantId).processId(processId).createdOn(entity.getCreatedOn())
+                        .lastUpdatedOn(CreateTimeStamp.currentTimestamp()).message(errorMessage)
+                        .rootPipelineId(rootPipelineId).endpoint(String.valueOf(endpoint)).build());
                 log.error(aMarker, errorMessage);
                 HandymanException handymanException = new HandymanException(errorMessage);
                 HandymanException.insertException(errorMessage, handymanException, this.action);
@@ -242,7 +248,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 Protocol protocol = response.protocol();
                 log.info(aMarker, " Protocol in use : {} ", protocol);
                 if (safeResponse.isSuccessful()) {
-                    if(safeResponse.body() != null) {
+                    if (safeResponse.body() != null) {
                         String responseBody = safeResponse.body().string();
                         RadonKvpExtractionResponse modelResponse = mapper.readValue(responseBody, RadonKvpExtractionResponse.class);
                         if (modelResponse.getOutputs() != null && !modelResponse.getOutputs().isEmpty()) {
@@ -257,7 +263,7 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                             }));
 
                         }
-                    }else{
+                    } else {
                         HandymanException handymanException = new HandymanException(" response code : " + safeResponse.code() + " message : " + "No response body or detail found for the request.");
                         HandymanException.insertException("Radon kvp consumer failed for batch/group " + groupId + " origin Id " + entity.getOriginId() + " paper no " + entity.getPaperNo(), handymanException, this.action);
                         log.error(aMarker, "Error in getting response from triton api: No response body or detail found for the request.");
@@ -302,7 +308,6 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
         }
     }
 
-
     private CoproRetryErrorAuditTable setErrorAuditInputDetails(RadonQueryInputTable entity, URL endPoint) {
         return CoproRetryErrorAuditTable.builder()
                 .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
@@ -322,7 +327,8 @@ public class RadonKvpConsumerProcess implements CoproProcessor.ConsumerProcess<R
                 .build();
 
     }
-    private void handleErrorParentObject(RadonQueryInputTable entity, List<RadonQueryOutputTable> parentObj, Exception e,String jsonInsertRequest) {
+
+    private void handleErrorParentObject(RadonQueryInputTable entity, List<RadonQueryOutputTable> parentObj, Exception e, String jsonInsertRequest) {
         parentObj.add(RadonQueryOutputTable.builder()
                 .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
                 .paperNo(entity.getPaperNo())
