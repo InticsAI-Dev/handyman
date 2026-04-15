@@ -39,49 +39,51 @@ class CustomResponseGenerationConsumerProcessorTest {
         ActionExecutionAudit action = new ActionExecutionAudit();
         action.getContext().put("custom.response.generation.test.input.query", INPUT_QUERY);
         String template = "{\n" +
-                "  \"requestTxnId\": \"\",\n" +
-                "  \"status\": \"\",\n" +
-                "  \"errorMessage\": null,\n" +
-                "  \"errorMessageDetail\": null,\n" +
-                "  \"errorCd\": null,\n" +
-                "  \"documentId\": \"\",\n" +
-                "  \"inboundTransactionId\": \"\",\n" +
-                "  \"metadata\": {\n" +
-                "    \"documentType\": \"\",\n" +
-                "    \"documentExtension\": \"\",\n" +
-                "    \"transactionId\": \"\",\n" +
-                "    \"inboundDocumentName\": \"\",\n" +
-                "    \"processStartTime\": \"\",\n" +
-                "    \"processEndTime\": \"\",\n" +
-                "    \"processingTimeMs\": 0,\n" +
-                "    \"processedAt\": \"\",\n" +
-                "    \"pageCount\": 0,\n" +
-                "    \"candidatePaper\": [],\n" +
-                "    \"overallConfidence\": 0\n" +
-                "  },\n" +
-                "  \"aumipayload\": {\n" +
-                "    \"memberFirstName\": {\"value\": \"${member_first_name}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\n" +
-                "    \"provider\": [\n" +
-                "      {\n" +
-                "        \"providerNPI\": {\"value\": \"\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}}\n" +
-                "      }\n" +
-                "    ],\n" +
-                "    \"memberAdditionalProperties\": [\n" +
-                "      {\n" +
-                "        \"propName\": {\"value\": \"MEMBER_INDICATOR\"},\n" +
-                "        \"propValue\": \"\",\n" +
-                "        \"page\": 0,\n" +
-                "        \"confidence\": 0,\n" +
-                "        \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}\n" +
-                "      },\n" +
-                "      {\n" +
-                "        \"propName\": {\"value\": \"NEWBORN_REQUEST\"},\n" +
-                "        \"propValue\": \"\",\n" +
-                "        \"page\": 0,\n" +
-                "        \"confidence\": 0,\n" +
-                "        \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}\n" +
-                "      }\n" +
-                "    ]\n" +
+                "  \"root\": {\n" +
+                "    \"requestTxnId\": \"\",\n" +
+                "    \"status\": \"\",\n" +
+                "    \"errorMessage\": null,\n" +
+                "    \"errorMessageDetail\": null,\n" +
+                "    \"errorCd\": null,\n" +
+                "    \"documentId\": \"\",\n" +
+                "    \"inboundTransactionId\": \"\",\n" +
+                "    \"metadata\": {\n" +
+                "      \"documentType\": \"\",\n" +
+                "      \"documentExtension\": \"\",\n" +
+                "      \"transactionId\": \"\",\n" +
+                "      \"inboundDocumentName\": \"\",\n" +
+                "      \"processStartTime\": \"\",\n" +
+                "      \"processEndTime\": \"\",\n" +
+                "      \"processingTimeMs\": 0,\n" +
+                "      \"processedAt\": \"\",\n" +
+                "      \"pageCount\": 0,\n" +
+                "      \"candidatePaper\": [],\n" +
+                "      \"overallConfidence\": 0\n" +
+                "    },\n" +
+                "    \"aumipayload\": {\n" +
+                "      \"memberFirstName\": {\"value\": \"${member_first_name}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\n" +
+                "      \"provider\": [\n" +
+                "        {\n" +
+                "          \"providerNPI\": {\"value\": \"\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}}\n" +
+                "        }\n" +
+                "      ],\n" +
+                "      \"memberAdditionalProperties\": [\n" +
+                "        {\n" +
+                "          \"propName\": {\"value\": \"MEMBER_INDICATOR\"},\n" +
+                "          \"propValue\": \"\",\n" +
+                "          \"page\": 0,\n" +
+                "          \"confidence\": 0,\n" +
+                "          \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}\n" +
+                "        },\n" +
+                "        {\n" +
+                "          \"propName\": {\"value\": \"NEWBORN_REQUEST\"},\n" +
+                "          \"propValue\": \"\",\n" +
+                "          \"page\": 0,\n" +
+                "          \"confidence\": 0,\n" +
+                "          \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}\n" +
+                "        }\n" +
+                "      ]\n" +
+                "    }\n" +
                 "  }\n" +
                 "}";
         action.getContext().put("custom.json.generation.structure", template);
@@ -117,18 +119,20 @@ class CustomResponseGenerationConsumerProcessorTest {
 
         ObjectMapper mapper = new ObjectMapper();
         JsonNode json = mapper.readTree(output.get(0).getCustomResponse());
-        assertEquals("TRZ-1", json.get("requestTxnId").asText());
-        assertEquals("SUCCESS", json.get("status").asText());
-        assertEquals("ORIGIN-1", json.get("documentId").asText());
-        assertEquals("INB-1", json.get("inboundTransactionId").asText());
-        assertEquals("MEDICAL_GBD", json.get("metadata").get("documentType").asText());
-        assertEquals("pdf", json.get("metadata").get("documentExtension").asText());
-        assertEquals("TRZ-1", json.get("metadata").get("transactionId").asText());
-        assertEquals(3, json.get("metadata").get("candidatePaper").size());
+        JsonNode root = json.get("root");
+        assertNotNull(root);
+        assertEquals("TRZ-1", root.get("requestTxnId").asText());
+        assertEquals("SUCCESS", root.get("status").asText());
+        assertEquals("ORIGIN-1", root.get("documentId").asText());
+        assertEquals("INB-1", root.get("inboundTransactionId").asText());
+        assertEquals("MEDICAL_GBD", root.get("metadata").get("documentType").asText());
+        assertEquals("pdf", root.get("metadata").get("documentExtension").asText());
+        assertEquals("TRZ-1", root.get("metadata").get("transactionId").asText());
+        assertEquals(3, root.get("metadata").get("candidatePaper").size());
 
-        assertEquals("Noichole", json.get("aumipayload").get("memberFirstName").get("value").asText());
-        assertEquals(2, json.get("aumipayload").get("memberFirstName").get("page").asInt());
-        assertEquals(50, json.get("aumipayload").get("memberFirstName").get("confidence").asInt());
+        assertEquals("Noichole", root.get("aumipayload").get("memberFirstName").get("value").asText());
+        assertEquals(2, root.get("aumipayload").get("memberFirstName").get("page").asInt());
+        assertEquals(50, root.get("aumipayload").get("memberFirstName").get("confidence").asInt());
         assertEquals("INB-1", output.get(0).getInboundTransactionId());
     }
 
@@ -136,40 +140,42 @@ class CustomResponseGenerationConsumerProcessorTest {
     void generateCustomJson_shouldPrintFinalJsonForPredictionTableInputs() throws Exception {
         ActionExecutionAudit action = new ActionExecutionAudit();
         String template = "{\n" +
-                "  \"requestTxnId\": \"\",\n" +
-                "  \"status\": \"\",\n" +
-                "  \"errorMessage\": null,\n" +
-                "  \"errorMessageDetail\": null,\n" +
-                "  \"errorCd\": null,\n" +
-                "  \"documentId\": \"\",\n" +
-                "  \"inboundTransactionId\": \"\",\n" +
-                "  \"metadata\": {\n" +
-                "    \"documentType\": \"\",\n" +
-                "    \"documentExtension\": \"\",\n" +
-                "    \"transactionId\": \"\",\n" +
-                "    \"inboundDocumentName\": \"\",\n" +
-                "    \"processStartTime\": \"\",\n" +
-                "    \"processEndTime\": \"\",\n" +
-                "    \"processingTimeMs\": 0,\n" +
-                "    \"processedAt\": \"\",\n" +
-                "    \"pageCount\": 0,\n" +
-                "    \"candidatePaper\": [],\n" +
-                "    \"overallConfidence\": 0\n" +
-                "  },\n" +
-                "  \"aumipayload\": {\n" +
-                "    \"memberLastName\": {\"value\": \"${member_last_name}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\n" +
-                "    \"memberFirstName\": {\"value\": \"${member_first_name}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\n" +
-                "    \"memberDOB\": {\"value\": \"${member_date_of_birth}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\n" +
-                "    \"memberGender\": {\"value\": \"${member_gender}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\n" +
-                "    \"memberAddressLine1\": {\"value\": \"${member_address_line1}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\n" +
-                "    \"memberCity\": {\"value\": \"${member_city}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\n" +
-                "    \"memberState\": {\"value\": \"${member_state}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\n" +
-                "    \"memberZipCode\": {\"value\": \"${member_zipcode}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\n" +
-                "    \"serviceFromDate\": {\"value\": \"${service_from_date}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\n" +
-                "    \"faxReceivedDate\": {\"value\": \"${fax_received_date}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\n" +
-                "    \"diagnosis\": [{\"cd\": {\"value\": \"${diagnosis_code}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}}}],\n" +
-                "    \"provider\": [{\"providerNPI\": {\"value\": \"${servicing_provider_npi}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\"providerFirstName\": {\"value\": \"${servicing_provider_first_name}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\"providerLastName\": {\"value\": \"${servicing_provider_last_name}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\"providerAddressLine1\": {\"value\": \"${servicing_provider_address_line1}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\"providerCity\": {\"value\": \"${servicing_provider_city}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\"providerState\": {\"value\": \"${servicing_provider_state}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\"providerZipCode\": {\"value\": \"${servicing_provider_zipcode}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}}}],\n" +
-                "    \"memberAdditionalProperties\": [{\"propName\": {\"value\": \"NEWBORN_REQUEST\"}, \"propValue\": \"\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}}]\n" +
+                "  \"root\": {\n" +
+                "    \"requestTxnId\": \"\",\n" +
+                "    \"status\": \"\",\n" +
+                "    \"errorMessage\": null,\n" +
+                "    \"errorMessageDetail\": null,\n" +
+                "    \"errorCd\": null,\n" +
+                "    \"documentId\": \"\",\n" +
+                "    \"inboundTransactionId\": \"\",\n" +
+                "    \"metadata\": {\n" +
+                "      \"documentType\": \"\",\n" +
+                "      \"documentExtension\": \"\",\n" +
+                "      \"transactionId\": \"\",\n" +
+                "      \"inboundDocumentName\": \"\",\n" +
+                "      \"processStartTime\": \"\",\n" +
+                "      \"processEndTime\": \"\",\n" +
+                "      \"processingTimeMs\": 0,\n" +
+                "      \"processedAt\": \"\",\n" +
+                "      \"pageCount\": 0,\n" +
+                "      \"candidatePaper\": [],\n" +
+                "      \"overallConfidence\": 0\n" +
+                "    },\n" +
+                "    \"aumipayload\": {\n" +
+                "      \"memberLastName\": {\"value\": \"${member_last_name}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\n" +
+                "      \"memberFirstName\": {\"value\": \"${member_first_name}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\n" +
+                "      \"memberDOB\": {\"value\": \"${member_date_of_birth}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\n" +
+                "      \"memberGender\": {\"value\": \"${member_gender}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\n" +
+                "      \"memberAddressLine1\": {\"value\": \"${member_address_line1}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\n" +
+                "      \"memberCity\": {\"value\": \"${member_city}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\n" +
+                "      \"memberState\": {\"value\": \"${member_state}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\n" +
+                "      \"memberZipCode\": {\"value\": \"${member_zipcode}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\n" +
+                "      \"serviceFromDate\": {\"value\": \"${service_from_date}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\n" +
+                "      \"faxReceivedDate\": {\"value\": \"${fax_received_date}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\n" +
+                "      \"diagnosis\": [{\"cd\": {\"value\": \"${diagnosis_code}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}}}],\n" +
+                "      \"provider\": [{\"providerNPI\": {\"value\": \"${servicing_provider_npi}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\"providerFirstName\": {\"value\": \"${servicing_provider_first_name}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\"providerLastName\": {\"value\": \"${servicing_provider_last_name}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\"providerAddressLine1\": {\"value\": \"${servicing_provider_address_line1}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\"providerCity\": {\"value\": \"${servicing_provider_city}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\"providerState\": {\"value\": \"${servicing_provider_state}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\"providerZipCode\": {\"value\": \"${servicing_provider_zipcode}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}}}],\n" +
+                "      \"memberAdditionalProperties\": [{\"propName\": {\"value\": \"NEWBORN_REQUEST\"}, \"propValue\": \"\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}}]\n" +
+                "    }\n" +
                 "  }\n" +
                 "}";
         action.getContext().put("custom.json.generation.structure", template);
@@ -203,10 +209,12 @@ class CustomResponseGenerationConsumerProcessorTest {
         System.out.println("Final Generated JSON:\n" + finalGeneratedJson);
 
         assertNotNull(finalJson);
-        assertEquals("TRZ-758", finalJson.get("requestTxnId").asText());
-        assertEquals("Exlsie", finalJson.get("aumipayload").get("memberLastName").get("value").asText());
-        assertEquals("Noichole", finalJson.get("aumipayload").get("memberFirstName").get("value").asText());
-        assertEquals("1952628794", finalJson.get("aumipayload").get("provider").get(0).get("providerNPI").get("value").asText());
-        assertEquals("N", finalJson.get("aumipayload").get("memberAdditionalProperties").get(0).get("propValue").asText());
+        JsonNode root = finalJson.get("root");
+        assertNotNull(root);
+        assertEquals("TRZ-758", root.get("requestTxnId").asText());
+        assertEquals("Exlsie", root.get("aumipayload").get("memberLastName").get("value").asText());
+        assertEquals("Noichole", root.get("aumipayload").get("memberFirstName").get("value").asText());
+        assertEquals("1952628794", root.get("aumipayload").get("provider").get(0).get("providerNPI").get("value").asText());
+        assertEquals("N", root.get("aumipayload").get("memberAdditionalProperties").get(0).get("propValue").asText());
     }
 }

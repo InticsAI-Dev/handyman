@@ -16,12 +16,21 @@ class CustomResponseGenerationActionTest {
         action.getContext().put("custom.response.generation.consumer.API.count", "1");
         action.getContext().put("custom.response.generation.consumer.url", "http://localhost:8189/");
         action.getContext().put("custom.json.generation.structure",
-                "{ \"aumipayload\": { " +
+                "{ \"root\": { " +
+                        "\"requestTxnId\":\"\", " +
+                        "\"status\":\"\", " +
+                        "\"errorMessage\":null, " +
+                        "\"errorMessageDetail\":null, " +
+                        "\"errorCd\":null, " +
+                        "\"documentId\":\"\", " +
+                        "\"inboundTransactionId\":\"\", " +
+                        "\"metadata\":{\"documentType\":\"\",\"documentExtension\":\"\",\"transactionId\":\"\",\"inboundDocumentName\":\"\",\"processStartTime\":\"\",\"processEndTime\":\"\",\"processingTimeMs\":0,\"processedAt\":\"\",\"pageCount\":0,\"candidatePaper\":[],\"overallConfidence\":0}, " +
+                        "\"aumipayload\": { " +
                         "\"memberFirstName\": {\"value\":\"\", \"page\":0, \"confidence\":0, \"boundingBox\":{\"x\":0,\"width\":0,\"y\":0,\"height\":0}}," +
                         "\"memberAdditionalProperties\": [" +
                         "{\"propName\":{\"value\":\"MEMBER_INDICATOR\"}, \"propValue\":{\"value\":\"\", \"page\":0, \"confidence\":0, \"boundingBox\":{\"x\":0,\"width\":0,\"y\":0,\"height\":0}}}," +
                         "{\"propName\":{\"value\":\"NEWBORN_REQUEST\"}, \"propValue\":{\"value\":\"\", \"page\":0, \"confidence\":0, \"boundingBox\":{\"x\":0,\"width\":0,\"y\":0,\"height\":0}}}" +
-                        "] } }");
+                        "] } } }");
 
         CustomResponseGeneration customResponseGeneration = CustomResponseGeneration.builder()
                 .name("Custom Response Generation Action")

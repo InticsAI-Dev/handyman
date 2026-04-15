@@ -90,7 +90,7 @@ public class CustomResponseGenerationConsumerProcessor implements CoproProcessor
     }
 
     JsonNode generateCustomJson(String templateJson, List<PredictionDTO> predictions) throws Exception {
-        JsonNode root = objectMapper.readTree(templateJson);
+        JsonNode root = parseTemplateJsonSafely(templateJson);
         Map<String, List<PredictionDTO>> bySorItem = predictions.stream()
                 .filter(p -> p.getSorItemName() != null)
                 .collect(Collectors.groupingBy(p -> p.getSorItemName().toLowerCase()));
@@ -106,6 +106,20 @@ public class CustomResponseGenerationConsumerProcessor implements CoproProcessor
             enrichRootEnvelope(target, predictions);
         }
         return filled;
+    }
+
+    private JsonNode parseTemplateJsonSafely(String templateJson) {
+        String incomingTemplate = templateJson == null ? "" : templateJson.trim();
+        if (incomingTemplate.isEmpty()) {
+            log.warn(aMarker, "Custom response template is empty. Proceeding with empty object.");
+            return objectMapper.createObjectNode();
+        }
+        try {
+            return objectMapper.readTree(incomingTemplate);
+        } catch (Exception ex) {
+            log.error(aMarker, "Invalid custom response template JSON. Proceeding with empty object.", ex);
+            return objectMapper.createObjectNode();
+        }
     }
 
     private JsonNode fillNode(JsonNode node, Map<String, List<PredictionDTO>> bySorItem, Map<String, List<PredictionDTO>> byNormalizedSorItem) {
