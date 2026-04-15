@@ -226,8 +226,14 @@ public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
                                                                  String correlationId) {
         @SuppressWarnings("unchecked")
         Map<String, Object> entityFields = SHARED_MAPPER.convertValue(item, Map.class);
-        String partKey = String.valueOf(entityFields.getOrDefault("originId", entityFields.getOrDefault("origin_id", "")));
-        String messageKey = partKey.isBlank() ? null : partKey;
+        String originId = String.valueOf(entityFields.getOrDefault("originId", entityFields.getOrDefault("origin_id", "")));
+        String pageNo = String.valueOf(entityFields.getOrDefault("pageNo", entityFields.getOrDefault("page_no",
+                entityFields.getOrDefault("paperNo", entityFields.getOrDefault("paper_no", "0")))));
+
+        String messageKey = null;
+        if (!originId.isBlank()) {
+            messageKey = originId + "_" + pageNo;
+        }
 
         logger.info("Posting to Kafka topic={} with key={} batch={} type={}", topic, messageKey, batchId, requestType);
         ProducerRecord<String, String> recordData = new ProducerRecord<>(topic, messageKey, payload);
@@ -237,10 +243,8 @@ public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
         recordData.headers().add(HEADER_BATCH_ID, batchId.getBytes(StandardCharsets.UTF_8));
         recordData.headers().add(HEADER_CORRELATION_ID, correlationId.getBytes(StandardCharsets.UTF_8));
         recordData.headers().add(HEADER_ROOT_PIPELINE_ID, String.valueOf(actionExecutionAudit.getRootPipelineId()).getBytes(StandardCharsets.UTF_8));
-        recordData.headers().add(HEADER_ORIGIN_ID, messageKey != null ? messageKey.getBytes(StandardCharsets.UTF_8) : new byte[0]);
-        String pageNoVal = String.valueOf(entityFields.getOrDefault("pageNo", entityFields.getOrDefault("page_no",
-                entityFields.getOrDefault("paperNo", entityFields.getOrDefault("paper_no", "0")))));
-        recordData.headers().add(HEADER_PAGE_NO, pageNoVal.getBytes(StandardCharsets.UTF_8));
+        recordData.headers().add(HEADER_ORIGIN_ID, originId.getBytes(StandardCharsets.UTF_8));
+        recordData.headers().add(HEADER_PAGE_NO, pageNo.getBytes(StandardCharsets.UTF_8));
         recordData.headers().add(HEADER_PROCESS_ID, decryptIfNeeded(CONTEXT_INIT_PROCESS_ID, "", context).getBytes(StandardCharsets.UTF_8));
         recordData.headers().add(HEADER_TENANT_ID, decryptIfNeeded(CONTEXT_TENANT_ID, "", context).getBytes(StandardCharsets.UTF_8));
         recordData.headers().add(HEADER_GROUP_ID, decryptIfNeeded(CONTEXT_GROUP_ID, "", context).getBytes(StandardCharsets.UTF_8));
