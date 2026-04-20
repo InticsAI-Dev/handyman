@@ -129,7 +129,7 @@ public class LabelWithPriorityProcessor {
             return rows.get(0);
         }
 
-        Map<String, Integer> priorityMap = extractPriorityMap(rows);
+        Map<String, WhitelistLabelPriority> priorityMap = extractPriorityMap(rows);
         logger.info("[originId: {}, sorItemName: {}] Extracted priority map with {} entries",
                 originId, sorItemName, priorityMap.size());
 
@@ -137,7 +137,7 @@ public class LabelWithPriorityProcessor {
         assignPriorities(rows, priorityMap);
 
         boolean allPrioritiesEmpty = priorityMap.values().stream()
-                .allMatch(priority -> priority == null || priority == Integer.MAX_VALUE);
+                .allMatch(entry -> entry.getLabelPriority() == null || entry.getLabelPriority() == Integer.MAX_VALUE);
 
         if (allPrioritiesEmpty) {
             logger.info("[originId: {}, sorItemName: {}] All priorities are empty/null - allowing all rows",
@@ -171,7 +171,7 @@ public class LabelWithPriorityProcessor {
         boolean hasValidLabels = rows.stream()
                 .anyMatch(r -> r.getSorItemLabel() != null && !r.getSorItemLabel().isBlank());
 
-        boolean emptyLabelWhitelisted = priorityMap.containsKey("");
+        boolean emptyLabelWhitelisted = resolveMatchingEntry("", priorityMap) != null;
 
         if (!hasValidLabels && !emptyLabelWhitelisted) {
             logger.info("[originId: {}, sorItemName: {}] No valid labels present and empty label not whitelisted",
@@ -299,7 +299,7 @@ public class LabelWithPriorityProcessor {
 
     private SelectionFilteringInputTable handlePriorityBasedSelection(
             List<SelectionFilteringInputTable> rows,
-            Map<String, Integer> priorityMap,
+            Map<String, WhitelistLabelPriority> priorityMap,
             List<String> messages) {
 
         SelectionFilteringInputTable first = rows.get(0);
@@ -325,8 +325,9 @@ public class LabelWithPriorityProcessor {
             String normalizedLabel = (label != null) ? removeSpecialCharacters(label) : "";
             String priorityStr = r.getLabelPriorityIdx();
 
-            // Check if label exists in whitelist
-            if (!priorityMap.containsKey(normalizedLabel)) {
+            // Check if label exists in whitelist (EXACT or CONTAINS)
+            WhitelistLabelPriority matched = resolveMatchingEntry(normalizedLabel, priorityMap);
+            if (matched == null) {
                 // Label NOT in whitelist → REJECT
                 rowsNotInWhitelist.add(r);
                 logger.info("[originId: {}, sorItemName: {}, paperNo: {}] Row id {} - NOT in whitelist",
@@ -527,7 +528,7 @@ public class LabelWithPriorityProcessor {
     }
 
     // ========================= STAGE 4: PRIORITY MAP =========================
-    private Map<String, Integer> extractPriorityMap(List<SelectionFilteringInputTable> rows) {
+    private Map<String, WhitelistLabelPriority> extractPriorityMap(List<SelectionFilteringInputTable> rows) {
         if (rows.isEmpty()) {
             logger.warn("extractPriorityMap called with empty list");
             return Map.of();
@@ -546,13 +547,13 @@ public class LabelWithPriorityProcessor {
         try {
             List<WhitelistLabelPriority> list = mapper.readValue(json,
                     new TypeReference<List<WhitelistLabelPriority>>() {});
-            Map<String, Integer> output = new HashMap<>();
+            Map<String, WhitelistLabelPriority> output = new HashMap<>();
             for (WhitelistLabelPriority row : list) {
                 Integer priority = row.getLabelPriority();
                 if (priority == null || priority == 0) {
-                    priority = Integer.MAX_VALUE;
+                    row.setLabelPriority(Integer.MAX_VALUE);
                 }
-                output.put(removeSpecialCharacters(row.getWhitelistKey()), priority);
+                output.put(removeSpecialCharacters(row.getWhitelistKey()), row);
             }
             logger.info("[originId: {}, sorItemName: {}] Successfully parsed priority map with {} entries",
                     originId, sorItemName, output.size());
@@ -564,9 +565,28 @@ public class LabelWithPriorityProcessor {
         }
     }
 
+    private WhitelistLabelPriority resolveMatchingEntry(String normalizedLabel,
+                                                         Map<String, WhitelistLabelPriority> priorityMap) {
+        // 1. EXACT match first
+        if (priorityMap.containsKey(normalizedLabel)) {
+            return priorityMap.get(normalizedLabel);
+        }
+        // 2. CONTAINS match for entries configured with CONTAINS mode
+        for (Map.Entry<String, WhitelistLabelPriority> entry : priorityMap.entrySet()) {
+            if ("CONTAINS".equalsIgnoreCase(entry.getValue().getLabelSearchConfig())) {
+                if (normalizedLabel.contains(entry.getKey())) {
+                    logger.info("CONTAINS match: label '{}' contains whitelist key '{}'",
+                            normalizedLabel, entry.getKey());
+                    return entry.getValue();
+                }
+            }
+        }
+        return null;
+    }
+
     // FIX 2: Added null check inside assignPriorities method
     private void assignPriorities(List<SelectionFilteringInputTable> rows,
-                                  Map<String, Integer> priorityMap) {
+                                  Map<String, WhitelistLabelPriority> priorityMap) {
         if (rows.isEmpty()) {
             logger.warn("assignPriorities called with empty list");
             return;
@@ -589,7 +609,8 @@ public class LabelWithPriorityProcessor {
 
             String label = r.getSorItemLabel();
             String key = (label != null) ? removeSpecialCharacters(label) : "";
-            Integer p = priorityMap.get(key);
+            WhitelistLabelPriority matched = resolveMatchingEntry(key, priorityMap);
+            Integer p = (matched != null) ? matched.getLabelPriority() : null;
 
             if (p == null || p == Integer.MAX_VALUE) {
                 r.setLabelPriorityIdx("N/A");

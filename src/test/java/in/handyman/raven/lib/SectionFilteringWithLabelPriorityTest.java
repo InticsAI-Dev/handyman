@@ -5,6 +5,7 @@ import in.handyman.raven.lib.adapters.selections.LabelWithPriorityProcessor;
 import in.handyman.raven.lib.adapters.selections.models.SelectionFilteringInputTable;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,6 +14,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 @Slf4j
 public class SectionFilteringWithLabelPriorityTest {
@@ -320,5 +323,224 @@ public class SectionFilteringWithLabelPriorityTest {
         var result = processor.process(input);
         System.out.println("testEmptyJsonPriorityMap:");
         printProcessedResult(getStringMapMap(result));
+    }
+
+    // =====================================================================
+    // NEW TESTS: CONTAINS mode in priority selection
+    // =====================================================================
+
+    @Test
+    @DisplayName("CONTAINS: label containing whitelist key gets priority assigned")
+    public void testContainsMatchAssignsPriority() {
+        String priorityJson = "[" +
+                "{\"whitelistKey\": \"insuranceid\", \"labelPriority\": 50, \"labelSearchConfig\": \"CONTAINS\"}" +
+                "]";
+        List<SelectionFilteringInputTable> input = List.of(
+                rowId(1L, "origin1", 2L, "member_id", "val1", true, "Insurance ID number", priorityJson)
+        );
+        var processor = new LabelWithPriorityProcessor(new ObjectMapper(), logger);
+        var result = processor.process(input);
+
+        SelectionFilteringInputTable row = result.get(0);
+        assertEquals("50", row.getLabelPriorityIdx(), "Priority 50 should be assigned via CONTAINS match");
+        assertTrue(row.getLabelMatching(), "Single CONTAINS matched row should be selected");
+    }
+
+    @Test
+    @DisplayName("CONTAINS: matched label wins over label not in whitelist")
+    public void testContainsMatchWinsOverNotInWhitelist() {
+        String priorityJson = "[" +
+                "{\"whitelistKey\": \"insuranceid\", \"labelPriority\": 50, \"labelSearchConfig\": \"CONTAINS\"}" +
+                "]";
+        List<SelectionFilteringInputTable> input = List.of(
+                rowId(1L, "origin1", 2L, "member_id", "val1", true, "Insurance ID number", priorityJson),
+                rowId(2L, "origin1", 3L, "member_id", "val2", true, "MRN",                 priorityJson)
+        );
+        var processor = new LabelWithPriorityProcessor(new ObjectMapper(), logger);
+        var result = processor.process(input);
+
+        SelectionFilteringInputTable ins = result.stream().filter(r -> r.getId().equals(1L)).findFirst().orElseThrow();
+        SelectionFilteringInputTable mrn = result.stream().filter(r -> r.getId().equals(2L)).findFirst().orElseThrow();
+
+        assertTrue(ins.getLabelMatching(),  "Insurance ID number should win via CONTAINS match");
+        assertFalse(mrn.getLabelMatching(), "MRN not in whitelist should be rejected");
+    }
+
+    @Test
+    @DisplayName("CONTAINS: lower priority number wins over higher priority number")
+    public void testContainsLowerPriorityNumberWins() {
+        String priorityJson = "[" +
+                "{\"whitelistKey\": \"insuranceid\", \"labelPriority\": 50,  \"labelSearchConfig\": \"CONTAINS\"}," +
+                "{\"whitelistKey\": \"policyno\",    \"labelPriority\": 100, \"labelSearchConfig\": \"CONTAINS\"}" +
+                "]";
+        List<SelectionFilteringInputTable> input = List.of(
+                rowId(1L, "origin1", 2L, "member_id", "val1", true, "Insurance ID number", priorityJson),
+                rowId(2L, "origin1", 3L, "member_id", "val2", true, "Policy No Extra",     priorityJson)
+        );
+        var processor = new LabelWithPriorityProcessor(new ObjectMapper(), logger);
+        var result = processor.process(input);
+
+        SelectionFilteringInputTable ins = result.stream().filter(r -> r.getId().equals(1L)).findFirst().orElseThrow();
+        SelectionFilteringInputTable pol = result.stream().filter(r -> r.getId().equals(2L)).findFirst().orElseThrow();
+
+        assertTrue(ins.getLabelMatching(),  "Priority 50 (insuranceid CONTAINS) should win over priority 100");
+        assertFalse(pol.getLabelMatching(), "Priority 100 (policyno CONTAINS) should lose");
+        assertEquals("50", ins.getLabelPriorityIdx());
+        assertEquals("100", pol.getLabelPriorityIdx());
+    }
+
+    @Test
+    @DisplayName("CONTAINS p=100 loses to EXACT p=50 — priority number decides, not match mode")
+    public void testExactLowerPriorityBeatsContainsHigherPriority() {
+        String priorityJson = "[" +
+                "{\"whitelistKey\": \"insuranceid\", \"labelPriority\": 100, \"labelSearchConfig\": \"CONTAINS\"}," +
+                "{\"whitelistKey\": \"patientid\",   \"labelPriority\": 50,  \"labelSearchConfig\": \"EXACT\"}" +
+                "]";
+        List<SelectionFilteringInputTable> input = List.of(
+                rowId(1L, "origin1", 2L, "member_id", "val1", true, "Insurance ID number", priorityJson),
+                rowId(2L, "origin1", 3L, "member_id", "val2", true, "patientid",           priorityJson)
+        );
+        var processor = new LabelWithPriorityProcessor(new ObjectMapper(), logger);
+        var result = processor.process(input);
+
+        SelectionFilteringInputTable ins = result.stream().filter(r -> r.getId().equals(1L)).findFirst().orElseThrow();
+        SelectionFilteringInputTable pat = result.stream().filter(r -> r.getId().equals(2L)).findFirst().orElseThrow();
+
+        assertFalse(ins.getLabelMatching(), "CONTAINS p=100 should lose to EXACT p=50");
+        assertTrue(pat.getLabelMatching(),  "EXACT p=50 should win");
+    }
+
+    @Test
+    @DisplayName("Null labelSearchConfig defaults to EXACT — partial label not matched, loses to exact-matched competitor")
+    public void testNullSearchConfigDefaultsToExact() {
+        // "insuranceid" has no labelSearchConfig → defaults to EXACT
+        // "insuranceidnumber" != "insuranceid" exactly → not matched (N/A priority) → rejected
+        // "memberid" EXACT matched with priority 10 → wins
+        String priorityJson = "[" +
+                "{\"whitelistKey\": \"insuranceid\", \"labelPriority\": 50}," +  // no labelSearchConfig → EXACT
+                "{\"whitelistKey\": \"memberid\",    \"labelPriority\": 10, \"labelSearchConfig\": \"EXACT\"}" +
+                "]";
+        List<SelectionFilteringInputTable> input = List.of(
+                rowId(1L, "origin1", 2L, "member_id", "val1", true, "Insurance ID number", priorityJson),
+                rowId(2L, "origin1", 3L, "member_id", "val2", true, "memberid",            priorityJson)
+        );
+        var processor = new LabelWithPriorityProcessor(new ObjectMapper(), logger);
+        var result = processor.process(input);
+
+        SelectionFilteringInputTable ins = result.stream().filter(r -> r.getId().equals(1L)).findFirst().orElseThrow();
+        SelectionFilteringInputTable mem = result.stream().filter(r -> r.getId().equals(2L)).findFirst().orElseThrow();
+
+        // "insuranceidnumber" does not exact-match "insuranceid" → not in whitelist → rejected
+        assertFalse(ins.getLabelMatching(), "Null searchConfig = EXACT → 'insuranceidnumber' != 'insuranceid' → rejected");
+        assertEquals("N/A", ins.getLabelPriorityIdx(), "No priority assigned when not matched");
+        assertTrue(mem.getLabelMatching(), "memberid EXACT matched → wins");
+    }
+
+    @Test
+    @DisplayName("EXACT mode does not partially match — loses to a competitor that is properly matched")
+    public void testExactModeDoesNotPartialMatch() {
+        // "insurance" EXACT cannot match "Insurance ID number" (normalized: "insuranceidnumber")
+        // "memberid" EXACT matches exactly → wins
+        String priorityJson = "[" +
+                "{\"whitelistKey\": \"insurance\", \"labelPriority\": 50, \"labelSearchConfig\": \"EXACT\"}," +
+                "{\"whitelistKey\": \"memberid\",  \"labelPriority\": 10, \"labelSearchConfig\": \"EXACT\"}" +
+                "]";
+        List<SelectionFilteringInputTable> input = List.of(
+                rowId(1L, "origin1", 2L, "member_id", "val1", true, "Insurance ID number", priorityJson),
+                rowId(2L, "origin1", 3L, "member_id", "val2", true, "memberid",            priorityJson)
+        );
+        var processor = new LabelWithPriorityProcessor(new ObjectMapper(), logger);
+        var result = processor.process(input);
+
+        SelectionFilteringInputTable ins = result.stream().filter(r -> r.getId().equals(1L)).findFirst().orElseThrow();
+        SelectionFilteringInputTable mem = result.stream().filter(r -> r.getId().equals(2L)).findFirst().orElseThrow();
+
+        // "insuranceidnumber" != "insurance" → not in whitelist → rejected
+        assertFalse(ins.getLabelMatching(), "EXACT 'insurance' should not partial-match 'insuranceidnumber'");
+        assertEquals("N/A", ins.getLabelPriorityIdx());
+        assertTrue(mem.getLabelMatching(), "memberid EXACT matched p=10 should win");
+    }
+
+    @Test
+    @DisplayName("Real scenario: Insurance ID number CONTAINS p=50 wins over Patient p=223 EXACT (patient# != patient)")
+    public void testInsuranceIdNumberScenario() {
+        // Insurance ID number → normalized: "insuranceidnumber" → CONTAINS "insuranceid" → priority 50
+        // Patient #          → normalized: "patient#" (# kept) → EXACT "patient" → no match → rejected
+        String priorityJson = "[" +
+                "{\"whitelistKey\": \"insuranceid\", \"labelPriority\": 50,  \"labelSearchConfig\": \"CONTAINS\"}," +
+                "{\"whitelistKey\": \"patient\",     \"labelPriority\": 223, \"labelSearchConfig\": \"EXACT\"}" +
+                "]";
+        List<SelectionFilteringInputTable> input = List.of(
+                rowId(1L, "origin1", 2L, "member_id", "val_insurance", true, "Insurance ID number", priorityJson),
+                rowId(2L, "origin1", 4L, "member_id", "val_patient",   true, "Patient #",           priorityJson)
+        );
+        var processor = new LabelWithPriorityProcessor(new ObjectMapper(), logger);
+        var result = processor.process(input);
+
+        SelectionFilteringInputTable ins = result.stream().filter(r -> r.getId().equals(1L)).findFirst().orElseThrow();
+        SelectionFilteringInputTable pat = result.stream().filter(r -> r.getId().equals(2L)).findFirst().orElseThrow();
+
+        assertTrue(ins.getLabelMatching(),  "Insurance ID number should win via CONTAINS p=50");
+        assertFalse(pat.getLabelMatching(), "Patient # not EXACT matched (patient# != patient) → rejected");
+        assertEquals("50", ins.getLabelPriorityIdx());
+    }
+
+    @Test
+    @DisplayName("Backwards compatibility: EXACT match still works correctly after refactor")
+    public void testExactMatchBackwardsCompatible() {
+        String priorityJson = "[" +
+                "{\"whitelistKey\": \"MemberID\",  \"labelPriority\": 10, \"labelSearchConfig\": \"EXACT\"}," +
+                "{\"whitelistKey\": \"PatientID\", \"labelPriority\": 20, \"labelSearchConfig\": \"EXACT\"}" +
+                "]";
+        List<SelectionFilteringInputTable> input = List.of(
+                rowId(1L, "origin1", 2L, "member_id", "val1", true, "MemberID",  priorityJson),
+                rowId(2L, "origin1", 3L, "member_id", "val2", true, "PatientID", priorityJson)
+        );
+        var processor = new LabelWithPriorityProcessor(new ObjectMapper(), logger);
+        var result = processor.process(input);
+
+        SelectionFilteringInputTable mem = result.stream().filter(r -> r.getId().equals(1L)).findFirst().orElseThrow();
+        SelectionFilteringInputTable pat = result.stream().filter(r -> r.getId().equals(2L)).findFirst().orElseThrow();
+
+        assertTrue(mem.getLabelMatching(),  "MemberID p=10 should win (lower priority number = higher priority)");
+        assertFalse(pat.getLabelMatching(), "PatientID p=20 should lose");
+        assertEquals("10", mem.getLabelPriorityIdx());
+        assertEquals("20", pat.getLabelPriorityIdx());
+    }
+
+    @Test
+    @DisplayName("Backwards compatibility: no whitelist → all rows allowed with N/A priority")
+    public void testNoWhitelistAllRowsAllowed() {
+        List<SelectionFilteringInputTable> input = List.of(
+                rowId(1L, "origin1", 1L, "member_id", "val1", true, "Some Label", null),
+                rowId(2L, "origin1", 2L, "member_id", "val2", true, "Other Label", null)
+        );
+        var processor = new LabelWithPriorityProcessor(new ObjectMapper(), logger);
+        var result = processor.process(input);
+
+        assertTrue(result.stream().allMatch(r -> Boolean.TRUE.equals(r.getLabelMatching())),
+                "All rows should be allowed when no whitelist is configured");
+        assertTrue(result.stream().allMatch(r -> "N/A".equals(r.getLabelPriorityIdx())),
+                "All rows should have N/A priority when no whitelist");
+    }
+
+    @Test
+    @DisplayName("Backwards compatibility: labelMatching=false rows are excluded from priority selection")
+    public void testAlreadyRejectedRowsNotReprocessed() {
+        String priorityJson = "[" +
+                "{\"whitelistKey\": \"memberid\", \"labelPriority\": 10, \"labelSearchConfig\": \"EXACT\"}" +
+                "]";
+        List<SelectionFilteringInputTable> input = List.of(
+                rowId(1L, "origin1", 1L, "member_id", "val1", false, "memberid", priorityJson), // already rejected
+                rowId(2L, "origin1", 2L, "member_id", "val2", true,  "memberid", priorityJson)
+        );
+        var processor = new LabelWithPriorityProcessor(new ObjectMapper(), logger);
+        var result = processor.process(input);
+
+        SelectionFilteringInputTable rejected = result.stream().filter(r -> r.getId().equals(1L)).findFirst().orElseThrow();
+        SelectionFilteringInputTable active   = result.stream().filter(r -> r.getId().equals(2L)).findFirst().orElseThrow();
+
+        assertFalse(rejected.getLabelMatching(), "Pre-rejected row should remain rejected");
+        assertTrue(active.getLabelMatching(),    "Active row with matching label should be selected");
     }
 }
