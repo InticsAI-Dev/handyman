@@ -234,6 +234,8 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
 
         String normalizedText = ocrText == null ? "" : ocrText.toLowerCase();
 
+        normalizedText = normalizedText.replaceAll("\\s+", " ").trim();
+
         List<String> allowedKeywords = new ArrayList<>();
         List<String> blockedKeywords = new ArrayList<>();
 
@@ -248,26 +250,26 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
 
                 String[] labels = rule.getLabel().split("\\s*,\\s*");
 
+                String textWithoutAllLabels = normalizedText;
+
                 for (String label : labels) {
 
-                    if (!normalizedText.contains(label)) continue;
+                    if (!textWithoutAllLabels.contains(label)) continue;
 
-                    String textWithoutPhrase = normalizedText.replaceAll(
-                            "\\b" + Pattern.quote(label) + "\\b", "");
+                    textWithoutAllLabels = textWithoutAllLabels.replaceAll(
+                            Pattern.quote(label.toLowerCase()), "");
+                }
 
-                    boolean existsElsewhere = Pattern.compile("\\b" + Pattern.quote(normalizedKeyword) + "\\b")
-                            .matcher(textWithoutPhrase)
-                            .find();
+                boolean existsElsewhere = Pattern.compile("\\b" + Pattern.quote(normalizedKeyword) + "\\b")
+                        .matcher(textWithoutAllLabels)
+                        .find();
 
-                    if (!existsElsewhere) {
-                        blockedKeywords.add(keyword);
-                        log.info(marker, "Blocked keyword '{}' only found inside phrase '{}'", keyword, label);
-                        isBlocked = true;
-                        break;
-                    }
-                    else {
-                        log.info(marker, "Keyword '{}' also exists outside phrase '{}', not blocking", keyword, rule.getLabel());
-                    }
+                if (!existsElsewhere) {
+                    blockedKeywords.add(keyword);
+                    log.info(marker, "Blocked keyword '{}' only found inside labels '{}'", keyword, Arrays.toString(labels));
+                    isBlocked = true;
+                } else {
+                    log.info(marker, "Keyword '{}' still exists outside labels '{}', not blocking", keyword, Arrays.toString(labels));
                 }
             }
 
