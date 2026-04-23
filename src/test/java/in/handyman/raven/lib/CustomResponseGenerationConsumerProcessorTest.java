@@ -13,6 +13,7 @@ import org.slf4j.MarkerFactory;
 
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -121,9 +122,9 @@ class CustomResponseGenerationConsumerProcessorTest {
         JsonNode json = mapper.readTree(output.get(0).getCustomResponse());
         JsonNode root = json.get("root");
         assertNotNull(root);
-        assertEquals("TRZ-1", root.get("requestTxnId").asText());
+        assertEquals("REQ-1", root.get("requestTxnId").asText());
         assertEquals("SUCCESS", root.get("status").asText());
-        assertEquals("ORIGIN-1", root.get("documentId").asText());
+        assertEquals("DOC-1", root.get("documentId").asText());
         assertEquals("INB-1", root.get("inboundTransactionId").asText());
         assertEquals("MEDICAL_GBD", root.get("metadata").get("documentType").asText());
         assertEquals("pdf", root.get("metadata").get("documentExtension").asText());
@@ -173,7 +174,7 @@ class CustomResponseGenerationConsumerProcessorTest {
                 "      \"serviceFromDate\": {\"value\": \"${service_from_date}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\n" +
                 "      \"faxReceivedDate\": {\"value\": \"${fax_received_date}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\n" +
                 "      \"diagnosis\": [{\"cd\": {\"value\": \"${diagnosis_code}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}}}],\n" +
-                "      \"provider\": [{\"providerNPI\": {\"value\": \"${servicing_provider_npi}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\"providerFirstName\": {\"value\": \"${servicing_provider_first_name}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\"providerLastName\": {\"value\": \"${servicing_provider_last_name}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\"providerAddressLine1\": {\"value\": \"${servicing_provider_address_line1}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\"providerCity\": {\"value\": \"${servicing_provider_city}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\"providerState\": {\"value\": \"${servicing_provider_state}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\"providerZipCode\": {\"value\": \"${servicing_provider_zipcode}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}}}],\n" +
+                "      \"provider\": [{\"providerCategory\": {\"value\": \"${provider_category}\"},\"providerNPI\": {\"value\": \"${servicing_provider_npi}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\"providerFirstName\": {\"value\": \"${servicing_provider_first_name}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\"providerLastName\": {\"value\": \"${servicing_provider_last_name}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\"providerAddressLine1\": {\"value\": \"${servicing_provider_address_line1}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\"providerCity\": {\"value\": \"${servicing_provider_city}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\"providerState\": {\"value\": \"${servicing_provider_state}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\"providerZipCode\": {\"value\": \"${servicing_provider_zipcode}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}}}],\n" +
                 "      \"memberAdditionalProperties\": [{\"propName\": {\"value\": \"NEWBORN_REQUEST\"}, \"propValue\": \"\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}}]\n" +
                 "    }\n" +
                 "  }\n" +
@@ -194,13 +195,14 @@ class CustomResponseGenerationConsumerProcessorTest {
         inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("member_zipcode").predictedValue("75074").paperNo(2).precision(0.0).leftPos(896.0).rightPos(964.0).upperPos(739.0).lowerPos(745.0).transactionId("TRZ-758").metadataJson(metadata).build());
         inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("service_from_date").predictedValue("2025-06-02").paperNo(2).precision(0.92).leftPos(470.0).rightPos(604.0).upperPos(1760.0).lowerPos(1807.0).transactionId("TRZ-758").metadataJson(metadata).build());
         inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("diagnosis_code").predictedValue("F10250").paperNo(2).precision(0.95).leftPos(1485.0).rightPos(1635.0).upperPos(1789.0).lowerPos(1823.0).transactionId("TRZ-758").metadataJson(metadata).build());
-        inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("servicing_provider_npi").predictedValue("1952628794").paperNo(2).precision(1.0).leftPos(643.0).rightPos(846.0).upperPos(1062.0).lowerPos(1096.0).sorContainerInstance("1").transactionId("TRZ-758").metadataJson(metadata).build());
-        inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("servicing_provider_first_name").predictedValue("SAMANTHA B").paperNo(2).precision(1.0).leftPos(254.0).rightPos(643.0).upperPos(1062.0).lowerPos(1096.0).sorContainerInstance("1").transactionId("TRZ-758").metadataJson(metadata).build());
-        inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("servicing_provider_last_name").predictedValue("ZERINGUE").paperNo(2).precision(1.0).leftPos(254.0).rightPos(643.0).upperPos(1062.0).lowerPos(1096.0).sorContainerInstance("1").transactionId("TRZ-758").metadataJson(metadata).build());
-        inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("servicing_provider_address_line1").predictedValue("201 4TH STREET SUITE 5B").paperNo(2).precision(1.0).leftPos(254.0).rightPos(643.0).upperPos(1581.0).lowerPos(1615.0).sorContainerInstance("1").transactionId("TRZ-758").metadataJson(metadata).build());
-        inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("servicing_provider_city").predictedValue("ALEXANDRIA").paperNo(2).precision(0.5).leftPos(254.0).rightPos(643.0).upperPos(1581.0).lowerPos(1615.0).sorContainerInstance("1").transactionId("TRZ-758").metadataJson(metadata).build());
-        inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("servicing_provider_state").predictedValue("LA").paperNo(2).precision(0.5).leftPos(254.0).rightPos(643.0).upperPos(1581.0).lowerPos(1615.0).sorContainerInstance("1").transactionId("TRZ-758").metadataJson(metadata).build());
-        inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("servicing_provider_zipcode").predictedValue("71301").paperNo(2).precision(0.5).leftPos(254.0).rightPos(643.0).upperPos(1581.0).lowerPos(1615.0).sorContainerInstance("1").transactionId("TRZ-758").metadataJson(metadata).build());
+        inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("diagnosis_code").predictedValue("G242").paperNo(2).precision(0.95).leftPos(1485.0).rightPos(1635.0).upperPos(1789.0).lowerPos(1823.0).transactionId("TRZ-758").metadataJson(metadata).build());
+        inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("servicing_provider_npi").containerName("SERVICING_PROVIDER_DETAILS").predictedValue("1952628794").paperNo(2).precision(1.0).leftPos(643.0).rightPos(846.0).upperPos(1062.0).lowerPos(1096.0).sorContainerInstance("1").transactionId("TRZ-758").metadataJson(metadata).build());
+        inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("servicing_provider_first_name").containerName("SERVICING_PROVIDER_DETAILS").predictedValue("SAMANTHA B").paperNo(2).precision(1.0).leftPos(254.0).rightPos(643.0).upperPos(1062.0).lowerPos(1096.0).sorContainerInstance("1").transactionId("TRZ-758").metadataJson(metadata).build());
+        inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("servicing_provider_last_name").containerName("SERVICING_PROVIDER_DETAILS").predictedValue("ZERINGUE").paperNo(2).precision(1.0).leftPos(254.0).rightPos(643.0).upperPos(1062.0).lowerPos(1096.0).sorContainerInstance("1").transactionId("TRZ-758").metadataJson(metadata).build());
+        inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("servicing_provider_address_line1").containerName("SERVICING_PROVIDER_DETAILS").predictedValue("201 4TH STREET SUITE 5B").paperNo(2).precision(1.0).leftPos(254.0).rightPos(643.0).upperPos(1581.0).lowerPos(1615.0).sorContainerInstance("1").transactionId("TRZ-758").metadataJson(metadata).build());
+        inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("servicing_provider_city").containerName("SERVICING_PROVIDER_DETAILS").predictedValue("ALEXANDRIA").paperNo(2).precision(0.5).leftPos(254.0).rightPos(643.0).upperPos(1581.0).lowerPos(1615.0).sorContainerInstance("1").transactionId("TRZ-758").metadataJson(metadata).build());
+        inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("servicing_provider_state").containerName("SERVICING_PROVIDER_DETAILS").predictedValue("LA").paperNo(2).precision(0.5).leftPos(254.0).rightPos(643.0).upperPos(1581.0).lowerPos(1615.0).sorContainerInstance("1").transactionId("TRZ-758").metadataJson(metadata).build());
+        inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("servicing_provider_zipcode").containerName("SERVICING_PROVIDER_DETAILS").predictedValue("71301").paperNo(2).precision(0.5).leftPos(254.0).rightPos(643.0).upperPos(1581.0).lowerPos(1615.0).sorContainerInstance("1").transactionId("TRZ-758").metadataJson(metadata).build());
         inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("fax_received_date").predictedValue("06-05-2025 17:19:30").paperNo(1).precision(0.95).leftPos(17.0).rightPos(372.0).upperPos(2152.0).lowerPos(2189.0).transactionId("TRZ-758").metadataJson(metadata).build());
         inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("newborn_request").predictedValue("N").paperNo(1).precision(0.5).leftPos(0.0).rightPos(0.0).upperPos(0.0).lowerPos(0.0).transactionId("TRZ-758").metadataJson(metadata).build());
 
@@ -211,10 +213,270 @@ class CustomResponseGenerationConsumerProcessorTest {
         assertNotNull(finalJson);
         JsonNode root = finalJson.get("root");
         assertNotNull(root);
-        assertEquals("TRZ-758", root.get("requestTxnId").asText());
+        assertEquals("1cf66141-c378-499a-9c72-3ad4d1028fa6", root.get("requestTxnId").asText());
         assertEquals("Exlsie", root.get("aumipayload").get("memberLastName").get("value").asText());
         assertEquals("Noichole", root.get("aumipayload").get("memberFirstName").get("value").asText());
         assertEquals("1952628794", root.get("aumipayload").get("provider").get(0).get("providerNPI").get("value").asText());
+        assertEquals("service_provider", root.get("aumipayload").get("provider").get(0).get("providerCategory").get("value").asText());
         assertEquals("N", root.get("aumipayload").get("memberAdditionalProperties").get(0).get("propValue").asText());
+    }
+
+    @Test
+    void generateCustomJson_shouldPickNonEmptyAliasPredictionWhenDuplicatesExist() throws Exception {
+        ActionExecutionAudit action = new ActionExecutionAudit();
+        String template = "{ \"root\": { \"aumipayload\": { \"provider\": [{ \"providerNPI\": {\"value\": \"${provider_npi}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}}, \"providerAddressLine1\": {\"value\": \"${provider_address_line_1}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}} }] } } }";
+        action.getContext().put("custom.json.generation.structure", template);
+        CustomResponseGenerationConsumerProcessor consumer = new CustomResponseGenerationConsumerProcessor(log, marker, action);
+
+        String metadata = "{\"requestTxnId\":\"fa8a30e1-eb31-4236-9780-ea598ac2ce25\",\"documentId\":\"COMM_P3_INREQ_9\",\"inboundTransactionId\":\"ITX-3317\",\"transactionId\":\"TRZ-833\",\"inboundDocumentName\":\"COMM_P3_INREQ_9\",\"documentExtension\":\"pdf\",\"documentType\":\"MEDICAL_GBD\"}";
+        List<PredictionDTO> inputs = new ArrayList<>();
+        inputs.add(PredictionDTO.builder().sorItemName("servicing_provider_npi").predictedValue("").precision(0.5).metadataJson(metadata).build());
+        inputs.add(PredictionDTO.builder().sorItemName("servicing_provider_npi").predictedValue("1952628794").precision(1.0).paperNo(2).metadataJson(metadata).build());
+        inputs.add(PredictionDTO.builder().sorItemName("servicing_provider_address_line1").predictedValue("1 Medical Center Drive").precision(1.0).paperNo(2).metadataJson(metadata).build());
+
+        JsonNode finalJson = consumer.generateCustomJson(template, inputs);
+        JsonNode provider = finalJson.path("root").path("aumipayload").path("provider").get(0);
+
+        assertEquals("1952628794", provider.path("providerNPI").path("value").asText());
+        assertEquals("1 Medical Center Drive", provider.path("providerAddressLine1").path("value").asText());
+    }
+
+    @Test
+    void generateCustomJson_shouldParseBarePlaceholderValuesWithoutRegexFailure() throws Exception {
+        ActionExecutionAudit action = new ActionExecutionAudit();
+        String template = "{ \"root\": { \"aumipayload\": { \"additionalProperties\": [ { \"propName\": { \"value\": \"AUTH_ADDL_KEYWORD\" }, \"propValue\": ${additional_properties}, \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\":0,\"width\":0,\"y\":0,\"height\":0} } ] } } }";
+        action.getContext().put("custom.json.generation.structure", template);
+        CustomResponseGenerationConsumerProcessor consumer = new CustomResponseGenerationConsumerProcessor(log, marker, action);
+
+        List<PredictionDTO> inputs = new ArrayList<>();
+        inputs.add(PredictionDTO.builder().sorItemName("additional_properties").predictedValue("foo").precision(1.0).paperNo(1).build());
+
+        JsonNode finalJson = consumer.generateCustomJson(template, inputs);
+        assertEquals("foo", finalJson.path("root").path("aumipayload").path("additionalProperties").get(0).path("propValue").asText());
+    }
+
+    @Test
+    void generateCustomJson_shouldPruneOnlyAumiPayloadLeafWhenNoDataPresent() throws Exception {
+        ActionExecutionAudit action = new ActionExecutionAudit();
+        String template = "{ \"root\": { \"requestTxnId\": \"\", \"aumipayload\": { \"memberFirstName\": {\"value\": \"${member_first_name}\", \"page\": 9, \"confidence\": 99, \"boundingBox\": {\"x\": 1, \"width\": 2, \"y\": 3, \"height\": 4}} }, \"outsideNode\": {\"value\": \"${outside_field}\", \"page\": 9, \"confidence\": 99, \"boundingBox\": {\"x\": 1, \"width\": 2, \"y\": 3, \"height\": 4}} } }";
+        action.getContext().put("custom.json.generation.structure", template);
+        CustomResponseGenerationConsumerProcessor consumer = new CustomResponseGenerationConsumerProcessor(log, marker, action);
+
+        JsonNode finalJson = consumer.generateCustomJson(template, List.of());
+        JsonNode root = finalJson.path("root");
+        assertEquals(false, root.path("aumipayload").has("memberFirstName"));
+        assertEquals("${outside_field}", root.path("outsideNode").path("value").asText());
+    }
+
+    @Test
+    void generateCustomJson_shouldPruneTemplateDrivenPropertyItemWhenValueMissingInAumiPayload() throws Exception {
+        ActionExecutionAudit action = new ActionExecutionAudit();
+        String template = "{ \"root\": { \"aumipayload\": { \"memberAdditionalProperties\": [ { \"propName\": { \"value\": \"MEMBER_INDICATOR\" }, \"propValue\": \"${multi_member_indicator}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\":0,\"width\":0,\"y\":0,\"height\":0} }, { \"propName\": { \"value\": \"NEWBORN_REQUEST\" }, \"propValue\": \"${newborn_request}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\":0,\"width\":0,\"y\":0,\"height\":0} } ] } } }";
+        action.getContext().put("custom.json.generation.structure", template);
+        CustomResponseGenerationConsumerProcessor consumer = new CustomResponseGenerationConsumerProcessor(log, marker, action);
+
+        List<PredictionDTO> inputs = List.of(
+                PredictionDTO.builder().sorItemName("newborn_request").predictedValue("Y").precision(1.0).paperNo(1).build()
+        );
+
+        JsonNode finalJson = consumer.generateCustomJson(template, inputs);
+        JsonNode arr = finalJson.path("root").path("aumipayload").path("memberAdditionalProperties");
+
+        assertEquals(1, arr.size());
+        assertEquals("NEWBORN_REQUEST", arr.get(0).path("propName").path("value").asText());
+        assertEquals("Y", arr.get(0).path("propValue").asText());
+    }
+
+    @Test
+    void generateCustomJson_shouldExpandDiagnosisServiceAndProviderForMultipleValues() throws Exception {
+        ActionExecutionAudit action = new ActionExecutionAudit();
+        String template = "{ \"root\": { \"aumipayload\": { " +
+                "\"diagnosis\": [ { \"cd\": {\"value\": \"${diagnosis_code}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\":0,\"width\":0,\"y\":0,\"height\":0}} } ], " +
+                "\"service\": [ { \"cd\": {\"value\": \"${service_code}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\":0,\"width\":0,\"y\":0,\"height\":0}}, \"serviceQuantity\": [ { \"quantityType\": {\"value\": \"Units\"}, \"quantityUnits\": {\"value\": \"${service_unit}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\":0,\"width\":0,\"y\":0,\"height\":0}} }, { \"quantityType\": {\"value\": \"Visits\"}, \"quantityUnits\": {\"value\": \"${service_visit}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\":0,\"width\":0,\"y\":0,\"height\":0}} } ] } ], " +
+                "\"provider\": [ { \"providerCategory\": {\"value\": \"${provider_category}\"}, \"providerNPI\": {\"value\": \"${provider_npi}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\":0,\"width\":0,\"y\":0,\"height\":0}}, \"providerFirstName\": {\"value\": \"${provider_first_name}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\":0,\"width\":0,\"y\":0,\"height\":0}} } ] " +
+                "} } }";
+        action.getContext().put("custom.json.generation.structure", template);
+        CustomResponseGenerationConsumerProcessor consumer = new CustomResponseGenerationConsumerProcessor(log, marker, action);
+
+        List<PredictionDTO> inputs = new ArrayList<>();
+        inputs.add(PredictionDTO.builder().sorItemName("diagnosis_code").predictedValue("D1").paperNo(1).precision(1.0).build());
+        inputs.add(PredictionDTO.builder().sorItemName("diagnosis_code").predictedValue("D2").paperNo(1).precision(1.0).build());
+        inputs.add(PredictionDTO.builder().sorItemName("service_code").predictedValue("S1").paperNo(1).precision(1.0).build());
+        inputs.add(PredictionDTO.builder().sorItemName("service_code").predictedValue("S2").paperNo(1).precision(1.0).build());
+        inputs.add(PredictionDTO.builder().sorItemName("service_quantity_units").predictedValue("10").paperNo(1).precision(1.0).build());
+        inputs.add(PredictionDTO.builder().sorItemName("service_quantity_units").predictedValue("20").paperNo(1).precision(1.0).build());
+        inputs.add(PredictionDTO.builder().sorItemName("service_quantity_visits").predictedValue("1").paperNo(1).precision(1.0).build());
+        inputs.add(PredictionDTO.builder().sorItemName("service_quantity_visits").predictedValue("2").paperNo(1).precision(1.0).build());
+        inputs.add(PredictionDTO.builder().sorItemName("servicing_provider_npi").containerName("SERVICING_PROVIDER_DETAILS").sorContainerInstance("1").predictedValue("NPI1").paperNo(1).precision(1.0).build());
+        inputs.add(PredictionDTO.builder().sorItemName("servicing_provider_first_name").containerName("SERVICING_PROVIDER_DETAILS").sorContainerInstance("1").predictedValue("FN1").paperNo(1).precision(1.0).build());
+        inputs.add(PredictionDTO.builder().sorItemName("servicing_provider_npi").containerName("SERVICING_PROVIDER_DETAILS").sorContainerInstance("2").predictedValue("NPI2").paperNo(1).precision(1.0).build());
+        inputs.add(PredictionDTO.builder().sorItemName("servicing_provider_first_name").containerName("SERVICING_PROVIDER_DETAILS").sorContainerInstance("2").predictedValue("FN2").paperNo(1).precision(1.0).build());
+
+        JsonNode finalJson = consumer.generateCustomJson(template, inputs);
+        JsonNode payload = finalJson.path("root").path("aumipayload");
+
+        assertEquals(2, payload.path("diagnosis").size());
+        assertEquals("D1", payload.path("diagnosis").get(0).path("cd").path("value").asText());
+        assertEquals("D2", payload.path("diagnosis").get(1).path("cd").path("value").asText());
+
+        assertEquals(2, payload.path("service").size());
+        assertEquals("S1", payload.path("service").get(0).path("cd").path("value").asText());
+        assertEquals("S2", payload.path("service").get(1).path("cd").path("value").asText());
+        assertEquals("10", payload.path("service").get(0).path("serviceQuantity").get(0).path("quantityUnits").path("value").asText());
+        assertEquals("20", payload.path("service").get(1).path("serviceQuantity").get(0).path("quantityUnits").path("value").asText());
+        assertEquals("1", payload.path("service").get(0).path("serviceQuantity").get(1).path("quantityUnits").path("value").asText());
+        assertEquals("2", payload.path("service").get(1).path("serviceQuantity").get(1).path("quantityUnits").path("value").asText());
+
+        assertEquals(2, payload.path("provider").size());
+        assertEquals("NPI1", payload.path("provider").get(0).path("providerNPI").path("value").asText());
+        assertEquals("FN1", payload.path("provider").get(0).path("providerFirstName").path("value").asText());
+        assertEquals("service_provider", payload.path("provider").get(0).path("providerCategory").path("value").asText());
+        assertEquals("NPI2", payload.path("provider").get(1).path("providerNPI").path("value").asText());
+        assertEquals("FN2", payload.path("provider").get(1).path("providerFirstName").path("value").asText());
+        assertEquals("service_provider", payload.path("provider").get(1).path("providerCategory").path("value").asText());
+    }
+
+    @Test
+    void generateCustomJson_shouldDeriveDistinctProviderCategoryPerIndexExpandedRow() throws Exception {
+        ActionExecutionAudit action = new ActionExecutionAudit();
+        String template = "{ \"root\": { \"aumipayload\": { \"provider\": [ { \"providerCategory\": {\"value\": \"${provider_category}\"}, \"providerNPI\": {\"value\": \"${provider_npi}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\":0,\"width\":0,\"y\":0,\"height\":0}} } ] } } }";
+        action.getContext().put("custom.json.generation.structure", template);
+        CustomResponseGenerationConsumerProcessor consumer = new CustomResponseGenerationConsumerProcessor(log, marker, action);
+
+        List<PredictionDTO> inputs = List.of(
+                PredictionDTO.builder().sorItemName("servicing_provider_npi").predictedValue("S-NPI").paperNo(1).precision(1.0).build(),
+                PredictionDTO.builder().sorItemName("ordering_provider_npi").predictedValue("O-NPI").paperNo(1).precision(1.0).build()
+        );
+
+        JsonNode finalJson = consumer.generateCustomJson(template, inputs);
+        JsonNode providers = finalJson.path("root").path("aumipayload").path("provider");
+
+        assertEquals(2, providers.size());
+        assertEquals("S-NPI", providers.get(0).path("providerNPI").path("value").asText());
+        assertEquals("service_provider", providers.get(0).path("providerCategory").path("value").asText());
+        assertEquals("O-NPI", providers.get(1).path("providerNPI").path("value").asText());
+        assertEquals("ordering_provider", providers.get(1).path("providerCategory").path("value").asText());
+    }
+
+    @Test
+    void generateCustomJson_shouldSetProviderCategoryFromContainerName() throws Exception {
+        ActionExecutionAudit action = new ActionExecutionAudit();
+        String template = "{ \"root\": { \"aumipayload\": { \"provider\": [ { \"providerCategory\": {\"value\": \"${provider_category}\"}, \"providerNPI\": {\"value\": \"${provider_npi}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\":0,\"width\":0,\"y\":0,\"height\":0}} } ] } } }";
+        action.getContext().put("custom.json.generation.structure", template);
+        CustomResponseGenerationConsumerProcessor consumer = new CustomResponseGenerationConsumerProcessor(log, marker, action);
+
+        List<PredictionDTO> inputs = List.of(
+                PredictionDTO.builder().sorItemName("ordering_provider_npi").containerName("ORDERING_PROVIDER_DETAILS").sorContainerInstance("1").predictedValue("12345").paperNo(1).precision(1.0).build()
+        );
+
+        JsonNode finalJson = consumer.generateCustomJson(template, inputs);
+        JsonNode provider = finalJson.path("root").path("aumipayload").path("provider").get(0);
+        assertEquals("ordering_provider", provider.path("providerCategory").path("value").asText());
+    }
+
+    @Test
+    void generateCustomJson_shouldDeriveProviderCategoryFromServiceProviderSorPrefix() throws Exception {
+        ActionExecutionAudit action = new ActionExecutionAudit();
+        String template = "{ \"root\": { \"aumipayload\": { \"provider\": [ { \"providerCategory\": {\"value\": \"${provider_category}\"}, \"providerNPI\": {\"value\": \"${provider_npi}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\":0,\"width\":0,\"y\":0,\"height\":0}}, \"providerTIN\": {\"value\": \"${provider_tin}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\":0,\"width\":0,\"y\":0,\"height\":0}} } ] } } }";
+        action.getContext().put("custom.json.generation.structure", template);
+        CustomResponseGenerationConsumerProcessor consumer = new CustomResponseGenerationConsumerProcessor(log, marker, action);
+
+        List<PredictionDTO> inputs = List.of(
+                PredictionDTO.builder().sorItemName("service_provider_npi").predictedValue("111").paperNo(1).precision(1.0).build(),
+                PredictionDTO.builder().sorItemName("service_provider_tin").predictedValue("222").paperNo(1).precision(1.0).build()
+        );
+
+        JsonNode finalJson = consumer.generateCustomJson(template, inputs);
+        JsonNode provider = finalJson.path("root").path("aumipayload").path("provider").get(0);
+        assertEquals("service_provider", provider.path("providerCategory").path("value").asText());
+    }
+
+    @Test
+    void generateCustomJson_shouldDeriveProviderCategoryFromServicingFacilitySorPrefix() throws Exception {
+        ActionExecutionAudit action = new ActionExecutionAudit();
+        String template = "{ \"root\": { \"aumipayload\": { \"provider\": [ { \"providerCategory\": {\"value\": \"${provider_category}\"}, \"providerNPI\": {\"value\": \"${provider_npi}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\":0,\"width\":0,\"y\":0,\"height\":0}} } ] } } }";
+        action.getContext().put("custom.json.generation.structure", template);
+        CustomResponseGenerationConsumerProcessor consumer = new CustomResponseGenerationConsumerProcessor(log, marker, action);
+
+        List<PredictionDTO> inputs = List.of(
+                PredictionDTO.builder().sorItemName("servicing_facility_npi").predictedValue("FAC-NPI").paperNo(1).precision(1.0).build()
+        );
+
+        JsonNode finalJson = consumer.generateCustomJson(template, inputs);
+        JsonNode provider = finalJson.path("root").path("aumipayload").path("provider").get(0);
+        assertEquals("servicing_facility", provider.path("providerCategory").path("value").asText());
+    }
+
+    @Test
+    void generateCustomJson_shouldDeriveProviderCategoryFromUndefinedProviderSorPrefix() throws Exception {
+        ActionExecutionAudit action = new ActionExecutionAudit();
+        String template = "{ \"root\": { \"aumipayload\": { \"provider\": [ { \"providerCategory\": {\"value\": \"${provider_category}\"}, \"providerNPI\": {\"value\": \"${provider_npi}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\":0,\"width\":0,\"y\":0,\"height\":0}} } ] } } }";
+        action.getContext().put("custom.json.generation.structure", template);
+        CustomResponseGenerationConsumerProcessor consumer = new CustomResponseGenerationConsumerProcessor(log, marker, action);
+
+        List<PredictionDTO> inputs = List.of(
+                PredictionDTO.builder().sorItemName("undefined_provider_npi").predictedValue("U-NPI").paperNo(1).precision(1.0).build()
+        );
+
+        JsonNode finalJson = consumer.generateCustomJson(template, inputs);
+        JsonNode provider = finalJson.path("root").path("aumipayload").path("provider").get(0);
+        assertEquals("undefined_providers", provider.path("providerCategory").path("value").asText());
+    }
+
+    @Test
+    void generateCustomJson_shouldSetProviderCategoryWhenAnyProviderDetailsAreAssigned() throws Exception {
+        ActionExecutionAudit action = new ActionExecutionAudit();
+        String template = "{ \"root\": { \"aumipayload\": { \"provider\": [ { \"providerCategory\": {\"value\": \"${provider_category}\"}, \"providerNPI\": {\"value\": \"${provider_npi}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\":0,\"width\":0,\"y\":0,\"height\":0}} } ] } } }";
+        action.getContext().put("custom.json.generation.structure", template);
+        CustomResponseGenerationConsumerProcessor consumer = new CustomResponseGenerationConsumerProcessor(log, marker, action);
+
+        List<PredictionDTO> inputs = List.of(
+                PredictionDTO.builder().sorItemName("servicing_provider_npi").containerName("SERVICING_PROVIDER_DETAILS").sorContainerInstance("1").predictedValue("11111").paperNo(1).precision(1.0).build(),
+                PredictionDTO.builder().sorItemName("ordering_provider_tin").containerName("ORDERING_PROVIDER_DETAILS").sorContainerInstance("1").predictedValue("22222").paperNo(1).precision(1.0).build()
+        );
+
+        JsonNode finalJson = consumer.generateCustomJson(template, inputs);
+        JsonNode provider = finalJson.path("root").path("aumipayload").path("provider").get(0);
+        assertEquals("service_provider", provider.path("providerCategory").path("value").asText());
+        assertEquals("11111", provider.path("providerNPI").path("value").asText());
+    }
+
+    @Test
+    void generateCustomJson_shouldSetProviderCategoryWhenProviderExpandedByIndex() throws Exception {
+        ActionExecutionAudit action = new ActionExecutionAudit();
+        String template = "{ \"root\": { \"aumipayload\": { \"provider\": [ { \"providerCategory\": {\"value\": \"${provider_category}\"}, \"providerNPI\": {\"value\": \"${provider_npi}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\":0,\"width\":0,\"y\":0,\"height\":0}}, \"providerFirstName\": {\"value\": \"${provider_first_name}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\":0,\"width\":0,\"y\":0,\"height\":0}} } ] } } }";
+        action.getContext().put("custom.json.generation.structure", template);
+        CustomResponseGenerationConsumerProcessor consumer = new CustomResponseGenerationConsumerProcessor(log, marker, action);
+
+        List<PredictionDTO> inputs = List.of(
+                PredictionDTO.builder().sorItemName("servicing_provider_npi").predictedValue("1952628794").paperNo(2).precision(1.0).build(),
+                PredictionDTO.builder().sorItemName("servicing_provider_first_name").predictedValue("SAMANTHA B").paperNo(2).precision(1.0).build()
+        );
+
+        JsonNode finalJson = consumer.generateCustomJson(template, inputs);
+        JsonNode provider = finalJson.path("root").path("aumipayload").path("provider").get(0);
+        assertEquals("service_provider", provider.path("providerCategory").path("value").asText());
+        assertEquals("1952628794", provider.path("providerNPI").path("value").asText());
+        assertEquals("SAMANTHA B", provider.path("providerFirstName").path("value").asText());
+    }
+
+    @Test
+    void generateCustomJson_shouldKeepProviderCategoryNodeWhenProviderExists() throws Exception {
+        ActionExecutionAudit action = new ActionExecutionAudit();
+        String template = "{ \"root\": { \"aumipayload\": { \"provider\": [ { \"providerCategory\": {\"value\": \"${provider_category}\"}, \"providerNPI\": {\"value\": \"${provider_npi}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\":0,\"width\":0,\"y\":0,\"height\":0}} } ] } } }";
+        action.getContext().put("custom.json.generation.structure", template);
+        CustomResponseGenerationConsumerProcessor consumer = new CustomResponseGenerationConsumerProcessor(log, marker, action);
+
+        List<PredictionDTO> inputs = List.of(
+                PredictionDTO.builder().sorItemName("servicing_provider_npi").predictedValue("NPI-1").paperNo(1).precision(1.0).build(),
+                PredictionDTO.builder().sorItemName("ordering_provider_tin").predictedValue("TIN-1").paperNo(1).precision(1.0).build()
+        );
+
+        JsonNode finalJson = consumer.generateCustomJson(template, inputs);
+        JsonNode provider = finalJson.path("root").path("aumipayload").path("provider").get(0);
+        assertEquals("NPI-1", provider.path("providerNPI").path("value").asText());
+        assertEquals(true, provider.has("providerCategory"));
+        Iterator<String> providerFieldNames = provider.fieldNames();
+        assertEquals("providerCategory", providerFieldNames.next());
     }
 }
