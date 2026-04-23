@@ -269,7 +269,7 @@ class CustomResponseGenerationConsumerProcessorTest {
     }
 
     @Test
-    void generateCustomJson_shouldPruneTemplateDrivenPropertyItemWhenValueMissingInAumiPayload() throws Exception {
+    void generateCustomJson_shouldDefaultMemberIndicatorWhenValueMissingInAumiPayload() throws Exception {
         ActionExecutionAudit action = new ActionExecutionAudit();
         String template = "{ \"root\": { \"aumipayload\": { \"memberAdditionalProperties\": [ { \"propName\": { \"value\": \"MEMBER_INDICATOR\" }, \"propValue\": \"${multi_member_indicator}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\":0,\"width\":0,\"y\":0,\"height\":0} }, { \"propName\": { \"value\": \"NEWBORN_REQUEST\" }, \"propValue\": \"${newborn_request}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\":0,\"width\":0,\"y\":0,\"height\":0} } ] } } }";
         action.getContext().put("custom.json.generation.structure", template);
@@ -282,9 +282,11 @@ class CustomResponseGenerationConsumerProcessorTest {
         JsonNode finalJson = consumer.generateCustomJson(template, inputs);
         JsonNode arr = finalJson.path("root").path("aumipayload").path("memberAdditionalProperties");
 
-        assertEquals(1, arr.size());
-        assertEquals("NEWBORN_REQUEST", arr.get(0).path("propName").path("value").asText());
-        assertEquals("Y", arr.get(0).path("propValue").asText());
+        assertEquals(2, arr.size());
+        assertEquals("MEMBER_INDICATOR", arr.get(0).path("propName").path("value").asText());
+        assertEquals("N", arr.get(0).path("propValue").asText());
+        assertEquals("NEWBORN_REQUEST", arr.get(1).path("propName").path("value").asText());
+        assertEquals("Y", arr.get(1).path("propValue").asText());
     }
 
     @Test

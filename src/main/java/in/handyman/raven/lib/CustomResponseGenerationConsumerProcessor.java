@@ -202,11 +202,11 @@ public class CustomResponseGenerationConsumerProcessor implements CoproProcessor
             }
 
             // Template-driven additional properties:
-            // each item should carry propName.value; propValue is filled from matching sorItemName.
+            // each item carries propName as { "value": "..." } or a string; propValue is filled from matching sorItemName.
             if (isTemplateDrivenPropertyArray(inputArray)) {
                 for (JsonNode item : inputArray) {
                     ObjectNode itemCopy = (ObjectNode) item.deepCopy();
-                    String propName = itemCopy.path("propName").path("value").asText("");
+                    String propName = templateDrivenPropertyPropName(itemCopy);
                     if (!propName.isEmpty()) {
                         PredictionDTO match = null;
                         JsonNode propValueNode = itemCopy.get("propValue");
@@ -222,7 +222,7 @@ public class CustomResponseGenerationConsumerProcessor implements CoproProcessor
                         if (propValueNode != null && propValueNode.isObject() && ((ObjectNode) propValueNode).has("value")) {
                             ObjectNode populated = populateLeaf((ObjectNode) propValueNode.deepCopy(), match != null ? match : PredictionDTO.builder().build());
                             if (match == null) {
-                                populated.put("value", "");
+                                populated.put("value", defaultTemplateDrivenPropertyValue(propName));
                             }
                             itemCopy.set("propValue", populated);
                         } else if (match != null) {
@@ -236,6 +236,8 @@ public class CustomResponseGenerationConsumerProcessor implements CoproProcessor
                             bbox.put("y", toCoord(match.getUpperPos()));
                             bbox.put("height", toCoord(match.getLowerPos()));
                             itemCopy.set("boundingBox", bbox);
+                        } else if (propValueNode != null && propValueNode.isTextual()) {
+                            itemCopy.put("propValue", defaultTemplateDrivenPropertyValue(propName));
                         }
                     }
                     if (!(insideAumiPayload && shouldPruneTemplateDrivenPropertyItem(itemCopy))) {
@@ -925,6 +927,27 @@ public class CustomResponseGenerationConsumerProcessor implements CoproProcessor
         return false;
     }
 
+    private String defaultTemplateDrivenPropertyValue(String propName) {
+        if ("MEMBER_INDICATOR".equalsIgnoreCase(propName)) {
+            return "N";
+        }
+        return "";
+    }
+
+    private String templateDrivenPropertyPropName(ObjectNode item) {
+        JsonNode propName = item.get("propName");
+        if (propName == null || propName.isNull()) {
+            return "";
+        }
+        if (propName.isTextual()) {
+            return propName.asText("").trim();
+        }
+        if (propName.isObject()) {
+            return propName.path("value").asText("").trim();
+        }
+        return "";
+    }
+
     private String extractInboundTransactionId(String metadataJson) {
         if (metadataJson == null || metadataJson.trim().isEmpty()) {
             return null;
@@ -944,7 +967,16 @@ public class CustomResponseGenerationConsumerProcessor implements CoproProcessor
                 return false;
             }
             JsonNode propName = item.get("propName");
-            if (propName == null || !propName.isObject() || !propName.has("value")) {
+            if (propName == null || propName.isNull()) {
+                return false;
+            }
+            if (propName.isTextual()) {
+                if (propName.asText("").trim().isEmpty()) {
+                    return false;
+                }
+            } else if (propName.isObject() && propName.has("value")) {
+                // ok
+            } else {
                 return false;
             }
             JsonNode propValue = item.get("propValue");
