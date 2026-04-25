@@ -630,19 +630,19 @@ public class CustomResponseGenerationConsumerProcessor implements CoproProcessor
         }
         String k = sorItemKey.toLowerCase(Locale.ROOT);
         if (k.startsWith("service_provider_") || k.startsWith("servicing_provider_")) {
-            return "service_provider";
+            return "Servicing Provider";
         }
         if (k.startsWith("servicing_facility_")) {
-            return "servicing_facility";
+            return "Servicing Facility";
         }
         if (k.startsWith("ordering_provider_")) {
-            return "ordering_provider";
+            return "Ordering Provider";
         }
         if (k.startsWith("undefined_provider_")) {
-            return "undefined_providers";
+            return "Undetermined";
         }
         if (k.startsWith("referring_provider_")) {
-            return "referring_provider";
+            return "Requesting Provider";
         }
         return null;
     }

@@ -464,9 +464,8 @@ class CustomResponseGenerationConsumerProcessorTest {
         inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("newborn_request").predictedValue("N").paperNo(1).precision(0.5).leftPos(0.0).rightPos(0.0).upperPos(0.0).lowerPos(0.0).transactionId("TRZ-758").metadataJson(metadata).build());
         inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("additional_auth_properties").predictedValue("inpatient").paperNo(1).precision(0.5).leftPos(0.0).rightPos(0.0).upperPos(0.0).lowerPos(0.0).transactionId("TRZ-758").metadataJson(metadata).build());
         inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("responsible_area").predictedValue("urgent emergency").paperNo(1).precision(0.5).leftPos(0.0).rightPos(0.0).upperPos(0.0).lowerPos(0.0).transactionId("TRZ-758").metadataJson(metadata).build());
-        inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("additional_auth_properties").predictedValue("outpatient").paperNo(1).precision(0.5).leftPos(0.0).rightPos(0.0).upperPos(0.0).lowerPos(0.0).transactionId("TRZ-758").metadataJson(metadata).build());
-        inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("responsible_area").predictedValue("emergency").paperNo(1).precision(0.5).leftPos(0.0).rightPos(0.0).upperPos(0.0).lowerPos(0.0).transactionId("TRZ-758").metadataJson(metadata).build());
-        inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("responsible_area").predictedValue("cardiology").paperNo(1).precision(0.5).leftPos(0.0).rightPos(0.0).upperPos(0.0).lowerPos(0.0).transactionId("TRZ-758").metadataJson(metadata).build());
+        inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("additional_auth_properties").predictedValue("outpatient").paperNo(2).precision(0.6).leftPos(1.0).rightPos(2.0).upperPos(3.0).lowerPos(4.0).transactionId("TRZ-758").metadataJson(metadata).build());
+        inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("responsible_area").predictedValue("emergency").paperNo(2).precision(0.55).leftPos(10.0).rightPos(20.0).upperPos(30.0).lowerPos(40.0).transactionId("TRZ-758").metadataJson(metadata).build());
 
         JsonNode finalJson = consumer.generateCustomJson(template, inputs);
         String finalGeneratedJson = new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(finalJson);
@@ -481,7 +480,19 @@ class CustomResponseGenerationConsumerProcessorTest {
         assertEquals("1952628794", root.get("aumipayload").get("provider").get(0).get("providerNPI").get("value").asText());
         assertEquals("service_provider", root.get("aumipayload").get("provider").get(0).get("providerCategory").get("value").asText());
         JsonNode additionalProperties = root.get("aumipayload").get("additionalProperties");
-        assertEquals(5, additionalProperties.size());
+        assertEquals(4, additionalProperties.size());
+        assertEquals("AUTH_ADDL_KEYWORD", additionalProperties.get(0).get("propName").asText());
+        assertEquals("inpatient", additionalProperties.get(0).get("propValue").asText());
+        assertEquals(1, additionalProperties.get(0).get("page").asInt());
+        assertEquals("AUTH_ADDL_KEYWORD", additionalProperties.get(1).get("propName").asText());
+        assertEquals("outpatient", additionalProperties.get(1).get("propValue").asText());
+        assertEquals(2, additionalProperties.get(1).get("page").asInt());
+        assertEquals(1.0, additionalProperties.get(1).get("boundingBox").get("x").asDouble(), 0.001);
+        assertEquals("SORTING_KEY", additionalProperties.get(2).get("propName").asText());
+        assertEquals("urgent emergency", additionalProperties.get(2).get("propValue").asText());
+        assertEquals("SORTING_KEY", additionalProperties.get(3).get("propName").asText());
+        assertEquals("emergency", additionalProperties.get(3).get("propValue").asText());
+        assertEquals(2, additionalProperties.get(3).get("page").asInt());
         assertEquals("N", root.get("aumipayload").get("memberAdditionalProperties").get(0).get("propValue").asText());
     }
 
