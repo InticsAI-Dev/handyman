@@ -208,10 +208,26 @@ public class CustomResponseGenerationConsumerProcessor implements CoproProcessor
                     ObjectNode itemCopy = (ObjectNode) item.deepCopy();
                     String propName = templateDrivenPropertyPropName(itemCopy);
                     if (!propName.isEmpty()) {
-                        PredictionDTO match = null;
                         JsonNode propValueNode = itemCopy.get("propValue");
+                        String placeholder = null;
                         if (propValueNode != null && propValueNode.isTextual()) {
-                            String placeholder = extractPlaceholder(propValueNode.asText(null));
+                            placeholder = extractPlaceholder(propValueNode.asText(null));
+                        }
+                        if (shouldExpandTemplateDrivenPropertyPerPrediction(propName, placeholder)) {
+                            List<PredictionDTO> allForPlaceholder = allPredictionsForField(placeholder, bySorItem, byNormalizedSorItem);
+                            if (!allForPlaceholder.isEmpty()) {
+                                for (PredictionDTO p : allForPlaceholder) {
+                                    ObjectNode oneRow = (ObjectNode) item.deepCopy();
+                                    applyTemplateDrivenPropertyMatch(oneRow, propName, p);
+                                    if (!(insideAumiPayload && shouldPruneTemplateDrivenPropertyItem(oneRow))) {
+                                        resultArray.add(oneRow);
+                                    }
+                                }
+                                continue;
+                            }
+                        }
+                        PredictionDTO match = null;
+                        if (propValueNode != null && propValueNode.isTextual()) {
                             if (placeholder != null && !placeholder.isEmpty()) {
                                 match = firstPrediction(placeholder, bySorItem, byNormalizedSorItem);
                             }
@@ -219,26 +235,7 @@ public class CustomResponseGenerationConsumerProcessor implements CoproProcessor
                         if (match == null) {
                             match = firstPrediction(propName, bySorItem, byNormalizedSorItem);
                         }
-                        if (propValueNode != null && propValueNode.isObject() && ((ObjectNode) propValueNode).has("value")) {
-                            ObjectNode populated = populateLeaf((ObjectNode) propValueNode.deepCopy(), match != null ? match : PredictionDTO.builder().build());
-                            if (match == null) {
-                                populated.put("value", defaultTemplateDrivenPropertyValue(propName));
-                            }
-                            itemCopy.set("propValue", populated);
-                        } else if (match != null) {
-                            itemCopy.put("propValue", match.getPredictedValue() == null ? "" : match.getPredictedValue());
-                            itemCopy.put("page", match.getPaperNo() == null ? 0 : match.getPaperNo());
-                            int confidence = match.getPrecision() == null ? 0 : (int) Math.round(match.getPrecision() * 100);
-                            itemCopy.put("confidence", confidence);
-                            ObjectNode bbox = objectMapper.createObjectNode();
-                            bbox.put("x", toCoord(match.getLeftPos()));
-                            bbox.put("width", toCoord(match.getRightPos()));
-                            bbox.put("y", toCoord(match.getUpperPos()));
-                            bbox.put("height", toCoord(match.getLowerPos()));
-                            itemCopy.set("boundingBox", bbox);
-                        } else if (propValueNode != null && propValueNode.isTextual()) {
-                            itemCopy.put("propValue", defaultTemplateDrivenPropertyValue(propName));
-                        }
+                        applyTemplateDrivenPropertyMatch(itemCopy, propName, match);
                     }
                     if (!(insideAumiPayload && shouldPruneTemplateDrivenPropertyItem(itemCopy))) {
                         resultArray.add(itemCopy);
@@ -932,6 +929,45 @@ public class CustomResponseGenerationConsumerProcessor implements CoproProcessor
             return "N";
         }
         return "";
+    }
+
+    /**
+     * When the template carries multiple predictions for the same placeholder (e.g. several
+     * {@code additional_auth_properties} rows), emit one JSON object per prediction instead of collapsing
+     * to {@link #firstPrediction}.
+     */
+    private boolean shouldExpandTemplateDrivenPropertyPerPrediction(String propName, String placeholder) {
+        if (placeholder == null || placeholder.isEmpty()) {
+            return false;
+        }
+        if ("AUTH_ADDL_KEYWORD".equalsIgnoreCase(propName) && "additional_auth_properties".equalsIgnoreCase(placeholder)) {
+            return true;
+        }
+        return "SORTING_KEY".equalsIgnoreCase(propName) && "responsible_area".equalsIgnoreCase(placeholder);
+    }
+
+    private void applyTemplateDrivenPropertyMatch(ObjectNode itemCopy, String propName, PredictionDTO match) {
+        JsonNode propValueNode = itemCopy.get("propValue");
+        if (propValueNode != null && propValueNode.isObject() && ((ObjectNode) propValueNode).has("value")) {
+            ObjectNode populated = populateLeaf((ObjectNode) propValueNode.deepCopy(), match != null ? match : PredictionDTO.builder().build());
+            if (match == null) {
+                populated.put("value", defaultTemplateDrivenPropertyValue(propName));
+            }
+            itemCopy.set("propValue", populated);
+        } else if (match != null) {
+            itemCopy.put("propValue", match.getPredictedValue() == null ? "" : match.getPredictedValue());
+            itemCopy.put("page", match.getPaperNo() == null ? 0 : match.getPaperNo());
+            int confidence = match.getPrecision() == null ? 0 : (int) Math.round(match.getPrecision() * 100);
+            itemCopy.put("confidence", confidence);
+            ObjectNode bbox = objectMapper.createObjectNode();
+            bbox.put("x", toCoord(match.getLeftPos()));
+            bbox.put("width", toCoord(match.getRightPos()));
+            bbox.put("y", toCoord(match.getUpperPos()));
+            bbox.put("height", toCoord(match.getLowerPos()));
+            itemCopy.set("boundingBox", bbox);
+        } else if (propValueNode != null && propValueNode.isTextual()) {
+            itemCopy.put("propValue", defaultTemplateDrivenPropertyValue(propName));
+        }
     }
 
     private String templateDrivenPropertyPropName(ObjectNode item) {

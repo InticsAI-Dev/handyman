@@ -163,19 +163,276 @@ class CustomResponseGenerationConsumerProcessorTest {
                 "      \"overallConfidence\": 0\n" +
                 "    },\n" +
                 "    \"aumipayload\": {\n" +
-                "      \"memberLastName\": {\"value\": \"${member_last_name}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\n" +
-                "      \"memberFirstName\": {\"value\": \"${member_first_name}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\n" +
-                "      \"memberDOB\": {\"value\": \"${member_date_of_birth}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\n" +
-                "      \"memberGender\": {\"value\": \"${member_gender}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\n" +
-                "      \"memberAddressLine1\": {\"value\": \"${member_address_line1}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\n" +
-                "      \"memberCity\": {\"value\": \"${member_city}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\n" +
-                "      \"memberState\": {\"value\": \"${member_state}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\n" +
-                "      \"memberZipCode\": {\"value\": \"${member_zipcode}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\n" +
-                "      \"serviceFromDate\": {\"value\": \"${service_from_date}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\n" +
-                "      \"faxReceivedDate\": {\"value\": \"${fax_received_date}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\n" +
-                "      \"diagnosis\": [{\"cd\": {\"value\": \"${diagnosis_code}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}}}],\n" +
-                "      \"provider\": [{\"providerCategory\": {\"value\": \"${provider_category}\"},\"providerNPI\": {\"value\": \"${servicing_provider_npi}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\"providerFirstName\": {\"value\": \"${servicing_provider_first_name}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\"providerLastName\": {\"value\": \"${servicing_provider_last_name}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\"providerAddressLine1\": {\"value\": \"${servicing_provider_address_line1}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\"providerCity\": {\"value\": \"${servicing_provider_city}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\"providerState\": {\"value\": \"${servicing_provider_state}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}},\"providerZipCode\": {\"value\": \"${servicing_provider_zipcode}\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}}}],\n" +
-                "      \"memberAdditionalProperties\": [{\"propName\": {\"value\": \"NEWBORN_REQUEST\"}, \"propValue\": \"\", \"page\": 0, \"confidence\": 0, \"boundingBox\": {\"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0}}]\n" +
+                "      \"authId\": {\n" +
+                "        \"value\": \"${auth_id}\",\n" +
+                "        \"page\": 0,\n" +
+                "        \"confidence\": 0,\n" +
+                "        \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "      },\n" +
+                "      \"hcid\": {\n" +
+                "        \"value\": \"${member_id}\",\n" +
+                "        \"page\": 0,\n" +
+                "        \"confidence\": 0,\n" +
+                "        \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "      },\n" +
+                "      \"memberLastName\": {\n" +
+                "        \"value\": \"${member_last_name}\",\n" +
+                "        \"page\": 0,\n" +
+                "        \"confidence\": 0,\n" +
+                "        \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "      },\n" +
+                "      \"memberFirstName\": {\n" +
+                "        \"value\": \"${member_first_name}\",\n" +
+                "        \"page\": 0,\n" +
+                "        \"confidence\": 0,\n" +
+                "        \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "      },\n" +
+                "      \"memberDOB\": {\n" +
+                "        \"value\": \"${member_date_of_birth}\",\n" +
+                "        \"page\": 0,\n" +
+                "        \"confidence\": 0,\n" +
+                "        \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "      },\n" +
+                "      \"memberGender\": {\n" +
+                "        \"value\": \"${member_gender}\",\n" +
+                "        \"page\": 0,\n" +
+                "        \"confidence\": 0,\n" +
+                "        \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "      },\n" +
+                "      \"memberAddressLine1\": {\n" +
+                "        \"value\": \"${member_address_line_1}\",\n" +
+                "        \"page\": 0,\n" +
+                "        \"confidence\": 0,\n" +
+                "        \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "      },\n" +
+                "      \"memberCity\": {\n" +
+                "        \"value\": \"${member_city}\",\n" +
+                "        \"page\": 0,\n" +
+                "        \"confidence\": 0,\n" +
+                "        \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "      },\n" +
+                "      \"memberState\": {\n" +
+                "        \"value\": \"${member_state}\",\n" +
+                "        \"page\": 0,\n" +
+                "        \"confidence\": 0,\n" +
+                "        \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "      },\n" +
+                "      \"memberZipCode\": {\n" +
+                "        \"value\": \"${member_zip_code}\",\n" +
+                "        \"page\": 0,\n" +
+                "        \"confidence\": 0,\n" +
+                "        \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "      },\n" +
+                "      \"serviceFromDate\": {\n" +
+                "        \"value\": \"${service_from_date}\",\n" +
+                "        \"page\": 0,\n" +
+                "        \"confidence\": 0,\n" +
+                "        \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "      },\n" +
+                "      \"serviceToDate\": {\n" +
+                "        \"value\": \"${service_to_date}\",\n" +
+                "        \"page\": 0,\n" +
+                "        \"confidence\": 0,\n" +
+                "        \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "      },\n" +
+                "      \"diagnosis\": [\n" +
+                "        {\n" +
+                "          \"cd\": {\n" +
+                "            \"value\": \"${diagnosis_code}\",\n" +
+                "            \"page\": 0,\n" +
+                "            \"confidence\": 0,\n" +
+                "            \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "          },\n" +
+                "          \"desc\": {\n" +
+                "            \"value\": \"${desc}\",\n" +
+                "            \"page\": 0,\n" +
+                "            \"confidence\": 0,\n" +
+                "            \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "          },\n" +
+                "          \"codePointer\": {\n" +
+                "            \"value\": \"${code_pointer}\",\n" +
+                "            \"page\": 0,\n" +
+                "            \"confidence\": 0,\n" +
+                "            \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "          }\n" +
+                "        }\n" +
+                "      ],\n" +
+                "      \"service\": [\n" +
+                "        {\n" +
+                "          \"cd\": {\n" +
+                "            \"value\": \"${service_code}\",\n" +
+                "            \"page\": 0,\n" +
+                "            \"confidence\": 0,\n" +
+                "            \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "          },\n" +
+                "          \"modifier\": [\n" +
+                "            {\n" +
+                "              \"cd\": {\n" +
+                "                \"value\": \"${service_modifier}\",\n" +
+                "                \"page\": 0,\n" +
+                "                \"confidence\": 0,\n" +
+                "                \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "              }\n" +
+                "            }\n" +
+                "          ],\n" +
+                "          \"serviceQuantity\": [\n" +
+                "            {\n" +
+                "              \"quantityType\": { \"value\": \"Units\" },\n" +
+                "              \"quantityUnits\": {\n" +
+                "                \"value\": \"${service_unit}\",\n" +
+                "                \"page\": 0,\n" +
+                "                \"confidence\": 0,\n" +
+                "                \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "              }\n" +
+                "            },\n" +
+                "            {\n" +
+                "              \"quantityType\": { \"value\": \"Visits\" },\n" +
+                "              \"quantityUnits\": {\n" +
+                "                \"value\": \"${service_visit}\",\n" +
+                "                \"page\": 0,\n" +
+                "                \"confidence\": 0,\n" +
+                "                \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "              }\n" +
+                "            }\n" +
+                "          ]\n" +
+                "        }\n" +
+                "      ],\n" +
+                "      \"levelOfService\": {\n" +
+                "        \"value\": \"${level_of_service}\",\n" +
+                "        \"page\": 0,\n" +
+                "        \"confidence\": 0,\n" +
+                "        \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "      },\n" +
+                "      \"provider\": [\n" +
+                "        {\n" +
+                "          \"providerCategory\": {\n" +
+                "            \"value\": \"${provider_category}\"\n" +
+                "          },\n" +
+                "          \"providerNPI\": {\n" +
+                "            \"value\": \"${provider_npi}\",\n" +
+                "            \"page\": 0,\n" +
+                "            \"confidence\": 0,\n" +
+                "            \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "          },\n" +
+                "          \"providerTIN\": {\n" +
+                "            \"value\": \"${provider_tin}\",\n" +
+                "            \"page\": 0,\n" +
+                "            \"confidence\": 0,\n" +
+                "            \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "          },\n" +
+                "          \"providerFirstName\": {\n" +
+                "            \"value\": \"${provider_first_name}\",\n" +
+                "            \"page\": 0,\n" +
+                "            \"confidence\": 0,\n" +
+                "            \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "          },\n" +
+                "          \"providerLastName\": {\n" +
+                "            \"value\": \"${provider_last_name}\",\n" +
+                "            \"page\": 0,\n" +
+                "            \"confidence\": 0,\n" +
+                "            \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "          },\n" +
+                "          \"providerAddressLine1\": {\n" +
+                "            \"value\": \"${provider_address_line_1}\",\n" +
+                "            \"page\": 0,\n" +
+                "            \"confidence\": 0,\n" +
+                "            \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "          },\n" +
+                "          \"providerCity\": {\n" +
+                "            \"value\": \"${provider_city}\",\n" +
+                "            \"page\": 0,\n" +
+                "            \"confidence\": 0,\n" +
+                "            \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "          },\n" +
+                "          \"providerState\": {\n" +
+                "            \"value\": \"${provider_state}\",\n" +
+                "            \"page\": 0,\n" +
+                "            \"confidence\": 0,\n" +
+                "            \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "          },\n" +
+                "          \"providerZipCode\": {\n" +
+                "            \"value\": \"${provider_zip_code}\",\n" +
+                "            \"page\": 0,\n" +
+                "            \"confidence\": 0,\n" +
+                "            \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "          }\n" +
+                "        }\n" +
+                "      ],\n" +
+                "      \"authorizationIndicators\": [\n" +
+                "        {\n" +
+                "          \"propName\": { \"value\": \"ADDL_MMS_ID\" },\n" +
+                "          \"propValue\": \"${auth_id}\",\n" +
+                "          \"page\": 0,\n" +
+                "          \"confidence\": 0,\n" +
+                "          \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "        }\n" +
+                "      ],\n" +
+                "      \"faxReceivedDate\": {\n" +
+                "        \"value\": \"${fax_received_date}\",\n" +
+                "        \"page\": 0,\n" +
+                "        \"confidence\": 0,\n" +
+                "        \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "      },\n" +
+                "      \"additionalProperties\": [\n" +
+                "        {\n" +
+                "          \"propName\": \"AUTH_ADDL_KEYWORD\",\n" +
+                "          \"propValue\": \"${additional_auth_properties}\",\n" +
+                "          \"page\": 0,\n" +
+                "          \"confidence\": 0,\n" +
+                "          \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "        },\n" +
+                "        {\n" +
+                "          \"propName\": \"SORTING_KEY\",\n" +
+                "          \"propValue\": \"${responsible_area}\",\n" +
+                "          \"page\": 0,\n" +
+                "          \"confidence\": 0,\n" +
+                "          \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "        }\n" +
+                "      ],\n" +
+                "      \"memberAdditionalProperties\": [\n" +
+                "        {\n" +
+                "          \"propName\": \"MEMBER_INDICATOR\",\n" +
+                "          \"propValue\": \"${multi_member_indicator}\",\n" +
+                "          \"page\": 0,\n" +
+                "          \"confidence\": 0,\n" +
+                "          \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "        },\n" +
+                "        {\n" +
+                "          \"propName\": \"NEWBORN_REQUEST\",\n" +
+                "          \"propValue\": \"${newborn_request}\",\n" +
+                "          \"page\": 0,\n" +
+                "          \"confidence\": 0,\n" +
+                "          \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "        },\n" +
+                "        {\n" +
+                "          \"propName\": \"newborn_first_name\",\n" +
+                "          \"propValue\": \"${newborn_first_name}\",\n" +
+                "          \"page\": 0,\n" +
+                "          \"confidence\": 0,\n" +
+                "          \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "        },\n" +
+                "        {\n" +
+                "          \"propName\": \"newborn_last_name\",\n" +
+                "          \"propValue\": \"${newborn_last_name}\",\n" +
+                "          \"page\": 0,\n" +
+                "          \"confidence\": 0,\n" +
+                "          \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "        },\n" +
+                "        {\n" +
+                "          \"propName\": \"newborn_gender\",\n" +
+                "          \"propValue\": \"${newborn_gender}\",\n" +
+                "          \"page\": 0,\n" +
+                "          \"confidence\": 0,\n" +
+                "          \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "        },\n" +
+                "        {\n" +
+                "          \"propName\": \"newborn_date_of_birth\",\n" +
+                "          \"propValue\": \"${newborn_date_of_birth}\",\n" +
+                "          \"page\": 0,\n" +
+                "          \"confidence\": 0,\n" +
+                "          \"boundingBox\": { \"x\": 0, \"width\": 0, \"y\": 0, \"height\": 0 }\n" +
+                "        }\n" +
+                "      ]\n" +
                 "    }\n" +
                 "  }\n" +
                 "}";
@@ -205,6 +462,11 @@ class CustomResponseGenerationConsumerProcessorTest {
         inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("servicing_provider_zipcode").containerName("SERVICING_PROVIDER_DETAILS").predictedValue("71301").paperNo(2).precision(0.5).leftPos(254.0).rightPos(643.0).upperPos(1581.0).lowerPos(1615.0).sorContainerInstance("1").transactionId("TRZ-758").metadataJson(metadata).build());
         inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("fax_received_date").predictedValue("06-05-2025 17:19:30").paperNo(1).precision(0.95).leftPos(17.0).rightPos(372.0).upperPos(2152.0).lowerPos(2189.0).transactionId("TRZ-758").metadataJson(metadata).build());
         inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("newborn_request").predictedValue("N").paperNo(1).precision(0.5).leftPos(0.0).rightPos(0.0).upperPos(0.0).lowerPos(0.0).transactionId("TRZ-758").metadataJson(metadata).build());
+        inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("additional_auth_properties").predictedValue("inpatient").paperNo(1).precision(0.5).leftPos(0.0).rightPos(0.0).upperPos(0.0).lowerPos(0.0).transactionId("TRZ-758").metadataJson(metadata).build());
+        inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("responsible_area").predictedValue("urgent emergency").paperNo(1).precision(0.5).leftPos(0.0).rightPos(0.0).upperPos(0.0).lowerPos(0.0).transactionId("TRZ-758").metadataJson(metadata).build());
+        inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("additional_auth_properties").predictedValue("outpatient").paperNo(1).precision(0.5).leftPos(0.0).rightPos(0.0).upperPos(0.0).lowerPos(0.0).transactionId("TRZ-758").metadataJson(metadata).build());
+        inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("responsible_area").predictedValue("emergency").paperNo(1).precision(0.5).leftPos(0.0).rightPos(0.0).upperPos(0.0).lowerPos(0.0).transactionId("TRZ-758").metadataJson(metadata).build());
+        inputs.add(PredictionDTO.builder().originId("ORIGIN-494").sorItemName("responsible_area").predictedValue("cardiology").paperNo(1).precision(0.5).leftPos(0.0).rightPos(0.0).upperPos(0.0).lowerPos(0.0).transactionId("TRZ-758").metadataJson(metadata).build());
 
         JsonNode finalJson = consumer.generateCustomJson(template, inputs);
         String finalGeneratedJson = new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(finalJson);
@@ -218,6 +480,8 @@ class CustomResponseGenerationConsumerProcessorTest {
         assertEquals("Noichole", root.get("aumipayload").get("memberFirstName").get("value").asText());
         assertEquals("1952628794", root.get("aumipayload").get("provider").get(0).get("providerNPI").get("value").asText());
         assertEquals("service_provider", root.get("aumipayload").get("provider").get(0).get("providerCategory").get("value").asText());
+        JsonNode additionalProperties = root.get("aumipayload").get("additionalProperties");
+        assertEquals(5, additionalProperties.size());
         assertEquals("N", root.get("aumipayload").get("memberAdditionalProperties").get(0).get("propValue").asText());
     }
 
