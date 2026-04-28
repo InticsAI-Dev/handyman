@@ -141,7 +141,6 @@ class CustomResponseGenerationConsumerProcessorTest {
     void generateCustomJson_shouldPrintFinalJsonForPredictionTableInputs() throws Exception {
         ActionExecutionAudit action = new ActionExecutionAudit();
         String template = "{\n" +
-                "  \"root\": {\n" +
                 "    \"requestTxnId\": \"\",\n" +
                 "    \"status\": \"\",\n" +
                 "    \"errorMessage\": null,\n" +
@@ -434,8 +433,7 @@ class CustomResponseGenerationConsumerProcessorTest {
                 "        }\n" +
                 "      ]\n" +
                 "    }\n" +
-                "  }\n" +
-                "}";
+                "  }";
         action.getContext().put("custom.json.generation.structure", template);
 
         CustomResponseGenerationConsumerProcessor consumer = new CustomResponseGenerationConsumerProcessor(log, marker, action);

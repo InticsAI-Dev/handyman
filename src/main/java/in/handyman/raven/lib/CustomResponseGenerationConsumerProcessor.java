@@ -105,14 +105,20 @@ public class CustomResponseGenerationConsumerProcessor implements CoproProcessor
                 .filter(p -> p.getSorItemName() != null)
                 .collect(Collectors.groupingBy(p -> normalizeKey(p.getSorItemName())));
         JsonNode filled = fillNode(root, bySorItem, byNormalizedSorItem, false);
+        JsonNode outbound = filled;
         if (filled.isObject()) {
-            ObjectNode target = (ObjectNode) filled;
-            if (target.has("root") && target.get("root").isObject()) {
-                target = (ObjectNode) target.get("root");
+            ObjectNode filledObject = (ObjectNode) filled;
+            ObjectNode target = filledObject;
+            if (filledObject.has("root") && filledObject.get("root").isObject()) {
+                target = (ObjectNode) filledObject.get("root");
+                if (filledObject.size() == 1) {
+                    // Avoid returning nested {"root":{"root":...}} in outbound payloads.
+                    outbound = target;
+                }
             }
             enrichRootEnvelope(target, predictions);
         }
-        return filled;
+        return outbound;
     }
 
     private JsonNode parseTemplateJsonSafely(String templateJson) {
