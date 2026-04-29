@@ -68,17 +68,28 @@ public class ServiceCodeTransformerFinalBsh {
                 String code = codes[k].trim();
                 if (code.length() == 0) continue;
 
-                String mod = (k < mods.length) ? mods[k].trim() : "";
-                String unit = (k < units.length) ? units[k].trim() : "";
-                String visit = (k < visits.length) ? visits[k].trim() : "";
+                String mod = (k < mods.length && mods[k] != null
+                && mods[k].trim().length() > 0)
+                ? mods[k].trim()
+                : "*";
+
+                String unit = (k < units.length && units[k] != null
+                && units[k].trim().length() > 0)
+                ? units[k].trim()
+                : "*";
+
+                String visit = (k < visits.length && visits[k] != null
+                && visits[k].trim().length() > 0)
+                ? visits[k].trim()
+                : "*";
 
                 String containerInstance = "SERVICE_CODE_" + (i + 1);
 
                 // Add each field as separate object
                 result.add(createOutput("service_code", code, label, sectionAlias, containerInstance));
-                result.add(createOutput("service_modifiers", mod, label, sectionAlias, containerInstance));
-                result.add(createOutput("service_units", unit, label, sectionAlias, containerInstance));
-                result.add(createOutput("service_visits", visit, label, sectionAlias, containerInstance));
+                result.add(createOutput("service_code_modifier", mod, label, sectionAlias, containerInstance));
+                result.add(createOutput("service_quantity_units", unit, label, sectionAlias, containerInstance));
+                result.add(createOutput("service_quantity_visits", visit, label, sectionAlias, containerInstance));
             }
         }
 
