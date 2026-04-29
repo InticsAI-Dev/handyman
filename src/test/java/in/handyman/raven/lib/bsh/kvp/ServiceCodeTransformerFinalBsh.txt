@@ -94,8 +94,8 @@ public class ServiceCodeTransformerFinalBsh {
 
         outputItem.put("key", key);
         outputItem.put("value", value != null ? value : "");
-        outputItem.put("source_label", label);
-        outputItem.put("section_alias", sectionAlias);
+        outputItem.put("label", label);
+        outputItem.put("sectionAlias", sectionAlias);
         outputItem.put("sorContainerName", containerInstance);
 
         outputItem.put("confidence", Double.valueOf(100.0));

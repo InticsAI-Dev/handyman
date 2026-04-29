@@ -119,10 +119,64 @@ public class ProviderDataTransformerTest {
         }
     }
 
+    @Test
+    public void executeTestForLOS() throws Exception {
+        InticsIntegrity securityEngine = SecurityEngine.getInticsIntegrityMethod(actionExecutionAudit, log);
+        RadonQueryInputTable radonQueryInputTable = RadonQueryInputTable
+                .builder()
+                .createdOn(CreateTimeStamp.currentTimestamp())
+                .originId("originId")
+                .paperNo(123)
+                .groupId(1L)
+                .inputFilePath("")
+                .actionId(1L)
+                .tenantId(1L)
+                .processId(1L)
+                .rootPipelineId(1L)
+                .modelRegistry("modelRegistry")
+                .process("process")
+                .batchId("batchId")
+                .category("category")
+                .sorContainerId(1L)
+                .batchId("batchId")
+                .category("category")
+                .sorContainerId(1L)
+                .build();
+
+        String responsePayload = "{\n" +
+                "\t\"isUrgent\":true,\n" +
+                "\t\"reason\":\"The document contains the printed text 'Expedite' next to the guarantor information section, which indicates urgency. No checkboxes are marked, but the presence of this printed phrase serves as clear evidence of urgency.\",\n" +
+                "\t\"urgentKeyword\":\n" +
+                "\t{\n" +
+                "\t\t\"value\":\"Expedite\",\n" +
+                "\t\t\"context\":\"Expedite\",\n" +
+                "\t\t\"type\":\"printed_phrase\"\n" +
+                "\t}\n" +
+                "}";
+        System.out.println("responsePayload is:"+responsePayload);
+        ProviderDataTransformer providerDataTransformer = new ProviderDataTransformer(log, aMarker, objectMapper, actionExecutionAudit, "intics_zio_db_conn", securityEngine) {
+            @Override
+            protected java.util.Optional<String> getContainerId(String sorContainerName) {
+                return java.util.Optional.of(String.valueOf(radonQueryInputTable.getSorContainerId()));
+            }
+        };
+        List<RadonQueryOutputTable> processProviderData = providerDataTransformer.processProviderData(getAuthIdValidatorForLOS(),"LevelOfServiceCheckboxTransformerBsh",responsePayload,radonQueryInputTable,"","","" );
+        System.out.println("processProviderData is:"+processProviderData);
+        for (RadonQueryOutputTable processProviderDatum : processProviderData) {
+            System.out.println("Transformed Data: " + processProviderDatum.getSorContainerInstance() + " \t\n " + processProviderDatum.getTotalResponseJson());
+        }
+    }
+
 
     String getAuthIdValidator() throws IOException {
         // read the code from a file
         File file = new File("src/test/java/in/handyman/raven/lib/bsh/kvp/ServiceCodeTransformerFinalBsh.txt");
+        return fileReader(file);
+    }
+
+    String getAuthIdValidatorForLOS() throws IOException {
+        // read the code from a file
+        File file = new File("src/test/java/in/handyman/raven/lib/bsh/kvp/LevelOfServiceCheckboxTransformerBsh.txt");
         return fileReader(file);
     }
 

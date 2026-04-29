@@ -1,0 +1,109 @@
+package com.intics.script.logReviewApr24;
+
+import java.util.*;
+import org.slf4j.Logger;
+
+public class LevelOfServiceCheckboxTransformerBsh {
+
+    private Logger logger;
+
+    public LevelOfServiceCheckboxTransformerBsh(Logger logger) {
+        this.logger = logger;
+        log("LevelOfServiceCheckboxTransformerBsh initialized");
+    }
+
+    public List processProviders(Object input) {
+        log("Starting processProviders for Level of Service transformation");
+
+        if (input instanceof Map) {
+            Map inputMap = (Map) input;
+            if (inputMap.containsKey("isUrgent")) {
+                log("[IS-URGENT MAP] Detected isUrgent map. Routing to processIsUrgentMap.");
+                return processIsUrgentMap(inputMap);
+            }
+            log("[SKIP] Input is a Map but does not contain 'isUrgent' key. Returning empty.");
+            return new ArrayList();
+        }
+
+        if (input instanceof Boolean) {
+            boolean isUrgent = ((Boolean) input).booleanValue();
+            String outputValue = isUrgent ? "Urgent" : "";
+            return buildOutputList(outputValue, "", "");
+        }
+
+        log("[SKIP] Input type=" + (input != null ? input.getClass().getSimpleName() : "null")
+                + ". Not a processable type. Returning empty.");
+        return new ArrayList();
+    }
+
+    private List processIsUrgentMap(Map inputMap) {
+        log("[IS-URGENT MAP] Starting processIsUrgentMap.");
+
+        Object rawIsUrgent = inputMap.get("isUrgent");
+        boolean isUrgent = false;
+        if (rawIsUrgent instanceof Boolean) {
+            isUrgent = ((Boolean) rawIsUrgent).booleanValue();
+        } else if (rawIsUrgent != null) {
+            isUrgent = "true".equalsIgnoreCase(rawIsUrgent.toString().trim());
+        }
+
+        String reason        = safeString(inputMap.get("reason"));
+        Object urgentKeyword = inputMap.get("urgentKeyword");
+        String outputValue   = isUrgent ? "Urgent" : "";
+
+        log("[IS-URGENT MAP] isUrgent=" + isUrgent
+                + " | reason='" + truncate(reason, 80) + "'");
+
+        return buildOutputList(outputValue, urgentKeyword, reason);
+    }
+
+    private List buildOutputList(String outputValue, Object urgentKeyword, String reason) {
+        Hashtable boundingBox = new Hashtable();
+        Map urgentMap = convert(urgentKeyword);
+        boundingBox.put("topLeftX",     Integer.valueOf(0));
+        boundingBox.put("topLeftY",     Integer.valueOf(0));
+        boundingBox.put("bottomRightX", Integer.valueOf(0));
+        boundingBox.put("bottomRightY", Integer.valueOf(0));
+
+        Hashtable outputNode = new Hashtable();
+        outputNode.put("key",             "level_of_service");
+        outputNode.put("value",           outputValue != null ? outputValue : "");
+        outputNode.put("boundingBox",     boundingBox);
+        outputNode.put("urgencyKeyword",  urgentKeyword != null ? urgentKeyword : "");
+        outputNode.put("reason",          reason != null ? reason : "");
+        outputNode.put("confidence",      Double.valueOf(100.0));
+        outputNode.put("sorContainerName", "LEVEL_OF_SERVICE_1");
+        Object srcLabel  = urgentMap.get("value");
+        Object secAlias  = urgentMap.get("context");
+        outputNode.put("label",        srcLabel != null ? srcLabel.toString() : "");
+        outputNode.put("sectionAlias", secAlias != null ? secAlias.toString() : "");
+
+        log("[OUTPUT] key=level_of_service"
+                + " | sorContainerName=LEVEL_OF_SERVICE_1"
+                + " | confidence=100.0");
+
+        List result = new ArrayList();
+        result.add(outputNode);
+        return result;
+    }
+
+    private String safeString(Object val) {
+        return val != null ? val.toString() : "";
+    }
+
+    private String truncate(String s, int maxLen) {
+        if (s == null) return "";
+        return s.length() <= maxLen ? s : s.substring(0, maxLen) + "...";
+    }
+
+    private void log(String msg) {
+        if (logger != null) logger.info(msg);
+    }
+
+    private Map convert(Object obj) {
+        if (obj instanceof Map) {
+            return (Map) obj;
+        }
+        return new HashMap();
+    }
+}

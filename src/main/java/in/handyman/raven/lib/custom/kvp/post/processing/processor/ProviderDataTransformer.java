@@ -69,22 +69,37 @@ public class ProviderDataTransformer {
                 log.warn("Parsed response is empty for payload: {}", responsePayload);
                 return outputList;
             }
-            responseMap.forEach((key, value) -> {
+            if(responseMap.containsKey("isUrgent")) //Urgency Triage case or Level of service case
+            {
                 try {
-
                     List<RadonQueryOutputTable> mappedInterpreterData = processMappingInterpreter(
-                            interpreter, className, value, entity, request, apiResponse, endpoint);
-
-//                    List<RadonQueryOutputTable> mappedJavaData = processMappingJava(
-//                            interpreter, className, convertedList, entity, request, apiResponse, endpoint);
+                            interpreter, className, responseMap, entity, request, apiResponse, endpoint);
 
                     outputList.addAll(mappedInterpreterData);
 
                 } catch (EvalError e) {
-                    String errorMessage = "Error evaluating Beanshell script for origin id " + entity.getOriginId() + " and paper no " + entity.getPaperNo() + "message : " + e.getMessage();
+                    String errorMessage = "for LOS case::: Error evaluating Beanshell script for origin id " + entity.getOriginId() + " and paper no " + entity.getPaperNo() + "message : " + e.getMessage();
                     handleErrorOutputEntity(entity, errorMessage, request, responsePayload, endpoint, e, outputList);
                 }
-            });
+            }
+            else{
+                responseMap.forEach((key, value) -> {
+                    try {
+
+                        List<RadonQueryOutputTable> mappedInterpreterData = processMappingInterpreter(
+                                interpreter, className, value, entity, request, apiResponse, endpoint);
+
+    //                    List<RadonQueryOutputTable> mappedJavaData = processMappingJava(
+    //                            interpreter, className, convertedList, entity, request, apiResponse, endpoint);
+
+                        outputList.addAll(mappedInterpreterData);
+
+                    } catch (EvalError e) {
+                        String errorMessage = "Error evaluating Beanshell script for origin id " + entity.getOriginId() + " and paper no " + entity.getPaperNo() + "message : " + e.getMessage();
+                        handleErrorOutputEntity(entity, errorMessage, request, responsePayload, endpoint, e, outputList);
+                    }
+                });
+            }
 
         } catch (Exception e) {
             String errorMessage = "Error executing script for origin id " + entity.getOriginId() + " and paper no " + entity.getPaperNo() + "message : " + e.getMessage();
@@ -265,7 +280,7 @@ public class ProviderDataTransformer {
     }
 
 
-    private Optional<String> getContainerId(String sorContainerName) {
+    protected Optional<String> getContainerId(String sorContainerName) {
         log.info("Fetching container ID for {}", sorContainerName);
 
 

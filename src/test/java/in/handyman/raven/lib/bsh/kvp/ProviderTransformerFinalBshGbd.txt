@@ -1,0 +1,1215 @@
+import java.util.*;
+import org.slf4j.Logger;
+
+public class ProviderTransformerFinalBshGbd {
+
+    private Logger logger;
+
+    private static final String SERVICING_FACILITY = "SERVICING_FACILITY_DETAILS";
+    private static final String SERVICING_PROVIDER = "SERVICING_PROVIDER_DETAILS";
+    private static final String REFERRING_PROVIDER = "REFERRING_PROVIDER_DETAILS";
+    private static final String ORDERING_PHYSICIAN = "ORDERING_PROVIDER_DETAILS";
+    private static final String UNDEFINED_PROVIDER = "UNDEFINED_PROVIDER_DETAILS";
+
+    private static final List EXACT_BLACKLISTED_KEYWORDS = Arrays.asList(new String[]{
+            "to", "from", "to/from", "fax", "fax to", "fax number", "pages", "date/time",
+            "date", "time", "staff urologist", "company", "subscriber", "subscriber name",
+            "encounter info", "verified by", "printed by", "performed by", "signature",
+            "preparer", "created by", "case manager", "dictated", "transcribed",
+            "electronically signed", "assignee", "signed by",
+            "professional interpretation by", "planned delivery site",
+            "sender", "anesthesia", "attestation of time", "electronically signed by provider",
+            "general", "unknown", "secondary insurance", "primary insurance", "family practice",
+            "transportation authorization pods specialist", "specialist", "treating practitioner",
+            "treated by", "consulting physician"
+    });
+
+    private static final List EXACT_UNDEFINED_KEYWORDS = Arrays.asList(new String[]{
+            "discharge provider", "discharge physician", "contributing provider",
+            "signature of qualified practitioner", "hospital attng", "registered nurse",
+            "practice", "provider information", "authorizing provider", "responsible provider",
+            "provider", "responsible physician", "authorizing physician",
+            "encounter provider", "encounter physician", "provider",
+            "provider information", "provider''s name and address", "treatment plan"
+    });
+
+    private static final List BLACK_LISTED_KEYWORDS = Arrays.asList(new String[]{
+            "encounter info", "verified by", "printed by", "performed by", "signature",
+            "preparer", "created by", "case manager", "dictated", "transcribed",
+            "electronically signed", "assignee", "signed by",
+            "professional interpretation by", "planned delivery site",
+            "sender", "anesthesia", "attenstation of time", "electronically signed by provider",
+            "secondary insurance", "general", "unknown", "primary insurance", "family practice"
+    });
+
+    private static final List ORDERING_KEYWORDS = Arrays.asList(new String[]{
+            "ordering provider", "ordering physician", "ordering clinician",
+            "ordering physician name", "ordering provider information",
+            "ordering physician information", "ordering-prescribing",
+            "ordering, prescribing", "ordering/authorizing provider",
+            "ordering/authorizing", "ordering and authorizing",
+            "opr provider", "opr provider npi", "ordering md", "ordering",
+            "ordered by", "prescribing", "ordering professional"
+            // NOTE: "ordering clinic name" intentionally removed — an ordering clinic
+            // is a FACILITY, not an individual provider. It belongs in FACILITY_KEYWORDS.
+    });
+
+    private static final List REFERRING_KEYWORDS = Arrays.asList(new String[]{
+            "referring provider", "referring physician", "referring provider information",
+            "referring doctor", "requesting provider", "requesting physician",
+            "requesting provider information", "primary care provider",
+            "primary care physician", "primary care or referring physician",
+            "nurse practitioner", "physician assistant", "ref dr name",
+            "referring professional", "requesting professional", "referred by",
+            "primary physician", "referring dr", "referral", "referring",
+            "requesting", "pcp", "practitioner", "primary care",
+            "pcp - general", "pcp - pc team, physician assistant",
+            "pcp - pc team 2", "pcp - medicaid pcp", "pri md", "ref",
+            "referring md"
+    });
+
+    private static final List FACILITY_KEYWORDS = Arrays.asList(new String[]{
+            "servicing facility", "requesting facility", "admitting facility",
+            "ordering facility", "appointment facility",
+            "entity location information", "clinic details",
+            "treating provider information", "treating physician information",
+            "place of service", "place of service (facility)", "community hospice",
+            "client/sending facility", "agency information", "medical centre",
+            "group/site", "facility/site", "facility", "hospital", "agency", "group", "site",
+            // Ordering clinic is a facility (a named clinic), not an individual ordering provider.
+            // "Ordering Clinic Name" label or "Ordering Clinic" type value both map here.
+            "ordering clinic", "ordering clinic name"
+    });
+
+    private static final List SERVICING_KEYWORDS = Arrays.asList(new String[]{
+            "servicing provider", "servicing physician", "servicing provider information",
+            "servicing laboratory information", "attending physician", "attending provider",
+            "attending practitioner", "attending dr", "attending md", "attending phys",
+            "name of attending physician", "admitting provider", "admitting physician",
+            "admit provider", "admit phys", "admitting md", "accepting physician",
+            "rendering provider", "rendering physician", "rendering professional",
+            "rendering provider information", "therapy provider", "clinician npi",
+            "professional administering testing", "physician name and address",
+            "adm or atn doctor", "atn doctor", "adm dr name", "atn dr name",
+            "admit by", "attend md", "adm md", "attn md", "physician", "therapist",
+            "attending", "admitting", "attend", "doctor", "dr", "md", "dr name", "doctor npi",
+            "att md", "physician information", "ob physician/provider information",
+            "servicing (billing) provider", "service (billing) provider", "physician''s name and address"
+    });
+
+    private static final List FACILITY_OVERRIDE_EXCLUSIONS = Arrays.asList(new String[]{
+            "servicing laboratory information", "servicing laboratory"
+    });
+
+    private static final List REFERRING_OVERRIDE_EXCLUSIONS = Arrays.asList(new String[]{
+            "primary care", "primary care provider", "primary care physician",
+            "primary care or referring physician",
+            "primary care or referring provider",
+            "referring professional", "requesting professional"
+    });
+
+
+    private static final List FACILITY_FORCE_KEYWORDS = Arrays.asList(new String[]{
+            "medical center", "hospital", "agency", "university", "health system",
+            "health center", "health services", "health network", "health", "healthcare",
+            "llc", "lab", "labs", "laboratory", "laboratories", "clinic", "medical group",
+            "diagnostic", "institute", "center", "centre", "associates", "network",
+            "system", "foundation", "imaging", "radiology", "surgery", "rehab",
+            "urgent care", "hospice", "orthopedics", "medicine", "care", "home", "family"
+    });
+
+    private static final List FACILITY_NAME_KEYWORDS = Arrays.asList(new String[]{
+            "medical center", "hospital", "agency", "university", "health system",
+            "health center", "health services", "health network", "health", "healthcare",
+            "llc", "lab", "labs", "laboratory", "laboratories", "clinic", "medical group",
+            "diagnostic", "institute", "center", "centre", "associates", "network",
+            "system", "foundation", "imaging", "inc", "radiology", "surgery", "rehab",
+            "urgent care", "hospice", "hca", "orthopedics", "medicine", "care",
+            "home", "family", "practice"
+    });
+
+    private static final List BLOCKED_NPI_TIN = Arrays.asList(new String[]{
+            "ani", "anl", "CSID", "", "ANI", "ANL", "csid", "PT (License #)", "state license no", "pt (license #)", "State License No",
+            "TPI", "tpi"
+    });
+
+    public ProviderTransformerFinalBshGbd(Logger logger) {
+        this.logger = logger;
+    }
+
+    public Vector processProviders(ArrayList providersBlocks) {
+
+        Vector result = new Vector();
+        Set seen = new HashSet();
+        Map containerCounts = new HashMap();
+
+        if (providersBlocks == null) {
+            return result;
+        }
+
+        List flattened = flattenBlocks(providersBlocks);
+
+        for (int i = 0; i < flattened.size(); i++) {
+
+            Map provider = (Map) flattened.get(i);
+
+            String typeVal = normalize((String) provider.get("Provider Type"));
+            String typeLab = normalize((String) provider.get("__orig_label_Provider Type"));
+
+            String nameVal = (String) provider.get("Provider Name");
+            String nameLab = normalize((String) provider.get("__orig_label_Provider Name"));
+
+            String npi = clean((String) provider.get("Provider NPI"));
+            String tin = clean((String) provider.get("Provider Tax ID"));
+
+            boolean typeExplicit = "true".equals(provider.get("__providerTypeExplicit"));
+
+            List targets = determineCategories(typeVal, typeLab, nameVal, nameLab, npi, tin, typeExplicit);
+
+            if (targets.isEmpty()) {
+                continue;
+            }
+
+
+            validateAndCleanProvider(provider);
+
+            for (int t = 0; t < targets.size(); t++) {
+
+                String targetContainer = (String) targets.get(t);
+
+                Integer count = (Integer) containerCounts.get(targetContainer);
+                if (count == null) count = 0;
+
+                String indexedContainer = targetContainer + "_" + count;
+                containerCounts.put(targetContainer, count + 1);
+
+                processProviderFields(provider, indexedContainer, result, seen);
+            }
+        }
+
+        return result;
+    }
+
+    private List determineCategories(String typeVal, String typeLab, String nameVal, String nameLab, String npi, String tin, boolean typeExplicit) {
+
+        List result = new ArrayList();
+
+        if (exactMatch(typeVal, EXACT_BLACKLISTED_KEYWORDS) ||
+                exactMatch(typeLab, EXACT_BLACKLISTED_KEYWORDS) ||
+                exactMatch(nameLab, EXACT_BLACKLISTED_KEYWORDS)) {
+            return result;
+        }
+
+        if (exactMatch(typeVal, EXACT_UNDEFINED_KEYWORDS) ||
+                exactMatch(typeLab, EXACT_UNDEFINED_KEYWORDS) ||
+                exactMatch(nameLab, EXACT_UNDEFINED_KEYWORDS)) {
+            result.add(UNDEFINED_PROVIDER);
+            return result;
+        }
+
+        if (matchesAny(typeVal, BLACK_LISTED_KEYWORDS) ||
+                matchesAny(typeLab, BLACK_LISTED_KEYWORDS) ||
+                matchesAny(nameLab, BLACK_LISTED_KEYWORDS)) {
+            return result;
+        }
+
+//        if(matchesAny(typeVal,UNDEFINED_KEYWORDS) ||
+//                matchesAny(typeLab,UNDEFINED_KEYWORDS) ||
+//                matchesAny(nameLab,UNDEFINED_KEYWORDS)){
+//            return result;
+//        }
+
+        if (typeVal.isEmpty() && typeLab.isEmpty()) {
+            return resolveContextualFacility(typeVal, nameVal, npi, tin, result);
+        }
+
+        if (matchesAny(typeVal, FACILITY_OVERRIDE_EXCLUSIONS) ||
+                matchesAny(typeLab, FACILITY_OVERRIDE_EXCLUSIONS)) {
+            result.add(SERVICING_PROVIDER);
+            return result;
+        }
+
+        if (matchesAny(typeVal, REFERRING_OVERRIDE_EXCLUSIONS) ||
+                matchesAny(typeLab, REFERRING_OVERRIDE_EXCLUSIONS) ||
+                matchesAny(nameLab, REFERRING_OVERRIDE_EXCLUSIONS)) {
+            result.add(REFERRING_PROVIDER);
+            return result;
+        }
+
+        // Generic "X or/slash Facility" resolver — handles any combination such as
+        //   "Referring Provider or Facility"  → [REFERRING_PROVIDER,  SERVICING_FACILITY]
+        //   "Ordering Provider or Facility"   → [ORDERING_PHYSICIAN,  SERVICING_FACILITY]
+        //   "Attending or Facility"           → [SERVICING_PROVIDER,  SERVICING_FACILITY]
+        //   "Provider or Facility"            → [SERVICING_PROVIDER,  SERVICING_FACILITY]
+        //   "Referring/Facility"              → [REFERRING_PROVIDER,  SERVICING_FACILITY]
+        // Also covers residual hardcoded cases that don''t follow the suffix pattern
+        // (e.g. "Referred to Provider Information").
+        List ambiguous = resolveAmbiguousWithFacility(typeVal, typeLab);
+        if (ambiguous != null) {
+            return ambiguous;
+        }
+
+        String category = classifyByKeywords(typeVal);
+        if (category != null) {
+            result.add(category);
+            return result;
+        }
+
+        category = classifyByKeywords(typeLab);
+        if (category != null) {
+            result.add(category);
+            return result;
+        }
+
+        // -- typeExplicit=false path: no keyword on nameLab either; try contextual facility,
+        //    then fall back to UNDEFINED if an identifier is present (Issue 1 / Issue 7b)
+        if (!typeExplicit) {
+            category = classifyByKeywords(nameLab);
+            if (category != null) {
+                result.add(category);
+                return result;
+            }
+
+            resolveContextualFacility(typeVal, nameVal, npi, tin, result);
+
+            // If contextual facility resolution didn''t produce anything but the block
+            // carries a real NPI or TIN, keep it as UNDEFINED rather than silently drop.
+            if (result.isEmpty() && (!npi.isEmpty() || !tin.isEmpty())) {
+                result.add(UNDEFINED_PROVIDER);
+            }
+
+            return result;
+        }
+
+        // -- typeExplicit=true path: an explicit Provider Type field was present but its
+        //    value matched no known category keyword.  Still try contextual-facility
+        //    detection (Issue 7b) and, failing that, route to UNDEFINED when identifiers
+        //    exist so the block is not silently discarded (Issue 1).
+        resolveContextualFacility(typeVal, nameVal, npi, tin, result);
+
+        if (result.isEmpty() && (!npi.isEmpty() || !tin.isEmpty())) {
+            result.add(UNDEFINED_PROVIDER);
+        }
+
+        return result;
+    }
+
+    private String classifyByKeywords(String input) {
+
+        if (input == null || input.isEmpty()) {
+            return null;
+        }
+
+        // EXACT MATCH PRIORITY
+        if (exactMatch(input, ORDERING_KEYWORDS)) return ORDERING_PHYSICIAN;
+        if (exactMatch(input, SERVICING_KEYWORDS)) return SERVICING_PROVIDER;
+        if (exactMatch(input, REFERRING_KEYWORDS)) return REFERRING_PROVIDER;
+        if (exactMatch(input, FACILITY_KEYWORDS)) return SERVICING_FACILITY;
+
+        // SAFE CONTAINS
+        if (safeContainsMatch(input, ORDERING_KEYWORDS)) return ORDERING_PHYSICIAN;
+        if (safeContainsMatch(input, SERVICING_KEYWORDS)) return SERVICING_PROVIDER;
+        if (safeContainsMatch(input, REFERRING_KEYWORDS)) return REFERRING_PROVIDER;
+        if (safeContainsMatch(input, FACILITY_KEYWORDS)) return SERVICING_FACILITY;
+
+        return null;
+    }
+
+    /**
+     * Resolves contextual facility classification when no explicit label matched.
+     * <p>
+     * Checks both the provider type value (typeVal) and the provider name (nameVal)
+     * for facility-like keywords. Requires NPI or TIN to be present — without an
+     * identifier there is nothing concrete enough to classify as a facility.
+     * <p>
+     * Issue 7b: a hospital/medical-center name appearing in EITHER the type value
+     * OR the provider name field, combined with a real NPI or TIN, is sufficient
+     * evidence to add SERVICING_FACILITY.
+     */
+    private List resolveContextualFacility(String typeVal, String nameVal, String npi, String tin, List result) {
+
+        // No identifier → nothing to classify as a facility
+        if (npi.isEmpty() && tin.isEmpty()) {
+            return result;
+        }
+
+        // typeVal is already normalised (lowercase, stripped); nameVal is raw
+        boolean typeIsFacility = typeVal != null && !typeVal.isEmpty()
+                && containsMatch(typeVal, FACILITY_FORCE_KEYWORDS);
+
+        boolean nameIsFacility = nameVal != null && !nameVal.trim().isEmpty()
+                && containsMatch(nameVal, FACILITY_FORCE_KEYWORDS);
+
+        if (typeIsFacility || nameIsFacility) {
+            result.add(SERVICING_FACILITY);
+        }
+
+        return result;
+    }
+
+    /**
+     * Generic ambiguous "provider-or-facility" resolver.
+     * <p>
+     * Detects any input of the form  "X or facility"  or  "X/facility"  (after
+     * normalisation), extracts the left-hand part X, classifies it with the
+     * standard keyword engine, and returns the two-element list
+     * [category(X), SERVICING_FACILITY].
+     * <p>
+     * Also handles a small set of residual patterns via getAmbiguousResidualCategory()
+     * for inputs that don''t follow the suffix form.
+     * <p>
+     * Returns null when no ambiguous pattern is detected, allowing the caller to
+     * continue with normal keyword classification.
+     * <p>
+     * The NPI/TIN guard in processProviders will strip SERVICING_FACILITY from
+     * the returned list when neither identifier is present, so this method does
+     * not need to repeat that check.
+     */
+    private List resolveAmbiguousWithFacility(String typeVal, String typeLab) {
+
+        List fromVal = tryAmbiguousFacilityPattern(typeVal);
+        if (fromVal != null) return fromVal;
+
+        List fromLab = tryAmbiguousFacilityPattern(typeLab);
+        if (fromLab != null) return fromLab;
+
+        return null;
+    }
+
+    /**
+     * Attempts to match a single normalised input string against residual
+     * ambiguous patterns and the generic "X or facility" / "X/facility"
+     * suffix patterns.
+     * <p>
+     * Classification order for the extracted left part X:
+     * 1. classifyByKeywords(X) — full keyword engine (exact + safeContains)
+     * 2. Stem hints: "refer"/"request" → REFERRING, "order"/"prescrib" → ORDERING
+     * 3. Default: SERVICING_PROVIDER  (covers generic "provider", "physician", etc.)
+     * <p>
+     * Returns null when no pattern matches.
+     */
+    private List tryAmbiguousFacilityPattern(String input) {
+
+        if (input == null || input.isEmpty()) return null;
+
+        // ── Step 1: residual patterns that don''t follow the "X or/slash facility" suffix ──
+        String residualCategory = getAmbiguousResidualCategory(input);
+        if (residualCategory != null) {
+            List r = new ArrayList();
+            r.add(residualCategory);
+            r.add(SERVICING_FACILITY);
+            return r;
+        }
+
+        // ── Step 2: generic suffix detection ──────────────────────────────────────
+        String leftPart = null;
+
+        // "X or facility"
+        if (input.endsWith(" or facility")) {
+            leftPart = input.substring(0, input.length() - " or facility".length()).trim();
+        }
+        // "X/facility"
+        else if (input.endsWith("/facility")) {
+            leftPart = input.substring(0, input.length() - "/facility".length()).trim();
+        }
+        // "X or facility information" (trailing context word after the facility marker)
+        // e.g. "servicing provider or facility information"
+        else if (input.contains(" or facility ")) {
+            int idx = input.indexOf(" or facility ");
+            leftPart = input.substring(0, idx).trim();
+        }
+
+        if (leftPart == null || leftPart.isEmpty()) return null;
+
+        // ── Step 3: classify the left part ────────────────────────────────────────
+        String category = classifyByKeywords(leftPart);
+
+        if (category == null) {
+            // Stem-based hints for short or unclassifiable left parts
+            if (leftPart.contains("refer") || leftPart.contains("request")) {
+                category = REFERRING_PROVIDER;
+            } else if (leftPart.contains("order") || leftPart.contains("prescrib")) {
+                category = ORDERING_PHYSICIAN;
+            } else {
+                // Covers "provider", "physician", "service provider", etc.
+                category = SERVICING_PROVIDER;
+            }
+        }
+
+        // Never add SERVICING_FACILITY twice (would happen if left part is itself a facility)
+        List result = new ArrayList();
+        result.add(category);
+        if (!SERVICING_FACILITY.equals(category)) {
+            result.add(SERVICING_FACILITY);
+        }
+        return result;
+    }
+
+    /**
+     * Returns the provider-category constant for the small set of residual
+     * ambiguous patterns that cannot be detected by the generic "X or/slash
+     * facility" suffix logic.  Returns null when the input does not match any
+     * residual pattern.
+     * <p>
+     * BeanShell-safe: plain if/else, no static initialiser block, no Map.
+     * <p>
+     * "referred to provider information"
+     * → REFERRING_PROVIDER (both a referring-provider record and a facility
+     * record are needed for this phrasing)
+     * <p>
+     * "requesting or ordering provider"
+     * → ORDERING_PHYSICIAN (ordering is the more specific of the two roles)
+     */
+    private String getAmbiguousResidualCategory(String input) {
+
+        if ("referred to provider information".equals(input)) {
+            return REFERRING_PROVIDER;
+        }
+
+        if ("requesting or ordering provider".equals(input)) {
+            return ORDERING_PHYSICIAN;
+        }
+
+        return null;
+    }
+
+    private boolean exactMatch(String input, List keywords) {
+
+        if (input == null) return false;
+
+        String lower = input.toLowerCase();
+
+        for (int i = 0; i < keywords.size(); i++) {
+            if (lower.equals(((String) keywords.get(i)).toLowerCase())) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private boolean containsMatch(String input, List keywords) {
+
+        if (input == null) return false;
+
+        String lower = input.toLowerCase();
+
+        for (int i = 0; i < keywords.size(); i++) {
+            if (lower.contains(((String) keywords.get(i)).toLowerCase())) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private boolean safeContainsMatch(String input, List keywords) {
+
+        if (input == null) return false;
+
+        String lower = input.toLowerCase();
+
+        for (int i = 0; i < keywords.size(); i++) {
+
+            String k = ((String) keywords.get(i)).toLowerCase();
+
+            if (k.length() >= 10 && lower.contains(k)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private boolean matchesAny(String input, List keywords) {
+        return exactMatch(input, keywords) || containsMatch(input, keywords);
+    }
+
+    private String normalize(String s) {
+
+        if (s == null) return "";
+
+        return s.trim()
+                .toLowerCase()
+                .replaceAll("^[:\\.,;/\\\\\\s]+", "")
+                .replaceAll("[:\\.,;/\\\\\\s]+$", "")
+                .trim();
+    }
+
+    private String clean(String s) {
+        return s == null ? "" : s.trim().toLowerCase();
+    }
+
+    private boolean isFacilityLikeName(String name) {
+
+        if (name == null || name.isEmpty()) return false;
+
+        return containsMatch(name, FACILITY_NAME_KEYWORDS);
+    }
+
+    private void validateAndCleanProvider(Map provider) {
+
+        String name = clean((String) provider.get("Provider Name"));
+        String npi = clean((String) provider.get("Provider NPI"));
+        String tin = clean((String) provider.get("Provider Tax ID"));
+
+        if (name.isEmpty() && npi.isEmpty() && tin.isEmpty()) {
+
+            provider.put("Provider Address", "");
+            provider.put("Provider City", "");
+            provider.put("Provider State", "");
+            provider.put("Provider ZIP Code", "");
+            provider.put("Provider Specialty", "");
+        }
+    }
+
+    private void processProviderFields(Map provider, String container, Vector result, Set seen) {
+
+        Map itemMap = itemMappingDetails();
+        Map nameMap = nameMappingDetails();
+
+        String baseContainer = container.replaceAll("_\\d+$", "");
+        Vector targetKeys = (Vector) itemMap.get(baseContainer);
+
+        if (targetKeys == null) {
+            return;
+        }
+
+        String rawName = (String) provider.get("Provider Name");
+        if (rawName == null) rawName = "";
+
+        Map parsedName;
+
+        if (SERVICING_FACILITY.equals(baseContainer) || isFacilityLikeName(rawName)) {
+
+            parsedName = new HashMap();
+            parsedName.put("full", rawName.trim());
+            parsedName.put("last", rawName.trim());
+            parsedName.put("first", "");
+        } else {
+            parsedName = parseName(rawName);
+        }
+
+        for (int i = 0; i < targetKeys.size(); i++) {
+
+            String outKey = (String) targetKeys.get(i);
+            String srcKey = (String) nameMap.get(outKey);
+
+            String val = "";
+
+            if ("Provider Name".equals(srcKey)) {
+
+                if (outKey.contains("first_name")) val = (String) parsedName.get("first");
+                else if (outKey.contains("last_name")) val = (String) parsedName.get("last");
+                else if (outKey.contains("full_name")) val = (String) parsedName.get("full");
+
+            } else {
+                val = (String) provider.get(srcKey);
+            }
+
+            if (val == null) val = "";
+
+            if (outKey.endsWith("_address_line1") && val.trim().length() < 4) {
+                continue;
+            }
+
+            if (outKey.endsWith("_zipcode") && val.trim().length() < 4) {
+                continue;
+            }
+
+            String uniqId = outKey + "|" + val + "|" + container;
+
+            if (!val.isEmpty() && !seen.contains(uniqId)) {
+
+                seen.add(uniqId);
+
+                Hashtable item = new Hashtable();
+
+                item.put("key", outKey);
+                item.put("value", val);
+                item.put("sorContainerName", container);
+                item.put("confidence", 100.0);
+
+                item.put("label",
+                        provider.get("__orig_label_" + srcKey) != null ?
+                                provider.get("__orig_label_" + srcKey) : "");
+
+                item.put("boundingBox",
+                        provider.get("__orig_bbox_" + srcKey) != null ?
+                                provider.get("__orig_bbox_" + srcKey) : new Hashtable());
+
+                result.add(item);
+            }
+        }
+    }
+
+    private Map parseName(String n) {
+        Map p = new HashMap();
+        if (n == null) n = "";
+
+        String working = n;
+
+        // 1. Basic prefix cleaner
+        working = working.replaceAll("(?i)\\b(dr|mr|mrs|ms)\\b\\.?", " ").replaceAll("\\s{2,}", " ").trim();
+
+        // 2. Titles with Optional Dots (TIGHTENED: Requires a comma or space before the title)
+        // This prevents "vi" in Ravi or "pa" in "Patel" from being deleted.
+        String titlesWithDotsRegex = "(?i)(?:,\\s*|\\s+)(" +
+                "M\\.?D\\.?|" +
+                "D\\.?O\\.?|" +
+                "P\\.?H\\.?D\\.?|" +
+                "D\\.?D\\.?S\\.?|" +
+                "D\\.?M\\.?D\\.?|" +
+                "P\\.?S\\.?Y\\.?D\\.?|" +
+                "N\\.?P\\.?|" +
+                "P\\.?A\\.?(\\-?C)?|" +
+                "R\\.?N\\.?|" +
+                "M\\.?B\\.?B\\.?S\\.?|" +
+                "F\\.?N\\.?P\\.?|" +
+                "A\\.?P\\.?R\\.?N\\.?|" +
+                "A\\.?R\\.?N\\.?P\\.?|" +
+                "C\\.?R\\.?N\\.?A\\.?|" +
+                "D\\.?P\\.?T\\.?|" +
+                "O\\.?D\\.?|" +
+                "D\\.?V\\.?M\\.?|" +
+                "D\\.?C\\.?|" +
+                "C\\.?N\\.?M\\.?|" +
+                "L\\.?P\\.?N\\.?|" +
+                "C\\.?N\\.?A\\.?|" +
+                "P\\.?H\\.?A\\.?R\\.?M\\.?D\\.?" +
+                ")(?=[\\s,\\.\\-]|$)";
+
+        working = working.replaceAll(titlesWithDotsRegex, "");
+
+        // 3. Remove trailing suffixes (TIGHTENED: Requires a comma or space boundary)
+        String suffixRegex = "(?i)(?:,\\s*|\\s+)(JR\\.?|SR\\.?|II|III|IV|V|VI|VII|VIII|IX|X|MPH|MSN|MA|MS|MBA|BSC|BA|BSN|CME|FACOG|FACEP|FACR|FACS|FAAP|MPAS|ND|RD|RDN|PT|OTR/L|SLP|AU\\.D|CNSC|CCRN|CDE|IBCLC|LMFT|LCSW|LPCC|CCM|CHT|ATC|CHES|MCHES|ANP|GNP|PNP|WHNP|ACNP|BC-ADM|FAAN|FAANP|CMT|OTD|DHSC|EDD|DNSC|DNP|CPNP|CRNP|CLC|CDCES|CHC|CPM|RT|MLT|MT|CLS|CPFT|RPFT|ACCS|CPC|CPCS|CPMSM|CPE|FAAPM|FAHA|FACC|FACP|FASE|FCCM|FCCN|FCCO|FCCPM|FCCPS|FAOTA|FAARC|FAAD|FAANS|FAOS|FASES|FRACGP|FRACP|FRANZCR|FRCA|FRCP|FRCS|MRCGP|MRCP|MRCS|MACP|MACCP|MAPP|MBAH|MCH|MHS|MIHM|MIPH|MPS|MPA|MSPA|MPAM|MPHARM|MPHTM|MSCP|MSPT|MSW|MTD|OT|OTA|PTA|RPH|RHIA|RHIT|RNFA|RPA|RRT|RTT|SCD|SJD|SLPD)\\b[,.\\s]*$";
+
+        boolean hasSuffix = true;
+        while (hasSuffix) {
+            String temp = working.replaceAll(suffixRegex, "").trim();
+            if (temp.equals(working)) {
+                hasSuffix = false;
+            } else {
+                working = temp;
+            }
+        }
+
+        // 4. Final cleanup — fix dangling commas/dots left behind by title removal
+        working = working.replaceAll("\\s*,\\s*,+", ",");  // collapse multiple commas
+        working = working.replaceAll("\\s*\\.\\s*,", ","); // turn " .," into ","
+        working = working.replaceAll("\\s*\\.\\s*$", "");  // remove trailing dots
+        working = working.replaceAll(",\\s*$", "");        // remove trailing comma
+        working = working.replaceAll("^\\s*,", "");        // remove leading comma
+
+        String cleanName = working.replaceAll("\\s{2,}", " ").trim();
+        cleanName = cleanName.replaceAll(",\\s*,", ",");
+        cleanName = cleanName.replaceAll("^,|,$", "").trim();
+
+        p.put("full", cleanName);
+
+        String first = "";
+        String last = "";
+
+        if (cleanName.contains(",")) {
+            String[] parts = cleanName.split(",", 2);
+            if (parts.length > 0) last = parts[0].trim();
+            if (parts.length > 1) first = parts[1].trim();
+        } else {
+            String[] tokens = cleanName.split("\\s+");
+            if (tokens.length > 0) {
+                last = tokens[tokens.length - 1];
+                if (tokens.length > 1) {
+                    StringBuilder sb = new StringBuilder();
+                    for (int i = 0; i < tokens.length - 1; i++) {
+                        sb.append(tokens[i]).append(" ");
+                    }
+                    first = sb.toString().trim();
+                }
+            }
+        }
+
+        p.put("first", first);
+        p.put("last", last);
+
+        return p;
+    }
+
+    private List flattenBlocks(ArrayList providersBlocks) {
+
+        List allProviders = new ArrayList();
+
+        for (int b = 0; b < providersBlocks.size(); b++) {
+
+            List block = (List) providersBlocks.get(b);
+
+            if (block == null || block.isEmpty()) continue;
+
+            // Split the block into sub-blocks whenever a NEW Provider Type boundary
+            // is detected (Case 2), then process each sub-block independently.
+            List subBlocks = splitBlockByProviderType(block);
+
+            for (int s = 0; s < subBlocks.size(); s++) {
+
+                List subBlock = (List) subBlocks.get(s);
+
+                // Within each sub-block, check for a mixed facility+provider name
+                // situation (Case 1) and produce multiple sub-blocks if needed.
+                List expandedBlocks = expandMixedNameLabels(subBlock);
+
+                for (int e = 0; e < expandedBlocks.size(); e++) {
+
+                    List singleBlock = (List) expandedBlocks.get(e);
+                    List flattened = flattenSingleBlock(singleBlock);
+                    allProviders.addAll(flattened);
+                }
+            }
+        }
+
+        return allProviders;
+    }
+
+    /**
+     * Case 2 fix: split a raw block into separate sub-blocks whenever a second
+     * "Provider Type" field is encountered.  The first sub-block receives all
+     * fields up to (but not including) the second Provider Type; subsequent
+     * sub-blocks start at each new Provider Type boundary.
+     * <p>
+     * Shared context fields (NPI, Address, etc.) that appear BEFORE the second
+     * Provider Type are NOT automatically duplicated into later sub-blocks —
+     * each sub-block is self-contained.  Fields that appear AFTER a Provider
+     * Type boundary are attached to that sub-block.
+     */
+    private List splitBlockByProviderType(List block) {
+
+        List subBlocks = new ArrayList();
+        List current = new ArrayList();
+        boolean seenFirstType = false;
+
+        for (int i = 0; i < block.size(); i++) {
+
+            Map field = (Map) block.get(i);
+            String rawKey = field.get("key") != null ? ((String) field.get("key")).trim() : "";
+            String k = clean(rawKey);
+
+            boolean isProviderType = k.contains("provider") && k.contains("type");
+
+            if (isProviderType) {
+                if (!seenFirstType) {
+                    // First Provider Type: start the first sub-block
+                    seenFirstType = true;
+                    current.add(field);
+                } else {
+                    // Second (or further) Provider Type: close current sub-block
+                    // and begin a new one.  Carry forward shared fields (NPI,
+                    // Address, City, State, ZIP) from the previous sub-block so
+                    // the new entity is not left without identifiers when those
+                    // fields physically appear under the first type.
+                    subBlocks.add(current);
+                    List next = new ArrayList();
+                    copySharedFields(current, next);
+                    next.add(field);
+                    current = next;
+                }
+            } else {
+                current.add(field);
+            }
+        }
+
+        if (!current.isEmpty()) {
+            subBlocks.add(current);
+        }
+
+        // If no split occurred, return a list containing the original block
+        if (subBlocks.isEmpty()) {
+            subBlocks.add(block);
+        }
+
+        return subBlocks;
+    }
+
+    /**
+     * Copies "shared" context fields (NPI, Tax ID, Address, City, State, ZIP,
+     * Specialty) from a completed sub-block into the next sub-block so that the
+     * second entity inherits location/identifier data that appeared physically
+     * above the second Provider Type line in the document.
+     * <p>
+     * Provider Name and Provider Type are intentionally NOT copied — each
+     * sub-block must supply its own.
+     */
+    private void copySharedFields(List source, List target) {
+
+        for (int i = 0; i < source.size(); i++) {
+
+            Map field = (Map) source.get(i);
+            String rawKey = field.get("key") != null ? ((String) field.get("key")).trim() : "";
+            String k = clean(rawKey);
+
+            // Copy NPI, Tax ID, Address, City, State, ZIP, Specialty — NOT Name/Type
+            boolean isShared = (k.contains("npi") || k.contains("tin") || k.contains("tax")
+                    || k.contains("address") || k.contains("city") || k.contains("state")
+                    || k.contains("zip") || k.contains("specialty"));
+
+            if (isShared) {
+                target.add(field);
+            }
+        }
+    }
+
+    /**
+     * Case 1 fix: within a single sub-block, detect when there are multiple
+     * "Provider Name" fields whose labels indicate different entity types
+     * (e.g. one labelled "Ordering Clinic Name" and another labelled
+     * "Ordering Physician Name").
+     * <p>
+     * When such a split is detected:
+     * - The FACILITY name entry becomes the primary record (keeps all shared
+     * fields: NPI, Address, etc.).
+     * - The PERSON name entry becomes a second record that inherits all shared
+     * fields (NPI, Address, etc.) from the original block.
+     * <p>
+     * If no mixed labels are found, a single-element list containing the
+     * original block is returned.
+     */
+    private List expandMixedNameLabels(List block) {
+
+        // Collect all Provider Name fields and their labels
+        List nameFields = new ArrayList();   // Map entries whose key == "Provider Name"
+        List otherFields = new ArrayList();  // everything else
+
+        for (int i = 0; i < block.size(); i++) {
+
+            Map field = (Map) block.get(i);
+            String rawKey = field.get("key") != null ? ((String) field.get("key")).trim() : "";
+            String k = clean(rawKey);
+
+            if ("provider name".equals(k)) {
+                nameFields.add(field);
+            } else {
+                otherFields.add(field);
+            }
+        }
+
+        // No split needed if there is only one (or zero) Provider Name fields
+        if (nameFields.size() <= 1) {
+            List single = new ArrayList();
+            single.add(block);
+            return single;
+        }
+
+        // Classify each name field: facility label vs. person/provider label
+        List facilityNames = new ArrayList();
+        List personNames = new ArrayList();
+
+        for (int i = 0; i < nameFields.size(); i++) {
+
+            Map nameField = (Map) nameFields.get(i);
+            Object rawLabel = nameField.get("label");
+            String label = rawLabel != null ? normalize(rawLabel.toString()) : "";
+
+            // A label that resolves to SERVICING_FACILITY → treat as facility name
+            if (SERVICING_FACILITY.equals(classifyByKeywords(label))
+                    || isFacilityLabel(label)) {
+                facilityNames.add(nameField);
+            } else {
+                personNames.add(nameField);
+            }
+        }
+
+        // If all names belong to the same category, no split is needed
+        if (facilityNames.isEmpty() || personNames.isEmpty()) {
+            List single = new ArrayList();
+            single.add(block);
+            return single;
+        }
+
+        List result = new ArrayList();
+
+        // ── Sub-block 1: Facility record ──────────────────────────────────────
+        // Contains: Provider Type (original), all facility-labelled names,
+        //           and all shared fields (NPI, Address, etc.)
+        List facilityBlock = new ArrayList();
+        facilityBlock.addAll(otherFields);
+        facilityBlock.addAll(facilityNames);
+        result.add(facilityBlock);
+
+        // ── Sub-block 2..N: One sub-block per person name ─────────────────────
+        // Each person name record INTENTIONALLY does NOT inherit the facility''s
+        // Provider Type field.  The person''s name label (e.g. "Ordering Physician
+        // Name") is the sole classification signal; applyFallbackType will pick it
+        // up and route the block to the correct container.
+        for (int p = 0; p < personNames.size(); p++) {
+
+            List personBlock = new ArrayList();
+
+            // Add the person''s Name field FIRST so applyFallbackType can read its label
+            personBlock.add(personNames.get(p));
+
+            // Inherit shared context fields (NPI, Address, City, State, ZIP, Specialty)
+            for (int i = 0; i < otherFields.size(); i++) {
+                Map field = (Map) otherFields.get(i);
+                String rawKey = field.get("key") != null ? ((String) field.get("key")).trim() : "";
+                String k = clean(rawKey);
+                boolean isShared = (k.contains("npi") || k.contains("tin") || k.contains("tax")
+                        || k.contains("address") || k.contains("city") || k.contains("state")
+                        || k.contains("zip") || k.contains("specialty"));
+                if (isShared) {
+                    personBlock.add(field);
+                }
+            }
+
+            result.add(personBlock);
+        }
+
+        return result;
+    }
+
+    /**
+     * Returns true when a normalised label string indicates a facility entity
+     * rather than an individual provider.
+     * <p>
+     * Supplements classifyByKeywords() for labels like "ordering clinic name"
+     * that contain facility-tier words ("clinic") and are therefore better
+     * treated as facility entries even though they live under an ordering context.
+     */
+    private boolean isFacilityLabel(String normLabel) {
+
+        if (normLabel == null || normLabel.isEmpty()) return false;
+
+        // Labels containing explicit facility-tier words are facility records
+        return containsMatch(normLabel, FACILITY_NAME_KEYWORDS);
+    }
+
+    /**
+     * Flattens a single, already-split sub-block (List of field Maps) into one
+     * Hashtable provider record and applies label-inheritance logic.
+     * <p>
+     * This is the original per-block logic extracted verbatim so that the new
+     * splitting helpers can reuse it without duplication.
+     */
+    private List flattenSingleBlock(List block) {
+
+        List result = new ArrayList();
+
+        if (block == null || block.isEmpty()) return result;
+
+        Hashtable current = new Hashtable();
+        boolean foundExplicitType = false;
+
+        for (int i = 0; i < block.size(); i++) {
+
+            Map field = (Map) block.get(i);
+
+            String rawKey = (String) field.get("key");
+
+            if (rawKey == null) continue;
+
+            String k = clean(rawKey);
+
+            // 1. STRICT NULL SAFETY FOR VALUES
+            Object rawLabel = field.get("label");
+            String safeLabel = (rawLabel != null) ? rawLabel.toString() : "";
+
+            String val = (String) field.get("value");
+            if (val == null) val = "";
+
+            Object bbox = field.get("boundingBox");
+            if (bbox == null) bbox = new Hashtable(); // NEVER let bbox be null
+
+            String normLabel = normalize(safeLabel);
+
+            // 2. BLOCKING LOGIC
+            if ((k.contains("npi") || k.contains("tin") || k.contains("tax")) && BLOCKED_NPI_TIN.contains(normLabel)) {
+                val = "";
+            }
+
+            // 3. SAFE PUT INTO HASHTABLE
+            if (k.contains("provider") && k.contains("type")) {
+                current.put("Provider Type", val);
+                current.put("__orig_label_Provider Type", safeLabel);
+                current.put("__orig_bbox_Provider Type", bbox);
+                foundExplicitType = true;
+            } else {
+                current.put(rawKey, val);
+                current.put("__orig_label_" + rawKey, safeLabel);
+                current.put("__orig_bbox_" + rawKey, bbox);
+            }
+        }
+
+        current.put("__providerTypeExplicit", foundExplicitType ? "true" : "false");
+
+        if (!foundExplicitType) {
+            applyFallbackType(current, block);
+        }
+
+        // 4. NULL-SAFE LABEL INHERITANCE
+        Object storedNameLabelObj = current.get("__orig_label_Provider Name");
+        String storedNameLabel = (storedNameLabelObj != null) ? storedNameLabelObj.toString().trim() : "";
+
+        if (storedNameLabel.isEmpty()) {
+            Object storedTypeLabelObj = current.get("__orig_label_Provider Type");
+            String typeLabelToInherit = (storedTypeLabelObj != null) ? storedTypeLabelObj.toString().trim() : "";
+
+            if (!typeLabelToInherit.isEmpty()) {
+                // Safely inherit the string label
+                current.put("__orig_label_Provider Name", typeLabelToInherit);
+
+                // Safely inherit the Bounding Box
+                Object typeBboxObj = current.get("__orig_bbox_Provider Type");
+                Object nameBboxObj = current.get("__orig_bbox_Provider Name");
+
+                // FIX: Use Map instead of Hashtable to handle LinkedHashMap from JSON
+                // deserialization. Casting to Hashtable throws ClassCastException at runtime.
+                boolean nameBboxEmpty = (nameBboxObj == null)
+                        || (nameBboxObj instanceof Map && ((Map) nameBboxObj).isEmpty());
+
+                if (typeBboxObj != null && nameBboxEmpty) {
+                    current.put("__orig_bbox_Provider Name", typeBboxObj);
+                }
+            }
+        }
+
+        result.add(current);
+        return result;
+    }
+
+    private void applyFallbackType(Hashtable current, List block) {
+
+        String bestLabel = "";
+        String bestKey = "";
+        String firstVal = "";
+
+        for (int i = 0; i < block.size(); i++) {
+
+            Map field = (Map) block.get(i);
+
+            String lab = field.get("label") != null ? ((String) field.get("label")).trim() : "";
+            String key = field.get("key") != null ? ((String) field.get("key")).trim() : "";
+            String val = field.get("value") != null ? ((String) field.get("value")).trim() : "";
+
+            if (i == 0 && !val.isEmpty()) firstVal = val;
+
+            if (!lab.isEmpty()) {
+
+                if (bestLabel.isEmpty()) bestLabel = lab;
+
+                if (classifyByKeywords(normalize(lab)) != null) {
+                    bestLabel = lab;
+                    break;
+                }
+            }
+
+            if (!key.isEmpty()) {
+
+                if (bestKey.isEmpty()) bestKey = key;
+
+                if (classifyByKeywords(normalize(key)) != null) {
+                    bestKey = key;
+                    break;
+                }
+            }
+        }
+
+        String inferredVal = "";
+        String inferredLab = "";
+
+        if (classifyByKeywords(normalize(bestLabel)) != null) {
+
+            inferredVal = bestLabel;
+            inferredLab = bestLabel;
+
+        } else if (classifyByKeywords(normalize(bestKey)) != null) {
+
+            inferredVal = bestKey;
+            inferredLab = bestKey;
+
+        } else if (!bestLabel.isEmpty()) {
+
+            inferredVal = bestLabel;
+            inferredLab = bestLabel;
+
+        } else if (!bestKey.isEmpty()) {
+
+            inferredVal = bestKey;
+            inferredLab = bestKey;
+
+        } else {
+
+            inferredVal = firstVal;
+            inferredLab = firstVal;
+        }
+
+        current.put("Provider Type", inferredVal);
+        current.put("__orig_label_Provider Type", inferredLab);
+        current.put("__orig_bbox_Provider Type", new Hashtable());
+    }
+
+    private Map itemMappingDetails() {
+
+        Map m = new HashMap();
+
+        String[] containers = {
+                SERVICING_FACILITY,
+                SERVICING_PROVIDER,
+                REFERRING_PROVIDER,
+                ORDERING_PHYSICIAN,
+                UNDEFINED_PROVIDER
+        };
+
+        for (int i = 0; i < containers.length; i++) {
+
+            String c = containers[i];
+            String prefix = c.toLowerCase().replace("_details", "");
+
+            Vector v = new Vector();
+
+            v.add(prefix + "_first_name");
+            v.add(prefix + "_last_name");
+            v.add(prefix + "_full_name");
+            v.add(prefix + "_npi");
+            v.add(prefix + "_tin");
+            v.add(prefix + "_address_line1");
+            v.add(prefix + "_city");
+            v.add(prefix + "_state");
+            v.add(prefix + "_zipcode");
+            v.add(prefix + "_specialty");
+            v.add(prefix + "_type");
+
+            m.put(c, v);
+        }
+
+        return m;
+    }
+
+    private Map nameMappingDetails() {
+
+        String[] sourceKeys = {
+                "Provider Name",
+                "Provider Name",
+                "Provider Name",
+                "Provider NPI",
+                "Provider Tax ID",
+                "Provider Address",
+                "Provider City",
+                "Provider State",
+                "Provider ZIP Code",
+                "Provider Specialty",
+                "Provider Type"
+        };
+
+        Map m = new HashMap();
+        Map items = itemMappingDetails();
+
+        for (Object k : items.keySet()) {
+
+            String container = (String) k;
+            Vector v = (Vector) items.get(container);
+
+            for (int i = 0; i < v.size(); i++) {
+                m.put(v.get(i), sourceKeys[i]);
+            }
+        }
+
+        return m;
+    }
+
+}
