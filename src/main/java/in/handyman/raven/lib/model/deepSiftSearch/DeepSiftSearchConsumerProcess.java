@@ -234,8 +234,6 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
 
         String normalizedText = ocrText == null ? "" : ocrText.toLowerCase();
 
-        normalizedText = normalizedText.replaceAll("\\s+", " ").trim();
-
         List<String> allowedKeywords = new ArrayList<>();
         List<String> blockedKeywords = new ArrayList<>();
 
@@ -243,6 +241,12 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
             if (keyword == null || keyword.trim().isEmpty()) continue;
 
             String normalizedKeyword = keyword.trim().toLowerCase();
+
+            if (isInsideAddress(normalizedText, keyword)) {
+                log.info(marker, "Keyword '{}' ignored as it appears inside address context", keyword);
+                continue;
+            }
+
             boolean isBlocked = false;
 
             for (BlockedKeywordRule rule : blockedRules) {
@@ -250,26 +254,31 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
 
                 String[] labels = rule.getLabel().split("\\s*,\\s*");
 
-                String textWithoutAllLabels = normalizedText;
-
                 for (String label : labels) {
 
-                    if (!textWithoutAllLabels.contains(label)) continue;
+                    if (!normalizedText.contains(label)) continue;
 
-                    textWithoutAllLabels = textWithoutAllLabels.replaceAll(
-                            Pattern.quote(label.toLowerCase()), "");
-                }
+                    String textWithoutPhrase = normalizedText.replaceAll(
+                            "\\b" + Pattern.quote(label) + "\\b", "");
 
-                boolean existsElsewhere = Pattern.compile("\\b" + Pattern.quote(normalizedKeyword) + "\\b")
-                        .matcher(textWithoutAllLabels)
-                        .find();
+                    boolean existsElsewhere = Pattern.compile("\\b" + Pattern.quote(normalizedKeyword) + "\\b")
+                            .matcher(textWithoutPhrase)
+                            .find();
 
-                if (!existsElsewhere) {
-                    blockedKeywords.add(keyword);
-                    log.info(marker, "Blocked keyword '{}' only found inside labels '{}'", keyword, Arrays.toString(labels));
-                    isBlocked = true;
-                } else {
-                    log.info(marker, "Keyword '{}' still exists outside labels '{}', not blocking", keyword, Arrays.toString(labels));
+                    if (isInsideAddress(normalizedText, keyword)) {
+                        log.info(marker, "Keyword '{}' ignored as it appears inside address context", keyword);
+                        continue;
+                    }
+
+                    if (!existsElsewhere) {
+                        blockedKeywords.add(keyword);
+                        log.info(marker, "Blocked keyword '{}' only found inside phrase '{}'", keyword, label);
+                        isBlocked = true;
+                        break;
+                    }
+                    else {
+                        log.info(marker, "Keyword '{}' also exists outside phrase '{}', not blocking", keyword, rule.getLabel());
+                    }
                 }
             }
 
@@ -279,6 +288,43 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
         }
 
         return new BlockingResult(allowedKeywords, blockedKeywords);
+    }
+
+    private boolean isInsideAddress(String text, String keyword) {
+
+        if (text == null || keyword == null ||
+                text.trim().isEmpty() || keyword.trim().isEmpty()) {
+            return false;
+        }
+
+        String lowerText = text.toLowerCase();
+        String lowerKeyword = keyword.toLowerCase();
+
+        for (String line : lowerText.split("\\n")) {
+
+            if (!line.contains(lowerKeyword)) {
+                continue;
+            }
+
+            boolean hasNumber = line.matches(".*\\b\\d{1,6}\\b.*");
+
+            boolean hasStreetWord = line.matches(
+                    ".*\\b(st|street|rd|road|ave|avenue|dr|drive|blvd|lane|ln|way|court|ct)\\b.*");
+
+            boolean hasStateZip = line.matches(
+                    ".*\\b[a-z]{2}\\b\\s+\\d{5}(-\\d{4})?.*");
+
+            boolean hasSuite = line.matches(
+                    ".*\\b(suite|ste|unit|apt)\\b.*");
+
+            if ((hasNumber && hasStreetWord) ||
+                    hasStateZip ||
+                    (hasSuite && hasNumber)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private String getBelowMinPageLengthFlag(String text) {
