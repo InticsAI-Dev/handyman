@@ -254,31 +254,26 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
 
                 String[] labels = rule.getLabel().split("\\s*,\\s*");
 
+                String textWithoutAllLabels = normalizedText;
+
                 for (String label : labels) {
-
-                    if (!normalizedText.contains(label)) continue;
-
-                    String textWithoutPhrase = normalizedText.replaceAll(
-                            "\\b" + Pattern.quote(label) + "\\b", "");
-
-                    boolean existsElsewhere = Pattern.compile("\\b" + Pattern.quote(normalizedKeyword) + "\\b")
-                            .matcher(textWithoutPhrase)
-                            .find();
-
-                    if (isInsideAddress(normalizedText, keyword)) {
-                        log.info(marker, "Keyword '{}' ignored as it appears inside address context", keyword);
-                        continue;
+                    if (label != null && !label.trim().isEmpty()) {
+                        textWithoutAllLabels = textWithoutAllLabels.replaceAll(
+                                "\\b" + Pattern.quote(label.trim()) + "\\b", "");
                     }
+                }
 
-                    if (!existsElsewhere) {
-                        blockedKeywords.add(keyword);
-                        log.info(marker, "Blocked keyword '{}' only found inside phrase '{}'", keyword, label);
-                        isBlocked = true;
-                        break;
-                    }
-                    else {
-                        log.info(marker, "Keyword '{}' also exists outside phrase '{}', not blocking", keyword, rule.getLabel());
-                    }
+                boolean existsElsewhere = Pattern.compile("\\b" + Pattern.quote(normalizedKeyword) + "\\b")
+                        .matcher(textWithoutAllLabels)
+                        .find();
+
+                if (!existsElsewhere) {
+                    blockedKeywords.add(keyword);
+                    log.info(marker, "Blocked keyword '{}' only found inside phrases '{}'", keyword, rule.getLabel());
+                    isBlocked = true;
+                    break;
+                } else {
+                    log.info(marker, "Keyword '{}' also exists outside phrases '{}', not blocking", keyword, rule.getLabel());
                 }
             }
 
