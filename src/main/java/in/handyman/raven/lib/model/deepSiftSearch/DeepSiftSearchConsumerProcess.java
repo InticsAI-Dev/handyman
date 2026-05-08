@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.Locale;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Collections;
@@ -35,6 +36,14 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
     private final Integer pageContentMinLength;
     private static final String ENCRYPTION_ALGORITHM = "AES256";
     private static final String TEXT_DATA_TYPE = "TEXT_DATA";
+    private static final Pattern INPATIENT_NA_PHRASE_PATTERN = Pattern.compile(
+            "\\binpatient\\s+date\\s*:\\s*(?:n\\s*/?\\s*a|null|none|nil|not\\s+available)?\\s*(?:\\r?\\n|$)",
+            Pattern.CASE_INSENSITIVE | Pattern.MULTILINE
+    );
+    private static final Pattern OBSERVATION_NA_PHRASE_PATTERN = Pattern.compile(
+            "\\bobservation\\s+date\\s*/\\s*time\\s*:\\s*(?:n\\s*/?\\s*a|null|none|nil|not\\s+available)?\\s*(?:\\r?\\n|$)",
+            Pattern.CASE_INSENSITIVE | Pattern.MULTILINE
+    );
 
     @Override
     public List<DeepSiftSearchOutputTable> process(URL endpoint, DeepSiftSearchInputTable entity) {
@@ -228,8 +237,12 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
 
         log.info(marker, "Blocklisting JSON: {}", blockedRules);
 
-        if (blockedRules.isEmpty() || matchedKeywords == null || matchedKeywords.isEmpty()) {
-            return new BlockingResult(matchedKeywords, Collections.emptyList());
+        if (matchedKeywords == null || matchedKeywords.isEmpty()) {
+            return new BlockingResult(Collections.emptyList(), Collections.emptyList());
+        }
+
+        if (blockedRules.isEmpty()) {
+            return applyNaDatePhraseBlocking(ocrText, matchedKeywords, Collections.emptyList());
         }
 
         String normalizedText = ocrText == null ? "" : ocrText.toLowerCase();
@@ -282,7 +295,58 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
             }
         }
 
-        return new BlockingResult(allowedKeywords, blockedKeywords);
+        return applyNaDatePhraseBlocking(ocrText, allowedKeywords, blockedKeywords);
+    }
+
+    private BlockingResult applyNaDatePhraseBlocking(
+            String ocrText,
+            List<String> matchedKeywords,
+            List<String> blockedKeywords) {
+        if (matchedKeywords == null || matchedKeywords.isEmpty()) {
+            return new BlockingResult(Collections.emptyList(), blockedKeywords == null ? Collections.emptyList() : blockedKeywords);
+        }
+
+        String normalizedText = ocrText == null ? "" : ocrText.toLowerCase(Locale.ROOT);
+        List<String> allowedKeywords = new ArrayList<>();
+        List<String> finalBlockedKeywords = blockedKeywords == null ? new ArrayList<>() : blockedKeywords;
+
+        String textWithoutInpatientNaPhrase = INPATIENT_NA_PHRASE_PATTERN.matcher(normalizedText).replaceAll(" ");
+        String textWithoutObservationNaPhrase = OBSERVATION_NA_PHRASE_PATTERN.matcher(normalizedText).replaceAll(" ");
+
+        for (String keyword : matchedKeywords) {
+            if (keyword == null || keyword.trim().isEmpty()) {
+                continue;
+            }
+
+            String normalizedKeyword = keyword.trim().toLowerCase(Locale.ROOT);
+            boolean isBlocked = false;
+
+            if ("inpatient".equals(normalizedKeyword)) {
+                boolean keywordExistsOutsidePhrase = Pattern.compile("\\binpatient\\b")
+                        .matcher(textWithoutInpatientNaPhrase)
+                        .find();
+                if (!keywordExistsOutsidePhrase && INPATIENT_NA_PHRASE_PATTERN.matcher(normalizedText).find()) {
+                    finalBlockedKeywords.add(keyword);
+                    isBlocked = true;
+                    log.info(marker, "Blocked keyword '{}' found only in 'Inpatient Date: N/A' phrase", keyword);
+                }
+            } else if ("observation".equals(normalizedKeyword)) {
+                boolean keywordExistsOutsidePhrase = Pattern.compile("\\bobservation\\b")
+                        .matcher(textWithoutObservationNaPhrase)
+                        .find();
+                if (!keywordExistsOutsidePhrase && OBSERVATION_NA_PHRASE_PATTERN.matcher(normalizedText).find()) {
+                    finalBlockedKeywords.add(keyword);
+                    isBlocked = true;
+                    log.info(marker, "Blocked keyword '{}' found only in 'Observation Date/Time ... N/A' phrase", keyword);
+                }
+            }
+
+            if (!isBlocked) {
+                allowedKeywords.add(keyword);
+            }
+        }
+
+        return new BlockingResult(allowedKeywords, finalBlockedKeywords);
     }
 
     private boolean isInsideAddress(String text, String keyword) {
