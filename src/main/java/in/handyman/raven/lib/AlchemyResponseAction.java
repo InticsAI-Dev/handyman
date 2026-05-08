@@ -280,6 +280,7 @@ public class AlchemyResponseAction implements IActionExecution {
 
                 case TABLE_EXTRACT:
                     request.setTableData(objectMapper.readTree(input.getTableData()));
+                    request.setSynonymId(input.getSynonymId());
                     request.setCsvFilePath(input.getCsvFilePath());
                     request.setTruthEntityId(input.getTruthEntityId());
                     break;
