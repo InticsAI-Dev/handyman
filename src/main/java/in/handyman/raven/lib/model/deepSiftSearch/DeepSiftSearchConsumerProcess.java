@@ -37,11 +37,15 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
     private static final String ENCRYPTION_ALGORITHM = "AES256";
     private static final String TEXT_DATA_TYPE = "TEXT_DATA";
     private static final Pattern INPATIENT_NA_PHRASE_PATTERN = Pattern.compile(
-            "\\binpatient\\s+date\\s*[:;\\-–—.,]?\\s*(?:n\\s*/?\\s*a|null|none|nil|not\\s+available)?\\s*(?:\\r?\\n|$)",
+            "\\binpatient\\s+date(?:\\s*/\\s*time)?\\s*[:;\\-–—.,]?\\s*" +
+                    "(?:(?:n\\s*(?:[/\\\\|i1l]?\\s*)a|null|none|nil|not\\s+available)\\b\\s*)+" +
+                    "(?:\\r?\\n|$)",
             Pattern.CASE_INSENSITIVE | Pattern.MULTILINE
     );
     private static final Pattern OBSERVATION_NA_PHRASE_PATTERN = Pattern.compile(
-            "\\bobservation\\s+date\\s*/\\s*time\\s*[:;\\-–—.,]?\\s*(?:n\\s*/?\\s*a|null|none|nil|not\\s+available)?\\s*(?:\\r?\\n|$)",
+            "\\bobservation\\s+date(?:\\s*/\\s*time)?\\s*[:;\\-–—.,]?\\s*" +
+                    "(?:(?:n\\s*(?:[/\\\\|i1l]?\\s*)a|null|none|nil|not\\s+available)\\b\\s*)+" +
+                    "(?:\\r?\\n|$)",
             Pattern.CASE_INSENSITIVE | Pattern.MULTILINE
     );
 
