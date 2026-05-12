@@ -277,7 +277,18 @@ public class AlchemyResponseAction implements IActionExecution {
                         request.setCheckboxData(objectMapper.readTree(input.getCheckboxData()));
                     }
                     break;
-
+                case ASIS_CHECKBOX_EXTRACTION:
+                    if (input.getConfidenceScore() != null) {
+                        request.setConfidenceScore(input.getConfidenceScore());
+                    }
+                    if (input.getSynonymId() != null) {
+                        request.setSynonymId(input.getSynonymId());
+                    }
+                    if (input.getCheckboxData() != null && !input.getCheckboxData().isEmpty()) {
+                        request.setCheckboxData(objectMapper.readTree(input.getCheckboxData()));
+                    }
+                    request.setBatchId(input.getBatchId());
+                    break;
                 case TABLE_EXTRACT:
                     request.setTableData(objectMapper.readTree(input.getTableData()));
                     request.setSynonymId(input.getSynonymId());
