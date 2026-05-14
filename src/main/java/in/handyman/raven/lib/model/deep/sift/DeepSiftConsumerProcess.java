@@ -18,15 +18,21 @@ import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
+import java.awt.Rectangle;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
+import javax.imageio.ImageIO;
+
+import net.sourceforge.tess4j.ITessAPI;
 import net.sourceforge.tess4j.ITesseract;
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.TesseractException;
+import net.sourceforge.tess4j.Word;
 
 import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_DEEP_SIFT_OUTPUT;
 import static in.handyman.raven.core.enums.EncryptionConstants.ENCRYPT_REQUEST_RESPONSE;
@@ -38,6 +44,7 @@ import in.handyman.raven.lib.adapters.scalar.WordCountAdapter;
 
 public class DeepSiftConsumerProcess
         implements CoproProcessor.ConsumerProcess<DeepSiftInputTable, DeepSiftOutputTable> {
+
     private static final String PROCESS_NAME = "DATA_EXTRACTION";
     private static final String ENCRYPTION_ALGORITHM = "AES256";
     private static final String TEXT_DATA_TYPE = "TEXT_DATA";
@@ -84,12 +91,18 @@ public class DeepSiftConsumerProcess
     @Override
     public List<DeepSiftOutputTable> process(URL endpoint, DeepSiftInputTable entity) throws IOException {
 
+        final boolean deepSiftBboxActivator = Boolean.parseBoolean(action.getContext().getOrDefault(DEEP_SIFT_BBOX_EXTRACTION_ACTIVATOR, "false"));
+        final boolean useTess4j = Boolean
+                .parseBoolean(action.getContext().getOrDefault(DEEP_SIFT_ROUTE_TESS4J, "false"));
+
         List<DeepSiftOutputTable> parentObj = new ArrayList<>();
         long startTime = System.currentTimeMillis();
 
         if (!VALID_MODELS.contains(entity.getModelName())) {
-            String errorMessage = "Invalid model name: " + entity.getModelName() + " for originId: "
-                    + entity.getOriginId();
+            String errorMessage = "Invalid model name " + entity.getModelName()
+                    + " | originId=" + entity.getOriginId()
+                    + " paperNo=" + entity.getPaperNo()
+                    + " rootPipelineId=" + entity.getRootPipelineId();
             log.error(aMarker, errorMessage);
             HandymanException handymanException = new HandymanException(errorMessage);
             HandymanException.insertException(errorMessage, handymanException, action);
@@ -97,7 +110,10 @@ public class DeepSiftConsumerProcess
 
         String inputFilePath = entity.getInputFilePath();
         if (inputFilePath == null || inputFilePath.trim().isEmpty()) {
-            String errorMessage = "Input file path is null or empty for originId: " + entity.getOriginId();
+            String errorMessage = "Input file path is null or empty"
+                    + " | originId=" + entity.getOriginId()
+                    + " paperNo=" + entity.getPaperNo()
+                    + " rootPipelineId=" + entity.getRootPipelineId();
             log.error(aMarker, errorMessage);
             HandymanException handymanException = new HandymanException(errorMessage);
             HandymanException.insertException(errorMessage, handymanException, action);
@@ -106,18 +122,23 @@ public class DeepSiftConsumerProcess
         assert inputFilePath != null;
         File inputFile = new File(inputFilePath);
         if (!inputFile.exists() || !inputFile.canRead()) {
-            String errorMessage = "Input file does not exist or is not readable";
+            String errorMessage = "Input file does not exist or is not readable"
+                    + " | originId=" + entity.getOriginId()
+                    + " paperNo=" + entity.getPaperNo()
+                    + " rootPipelineId=" + entity.getRootPipelineId();
             log.error(aMarker, errorMessage);
             HandymanException handymanException = new HandymanException(errorMessage);
             HandymanException.insertException(errorMessage, handymanException, action);
         }
 
-        log.info(aMarker, "Executing {} handler for endpoint: {}", entity.getModelName(), endpoint);
-        DeepSiftRequest requestPayload = getRequestPayloadFromQuery(entity);
+        log.info(aMarker, "Executing {} handler | originId={} paperNo={} rootPipelineId={} endpoint={}",
+                entity.getModelName(), entity.getOriginId(), entity.getPaperNo(),
+                entity.getRootPipelineId(), endpoint);
 
-        boolean useTess4j = Boolean.parseBoolean(action.getContext().getOrDefault(DEEP_SIFT_ROUTE_TESS4J, "false"));
+        DeepSiftRequest requestPayload = getRequestPayloadFromQuery(entity, deepSiftBboxActivator);
+
         if (useTess4j) {
-            processWithTess4j(entity, parentObj, inputFile, endpoint, startTime);
+            processWithTess4j(entity, parentObj, inputFile, endpoint, startTime, deepSiftBboxActivator);
         } else {
             final UUID requestId = UUID.randomUUID();
             final Boolean coproMetricsCalculator = Boolean
@@ -137,13 +158,13 @@ public class DeepSiftConsumerProcess
                     .url(endpoint)
                     .post(RequestBody.create(jsonRequest, MEDIA_TYPE))
                     .build();
-            requestExecutor(entity, request, parentObj, dbJsonRequest, endpoint, startTime);
+            requestExecutor(entity, request, parentObj, dbJsonRequest, endpoint, startTime, deepSiftBboxActivator);
         }
 
         return parentObj;
     }
 
-    private DeepSiftRequest getRequestPayloadFromQuery(DeepSiftInputTable entity) {
+    private DeepSiftRequest getRequestPayloadFromQuery(DeepSiftInputTable entity, Boolean deepSiftBboxActivator) {
         DeepSiftRequest deepSiftRequest = new DeepSiftRequest();
         deepSiftRequest.setOriginId(entity.getOriginId());
         deepSiftRequest.setTenantId(entity.getTenantId());
@@ -158,6 +179,7 @@ public class DeepSiftConsumerProcess
         deepSiftRequest.setPaperNo(entity.getPaperNo());
         deepSiftRequest.setRequestId(entity.getRequestId());
         deepSiftRequest.setCoproMetricsActivator(entity.getCoproMetricsActivator());
+        deepSiftRequest.setCoproBboxActivator(deepSiftBboxActivator);
         return deepSiftRequest;
     }
 
@@ -177,6 +199,7 @@ public class DeepSiftConsumerProcess
                 .base64Img(deepSiftRequest.getBase64Img())
                 .requestId(deepSiftRequest.getRequestId())
                 .coproMetricsActivator(deepSiftRequest.getCoproMetricsActivator())
+                .returnBbox(deepSiftRequest.getCoproBboxActivator())
                 .build();
         return objectMapper.writeValueAsString(customRequest);
     }
@@ -197,10 +220,14 @@ public class DeepSiftConsumerProcess
                     .inputFilePath(deepSiftRequest.getInputFilePath())
                     .requestId(deepSiftRequest.getRequestId())
                     .coproMetricsActivator(deepSiftRequest.getCoproMetricsActivator())
+                    .returnBbox(deepSiftRequest.getCoproBboxActivator())
                     .build();
             return objectMapper.writeValueAsString(sanitizedRequest);
         } catch (JsonProcessingException e) {
-            String errorMessage = "Failed to sanitize DeepSiftRequest for DB";
+            String errorMessage = "Failed to sanitize DeepSiftRequest for DB"
+                    + " | originId=" + deepSiftRequest.getOriginId()
+                    + " paperNo=" + deepSiftRequest.getPaperNo()
+                    + " rootPipelineId=" + deepSiftRequest.getRootPipelineId();
             HandymanException handymanException = new HandymanException(errorMessage, e);
             HandymanException.insertException(errorMessage, handymanException, action);
             throw handymanException;
@@ -208,39 +235,57 @@ public class DeepSiftConsumerProcess
     }
 
     private void processWithTess4j(DeepSiftInputTable entity, List<DeepSiftOutputTable> parentObj, File inputFile,
-                                   URL endpoint, long startTime) {
+                                   URL endpoint, long startTime, boolean deepSiftBboxActivator) {
         try {
-
-            log.info(aMarker, "Executing Tess4J extraction for originId: {}", entity.getOriginId());
+            log.info(aMarker, "Executing Tess4J extraction | originId={} paperNo={} rootPipelineId={}",
+                    entity.getOriginId(), entity.getPaperNo(), entity.getRootPipelineId());
 
             String tess4jModelPath = action.getContext()
-                    .getOrDefault(DEEP_SIFT_TESS4J_MODEL_PATH, "/usr/share/tesseract-ocr/4.00/tessdata");
+                    .getOrDefault(DEEP_SIFT_TESS4J_MODEL_PATH, "/usr/share/tesseract-ocr/5/tessdata");
 
             ITesseract tesseract = new Tesseract();
             tesseract.setDatapath(tess4jModelPath);
             tesseract.setLanguage("eng");
-            String extractedContent = tesseract.doOCR(inputFile);
+
+            String extractedContent;
+            String bboxListJson = null;
+            int bboxCount = 0;
+
+            if (deepSiftBboxActivator) {
+                List<Map<String, Object>> tess4jBbox = new ArrayList<>();
+                extractedContent = extractTess4jTextAndBbox(tesseract, inputFile, entity, tess4jBbox);
+                bboxCount = tess4jBbox.size();
+                bboxListJson = serializeBboxList(tess4jBbox, entity);
+            } else {
+                extractedContent = tesseract.doOCR(inputFile);
+            }
 
             int wordCount = 0;
             try {
                 wordCount = wordCountAdapter.getThresholdScore(extractedContent);
             } catch (Exception e) {
-                log.error(aMarker, "Error computing word count for originId: {}, paperNo: {}",
-                        entity.getOriginId(), entity.getPaperNo(), e);
+                log.error(aMarker, "Error computing word count | originId={} paperNo={} rootPipelineId={}",
+                        entity.getOriginId(), entity.getPaperNo(), entity.getRootPipelineId(), e);
             }
 
             int blankPageThreshold = Integer.parseInt(
                     action.getContext().getOrDefault(PAGE_CONTENT_MIN_LENGTH, "10"));
             boolean isBlankPage = wordCount < blankPageThreshold;
 
-            log.info(aMarker, "Tess4J OriginId: {}, PaperNo: {}, WordCount: {}, Threshold: {}, IsBlank: {}",
-                    entity.getOriginId(), entity.getPaperNo(), wordCount, blankPageThreshold, isBlankPage);
+            log.info(aMarker, "Tess4J completed | originId={} paperNo={} rootPipelineId={} "
+                            + "wordCount={} threshold={} isBlank={} bboxCount={}",
+                    entity.getOriginId(), entity.getPaperNo(), entity.getRootPipelineId(),
+                    wordCount, blankPageThreshold, isBlankPage, bboxCount);
 
             String encryptSotPageContent = action.getContext().get(ENCRYPT_DEEP_SIFT_OUTPUT);
             String finalExtractedContent = extractedContent;
+            String finalBboxListJson = bboxListJson;
             if ("true".equals(encryptSotPageContent)) {
                 InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
                 finalExtractedContent = encryption.encrypt(extractedContent, ENCRYPTION_ALGORITHM, TEXT_DATA_TYPE);
+                if (bboxListJson != null && !bboxListJson.isEmpty()) {
+                    finalBboxListJson = encryption.encrypt(bboxListJson, ENCRYPTION_ALGORITHM, TEXT_DATA_TYPE);
+                }
             }
 
             long elapsedTimeMs = System.currentTimeMillis() - startTime;
@@ -248,6 +293,7 @@ public class DeepSiftConsumerProcess
             parentObj.add(DeepSiftOutputTable.builder()
                     .inputFilePath(entity.getInputFilePath())
                     .extractedText(finalExtractedContent)
+                    .extractedTextWithBbox(finalBboxListJson)
                     .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
                     .groupId(entity.getGroupId() != null ? Math.toIntExact(entity.getGroupId()) : null)
                     .paperNo(entity.getPaperNo())
@@ -269,12 +315,15 @@ public class DeepSiftConsumerProcess
                     .build());
 
         } catch (TesseractException e) {
-            log.error(aMarker, "TesseractException occurred while processing request for originId: {}",
-                    entity.getOriginId(), e);
-            HandymanException handymanException = new HandymanException("Deep sift consumer failed for Tess4J model",
-                    e);
-            HandymanException.insertException("Deep sift consumer failed for origin Id " + entity.getOriginId() +
-                    " paper no " + entity.getPaperNo() + " model Tess4J", handymanException, action);
+            log.error(aMarker, "TesseractException | originId={} paperNo={} rootPipelineId={}",
+                    entity.getOriginId(), entity.getPaperNo(), entity.getRootPipelineId(), e);
+            HandymanException handymanException = new HandymanException(
+                    "Deep sift consumer failed for Tess4J model", e);
+            HandymanException.insertException(
+                    "Deep sift consumer failed | originId=" + entity.getOriginId()
+                            + " paperNo=" + entity.getPaperNo()
+                            + " rootPipelineId=" + entity.getRootPipelineId() + " model=Tess4J",
+                    handymanException, action);
 
             String errorMessage = "Tess4J processing failed: " + e.getMessage();
             parentObj.add(DeepSiftOutputTable.builder()
@@ -291,12 +340,15 @@ public class DeepSiftConsumerProcess
                     .endpoint(String.valueOf(endpoint))
                     .build());
         } catch (Exception e) {
-            log.error(aMarker, "Exception occurred while processing Tess4J request for originId: {}",
-                    entity.getOriginId(), e);
-            HandymanException handymanException = new HandymanException("Deep sift consumer failed for Tess4J model",
-                    e);
-            HandymanException.insertException("Deep sift consumer failed for origin Id " + entity.getOriginId() +
-                    " paper no " + entity.getPaperNo() + " model Tess4J", handymanException, action);
+            log.error(aMarker, "Tess4J unknown error | originId={} paperNo={} rootPipelineId={}",
+                    entity.getOriginId(), entity.getPaperNo(), entity.getRootPipelineId(), e);
+            HandymanException handymanException = new HandymanException(
+                    "Deep sift consumer failed for Tess4J model", e);
+            HandymanException.insertException(
+                    "Deep sift consumer failed | originId=" + entity.getOriginId()
+                            + " paperNo=" + entity.getPaperNo()
+                            + " rootPipelineId=" + entity.getRootPipelineId() + " model=Tess4J",
+                    handymanException, action);
 
             String errorMessage = "Tess4J unknown error: " + e.getMessage();
             parentObj.add(DeepSiftOutputTable.builder()
@@ -315,8 +367,81 @@ public class DeepSiftConsumerProcess
         }
     }
 
+    private String extractTess4jTextAndBbox(ITesseract tesseract, File inputFile,
+                                            DeepSiftInputTable entity,
+                                            List<Map<String, Object>> bboxList) {
+        StringBuilder textBuilder = new StringBuilder();
+        try {
+            BufferedImage image = ImageIO.read(inputFile);
+            if (image == null) {
+                log.warn(aMarker, "Tess4J extraction skipped, unreadable image | originId={} paperNo={} rootPipelineId={}",
+                        entity.getOriginId(), entity.getPaperNo(), entity.getRootPipelineId());
+                return "";
+            }
+
+            List<Word> words = tesseract.getWords(image, ITessAPI.TessPageIteratorLevel.RIL_WORD);
+            if (words == null || words.isEmpty()) {
+                return "";
+            }
+
+            Integer prevLineMidY = null;
+            boolean firstWordOnLine = true;
+
+            for (Word word : words) {
+                if (word == null) {
+                    continue;
+                }
+                String wordText = word.getText() == null ? "" : word.getText().trim();
+                Rectangle rect = word.getBoundingBox();
+                if (wordText.isEmpty() || rect == null) {
+                    continue;
+                }
+
+                Map<String, Object> item = new LinkedHashMap<>();
+                item.put("text", wordText);
+                item.put("bbox", Arrays.asList(rect.x, rect.y, rect.x + rect.width, rect.y + rect.height));
+                item.put("confidence", Math.round(word.getConfidence() * 100.0) / 100.0);
+                bboxList.add(item);
+
+                int wordMidY = rect.y + rect.height / 2;
+                int lineThreshold = Math.max(rect.height / 2, 5);
+
+                if (prevLineMidY != null && Math.abs(wordMidY - prevLineMidY) > lineThreshold) {
+                    textBuilder.append("\n");
+                    firstWordOnLine = true;
+                }
+
+                if (!firstWordOnLine) {
+                    textBuilder.append(" ");
+                }
+                textBuilder.append(wordText);
+                firstWordOnLine = false;
+                prevLineMidY = wordMidY;
+            }
+        } catch (Exception e) {
+            log.error(aMarker, "Tess4J extraction failed | originId={} paperNo={} rootPipelineId={}",
+                    entity.getOriginId(), entity.getPaperNo(), entity.getRootPipelineId(), e);
+        }
+        return textBuilder.toString().trim();
+    }
+
+
+    private String serializeBboxList(Object bboxList, DeepSiftInputTable entity) {
+        if (bboxList == null) {
+            return null;
+        }
+        try {
+            return objectMapper.writeValueAsString(bboxList);
+        } catch (JsonProcessingException e) {
+            log.error(aMarker, "Bbox serialization failed | originId={} paperNo={} rootPipelineId={}",
+                    entity.getOriginId(), entity.getPaperNo(), entity.getRootPipelineId(), e);
+            return null;
+        }
+    }
+
     private void requestExecutor(DeepSiftInputTable entity, Request request, List<DeepSiftOutputTable> parentObj,
-                                 String dbJsonRequest, URL endpoint, long startTime) {
+                                 String dbJsonRequest, URL endpoint, long startTime,
+                                 boolean deepSiftBboxActivator) {
 
         CoproRetryErrorAuditTable auditInput = setErrorAuditInputDetails(entity, endpoint);
         Response response;
@@ -327,14 +452,21 @@ public class DeepSiftConsumerProcess
                     : httpClient.newCall(request).execute();
             if (response == null) {
                 String errorMessage = "No response received from API";
-                parentObj.add(DeepSiftOutputTable.builder().batchId(entity.getBatchId())
+                parentObj.add(DeepSiftOutputTable.builder()
+                        .batchId(entity.getBatchId())
                         .originId(Optional.ofNullable(entity.getOriginId()).map(String::valueOf).orElse(null))
-                        .groupId(entity.getGroupId()).paperNo(entity.getPaperNo())
-                        .status(ConsumerProcessApiStatus.FAILED.getStatusDescription()).tenantId(entity.getTenantId())
-                        .createdOn(entity.getCreatedOn()).rootPipelineId(entity.getRootPipelineId())
-                        .request(encryptRequestResponse(dbJsonRequest)).response(errorMessage)
-                        .endpoint(String.valueOf(endpoint)).build());
-                log.error(aMarker, errorMessage);
+                        .groupId(entity.getGroupId())
+                        .paperNo(entity.getPaperNo())
+                        .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                        .tenantId(entity.getTenantId())
+                        .createdOn(entity.getCreatedOn())
+                        .rootPipelineId(entity.getRootPipelineId())
+                        .request(encryptRequestResponse(dbJsonRequest))
+                        .response(errorMessage)
+                        .endpoint(String.valueOf(endpoint))
+                        .build());
+                log.error(aMarker, "No response from API | originId={} paperNo={} rootPipelineId={}",
+                        entity.getOriginId(), entity.getPaperNo(), entity.getRootPipelineId());
                 HandymanException handymanException = new HandymanException(errorMessage);
                 HandymanException.insertException(errorMessage, handymanException, this.action);
                 throw new IOException(errorMessage);
@@ -343,18 +475,24 @@ public class DeepSiftConsumerProcess
             try (Response safeResponse = response) {
                 long elapsedTimeMs = System.currentTimeMillis() - startTime;
                 if (safeResponse.body() == null) {
-                    log.error(aMarker, "Response body is null for request to {} for model {}", endpoint,
+                    log.error(aMarker, "Response body is null | originId={} paperNo={} rootPipelineId={} model={}",
+                            entity.getOriginId(), entity.getPaperNo(), entity.getRootPipelineId(),
                             entity.getModelName());
                     HandymanException handymanException = new HandymanException(
                             "Deep sift consumer failed for model " + entity.getModelName());
                     HandymanException.insertException(
-                            "Response body is null for request to " + endpoint + " for model " + entity.getModelName(),
+                            "Response body is null | originId=" + entity.getOriginId()
+                                    + " paperNo=" + entity.getPaperNo()
+                                    + " rootPipelineId=" + entity.getRootPipelineId(),
                             handymanException, action);
                 }
 
                 if (safeResponse.code() != 200) {
-                    String errorMessage = "Response code is " + safeResponse.code() + " for request to " + endpoint
-                            + " for model " + entity.getModelName();
+                    String errorMessage = "Non-200 response | code=" + safeResponse.code()
+                            + " originId=" + entity.getOriginId()
+                            + " paperNo=" + entity.getPaperNo()
+                            + " rootPipelineId=" + entity.getRootPipelineId()
+                            + " model=" + entity.getModelName();
                     log.error(aMarker, errorMessage);
                     HandymanException handymanException = new HandymanException(errorMessage);
                     HandymanException.insertException(errorMessage, handymanException, action);
@@ -362,42 +500,61 @@ public class DeepSiftConsumerProcess
 
                 assert safeResponse.body() != null;
                 String responseBody = safeResponse.body().string();
-                log.info(aMarker, "{} response: code={}, message={}", entity.getModelName(), safeResponse.code(),
-                        safeResponse.message());
+
+                log.info(aMarker, "{} API response | originId={} paperNo={} rootPipelineId={} code={} message={}",
+                        entity.getModelName(), entity.getOriginId(), entity.getPaperNo(),
+                        entity.getRootPipelineId(), safeResponse.code(), safeResponse.message());
 
                 if (safeResponse.isSuccessful()) {
                     XenonResponse modelResponse = objectMapper.readValue(responseBody, XenonResponse.class);
 
                     if (modelResponse.isSuccess() && modelResponse.hasInferResponse()) {
-                        String extractedContent = modelResponse.getInferResponse();
+                        String extractedContent = modelResponse.getInferResponseText();
+
+                        String bboxListJson = null;
+                        int bboxCount = 0;
+                        if (deepSiftBboxActivator) {
+                            List<XenonResponse.BboxItem> bboxItems = modelResponse.getBboxListSafe();
+                            bboxCount = bboxItems.size();
+                            bboxListJson = serializeBboxList(bboxItems, entity);
+                        }
 
                         int wordCount;
                         try {
                             wordCount = wordCountAdapter.getThresholdScore(extractedContent);
                         } catch (Exception e) {
-                            log.error(aMarker, "Error computing word count for originId: {}, paperNo: {}",
-                                    entity.getOriginId(), entity.getPaperNo(), e);
-                            wordCount = 0; // Default to 0 on error
+                            log.error(aMarker, "Word count error | originId={} paperNo={} rootPipelineId={}",
+                                    entity.getOriginId(), entity.getPaperNo(), entity.getRootPipelineId(), e);
+                            wordCount = 0;
                         }
 
                         int blankPageThreshold = Integer.parseInt(
                                 action.getContext().getOrDefault(PAGE_CONTENT_MIN_LENGTH, "10"));
                         boolean isBlankPage = wordCount < blankPageThreshold;
 
-                        log.info(aMarker, "OriginId: {}, PaperNo: {}, WordCount: {}, Threshold: {}, IsBlank: {}",
-                                entity.getOriginId(), entity.getPaperNo(), wordCount, blankPageThreshold, isBlankPage);
+                        log.info(aMarker, "API completed | originId={} paperNo={} rootPipelineId={} "
+                                        + "wordCount={} threshold={} isBlank={} bboxCount={}",
+                                entity.getOriginId(), entity.getPaperNo(), entity.getRootPipelineId(),
+                                wordCount, blankPageThreshold, isBlankPage, bboxCount);
 
                         String encryptSotPageContent = action.getContext().get(ENCRYPT_DEEP_SIFT_OUTPUT);
                         String finalExtractedContent = extractedContent;
+                        String finalBboxListJson = bboxListJson;
                         if ("true".equals(encryptSotPageContent)) {
                             InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
                             finalExtractedContent = encryption.encrypt(extractedContent, ENCRYPTION_ALGORITHM,
                                     TEXT_DATA_TYPE);
+                            if (bboxListJson != null && !bboxListJson.isEmpty()) {
+                                finalBboxListJson = encryption.encrypt(bboxListJson, ENCRYPTION_ALGORITHM,
+                                        TEXT_DATA_TYPE);
+                            }
                         }
 
-                        if (modelResponse.getOriginId() == null || modelResponse.getGroupId() == null ||
-                                modelResponse.getTenantId() == null || modelResponse.getRootPipelineId() == null) {
-                            log.error(aMarker, "Invalid response from model {}: missing required fields",
+                        if (modelResponse.getOriginId() == null || modelResponse.getGroupId() == null
+                                || modelResponse.getTenantId() == null || modelResponse.getRootPipelineId() == null) {
+                            log.error(aMarker, "Invalid response, missing fields | originId={} paperNo={} "
+                                            + "rootPipelineId={} model={}",
+                                    entity.getOriginId(), entity.getPaperNo(), entity.getRootPipelineId(),
                                     entity.getModelName());
                             return;
                         }
@@ -405,6 +562,7 @@ public class DeepSiftConsumerProcess
                         parentObj.add(DeepSiftOutputTable.builder()
                                 .inputFilePath(entity.getInputFilePath())
                                 .extractedText(finalExtractedContent)
+                                .extractedTextWithBbox(finalBboxListJson)
                                 .originId(modelResponse.getOriginId())
                                 .groupId(modelResponse.getGroupId().intValue())
                                 .paperNo(entity.getPaperNo())
@@ -428,12 +586,17 @@ public class DeepSiftConsumerProcess
                 }
             }
         } catch (Exception e) {
-            log.error(aMarker, "Exception occurred while processing request for originId: {} and model: {}",
-                    entity.getOriginId(), entity.getModelName(), e);
+            log.error(aMarker, "Request processing exception | originId={} paperNo={} rootPipelineId={} model={}",
+                    entity.getOriginId(), entity.getPaperNo(), entity.getRootPipelineId(),
+                    entity.getModelName(), e);
             HandymanException handymanException = new HandymanException(
                     "Deep sift consumer failed for model " + entity.getModelName(), e);
-            HandymanException.insertException("Deep sift consumer failed for origin Id " + entity.getOriginId() +
-                    " paper no " + entity.getPaperNo() + " model " + entity.getModelName(), handymanException, action);
+            HandymanException.insertException(
+                    "Deep sift consumer failed | originId=" + entity.getOriginId()
+                            + " paperNo=" + entity.getPaperNo()
+                            + " rootPipelineId=" + entity.getRootPipelineId()
+                            + " model=" + entity.getModelName(),
+                    handymanException, action);
         }
     }
 
@@ -454,7 +617,6 @@ public class DeepSiftConsumerProcess
                 .endpoint(String.valueOf(endPoint))
                 .requestId(entity.getRequestId().toString())
                 .build();
-
     }
 
     public String encryptRequestResponse(String request) {
@@ -465,5 +627,4 @@ public class DeepSiftConsumerProcess
         }
         return request;
     }
-
 }

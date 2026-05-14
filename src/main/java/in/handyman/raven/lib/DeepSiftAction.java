@@ -46,6 +46,7 @@ public class DeepSiftAction implements IActionExecution {
     public static final String INSERT_INTO_VALUES = "VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     public static final String PAGE_CONTENT_MIN_LENGTH = "deep.sift.page.content.min.length.threshold";
     public static final String DEEP_SIFT_ROUTE_TESS4J = "deep.sift.route.tess4j";
+    public static final String DEEP_SIFT_BBOX_EXTRACTION_ACTIVATOR = "deep.sift.bbox.extraction.activator";
     public static final String DEEP_SIFT_TESS4J_MODEL_PATH = "deep.sift.tess4j.model.path";
     private final ActionExecutionAudit action;
 

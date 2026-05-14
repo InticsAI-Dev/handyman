@@ -27,6 +27,7 @@ public class DeepSiftOutputTable implements CoproProcessor.Entity {
     private Long tenantId;
     private String batchId;
     private String extractedText;
+    private String extractedTextWithBbox;
     private Integer paperNo;
     private String sourceDocumentType;
     private Integer modelId;
@@ -61,7 +62,8 @@ public class DeepSiftOutputTable implements CoproProcessor.Entity {
                 this.response,
                 this.endpoint,
                 this.wordCount,
-                this.isBlankPage
+                this.isBlankPage,
+                this.extractedTextWithBbox
         ).collect(Collectors.toList());
     }
 

@@ -29,5 +29,5 @@ public class DeepSiftRequest {
     private String templateName;
     private UUID requestId;
     private Boolean coproMetricsActivator;
-
+    private Boolean coproBboxActivator;
 }

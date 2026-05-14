@@ -26,7 +26,7 @@ public class FileProcessingUtils {
     }
 
     public String convertFileToBase64(String imagePath) throws IOException {
-        String base64Image = new String();
+        String base64Image;
         try {
 
             // Read the image file into a byte array

@@ -1,14 +1,17 @@
 package in.handyman.raven.lib.model.deep.sift;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.ComputationDetails;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
+
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Data
 @Builder
@@ -44,7 +47,7 @@ public class XenonResponse {
     private String status;
 
     @JsonProperty("inferResponse")
-    private String inferResponse;
+    private InferResponseData inferResponse;
 
     @JsonProperty("modelName")
     private String modelName;
@@ -53,24 +56,63 @@ public class XenonResponse {
     private String errorMessage;
 
     @JsonProperty("durationTime")
-    private Long durationTime;
+    private Double durationTime;
+
     private Integer statusCode;
     private String coproLog;
     private UUID requestId;
     private String detail;
     private ComputationDetails computationDetails;
 
-
-    // Additional helper methods if needed
     public boolean isSuccess() {
         return "SUCCESS".equals(status);
     }
 
-    public boolean hasError() {
-        return errorMessage != null && !errorMessage.trim().isEmpty();
+    public boolean hasInferResponse() {
+        return inferResponse != null
+                && inferResponse.getText() != null
+                && !inferResponse.getText().trim().isEmpty();
     }
 
-    public boolean hasInferResponse() {
-        return inferResponse != null;
+    public String getInferResponseText() {
+        return inferResponse != null ? inferResponse.getText() : null;
+    }
+
+    public List<BboxItem> getBboxListSafe() {
+        if (inferResponse == null || inferResponse.getBboxList() == null) {
+            return Collections.emptyList();
+        }
+        return inferResponse.getBboxList();
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    @Data
+    @Builder
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class InferResponseData {
+
+        @JsonProperty("text")
+        private String text;
+
+        @JsonProperty("bbox_list")
+        private List<BboxItem> bboxList;
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    @Data
+    @Builder
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class BboxItem {
+
+        @JsonProperty("text")
+        private String text;
+
+        @JsonProperty("bbox")
+        private List<Integer> bbox;
+
+        @JsonProperty("confidence")
+        private Integer confidence;
     }
 }
