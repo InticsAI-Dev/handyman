@@ -34,11 +34,11 @@ public class DeepSiftSearchOutputTable implements CoproProcessor.Entity {
     private String createdBy;
     private String status;
     private List<String> searchOutput;
+    private String searchOutputBbox;
     private Integer paperNo;
     private String groupId;
     private Long timeTakenMS;
     private List<String> blocked_output;
-    private String searchOutputBbox;
 
     @Override
     public List<Object> getRowData() {
@@ -57,12 +57,12 @@ public class DeepSiftSearchOutputTable implements CoproProcessor.Entity {
                 createdOn,
                 createdBy,
                 searchOutput != null ? String.join(", ", searchOutput) : null,
+                searchOutputBbox,
                 paperNo,
                 groupId,
                 timeTakenMS,
                 status,
-                blocked_output != null ? String.join(", ", blocked_output) : null,
-                searchOutputBbox
+                blocked_output != null ? String.join(", ", blocked_output) : null
         ).collect(Collectors.toList());
     }
 

@@ -40,10 +40,10 @@ public class DeepSiftAction implements IActionExecution {
 
     public static final String INSERT_COLUMNS = "origin_id, group_id, input_file_path, created_on, created_by, root_pipeline_id, "
             +
-            "tenant_id, batch_id, extracted_text, paper_no, source_document_type, model_id, " +
+            "tenant_id, batch_id, extracted_text, extracted_text_with_bbox, paper_no, source_document_type, model_id, " +
             "model_name, timetaken_ms, status, request, response, endpoint, word_count, is_blank_page";
     public static final String INSERT_INTO = "INSERT INTO ";
-    public static final String INSERT_INTO_VALUES = "VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    public static final String INSERT_INTO_VALUES = "VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     public static final String PAGE_CONTENT_MIN_LENGTH = "deep.sift.page.content.min.length.threshold";
     public static final String DEEP_SIFT_ROUTE_TESS4J = "deep.sift.route.tess4j";
     public static final String DEEP_SIFT_BBOX_EXTRACTION_ACTIVATOR = "deep.sift.bbox.extraction.activator";
