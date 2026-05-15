@@ -32,6 +32,7 @@ public class DeepSiftSearchInputTable implements CoproProcessor.Entity {
     private Integer tenantId;
     private String batchId;
     private String extractedText;
+    private String extractedTextWithBbox;
     private Integer paperNo;
     private Timestamp createdOn;
     private String createdBy;
@@ -64,6 +65,7 @@ public class DeepSiftSearchInputTable implements CoproProcessor.Entity {
                 tenantId,
                 batchId,
                 extractedText,
+                extractedTextWithBbox,
                 paperNo,
                 createdOn,
                 createdBy,
