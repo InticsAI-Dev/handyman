@@ -10,7 +10,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
-import in.handyman.raven.core.azure.adapters.HikariJdbiProvider;
+import in.handyman.raven.core.dataaccess.DataAccessRegistry;
 import org.jdbi.v3.core.Jdbi;
 
 @Getter
@@ -38,7 +38,7 @@ public class SpwResourceConfig extends Auditable {
     private Integer version;
 
     public Jdbi get() {
-        return HikariJdbiProvider.getJdbi(configName);
+        return DataAccessRegistry.get(configName).asJdbi();
     }
 
 }
