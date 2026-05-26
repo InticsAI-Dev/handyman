@@ -38,7 +38,7 @@ public class SpwResourceConfig extends Auditable {
     private Integer version;
 
     public Jdbi get() {
-        return HikariJdbiProvider.getJdbi();
+        return HikariJdbiProvider.getJdbi(configName);
     }
 
 }

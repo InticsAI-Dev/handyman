@@ -1,7 +1,5 @@
 package in.handyman.raven.lambda.access.repo;
 
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
 import in.handyman.raven.core.azure.adapters.HikariJdbiProvider;
 import in.handyman.raven.core.encryption.ProtegrityApiAudit;
 import in.handyman.raven.core.encryption.impl.AESEncryptionImpl;
@@ -13,7 +11,6 @@ import in.handyman.raven.lambda.doa.audit.*;
 import in.handyman.raven.lambda.doa.config.*;
 import in.handyman.raven.lib.model.retry.CoproRetryErrorAuditTable;
 import in.handyman.raven.util.ExceptionUtil;
-import in.handyman.raven.util.PropertyHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
@@ -67,50 +64,11 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
     }
 
     public static Jdbi getDatabaseConnectionByConnectionType() {
-        String legacyResourceConnection = PropertyHandler.get(LEGACY_RESOURCE_CONNECTION_TYPE);
-        if (legacyResourceConnection.equals(AZURE)) {
-
-            String azureClientId = PropertyHandler.get(AZURE_CLIENT_ID);
-            String azureDatabaseUrl = PropertyHandler.get(AZURE_DATABASE_URL);
-            log.debug("Try connecting with this config {} {}", azureDatabaseUrl, azureClientId);
-
-            JDBI=HikariJdbiProvider.getJdbi();
+        if (JDBI == null) {
+            JDBI = HikariJdbiProvider.getJdbi();
             JDBI.installPlugin(new SqlObjectPlugin());
-            try (var ignored = JDBI.open()) {
-                log.debug("Connected {} {}", azureDatabaseUrl, azureClientId);
-                return JDBI;
-            } catch (Exception e) {
-                log.error("Error in Connecting database with credentials {} {} with exception {}", azureDatabaseUrl, azureClientId, e.getMessage());
-                throw new HandymanException("Error in Connecting database" + e.getMessage());
-            }
-        } else {
-
-            final String username = PropertyHandler.get(CONFIG_USER);
-            final String password = PropertyHandler.get(CONFIG_PASSWORD);
-            final String url = PropertyHandler.get(CONFIG_URL);
-            final int maxConnection = Integer.parseInt(PropertyHandler.get(MAX_CONNECTION));
-
-            HikariConfig config = new HikariConfig();
-            config.setJdbcUrl(url);
-            config.setUsername(username);
-            config.setPassword(password);
-            config.setMinimumIdle(0);
-            config.setConnectionTimeout(30000);
-            config.setIdleTimeout(35000);
-            config.setMaxLifetime(45000);
-            config.setMaximumPoolSize(maxConnection);
-            HikariDataSource hikariDataSource = new HikariDataSource(config);
-
-            JDBI = Jdbi.create(hikariDataSource);
-            JDBI.installPlugin(new SqlObjectPlugin());
-            try (var ignored = JDBI.open()) {
-                log.info("Connected {} {}", url, username);
-                return JDBI;
-            } catch (Exception e) {
-                log.error("Error in Connecting database with credentials {} {} with exception {}", url, username, e.getMessage());
-                throw new HandymanException("Error in Connecting database" + e.getMessage());
-            }
         }
+        return JDBI;
     }
 
     public static void checkJDBIConnection() {
@@ -121,8 +79,8 @@ public class HandymanRepoImpl extends AbstractAccess implements HandymanRepo {
                 return null;
             });
         } catch (Exception e) {
-            log.error("JDBI connection failed, reconnecting...", e);
-            getDatabaseConnectionByConnectionType(); // if needed
+            log.error("JDBI connection check failed", e);
+            throw new HandymanException("JDBI connection check failed", e);
         }
     }
 
