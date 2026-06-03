@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.Locale;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Collections;
@@ -35,6 +36,23 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
     private final Integer pageContentMinLength;
     private static final String ENCRYPTION_ALGORITHM = "AES256";
     private static final String TEXT_DATA_TYPE = "TEXT_DATA";
+    /**
+     * N/A-like token on the same line as the date label (used in a lookahead). Allows junk between
+     * the label and a well-formed N/A (e.g. OCR "n/an n/a") while still requiring a real marker on that line.
+     */
+    private static final String NA_MARKER_ON_LINE = "(?:n\\s*(?:[/\\\\|i1l]?\\s*)a|null|none|nil|not\\s+available)\\b";
+    private static final Pattern INPATIENT_NA_PHRASE_PATTERN = Pattern.compile(
+            "\\binpatient\\s+date(?:\\s*/\\s*time)?\\s*[:;\\-–—.,]?\\s*" +
+                    "(?=[^\\n]*" + NA_MARKER_ON_LINE + ")" +
+                    "[^\\n]+(?:\\r?\\n|$)",
+            Pattern.CASE_INSENSITIVE | Pattern.MULTILINE
+    );
+    private static final Pattern OBSERVATION_NA_PHRASE_PATTERN = Pattern.compile(
+            "\\bobservation\\s+date(?:\\s*/\\s*time)?\\s*[:;\\-–—.,]?\\s*" +
+                    "(?=[^\\n]*" + NA_MARKER_ON_LINE + ")" +
+                    "[^\\n]+(?:\\r?\\n|$)",
+            Pattern.CASE_INSENSITIVE | Pattern.MULTILINE
+    );
 
     @Override
     public List<DeepSiftSearchOutputTable> process(URL endpoint, DeepSiftSearchInputTable entity) {
@@ -228,13 +246,15 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
 
         log.info(marker, "Blocklisting JSON: {}", blockedRules);
 
-        if (blockedRules.isEmpty() || matchedKeywords == null || matchedKeywords.isEmpty()) {
-            return new BlockingResult(matchedKeywords, Collections.emptyList());
+        if (matchedKeywords == null || matchedKeywords.isEmpty()) {
+            return new BlockingResult(Collections.emptyList(), Collections.emptyList());
+        }
+
+        if (blockedRules.isEmpty()) {
+            return applyNaDatePhraseBlocking(ocrText, matchedKeywords, Collections.emptyList());
         }
 
         String normalizedText = ocrText == null ? "" : ocrText.toLowerCase();
-
-        normalizedText = normalizedText.replaceAll("\\s+", " ").trim();
 
         List<String> allowedKeywords = new ArrayList<>();
         List<String> blockedKeywords = new ArrayList<>();
@@ -243,6 +263,12 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
             if (keyword == null || keyword.trim().isEmpty()) continue;
 
             String normalizedKeyword = keyword.trim().toLowerCase();
+
+            if (isInsideAddress(normalizedText, keyword)) {
+                log.info(marker, "Keyword '{}' ignored as it appears inside address context", keyword);
+                continue;
+            }
+
             boolean isBlocked = false;
 
             for (BlockedKeywordRule rule : blockedRules) {
@@ -253,11 +279,10 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
                 String textWithoutAllLabels = normalizedText;
 
                 for (String label : labels) {
-
-                    if (!textWithoutAllLabels.contains(label)) continue;
-
-                    textWithoutAllLabels = textWithoutAllLabels.replaceAll(
-                            Pattern.quote(label.toLowerCase()), "");
+                    if (label != null && !label.trim().isEmpty()) {
+                        textWithoutAllLabels = textWithoutAllLabels.replaceAll(
+                                "\\b" + Pattern.quote(label.trim()) + "\\b", "");
+                    }
                 }
 
                 boolean existsElsewhere = Pattern.compile("\\b" + Pattern.quote(normalizedKeyword) + "\\b")
@@ -266,10 +291,11 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
 
                 if (!existsElsewhere) {
                     blockedKeywords.add(keyword);
-                    log.info(marker, "Blocked keyword '{}' only found inside labels '{}'", keyword, Arrays.toString(labels));
+                    log.info(marker, "Blocked keyword '{}' only found inside phrases '{}'", keyword, rule.getLabel());
                     isBlocked = true;
+                    break;
                 } else {
-                    log.info(marker, "Keyword '{}' still exists outside labels '{}', not blocking", keyword, Arrays.toString(labels));
+                    log.info(marker, "Keyword '{}' also exists outside phrases '{}', not blocking", keyword, rule.getLabel());
                 }
             }
 
@@ -278,7 +304,95 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
             }
         }
 
-        return new BlockingResult(allowedKeywords, blockedKeywords);
+        return applyNaDatePhraseBlocking(ocrText, allowedKeywords, blockedKeywords);
+    }
+
+    private BlockingResult applyNaDatePhraseBlocking(
+            String ocrText,
+            List<String> matchedKeywords,
+            List<String> blockedKeywords) {
+        if (matchedKeywords == null || matchedKeywords.isEmpty()) {
+            return new BlockingResult(Collections.emptyList(), blockedKeywords == null ? Collections.emptyList() : blockedKeywords);
+        }
+
+        String normalizedText = ocrText == null ? "" : ocrText.toLowerCase(Locale.ROOT);
+        List<String> allowedKeywords = new ArrayList<>();
+        List<String> finalBlockedKeywords = blockedKeywords == null ? new ArrayList<>() : blockedKeywords;
+
+        String textWithoutInpatientNaPhrase = INPATIENT_NA_PHRASE_PATTERN.matcher(normalizedText).replaceAll(" ");
+        String textWithoutObservationNaPhrase = OBSERVATION_NA_PHRASE_PATTERN.matcher(normalizedText).replaceAll(" ");
+
+        for (String keyword : matchedKeywords) {
+            if (keyword == null || keyword.trim().isEmpty()) {
+                continue;
+            }
+
+            String normalizedKeyword = keyword.trim().toLowerCase(Locale.ROOT);
+            boolean isBlocked = false;
+
+            if ("inpatient".equals(normalizedKeyword)) {
+                boolean keywordExistsOutsidePhrase = Pattern.compile("\\binpatient\\b")
+                        .matcher(textWithoutInpatientNaPhrase)
+                        .find();
+                if (!keywordExistsOutsidePhrase && INPATIENT_NA_PHRASE_PATTERN.matcher(normalizedText).find()) {
+                    finalBlockedKeywords.add(keyword);
+                    isBlocked = true;
+                    log.info(marker, "Blocked keyword '{}' found only in 'Inpatient Date: N/A' phrase", keyword);
+                }
+            } else if ("observation".equals(normalizedKeyword)) {
+                boolean keywordExistsOutsidePhrase = Pattern.compile("\\bobservation\\b")
+                        .matcher(textWithoutObservationNaPhrase)
+                        .find();
+                if (!keywordExistsOutsidePhrase && OBSERVATION_NA_PHRASE_PATTERN.matcher(normalizedText).find()) {
+                    finalBlockedKeywords.add(keyword);
+                    isBlocked = true;
+                    log.info(marker, "Blocked keyword '{}' found only in 'Observation Date/Time ... N/A' phrase", keyword);
+                }
+            }
+
+            if (!isBlocked) {
+                allowedKeywords.add(keyword);
+            }
+        }
+
+        return new BlockingResult(allowedKeywords, finalBlockedKeywords);
+    }
+
+    private boolean isInsideAddress(String text, String keyword) {
+
+        if (text == null || keyword == null ||
+                text.trim().isEmpty() || keyword.trim().isEmpty()) {
+            return false;
+        }
+
+        String lowerText = text.toLowerCase();
+        String lowerKeyword = keyword.toLowerCase();
+
+        for (String line : lowerText.split("\\n")) {
+
+            if (!line.contains(lowerKeyword)) {
+                continue;
+            }
+
+            boolean hasNumber = line.matches(".*\\b\\d{1,6}\\b.*");
+
+            boolean hasStreetWord = line.matches(
+                    ".*\\b(st|street|rd|road|ave|avenue|dr|drive|blvd|lane|ln|way|court|ct)\\b.*");
+
+            boolean hasStateZip = line.matches(
+                    ".*\\b[a-z]{2}\\b\\s+\\d{5}(-\\d{4})?.*");
+
+            boolean hasSuite = line.matches(
+                    ".*\\b(suite|ste|unit|apt)\\b.*");
+
+            if ((hasNumber && hasStreetWord) ||
+                    hasStateZip ||
+                    (hasSuite && hasNumber)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private String getBelowMinPageLengthFlag(String text) {
