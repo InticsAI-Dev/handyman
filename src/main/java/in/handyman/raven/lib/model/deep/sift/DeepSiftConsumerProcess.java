@@ -221,6 +221,14 @@ public class DeepSiftConsumerProcess
             tesseract.setLanguage("eng");
             String extractedContent = tesseract.doOCR(inputFile);
 
+            String wordBoxesJson = "[]";
+            try {
+                wordBoxesJson = DeepSiftWordBbox.captureWordBoxesJson(tesseract, inputFile);
+            } catch (Exception e) {
+                log.warn(aMarker, "Could not capture Tess4J word boxes for originId: {}, paperNo: {}: {}",
+                        entity.getOriginId(), entity.getPaperNo(), e.getMessage());
+            }
+
             int wordCount = 0;
             try {
                 wordCount = wordCountAdapter.getThresholdScore(extractedContent);
@@ -266,6 +274,7 @@ public class DeepSiftConsumerProcess
                     .endpoint(String.valueOf(endpoint))
                     .wordCount(wordCount)
                     .isBlankPage(isBlankPage)
+                    .wordBoxesJson(wordBoxesJson)
                     .build());
 
         } catch (TesseractException e) {

@@ -444,6 +444,8 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
                     if (!trimmedValue.isEmpty()) {
                         MultiEntityFieldHandlingInput newItem = cloneInputItem(item);
                         newItem.setAnswer(trimmedValue);
+                        String resolvedBox = resolveDeepsiftBox(item.getBBox(), trimmedValue);
+                        if (resolvedBox != null) newItem.setBBox(resolvedBox);
                         newItem.setRemovedAfterFiltering(false);
                         updateFilterMessage(newItem,
                                 String.format("Normalized from a multi-value. Original item: %s", item.getSorItemName()));
@@ -454,6 +456,8 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
                 }
                 log.debug(aMarker, "Split item {} into {} new records.", item.getSorItemName(), splitCount);
             } else {
+                String singleBox = (answer != null) ? resolveDeepsiftBox(item.getBBox(), answer.trim()) : null;
+                if (singleBox != null) item.setBBox(singleBox);
                 normalizedList.add(item);
             }
         }
@@ -537,6 +541,8 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
                     if (!trimmedValue.isEmpty()) {
                         MultiEntityFieldHandlingInput newItem = cloneInputItem(item);
                         newItem.setAnswer(trimmedValue);
+                        String resolvedBox = resolveDeepsiftBox(item.getBBox(), trimmedValue);
+                        if (resolvedBox != null) newItem.setBBox(resolvedBox);
                         newItem.setRemovedAfterFiltering(false);
                         updateFilterMessage(newItem,
                                 String.format("Normalized from a multi-value. Original item: %s", item.getSorItemName()));
@@ -547,6 +553,8 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
                 }
                 log.debug(aMarker, "Split item {} into {} new records.", item.getSorItemName(), splitCount);
             } else {
+                String singleBox = (answer != null) ? resolveDeepsiftBox(item.getBBox(), answer.trim()) : null;
+                if (singleBox != null) item.setBBox(singleBox);
                 normalizedList.add(item);
             }
         }
@@ -969,6 +977,29 @@ public class MultivalueSorItemHandlingAction implements IActionExecution {
         log.info(aMarker, "Preprocessing complete. Output size: {}", result.size());
         log.info(aMarker, "====== PREPROCESS BY SOR ITEM ANSWER COMPLETED ======");
         consolidatedOutputs.addAll(result);
+    }
+
+
+    private String resolveDeepsiftBox(String bBoxJson, String keyword) {
+        if (bBoxJson == null || bBoxJson.isBlank() || keyword == null) return null;
+        String trimmed = bBoxJson.trim();
+        if (!trimmed.startsWith("[")) return null;
+        try {
+            List<java.util.Map<String, Object>> boxes =
+                    OBJECT_MAPPER.readValue(trimmed, new TypeReference<List<java.util.Map<String, Object>>>() {});
+            String target = keyword.trim().toLowerCase();
+            for (java.util.Map<String, Object> box : boxes) {
+                Object kw = box.get("keyword");
+                if (kw != null && kw.toString().trim().toLowerCase().equals(target)) {
+                    java.util.Map<String, Object> copy = new java.util.LinkedHashMap<>(box);
+                    copy.remove("keyword");
+                    return OBJECT_MAPPER.writeValueAsString(copy);
+                }
+            }
+            return "{}";
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private MultiEntityFieldHandlingInput cloneInputItem(MultiEntityFieldHandlingInput original) {

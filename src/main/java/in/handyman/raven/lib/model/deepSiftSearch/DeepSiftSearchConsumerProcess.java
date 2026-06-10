@@ -145,6 +145,7 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
             if (matchFound) {
                 log.info(marker, "Match found for sorItemId: {}, searchType: {}, matched keyword count: {}",
                         entity.getSorItemId(), searchType, matchedKeywords.size());
+                String matchedBoxesJson = buildMatchedBoxesJson(matchedKeywords, entity.getWordBoxesJson());
                 outputRecords.add(DeepSiftSearchOutputTable.builder()
                         .sorItemId(entity.getSorItemId())
                         .sorItemName(entity.getSorItemName())
@@ -160,6 +161,7 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
                         .createdOn(entity.getCreatedOn())
                         .createdBy(entity.getTenantId().toString())
                         .searchOutput(matchedKeywords)
+                        .matchedBoxesJson(matchedBoxesJson)
                         .paperNo(entity.getPaperNo())
                         .groupId(entity.getGroupId())
                         .timeTakenMS(elapsedTimeMs)
@@ -401,6 +403,32 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
         }
         int wordCount = text.trim().split("\\s+").length;
         return wordCount < pageContentMinLength ? "Y" : "N";
+    }
+
+    private String buildMatchedBoxesJson(List<String> matchedKeywords, String wordBoxesJson) {
+        if (matchedKeywords == null || matchedKeywords.isEmpty() || wordBoxesJson == null || wordBoxesJson.isBlank()) {
+            return null;
+        }
+        List<java.util.Map<String, Object>> result = new ArrayList<>();
+        for (String kw : matchedKeywords) {
+            List<int[]> occurrences = in.handyman.raven.lib.model.deep.sift.DeepSiftWordBbox.resolveAllPhraseBboxes(wordBoxesJson, kw);
+            for (int[] box : occurrences) {
+                java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+                m.put("keyword", kw);
+                m.put("topLeftX", box[0]);
+                m.put("topLeftY", box[1]);
+                m.put("bottomRightX", box[2]);
+                m.put("bottomRightY", box[3]);
+                result.add(m);
+            }
+        }
+        if (result.isEmpty()) return null;
+        try {
+            return OBJECT_MAPPER.writeValueAsString(result);
+        } catch (Exception e) {
+            log.warn(marker, "Failed to serialize matched boxes for sorItemId {}: {}", null, e.getMessage());
+            return null;
+        }
     }
 
     private DeepSiftSearchOutputTable buildOutputTable(DeepSiftSearchInputTable entity, String status, String message, long timeTakenMS) {

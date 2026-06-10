@@ -41,6 +41,7 @@ public class DeepSiftSearchInputTable implements CoproProcessor.Entity {
     private Boolean isBlankPage;
     private String pageRange;
     private String blocked_keywords_json;
+    private String wordBoxesJson;
 
     @Override
     public String getStatus() {
