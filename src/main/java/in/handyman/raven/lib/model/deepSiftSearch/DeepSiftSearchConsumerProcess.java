@@ -36,10 +36,7 @@ public class DeepSiftSearchConsumerProcess implements CoproProcessor.ConsumerPro
     private final Integer pageContentMinLength;
     private static final String ENCRYPTION_ALGORITHM = "AES256";
     private static final String TEXT_DATA_TYPE = "TEXT_DATA";
-    /**
-     * N/A-like token on the same line as the date label (used in a lookahead). Allows junk between
-     * the label and a well-formed N/A (e.g. OCR "n/an n/a") while still requiring a real marker on that line.
-     */
+
     private static final String NA_MARKER_ON_LINE = "(?:n\\s*(?:[/\\\\|i1l]?\\s*)a|null|none|nil|not\\s+available)\\b";
     private static final Pattern INPATIENT_NA_PHRASE_PATTERN = Pattern.compile(
             "\\binpatient\\s+date(?:\\s*/\\s*time)?\\s*[:;\\-–—.,]?\\s*" +
