@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.handyman.raven.core.encryption.SecurityEngine;
 import in.handyman.raven.core.encryption.inticsgrity.InticsIntegrity;
 import in.handyman.raven.core.utils.DatabaseUtility;
+import in.handyman.raven.core.enums.EncryptionConstants;
 import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.AgenticPaperFilterAction;
@@ -14,6 +15,9 @@ import in.handyman.raven.lib.model.agentic.paper.filter.AgenticPaperFilterOutput
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpLineItem;
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonQueryInputTable;
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonQueryOutputTable;
+import in.handyman.raven.lib.DeepSiftAction;
+import in.handyman.raven.lib.model.deep.sift.DeepSiftOutputTable;
+import in.handyman.raven.lib.adapters.scalar.WordCountAdapter;
 import lombok.Data;
 import org.jdbi.v3.core.Jdbi;
 import org.slf4j.Logger;
@@ -161,7 +165,60 @@ public final class CoproAsyncResultWriter {
         }
     }
 
-    // --- Internal helpers ---
+    /**
+     * Write a DEEP_SIFT result to the output table.
+     */
+    public static void writeDeepSiftResult(CoproAsyncContext coproAsyncContext, JsonNode result,
+                                           String outputTable, Map<String, String> savedContext, Jdbi jdbi) {
+        if (result == null || result.isNull()) {
+            logger.warn("DEEP_SIFT result null for batchId={} originId={}", coproAsyncContext.getBatchId(), coproAsyncContext.getOriginId());
+            return;
+        }
+
+        Timestamp createdOn = coproAsyncContext.getCreatedOn() != null ? coproAsyncContext.getCreatedOn() : new Timestamp(System.currentTimeMillis());
+
+        DeepSiftContext deepSiftContext = DeepSiftContext.builder()
+                .originId(coproAsyncContext.getOriginId())
+                .groupId(coproAsyncContext.getGroupId())
+                .tenantId(coproAsyncContext.getTenantId())
+                .rootPipelineId(coproAsyncContext.getRootPipelineId())
+                .processId(coproAsyncContext.getProcessId())
+                .inputFilePath(coproAsyncContext.getInputFilePath())
+                .paperNo(coproAsyncContext.getPageNo())
+                .batchId(coproAsyncContext.getBatchId())
+                .createdOn(createdOn)
+                .modelName(coproAsyncContext.getModelName())
+                .modelId(coproAsyncContext.getModelRegistry() != null && !coproAsyncContext.getModelRegistry().isEmpty() ? Integer.valueOf(coproAsyncContext.getModelRegistry()) : null)
+                .sourceDocumentType(coproAsyncContext.getCategory())
+                .endpoint(coproAsyncContext.getApiName())
+                .dbJsonRequest(null) // We don't have the original request in async context
+                .actionId(coproAsyncContext.getActionId())
+                .build();
+
+        InticsIntegrity encryption = buildEncryption(savedContext);
+        boolean encryptOutput = "true".equals(savedContext.get(EncryptionConstants.ENCRYPT_DEEP_SIFT_OUTPUT));
+        boolean encryptRequestResponse = "true".equals(savedContext.get(EncryptionConstants.ENCRYPT_REQUEST_RESPONSE));
+        int pageContentMinLength = Integer.parseInt(savedContext.getOrDefault(DeepSiftAction.PAGE_CONTENT_MIN_LENGTH, "10"));
+
+        WordCountAdapter wordCountAdapter = new WordCountAdapter();
+
+        try {
+            String rawResponse = objectMapper.writeValueAsString(result);
+            List<DeepSiftOutputTable> outputs = CoproResponseParser.parseDeepSiftResponse(
+                    rawResponse, deepSiftContext, pageContentMinLength, wordCountAdapter, encryption, encryptOutput, encryptRequestResponse, objectMapper);
+
+            if (outputs.isEmpty()) {
+                insertDeepSiftRows(List.of(CoproResponseParser.buildFailedDeepSiftOutput(deepSiftContext, "No infer_response")),
+                        outputTable, jdbi);
+                return;
+            }
+            insertDeepSiftRows(outputs, outputTable, jdbi);
+        } catch (Exception e) {
+            logger.error("Failed to parse DEEP_SIFT response", e);
+            insertDeepSiftRows(List.of(CoproResponseParser.buildFailedDeepSiftOutput(deepSiftContext, e.getMessage())),
+                    outputTable, jdbi);
+        }
+    }
 
     static RadonKvpContext buildRadonKvpContext(CoproAsyncContext ctx) {
         return RadonKvpContext.builder()
@@ -210,6 +267,21 @@ public final class CoproAsyncResultWriter {
         });
     }
 
+    private static void insertDeepSiftRows(List<DeepSiftOutputTable> outputs, String outputTable, Jdbi jdbi) {
+        if (outputs == null || outputs.isEmpty()) {
+            return;
+        }
+        final String insertSql = DeepSiftAction.INSERT_INTO + outputTable + " ( "
+                + DeepSiftAction.INSERT_COLUMNS + " ) "
+                + DeepSiftAction.INSERT_INTO_VALUES;
+
+        jdbi.useTransaction(handle -> {
+            for (DeepSiftOutputTable entity : outputs) {
+                handle.execute(insertSql, entity.getRowData().toArray());
+            }
+        });
+    }
+
     private static InticsIntegrity buildEncryption(Map<String, String> savedContext) {
         ActionExecutionAudit lightweight = new ActionExecutionAudit();
         lightweight.setContext(new HashMap<>(savedContext));
@@ -218,15 +290,17 @@ public final class CoproAsyncResultWriter {
 
     private static SorContainerInfo lookupSorContainer(Long sorContainerId, Long tenantId, Jdbi jdbi) {
         if (sorContainerId == null) return null;
-        return jdbi.withHandle(handle -> handle.createQuery(
-                        "SELECT post_processing::bool AS post_process, post_process_class_name " +
-                                "FROM sor_meta.sor_container " +
-                                "WHERE sor_container_id = :id AND tenant_id = :tenantId AND status = 'ACTIVE'")
-                .bind("id", sorContainerId)
-                .bind("tenantId", tenantId)
-                .mapToBean(SorContainerInfo.class)
-                .findOne()
-                .orElse(null));
+        return jdbi.withHandle(handle -> {
+            String sql = "SELECT post_processing::bool AS post_process, post_process_class_name " +
+                    "FROM sor_meta.sor_container " +
+                    "WHERE sor_container_id = :id AND tenant_id = :tenantId AND status = 'ACTIVE'";
+            return handle.createQuery(sql)
+                    .bind("id", sorContainerId)
+                    .bind("tenantId", tenantId)
+                    .mapToBean(SorContainerInfo.class)
+                    .findOne()
+                    .orElse(null);
+        });
     }
 
     private static List<RadonQueryOutputTable> handlePostProcessing(

@@ -74,6 +74,14 @@ public class DeepSiftAction implements IActionExecution {
             jdbi.getConfig(Arguments.class).setUntypedNullArgument(new NullArgument(Types.NULL));
             log.info(aMarker, "Deep Sift Action for {} has been started", DeepSift.getName());
 
+            String asyncMode = action.getContext().getOrDefault("vulcan.copro.processor.consumer.route.type", "");
+            log.info(aMarker, "Consumer route type from context is {}", asyncMode);
+            if ("KAFKA_ASYNC".equalsIgnoreCase(asyncMode)) {
+                log.info(aMarker, "Deep Sift running in KAFKA_ASYNC mode");
+            } else {
+                log.info(aMarker, "Deep Sift running in SYNC mode");
+            }
+
             String outputTableName = DeepSift.getResultTable();
             final String insertQuery = INSERT_INTO + outputTableName + " ( " + INSERT_COLUMNS + " ) "
                     + INSERT_INTO_VALUES;
@@ -95,8 +103,30 @@ public class DeepSiftAction implements IActionExecution {
             final int consumerApiCount = Optional.ofNullable(DeepSift.getForkBatchSize()).map(Integer::valueOf)
                     .orElse(0);
             Integer writeBatchSize = Integer.valueOf(action.getContext().get(DB_INSERT_WRITE_BATCH_SIZE));
+            
+            String requestType = action.getContext().getOrDefault("copro.processor.kafka.request.type", "DATA_EXTRACTION");
+            String topic;
+            
+
+            String endpoint = DeepSift.getEndPoint();
+            
+            if (endpoint != null && "KAFKA_ASYNC".equalsIgnoreCase(asyncMode)) {
+
+                    //TODO handle deepsift xenon checks
+                    requestType = "DEEP_SIFT_XENON";
+                    topic = action.getContext().get("vulcan.copro.kafka.deep.sift.xenon.request.topic");
+                    action.getContext().put("copro.processor.kafka.topic", topic);
+                    log.info(aMarker, "Resolved requestType to {} and topic to {}", requestType, topic);
+
+                    //TODO handle deepsift krypton
+                    requestType = "DEEP_SIFT_KRYPTON";
+                    topic = action.getContext().get("vulcan.copro.kafka.deep.sift.krypton.request.topic");
+                    action.getContext().put("copro.processor.kafka.topic", topic);
+                    log.info(aMarker, "Resolved requestType to {} and topic to {}", requestType, topic);
+            }
+
             DeepSiftConsumerProcess DeepSiftConsumerProcess = new DeepSiftConsumerProcess(log, aMarker, action,
-                    fileProcessingUtils, processBase64);
+                    fileProcessingUtils, processBase64, outputTableName, requestType);
 
             coproProcessor.startProducer(DeepSift.getQuerySet(), readBatchSize);
             Thread.sleep(1000);

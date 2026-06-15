@@ -7,6 +7,8 @@ import in.handyman.raven.exception.HandymanException;
 import in.handyman.raven.lambda.doa.audit.ActionExecutionAudit;
 import in.handyman.raven.lib.CoproProcessor;
 import in.handyman.raven.lib.model.common.CreateTimeStamp;
+import in.handyman.raven.lib.model.common.copro.CoproResponseParser;
+import in.handyman.raven.lib.model.common.copro.DeepSiftContext;
 import in.handyman.raven.lib.model.retry.CoproRetryErrorAuditTable;
 import in.handyman.raven.lib.model.retry.CoproRetryService;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
@@ -53,9 +55,17 @@ public class DeepSiftConsumerProcess
     private final CoproRetryService coproRetryService;
     private final String processBase64;
     private final WordCountAdapter wordCountAdapter;
+    private final String outputTable;
+    private final String requestType;
 
     public DeepSiftConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action,
                                    FileProcessingUtils fileProcessingUtils, String processBase64) {
+        this(log, aMarker, action, fileProcessingUtils, processBase64, null, null);
+    }
+
+    public DeepSiftConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action,
+                                   FileProcessingUtils fileProcessingUtils, String processBase64,
+                                   String outputTable, String requestType) {
         this.log = log;
         this.aMarker = aMarker;
         this.action = action;
@@ -79,6 +89,46 @@ public class DeepSiftConsumerProcess
                 .callTimeout(callTimeout, TimeUnit.MINUTES)
                 .build();
         coproRetryService = new CoproRetryService(handymanRepo, httpClient, log);
+        this.outputTable = outputTable;
+        this.requestType = requestType;
+    }
+
+    @Override
+    public String buildJsonForKafka(DeepSiftInputTable entity) throws Exception {
+        final UUID requestId = UUID.randomUUID();
+        final Boolean coproMetricsCalculator = Boolean
+                .valueOf(action.getContext().getOrDefault("copro.metrics.activator", "false"));
+        entity.setRequestId(requestId);
+        entity.setCoproMetricsActivator(coproMetricsCalculator);
+
+        DeepSiftRequest requestPayload = getRequestPayloadFromQuery(entity);
+        String base64Content = processBase64.equals(ProcessFileFormatE.BASE64.name())
+                ? fileProcessingUtils.convertFileToBase64(entity.getInputFilePath())
+                : "";
+        requestPayload.setBase64Img(base64Content);
+        return getXenonRequest(requestPayload);
+    }
+
+    @Override
+    public String getOutputTable() {
+        return this.outputTable;
+    }
+
+    @Override
+    public String getRequestType() {
+        return this.requestType;
+    }
+
+    @Override
+    public String getKafkaTopic() {
+        String topicName = action.getContext().get("copro.processor.kafka.topic");
+        log.info(aMarker, "Kafka topic for requestType={} is fetched: {}", requestType, topicName);
+        return topicName;
+    }
+
+    @Override
+    public boolean supportsKafkaAsync() {
+        return true;
     }
 
     @Override
@@ -366,65 +416,38 @@ public class DeepSiftConsumerProcess
                         safeResponse.message());
 
                 if (safeResponse.isSuccessful()) {
-                    XenonResponse modelResponse = objectMapper.readValue(responseBody, XenonResponse.class);
+                    DeepSiftContext ctx = DeepSiftContext.builder()
+                            .originId(entity.getOriginId())
+                            .groupId(entity.getGroupId() != null ? Long.valueOf(entity.getGroupId()) : null)
+                            .tenantId(entity.getTenantId())
+                            .rootPipelineId(entity.getRootPipelineId())
+                            .processId(entity.getRootPipelineId())
+                            .inputFilePath(entity.getInputFilePath())
+                            .paperNo(entity.getPaperNo())
+                            .batchId(entity.getBatchId())
+                            .createdOn(entity.getCreatedOn())
+                            .modelName(entity.getModelName())
+                            .modelId(entity.getModelId())
+                            .sourceDocumentType(entity.getSourceDocumentType())
+                            .endpoint(String.valueOf(endpoint))
+                            .dbJsonRequest(encryptRequestResponse(dbJsonRequest))
+                            .build();
 
-                    if (modelResponse.isSuccess() && modelResponse.hasInferResponse()) {
-                        String extractedContent = modelResponse.getInferResponse();
+                    int blankPageThreshold = Integer.parseInt(
+                            action.getContext().getOrDefault(PAGE_CONTENT_MIN_LENGTH, "10"));
+                    String encryptSotPageContent = action.getContext().get(ENCRYPT_DEEP_SIFT_OUTPUT);
+                    boolean encryptOutput = "true".equals(encryptSotPageContent);
+                    String encryptReqRes = action.getContext().get(ENCRYPT_REQUEST_RESPONSE);
+                    boolean encryptRequest = "true".equals(encryptReqRes);
+                    
+                    InticsIntegrity encryption = (encryptOutput || encryptRequest) ? SecurityEngine.getInticsIntegrityMethod(action, log) : null;
 
-                        int wordCount;
-                        try {
-                            wordCount = wordCountAdapter.getThresholdScore(extractedContent);
-                        } catch (Exception e) {
-                            log.error(aMarker, "Error computing word count for originId: {}, paperNo: {}",
-                                    entity.getOriginId(), entity.getPaperNo(), e);
-                            wordCount = 0; // Default to 0 on error
-                        }
+                    List<DeepSiftOutputTable> outputs = CoproResponseParser.parseDeepSiftResponse(
+                            responseBody, ctx, blankPageThreshold, wordCountAdapter, encryption, encryptOutput, encryptRequest, objectMapper);
 
-                        int blankPageThreshold = Integer.parseInt(
-                                action.getContext().getOrDefault(PAGE_CONTENT_MIN_LENGTH, "10"));
-                        boolean isBlankPage = wordCount < blankPageThreshold;
+                    outputs.forEach(output -> output.setTimeTakenMS(elapsedTimeMs));
 
-                        log.info(aMarker, "OriginId: {}, PaperNo: {}, WordCount: {}, Threshold: {}, IsBlank: {}",
-                                entity.getOriginId(), entity.getPaperNo(), wordCount, blankPageThreshold, isBlankPage);
-
-                        String encryptSotPageContent = action.getContext().get(ENCRYPT_DEEP_SIFT_OUTPUT);
-                        String finalExtractedContent = extractedContent;
-                        if ("true".equals(encryptSotPageContent)) {
-                            InticsIntegrity encryption = SecurityEngine.getInticsIntegrityMethod(action, log);
-                            finalExtractedContent = encryption.encrypt(extractedContent, ENCRYPTION_ALGORITHM,
-                                    TEXT_DATA_TYPE);
-                        }
-
-                        if (modelResponse.getOriginId() == null || modelResponse.getGroupId() == null ||
-                                modelResponse.getTenantId() == null || modelResponse.getRootPipelineId() == null) {
-                            log.error(aMarker, "Invalid response from model {}: missing required fields",
-                                    entity.getModelName());
-                            return;
-                        }
-
-                        parentObj.add(DeepSiftOutputTable.builder()
-                                .inputFilePath(entity.getInputFilePath())
-                                .extractedText(finalExtractedContent)
-                                .originId(modelResponse.getOriginId())
-                                .groupId(modelResponse.getGroupId().intValue())
-                                .paperNo(entity.getPaperNo())
-                                .createdOn(entity.getCreatedOn())
-                                .createdBy(entity.getTenantId().toString())
-                                .rootPipelineId(modelResponse.getRootPipelineId())
-                                .tenantId(modelResponse.getTenantId())
-                                .batchId(modelResponse.getBatchId())
-                                .sourceDocumentType(entity.getSourceDocumentType())
-                                .modelId(entity.getModelId())
-                                .modelName(modelResponse.getModelName())
-                                .timeTakenMS(elapsedTimeMs)
-                                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
-                                .request(encryptRequestResponse(dbJsonRequest))
-                                .response(encryptRequestResponse(responseBody))
-                                .endpoint(String.valueOf(endpoint))
-                                .wordCount(wordCount)
-                                .isBlankPage(isBlankPage)
-                                .build());
-                    }
+                    parentObj.addAll(outputs);
                 }
             }
         } catch (Exception e) {

@@ -10,10 +10,14 @@ import in.handyman.raven.lib.model.common.CreateTimeStamp;
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonKvpLineItem;
 import in.handyman.raven.lib.model.kvp.llm.radon.processor.RadonQueryOutputTable;
 import in.handyman.raven.lib.model.triton.ConsumerProcessApiStatus;
+import in.handyman.raven.lib.model.deep.sift.DeepSiftOutputTable;
+import in.handyman.raven.lib.adapters.scalar.WordCountAdapter;
+import in.handyman.raven.lib.model.deep.sift.XenonResponse;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -231,6 +235,115 @@ public final class CoproResponseParser {
                 .rootPipelineId(agenticFilterContext.getRootPipelineId())
                 .templateName(agenticFilterContext.getTemplateName())
                 .endpoint(agenticFilterContext.getEndpoint())
+                .build();
+    }
+
+    /**
+     * Parses a deep sift copro response into output rows.
+     */
+    public static List<DeepSiftOutputTable> parseDeepSiftResponse(
+            String rawResponse,
+            DeepSiftContext deepSiftContext,
+            int blankPageThreshold,
+            WordCountAdapter wordCountAdapter,
+            InticsIntegrity encryption,
+            boolean encryptOutput,
+            boolean encryptRequestResponse,
+            ObjectMapper mapper) throws JsonProcessingException {
+
+        List<DeepSiftOutputTable> results = new ArrayList<>();
+
+        XenonResponse modelResponse = mapper.readValue(rawResponse, XenonResponse.class);
+
+        if (!modelResponse.isSuccess() || !modelResponse.hasInferResponse()) {
+            return results;
+        }
+
+        String extractedContent = modelResponse.getInferResponse();
+
+        int wordCount;
+        try {
+            wordCount = wordCountAdapter.getThresholdScore(extractedContent);
+        } catch (Exception e) {
+            logger.error("Error computing word count for originId: {}, paperNo: {}", deepSiftContext.getOriginId(), deepSiftContext.getPaperNo(), e);
+            wordCount = 0;
+        }
+
+        boolean isBlankPage = wordCount < blankPageThreshold;
+
+        String finalExtractedContent = extractedContent;
+        if (encryptOutput && encryption != null) {
+            finalExtractedContent = encryption.encrypt(extractedContent, "AES256", "TEXT_DATA_TYPE");
+        }
+
+        if (modelResponse.getOriginId() == null || modelResponse.getGroupId() == null ||
+                modelResponse.getTenantId() == null || modelResponse.getRootPipelineId() == null) {
+            logger.error("Invalid response from model {}: missing required fields", deepSiftContext.getModelName());
+            return results;
+        }
+
+        Timestamp createdOn = deepSiftContext.getCreatedOn();
+
+        long elapsedTimeMs = 0;
+        if (createdOn != null) {
+            elapsedTimeMs = System.currentTimeMillis() - createdOn.getTime();
+        }
+
+        String dbJsonRequest = deepSiftContext.getDbJsonRequest();
+        String responseContent = rawResponse;
+
+        if (encryptRequestResponse && encryption != null) {
+            if (dbJsonRequest != null) {
+                dbJsonRequest = encryption.encrypt(dbJsonRequest, "AES256", "TEXT_DATA_TYPE");
+            }
+            if (responseContent != null) {
+                responseContent = encryption.encrypt(responseContent, "AES256", "TEXT_DATA_TYPE");
+            }
+        }
+
+        results.add(DeepSiftOutputTable.builder()
+                .inputFilePath(deepSiftContext.getInputFilePath())
+                .extractedText(finalExtractedContent)
+                .originId(modelResponse.getOriginId())
+                .groupId(modelResponse.getGroupId().intValue())
+                .paperNo(deepSiftContext.getPaperNo())
+                .createdOn(createdOn)
+                .createdBy(deepSiftContext.getTenantId() != null ? deepSiftContext.getTenantId().toString() : null)
+                .rootPipelineId(modelResponse.getRootPipelineId())
+                .tenantId(modelResponse.getTenantId())
+                .batchId(modelResponse.getBatchId())
+                .sourceDocumentType(deepSiftContext.getSourceDocumentType())
+                .modelId(deepSiftContext.getModelId())
+                .modelName(modelResponse.getModelName())
+                .timeTakenMS(elapsedTimeMs)
+                .status(ConsumerProcessApiStatus.COMPLETED.getStatusDescription())
+                .request(dbJsonRequest)
+                .response(responseContent)
+                .endpoint(deepSiftContext.getEndpoint())
+                .wordCount(wordCount)
+                .isBlankPage(isBlankPage)
+                .build());
+
+        return results;
+    }
+
+    /**
+     * Builds a failed deep sift output row.
+     */
+    public static DeepSiftOutputTable buildFailedDeepSiftOutput(
+            DeepSiftContext ctx, String errorMessage) {
+        return DeepSiftOutputTable.builder()
+                .batchId(ctx.getBatchId())
+                .originId(ctx.getOriginId())
+                .groupId(ctx.getGroupId() != null ? ctx.getGroupId().intValue() : null)
+                .paperNo(ctx.getPaperNo())
+                .status(ConsumerProcessApiStatus.FAILED.getStatusDescription())
+                .tenantId(ctx.getTenantId())
+                .createdOn(ctx.getCreatedOn())
+                .rootPipelineId(ctx.getRootPipelineId())
+                .request(ctx.getDbJsonRequest())
+                .response(errorMessage)
+                .endpoint(ctx.getEndpoint())
                 .build();
     }
 }
