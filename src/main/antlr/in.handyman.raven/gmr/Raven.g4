@@ -758,6 +758,7 @@ deepSift:
 	'deepSift' 'as' name=STRING
 	'resource-conn' resourceConn=STRING
 	'result-table' resultTable=STRING
+	'request-topic' requestTopic=STRING
 	'copro-url' endPoint=STRING
 	'process-id' processId=STRING
 	'using' '{' querySet=STRING '}' ('on-condition' condition=expression)* ('on-parallel-fielding' forkBatchSize=STRING)*;

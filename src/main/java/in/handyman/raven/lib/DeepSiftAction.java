@@ -103,30 +103,18 @@ public class DeepSiftAction implements IActionExecution {
             final int consumerApiCount = Optional.ofNullable(DeepSift.getForkBatchSize()).map(Integer::valueOf)
                     .orElse(0);
             Integer writeBatchSize = Integer.valueOf(action.getContext().get(DB_INSERT_WRITE_BATCH_SIZE));
-            
+
             String requestType = action.getContext().getOrDefault("copro.processor.kafka.request.type", "DATA_EXTRACTION");
-            String topic;
-            
 
             String endpoint = DeepSift.getEndPoint();
-            
+
+            String requestTopic = DeepSift.getRequestTopic();
             if (endpoint != null && "KAFKA_ASYNC".equalsIgnoreCase(asyncMode)) {
-
-                    //TODO handle deepsift xenon checks
-                    requestType = "DEEP_SIFT_XENON";
-                    topic = action.getContext().get("vulcan.copro.kafka.deep.sift.xenon.request.topic");
-                    action.getContext().put("copro.processor.kafka.topic", topic);
-                    log.info(aMarker, "Resolved requestType to {} and topic to {}", requestType, topic);
-
-                    //TODO handle deepsift krypton
-                    requestType = "DEEP_SIFT_KRYPTON";
-                    topic = action.getContext().get("vulcan.copro.kafka.deep.sift.krypton.request.topic");
-                    action.getContext().put("copro.processor.kafka.topic", topic);
-                    log.info(aMarker, "Resolved requestType to {} and topic to {}", requestType, topic);
+                log.info(aMarker, "Resolved requestType to {} and topic to {}", requestType, requestTopic);
             }
 
             DeepSiftConsumerProcess DeepSiftConsumerProcess = new DeepSiftConsumerProcess(log, aMarker, action,
-                    fileProcessingUtils, processBase64, outputTableName, requestType);
+                    fileProcessingUtils, processBase64, outputTableName, requestType, requestTopic);
 
             coproProcessor.startProducer(DeepSift.getQuerySet(), readBatchSize);
             Thread.sleep(1000);

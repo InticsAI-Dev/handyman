@@ -24,6 +24,8 @@ public class XenonRequest {
     private String modelName;
     private Long actionId;
     private String inputFilePath;
+    private String userPrompt;
+    private String systemPrompt;
     private UUID requestId;
     private Boolean coproMetricsActivator;
 

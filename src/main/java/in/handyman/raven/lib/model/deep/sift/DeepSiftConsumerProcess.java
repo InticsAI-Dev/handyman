@@ -57,15 +57,16 @@ public class DeepSiftConsumerProcess
     private final WordCountAdapter wordCountAdapter;
     private final String outputTable;
     private final String requestType;
+    private final String requestTopic;
 
     public DeepSiftConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action,
                                    FileProcessingUtils fileProcessingUtils, String processBase64) {
-        this(log, aMarker, action, fileProcessingUtils, processBase64, null, null);
+        this(log, aMarker, action, fileProcessingUtils, processBase64, null, null, null);
     }
 
     public DeepSiftConsumerProcess(final Logger log, final Marker aMarker, ActionExecutionAudit action,
                                    FileProcessingUtils fileProcessingUtils, String processBase64,
-                                   String outputTable, String requestType) {
+                                   String outputTable, String requestType, String requestTopic) {
         this.log = log;
         this.aMarker = aMarker;
         this.action = action;
@@ -91,6 +92,7 @@ public class DeepSiftConsumerProcess
         coproRetryService = new CoproRetryService(handymanRepo, httpClient, log);
         this.outputTable = outputTable;
         this.requestType = requestType;
+        this.requestTopic = requestTopic;
     }
 
     @Override
@@ -121,9 +123,8 @@ public class DeepSiftConsumerProcess
 
     @Override
     public String getKafkaTopic() {
-        String topicName = action.getContext().get("copro.processor.kafka.topic");
-        log.info(aMarker, "Kafka topic for requestType={} is fetched: {}", requestType, topicName);
-        return topicName;
+        log.info(aMarker, "Kafka topic for requestType={} is fetched: {}", requestType, requestTopic);
+        return requestTopic;
     }
 
     @Override
@@ -208,6 +209,8 @@ public class DeepSiftConsumerProcess
         deepSiftRequest.setPaperNo(entity.getPaperNo());
         deepSiftRequest.setRequestId(entity.getRequestId());
         deepSiftRequest.setCoproMetricsActivator(entity.getCoproMetricsActivator());
+        deepSiftRequest.setUserPrompt(entity.getBasePrompt());
+        deepSiftRequest.setSystemPrompt(entity.getSystemPrompt());
         return deepSiftRequest;
     }
 
@@ -224,6 +227,8 @@ public class DeepSiftConsumerProcess
                 .modelName(deepSiftRequest.getModelName())
                 .actionId(deepSiftRequest.getActionId())
                 .inputFilePath(deepSiftRequest.getInputFilePath())
+                .userPrompt(deepSiftRequest.getUserPrompt())
+                .systemPrompt(deepSiftRequest.getSystemPrompt())
                 .base64Img(deepSiftRequest.getBase64Img())
                 .requestId(deepSiftRequest.getRequestId())
                 .coproMetricsActivator(deepSiftRequest.getCoproMetricsActivator())
@@ -245,6 +250,8 @@ public class DeepSiftConsumerProcess
                     .modelName(deepSiftRequest.getModelName())
                     .actionId(deepSiftRequest.getActionId())
                     .inputFilePath(deepSiftRequest.getInputFilePath())
+                    .userPrompt(deepSiftRequest.getUserPrompt())
+                    .systemPrompt(deepSiftRequest.getSystemPrompt())
                     .requestId(deepSiftRequest.getRequestId())
                     .coproMetricsActivator(deepSiftRequest.getCoproMetricsActivator())
                     .build();

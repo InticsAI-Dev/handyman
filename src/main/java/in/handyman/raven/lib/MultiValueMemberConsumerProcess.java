@@ -439,11 +439,14 @@ public class MultiValueMemberConsumerProcess {
             log.info("No row found with sor_item_name = 'multiple_member_indicator'");
         }
 
-        extractedSorItemList mmIndicatorRow = null;
+        extractedSorItemList mmIndicatorRow = mmIndicatorRowOpt.orElse(
+                multiValueMemberMapperTransformInputTable.getSorItemList()
+                        .stream()
+                        .findFirst()
+                        .orElseThrow(() -> new HandymanException("No SOR rows found for originId=" + multiValueMemberMapperTransformInputTable.getOriginId())));
+
         if (mmIndicatorRowOpt.isEmpty()) {
-            log.warn(marker, "No 'multiple_member_indicator' row found for originId: {}. Creating a default record.", multiValueMemberMapperTransformInputTable.getOriginId()); // fallback
-        } else {
-            mmIndicatorRow = mmIndicatorRowOpt.get();
+            log.warn(marker, "No 'multiple_member_indicator' row found for originId: {}. Using first available SOR row as fallback.", multiValueMemberMapperTransformInputTable.getOriginId());
         }
 
         String DEFAULT_CONFIDENCE_SCORE = "radon.kvp.bbox.vqa.score.default";

@@ -61,7 +61,6 @@ public class DeepSiftKafkaIntegrationTest {
         
         context.put("vulcan.copro.processor.kafka.ssl.include", "certs");
         context.putIfAbsent("copro.metrics.activator", "true");
-        context.putIfAbsent("copro.processor.kafka.topic", TOPIC);
         
         when(actionExecutionAudit.getContext()).thenReturn(context);
         when(actionExecutionAudit.getActionId()).thenReturn(2020L);
@@ -79,7 +78,7 @@ public class DeepSiftKafkaIntegrationTest {
         // to succeed if run in an environment, or it might throw an ExceptionInInitializerError 
         // if no DB is present locally.
         try {
-            process = new DeepSiftConsumerProcess(log, marker, actionExecutionAudit, fileProcessingUtils, "BASE64", "output_table", "DATA_EXTRACTION");
+            process = new DeepSiftConsumerProcess(log, marker, actionExecutionAudit, fileProcessingUtils, "BASE64", "output_table", "DATA_EXTRACTION", TOPIC);
         } catch (Exception | Error e) {
             log.warn("Failed to initialize DeepSiftConsumerProcess (this is expected if DB is not available in the test environment): ", e);
         }

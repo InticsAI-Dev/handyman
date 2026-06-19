@@ -28,6 +28,8 @@ public class DeepSift implements IActionContext {
 
   private String resultTable;
 
+  private String requestTopic;
+
   private String endPoint;
 
   private String processId;
