@@ -164,7 +164,10 @@ public class CoproProcessorAsyncHandler<I, O extends CoproProcessor.Entity> {
                         "(batch_id, root_pipeline_id, request_type, total_requests, completed_requests, failed_requests, status, action_id) " +
                         "VALUES (?, ?, ?, ?, 0, 0, 'PROCESSING', ?) " +
                         "ON CONFLICT (batch_id, request_type) DO UPDATE SET " +
-                        "total_requests = EXCLUDED.total_requests, status = 'PROCESSING', action_id = EXCLUDED.action_id, updated_at = NOW()",
+                        "total_requests = CASE WHEN EXCLUDED.request_type = 'DATA_EXTRACTION' " +
+                        "THEN inference_queue_active.total_requests + EXCLUDED.total_requests " +
+                        "ELSE EXCLUDED.total_requests END, " +
+                        "status = 'PROCESSING', action_id = EXCLUDED.action_id, updated_at = NOW()",
                 batchId, actionExecutionAudit.getRootPipelineId(), requestType, totalItems, actionExecutionAudit.getActionId()));
     }
 
