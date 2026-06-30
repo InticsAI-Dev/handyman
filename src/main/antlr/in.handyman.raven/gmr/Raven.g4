@@ -198,6 +198,7 @@ action:
     |multivalueSorItemHandling
     |sectionFilteringAfterGrouping
     |documentWisePostProcessing
+    |universalPartitioningScript
     );
 
 
@@ -1589,6 +1590,16 @@ documentWisePostProcessing:
         querySet=STRING
     '}'
     ('on-condition' condition=expression)*  ;
+
+universalPartitioningScript:
+        'universal partitioning' 'as' name=STRING
+        'on-resource-conn' resourceConn=STRING
+        'output-table' outputTable=STRING
+        'using' '{'
+            querySet=STRING
+        '}'
+        ('on-condition' condition=expression)*  ;
+
 //rules
 
 resource : STRING;
