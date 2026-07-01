@@ -1171,3 +1171,4 @@ public class UniversalPartitioningScriptAction implements IActionExecution {
     return universalPartitioningScript.getCondition();
   }
 }
+
