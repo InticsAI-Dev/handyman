@@ -43,6 +43,7 @@ public class UniversalPartitioningScriptAction implements IActionExecution {
   // ---------- Constants ----------
   private static final DateTimeFormatter DAY_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
   private static final Pattern IDENT_PATTERN = Pattern.compile("^[a-zA-Z_][a-zA-Z0-9_]*$");
+  private static final Pattern QUALIFIED_TABLE_PATTERN = Pattern.compile("^[a-zA-Z_][a-zA-Z0-9_]*\\.[a-zA-Z_][a-zA-Z0-9_]*$");
   private static final String PROCESS_NAME = "db.partition.maintenance";
   private static final String TABLES_CONFIG_KEY = "db.partition.tables";
   private static final String WINDOW_CONFIG_KEY = "db.partition.window.range";
@@ -61,16 +62,40 @@ public class UniversalPartitioningScriptAction implements IActionExecution {
     log.info(aMarker, "Universal Partitioning Script Action for {} has been started",
             universalPartitioningScript.getName());
 
-    final String dbSrc = universalPartitioningScript.getResourceConn();
+    final String dbSrc = universalPartitioningScript.getResourceConn();  //opening the jdbi connection and verifying it
     log.info(aMarker, "id#{}, name#{}, resourceConn#{}",
             action.getActionId(), universalPartitioningScript.getName(), dbSrc);
 
     Jdbi jdbi = ResourceAccess.rdbmsJDBIConn(dbSrc);
 
     try {
-      jdbi = checkJDBIConnection(jdbi);
+      jdbi = checkJDBIConnection(jdbi, dbSrc);
+      // ── Run-level advisory lock (HIGH-1) ────────────────────────────────
+      // Prevents two overlapping maintenance runs (e.g. startup-run colliding
+      // with the cron, or two app instances) from racing to create the same
+      // partitions/indexes — which produces spurious FAILED audit rows and
+      // duplicate index-creation events. pg_try_advisory_lock is non-blocking:
+      // the first run acquires it; any concurrent run gets false and skips
+      // cleanly. The lock is SESSION-scoped, so it MUST be taken on a dedicated
+      // handle and explicitly released in finally, or it leaks back into the
+      // pool and permanently blocks all future runs.
+      final Jdbi jdbiForLock = jdbi;   // effectively-final handle for the loop below
+      try (org.jdbi.v3.core.Handle lockHandle = jdbiForLock.open()) {
+        final boolean acquired = lockHandle.createQuery(
+                        "SELECT pg_try_advisory_lock(hashtext('db.partition.maintenance'), 0)")
+                .mapTo(Boolean.class)
+                .one();
+        if (!acquired) {
+          log.warn(aMarker,
+                  "Another partition-maintenance run holds the advisory lock; skipping this run");
+          log.info(aMarker, "Universal Partitioning Script Action for {} has been Completed",
+                  universalPartitioningScript.getName());
+          return;
+        }
+        try {
 
-      // Read driver config values from config.spw_common_config
+
+          // Read driver config values from config.spw_common_config
       final String tablesCsv = readConfigValue(jdbi, TABLES_CONFIG_KEY);
       if (tablesCsv == null || tablesCsv.trim().isEmpty()) {
         log.warn(aMarker, "No tables configured in {}; nothing to do", TABLES_CONFIG_KEY);
@@ -110,7 +135,7 @@ public class UniversalPartitioningScriptAction implements IActionExecution {
           log.info(aMarker, "[{}] Processing started", fqn);
           processOneTable(jdbi, entry.schema, entry.table, window, rec);
           succeeded++;
-          log.info(aMarker, "[{}] Processing completed successfully", fqn);
+          log.info(aMarker, "[{}] Processing completed successfully", fqn); //to process the rest if one table fails and ensure the audit table gets an insert
         } catch (Exception e) {
           rec.status          = "FAILED";
           rec.errorMessage    = e.getMessage();
@@ -123,11 +148,18 @@ public class UniversalPartitioningScriptAction implements IActionExecution {
         }
       }
 
-      log.info(aMarker, "Partitioning cycle complete: {} succeeded, {} failed",
-              succeeded, failed);
-      if (failed > 0) {
-        log.warn(aMarker, "Failed tables: {}", String.join(", ", failedNames));
-      }
+          log.info(aMarker, "Partitioning cycle complete: {} succeeded, {} failed",
+                  succeeded, failed);
+          if (failed > 0) {
+            log.warn(aMarker, "Failed tables: {}", String.join(", ", failedNames));
+          }
+
+        } finally {
+          // Release the advisory lock before the dedicated handle returns to
+          // the pool — mandatory to avoid leaking a session-held lock.
+          lockHandle.execute("SELECT pg_advisory_unlock_all()");
+        }
+      }   // end try-with-resources (lockHandle) — closes/returns the handle
 
     } catch (HandymanException he) {
       log.error(aMarker, "The Exception occurred ", he);
@@ -172,7 +204,7 @@ public class UniversalPartitioningScriptAction implements IActionExecution {
       return;
     }
     if ("true".equals(status)) {
-      log.info(aMarker, "[{}] Already partitioned; running DAILY MAINTENANCE", fqn);
+      log.info(aMarker, "[{}] Already partitioned; running DAILY MAINTENANCE", fqn);  //
       // Capture metrics on the partitioned parent (reltuples summed across children)
       captureTableMetrics(jdbi, schema, table, rec);
       maintainOneTable(jdbi, schema, table, window, rec);
@@ -204,7 +236,7 @@ public class UniversalPartitioningScriptAction implements IActionExecution {
     if (basePk != null) {
       if (!basePk.columns.contains(partitionCol)) {
         pk = new PkInfo(basePk.name, appendIfMissing(basePk.columns, partitionCol));
-        log.info(aMarker, "[{}] PK captured: {} ({}); augmented with partition column → ({})",
+        log.info(aMarker, "[{}] PK captured: {} ({}); augmented with partition column → ({})", //capturing and augumenting the primary key
                 fqn, basePk.name, String.join(", ", basePk.columns),
                 String.join(", ", pk.columns));
       } else {
@@ -250,7 +282,7 @@ public class UniversalPartitioningScriptAction implements IActionExecution {
     // Build the partitioned-table CREATE statement
     final StringBuilder createSql = new StringBuilder()
             .append("CREATE TABLE ").append(quoteFqn(schema, table)).append(" (")
-            .append("LIKE ").append(quoteFqn(schema, backupTable)).append(" INCLUDING ALL");
+            .append("LIKE ").append(quoteFqn(schema, backupTable)).append(" INCLUDING ALL");   //to build the table from backup
     if (pk != null) {
       createSql.append(", CONSTRAINT ").append(quoteIdent(pk.name))
               .append(" PRIMARY KEY (")
@@ -265,17 +297,34 @@ public class UniversalPartitioningScriptAction implements IActionExecution {
     // Single transaction for the whole conversion. Any failure rolls back the
     // rename and everything else, leaving the original table intact.
     jdbi.useTransaction(handle -> {
+      // Fail fast instead of stalling the app: if this transaction can't acquire
+      // a required table lock within 10s (e.g. a long query holds the table),
+      // abort rather than queue behind it and jam all traffic on that table.
+      // SET LOCAL is transaction-scoped, so it reverts at commit/rollback and
+      // never leaks onto the pooled connection. (HIGH-2)
+      handle.execute("SET LOCAL lock_timeout = '10s'");
+
       // 1. Rename original → _backup
       handle.execute("ALTER TABLE " + quoteFqn(schema, table)
               + " RENAME TO " + quoteIdent(backupTable));
       log.info(aMarker, "[{}] Original table renamed to {}", fqn, backupTable);
       rec.appendEvent("Renamed original to " + backupTable);
 
-      // 2. Promote partition column to NOT NULL on backup so LIKE picks it up
+      // 2. Set DEFAULT now() on the partition column of the backup so LIKE
+      //    INCLUDING ALL carries it to the new partitioned table. This replaces
+      //    the previous SET NOT NULL step, which forced a full-table scan under
+      //    the ACCESS EXCLUSIVE lock (minutes of table-freeze on large tables).
+      //    A partitioned table can be created with a nullable partition column;
+      //    the only rule is that a null partition key cannot be *inserted*.
+      //    DEFAULT now() guarantees every future insert that omits the column
+      //    gets a timestamp, so rows always route to a partition — with no scan
+      //    and no lag, regardless of table size. Existing data in the backup is
+      //    archived and never inserted into the new table, so its nulls (if any)
+      //    are irrelevant.
       handle.execute("ALTER TABLE " + quoteFqn(schema, backupTable)
-              + " ALTER COLUMN " + quoteIdent(partitionCol) + " SET NOT NULL");
-      log.info(aMarker, "[{}] Partition column {} set NOT NULL on backup", fqn, partitionCol);
-      rec.appendEvent("Set " + partitionCol + " NOT NULL on backup");
+              + " ALTER COLUMN " + quoteIdent(partitionCol) + " SET DEFAULT now()");
+      log.info(aMarker, "[{}] Partition column {} set DEFAULT now() on backup", fqn, partitionCol);
+      rec.appendEvent("Set " + partitionCol + " DEFAULT now() on backup");
 
       // 3. Drop source PK from backup before LIKE so LIKE INCLUDING ALL doesn't
       //    carry over the un-augmented PK and conflict with our augmented one.
@@ -318,7 +367,7 @@ public class UniversalPartitioningScriptAction implements IActionExecution {
                               "  AND d.classid = 'pg_class'::regclass " +
                               "  AND d.refclassid = 'pg_class'::regclass " +
                               "  AND d.deptype = 'a' " +
-                              "  AND tn.nspname = :schema " +
+                              "  AND tn.nspname = :schema " +                     //sequence ownership
                               "  AND t.relname  = :backup")
               .bind("schema", schema)
               .bind("backup", backupTable)
@@ -357,7 +406,7 @@ public class UniversalPartitioningScriptAction implements IActionExecution {
         final LocalDate dPlus1 = d.plusDays(1);
 
         handle.execute(
-                "CREATE TABLE IF NOT EXISTS " + quoteFqn(schema, partName)
+                "CREATE TABLE IF NOT EXISTS " + quoteFqn(schema, partName)     //to create partitions and their indexes
                         + " PARTITION OF " + quoteFqn(schema, table)
                         + " FOR VALUES FROM (" + quoteLiteral(d.toString()) + ")"
                         + " TO (" + quoteLiteral(dPlus1.toString()) + ")");
@@ -391,7 +440,7 @@ public class UniversalPartitioningScriptAction implements IActionExecution {
       }
 
       // 7. Create + seed roll-log status table
-      handle.execute("CREATE TABLE IF NOT EXISTS " + quoteFqn(schema, rollLogTable)
+      handle.execute("CREATE TABLE IF NOT EXISTS " + quoteFqn(schema, rollLogTable)     //updating the roll log
               + " (last_roll date PRIMARY KEY)");
       handle.execute("INSERT INTO " + quoteFqn(schema, rollLogTable)
               + " (last_roll) VALUES (current_date) ON CONFLICT (last_roll) DO NOTHING");
@@ -471,13 +520,19 @@ public class UniversalPartitioningScriptAction implements IActionExecution {
     // ── REMOVED: final int[] dropped = { 0 };
 
     jdbi.useTransaction(handle -> {
+      // Fail fast instead of stalling the app: if this transaction can't acquire
+      // a required table lock within 10s, abort rather than queue behind a
+      // blocker and jam traffic on that table. SET LOCAL is transaction-scoped
+      // and pool-safe. (HIGH-2)
+      handle.execute("SET LOCAL lock_timeout = '10s'");
+
       // Create any missing partitions in the current window
       for (LocalDate d = start; !d.isAfter(end); d = d.plusDays(1)) {
         final String partName = table + "_" + d.format(DAY_FORMATTER);
 
         final boolean exists = handle.createQuery(
                         "SELECT count(*) > 0 FROM pg_class c " +
-                                "JOIN pg_namespace n ON n.oid = c.relnamespace " +
+                                "JOIN pg_namespace n ON n.oid = c.relnamespace " +    //check the default partitions for partitions entry and the default conflict guard
                                 "WHERE n.nspname = :schema AND c.relname = :name")
                 .bind("schema", schema)
                 .bind("name", partName)
@@ -490,20 +545,24 @@ public class UniversalPartitioningScriptAction implements IActionExecution {
           String partCol = rec.partitionColumn != null ? rec.partitionColumn : "created_date";
 
           // Check if default partition has rows for this date range
-          boolean defaultHasConflict = false;
-          try {
-            defaultHasConflict = handle.createQuery(
-                            "SELECT count(*) > 0 FROM " + quoteFqn(schema, defaultPartName)
-                                    + " WHERE " + quoteIdent(partCol) + " >= " + quoteLiteral(d.toString())
-                                    + " AND " + quoteIdent(partCol) + " < " + quoteLiteral(dPlus1.toString()))
-                    .mapTo(Boolean.class)
-                    .one();
-          } catch (Exception checkEx) {
-            // Default partition might not exist — proceed with create
-            log.warn(aMarker,
-                    "[{}] Could not check default for conflicts ({}), attempting partition create",
-                    fqn, checkEx.getMessage());
-          }
+          // Check if default partition has rows for this date range.
+          // Uses EXISTS (... LIMIT 1) rather than count(*) > 0 so it stops at the
+          // first matching row instead of counting every row — important if the
+          // default partition ever bloats (avoids a full scan under lock_timeout).
+          // Do NOT wrap this in a swallow-and-continue try/catch: any failure here
+          // (e.g. lock timeout) aborts the surrounding transaction in PostgreSQL,
+          // so continuing would only produce a misleading "transaction is aborted"
+          // error and mask the real cause. Letting it propagate makes
+          // useTransaction roll back cleanly and marks the table FAILED with the
+          // true error. (The default partition is always created during SETUP, so
+          // a "default missing" case does not occur in practice.)
+          final boolean defaultHasConflict = handle.createQuery(
+                          "SELECT EXISTS (SELECT 1 FROM " + quoteFqn(schema, defaultPartName)
+                                  + " WHERE " + quoteIdent(partCol) + " >= " + quoteLiteral(d.toString())
+                                  + " AND " + quoteIdent(partCol) + " < " + quoteLiteral(dPlus1.toString())
+                                  + " LIMIT 1)")
+                  .mapTo(Boolean.class)
+                  .one();
 
           if (defaultHasConflict) {
             log.warn(aMarker,
@@ -519,7 +578,7 @@ public class UniversalPartitioningScriptAction implements IActionExecution {
                           + " PARTITION OF " + quoteFqn(schema, table)
                           + " FOR VALUES FROM (" + quoteLiteral(d.toString()) + ")"
                           + " TO (" + quoteLiteral(dPlus1.toString()) + ")");
-          log.info(aMarker, "[{}] Front-edge partition created: {} (range {} → {})",
+          log.info(aMarker, "[{}] Front-edge partition created: {} (range {} → {})",   //Actual partition creation and drop
                   fqn, partName, d, dPlus1);
 
           for (String colList : indexColLists) {
@@ -603,7 +662,7 @@ public class UniversalPartitioningScriptAction implements IActionExecution {
     return jdbi.withHandle(handle ->
             handle.createQuery(
                             "SELECT value FROM config.spw_process_config " +
-                                    "WHERE process = :process AND variable = :var AND active = true")
+                                    "WHERE process = :process AND variable = :var AND active = true")   //for reading the tables
                     .bind("process", PROCESS_NAME)
                     .bind("var", variable)
                     .mapTo(String.class)
@@ -618,7 +677,7 @@ public class UniversalPartitioningScriptAction implements IActionExecution {
   private String checkRelkindStatus(Jdbi jdbi, String schema, String table) {
     return jdbi.withHandle(handle ->
             handle.createQuery(
-                            "SELECT coalesce(max(case when c.relkind='p' then 'true' " +
+                            "SELECT coalesce(max(case when c.relkind='p' then 'true' " +       //to check if a tabe is partitioned ornot,missing or other
                                     "when c.relkind='r' then 'false' else 'other' end), 'missing') " +
                                     "FROM pg_class c " +
                                     "JOIN pg_namespace n ON n.oid = c.relnamespace " +
@@ -669,7 +728,7 @@ public class UniversalPartitioningScriptAction implements IActionExecution {
               handle.createQuery(
                               "SELECT count(*)::int FROM pg_attribute a " +
                                       "JOIN pg_class c     ON c.oid = a.attrelid " +
-                                      "JOIN pg_namespace n ON n.oid = c.relnamespace " +
+                                      "JOIN pg_namespace n ON n.oid = c.relnamespace " +  // Row count and column count using reltuples
                                       "WHERE n.nspname = :schema AND c.relname = :table " +
                                       "  AND a.attnum > 0 AND NOT a.attisdropped")
                       .bind("schema", schema)
@@ -695,7 +754,7 @@ public class UniversalPartitioningScriptAction implements IActionExecution {
                             "SELECT a.attname FROM pg_attribute a " +
                                     "JOIN pg_class c     ON c.oid = a.attrelid " +
                                     "JOIN pg_namespace n ON n.oid = c.relnamespace " +
-                                    "WHERE n.nspname = :schema AND c.relname = :table " +
+                                    "WHERE n.nspname = :schema AND c.relname = :table " +    //for finding and resolving the partition column
                                     "  AND a.attname IN ('created_date', 'created_on') " +
                                     "  AND a.atttypid = 'timestamp'::regtype " +
                                     "  AND NOT a.attisdropped " +
@@ -750,13 +809,14 @@ public class UniversalPartitioningScriptAction implements IActionExecution {
     );
 
     final List<String> result = new ArrayList<>();
+    final java.util.LinkedHashSet<String> seen = new java.util.LinkedHashSet<>();   // ← NEW
     for (IndexRow r : rows) {
       final List<Integer> attnums = parseSpaceSeparatedInts(r.indkeyText);
       if (attnums.isEmpty() || attnums.stream().anyMatch(n -> n <= 0)) continue;
 
       final List<String> colNames;
       try {
-        colNames = resolveColumnNames(jdbi, schema, table, attnums);
+        colNames = resolveColumnNames(jdbi, schema, table, attnums);  //capturing non pk indexes
       } catch (Exception e) {
         continue;
       }
@@ -765,7 +825,9 @@ public class UniversalPartitioningScriptAction implements IActionExecution {
       final String colList = "(" + colNames.stream()
               .map(UniversalPartitioningScriptAction::quoteIdent)
               .collect(Collectors.joining(", ")) + ")";
-      result.add(colList);
+      if (seen.add(colList)) {          // ← CHANGED: only add distinct column-lists
+        result.add(colList);
+      }
     }
     return result;
   }
@@ -778,7 +840,7 @@ public class UniversalPartitioningScriptAction implements IActionExecution {
                             "SELECT c2.relname FROM pg_inherits inh " +
                                     "JOIN pg_class c2      ON c2.oid = inh.inhrelid " +
                                     "JOIN pg_class pc      ON pc.oid = inh.inhparent " +
-                                    "JOIN pg_namespace pn  ON pn.oid = pc.relnamespace " +
+                                    "JOIN pg_namespace pn  ON pn.oid = pc.relnamespace " +      //to read the roll log
                                     "WHERE pn.nspname = :schema AND pc.relname = :table " +
                                     "  AND c2.relname <> :defaultName " +
                                     "ORDER BY c2.relname DESC LIMIT 1")
@@ -880,7 +942,7 @@ public class UniversalPartitioningScriptAction implements IActionExecution {
     }
     if (!IDENT_PATTERN.matcher(ident).matches()) {
       throw new IllegalArgumentException(
-              "Invalid identifier: '" + ident + "' (must match " + IDENT_PATTERN.pattern() + ")");
+              "Invalid identifier: '" + ident + "' (must match " + IDENT_PATTERN.pattern() + ")"); //to check whther the tables pattern is valid
     }
     return "\"" + ident + "\"";
   }
@@ -911,6 +973,9 @@ public class UniversalPartitioningScriptAction implements IActionExecution {
     try {
       // Build the JSONB details document as a plain JSON string.
       // (Casting to ::jsonb in SQL avoids any JDBI type-registry setup.)
+      final long durationMs = java.time.Duration
+              .between(rec.startedAt, LocalDateTime.now()).toMillis();
+
       final StringBuilder details = new StringBuilder("{");
       details.append("\"partitions_created_names\":")
               .append(toJsonArray(rec.partitionsCreatedNames));
@@ -931,60 +996,64 @@ public class UniversalPartitioningScriptAction implements IActionExecution {
               .append(rec.totalRowCount != null ? rec.totalRowCount.toString() : "null");
       details.append(",\"total_column_count\":")
               .append(rec.totalColumnCount != null ? rec.totalColumnCount.toString() : "null");
+      // Columns moved out of the audit table and embedded as JSON keys.
+      details.append(",\"partition_column\":").append(jsonStrOrNull(rec.partitionColumn));
+      details.append(",\"pk_name\":").append(jsonStrOrNull(rec.pkName));
+      details.append(",\"pk_columns_original\":").append(jsonStrOrNull(rec.pkColumnsOriginal));
+      details.append(",\"pk_columns_augmented\":").append(jsonStrOrNull(rec.pkColumnsAugmented));
+      details.append(",\"non_pk_index_count\":")
+              .append(rec.nonPkIndexCount != null ? rec.nonPkIndexCount.toString() : "null");
+      details.append(",\"partitions_created\":").append(rec.partitionsCreated);
+      details.append(",\"partitions_dropped\":").append(rec.partitionsDropped);
+      details.append(",\"backup_table_name\":").append(jsonStrOrNull(rec.backupTableName));
+      details.append(",\"window_range\":").append(jsonStrOrNull(rec.windowRange));
+      details.append(",\"duration_ms\":").append(durationMs);
+      details.append(",\"error_message\":").append(jsonStrOrNull(rec.errorMessage));
+      details.append(",\"error_stacktrace\":").append(jsonStrOrNull(rec.errorStacktrace));
+      details.append(",\"action_id\":").append(jsonStrOrNull(action.getActionId() == null
+              ? null : String.valueOf(action.getActionId())));
+      details.append(",\"root_pipeline_id\":").append(jsonStrOrNull(action.getRootPipelineId() == null
+              ? null : String.valueOf(action.getRootPipelineId())));
       details.append("}");
-
-      final long durationMs = java.time.Duration
-              .between(rec.startedAt, LocalDateTime.now()).toMillis();
 
       final String eventLogText = rec.eventLog.length() == 0 ? null
               : rec.eventLog.toString();
 
       // Audit target comes from the DSL `output-table` attribute; fall back to
       // the historical default when it is not supplied.
+      // Audit target comes from the DSL `output-table` attribute. Validate it
+      // as a plain schema.table identifier before using it in SQL; on anything
+      // malformed, fall back to the default and log loudly (never silently break
+      // the audit trail, never concatenate an unchecked value into SQL).
       final String configuredOutputTable = universalPartitioningScript.getOutputTable();
-      final String auditTable = (configuredOutputTable == null || configuredOutputTable.isBlank())
-              ? "audit.partition_maintenance_audit"
-              : configuredOutputTable.trim();
+      String resolvedAuditTable = "db_executors.partition_maintenance_audit";
+      if (configuredOutputTable != null && !configuredOutputTable.isBlank()) {
+        final String candidate = configuredOutputTable.trim();
+        if (QUALIFIED_TABLE_PATTERN.matcher(candidate).matches()) {
+          resolvedAuditTable = candidate;
+        } else {
+          log.error(aMarker,
+                  "[{}.{}] Invalid output-table '{}'; falling back to default audit table {}",
+                  rec.schema, rec.table, candidate, resolvedAuditTable);
+        }
+      }
+      final String auditTable = resolvedAuditTable;
 
       jdbi.useHandle(handle ->
               handle.createUpdate(
                               "INSERT INTO " + auditTable + " (" +
                                       "  schema_name, table_name, operation, status, " +
-                                      "  partition_column, pk_name, pk_columns_original, pk_columns_augmented, " +
-                                      "  non_pk_index_count, partitions_created, partitions_dropped, " +
-                                      "  backup_table_name, window_range, duration_ms, " +
-                                      "  error_message, error_stacktrace, " +
-                                      "  action_id, root_pipeline_id, " +
                                       "  details, event_log " +
                                       ") VALUES (" +
                                       "  :schema, :table, :operation, :status, " +
-                                      "  :partitionCol, :pkName, :pkOrig, :pkAug, " +
-                                      "  :idxCount, :pCreated, :pDropped, " +
-                                      "  :backup, :window, :durationMs, " +
-                                      "  :errMsg, :errTrace, " +
-                                      "  :actionId, :rootPipelineId, " +
                                       "  CAST(:details AS jsonb), :eventLog" +
                                       ")")
-                      .bind("schema",         rec.schema)
-                      .bind("table",          rec.table)
-                      .bind("operation",      rec.operation)
-                      .bind("status",         rec.status)
-                      .bind("partitionCol",   rec.partitionColumn)
-                      .bind("pkName",         rec.pkName)
-                      .bind("pkOrig",         rec.pkColumnsOriginal)
-                      .bind("pkAug",          rec.pkColumnsAugmented)
-                      .bind("idxCount",       rec.nonPkIndexCount)
-                      .bind("pCreated",       rec.partitionsCreated)
-                      .bind("pDropped",       rec.partitionsDropped)
-                      .bind("backup",         rec.backupTableName)
-                      .bind("window",         rec.windowRange)
-                      .bind("durationMs",     durationMs)
-                      .bind("errMsg",         rec.errorMessage)
-                      .bind("errTrace",       rec.errorStacktrace)
-                      .bind("actionId",       action.getActionId())
-                      .bind("rootPipelineId", action.getRootPipelineId())
-                      .bind("details",        details.toString())
-                      .bind("eventLog",       eventLogText)
+                      .bind("schema",    rec.schema)
+                      .bind("table",     rec.table)
+                      .bind("operation", rec.operation)
+                      .bind("status",    rec.status)
+                      .bind("details",   details.toString())
+                      .bind("eventLog",  eventLogText)
                       .execute()
       );
     } catch (Exception auditEx) {
@@ -993,6 +1062,10 @@ public class UniversalPartitioningScriptAction implements IActionExecution {
               "[{}.{}] Failed to insert audit row: {}",
               rec.schema, rec.table, auditEx.getMessage(), auditEx);
     }
+  }
+  /** Emits a JSON-escaped quoted string, or the literal null when the value is null. */
+  private static String jsonStrOrNull(String s) {
+    return s == null ? "null" : "\"" + jsonEscape(s) + "\"";
   }
 
   /** Minimal JSON array serializer for a list of strings (no external deps). */
@@ -1017,16 +1090,36 @@ public class UniversalPartitioningScriptAction implements IActionExecution {
             .replace("\t", "\\t");
   }
 
-  public Jdbi checkJDBIConnection(Jdbi jdbi) {
+  public Jdbi checkJDBIConnection(Jdbi jdbi, String dbSrc) {
     try (var ignored = jdbi.open()) {
-      log.info("Jdbi connection is open, initiating the transaction");
+      log.info("Jdbi connection is open, initiating the transaction");  // to restablish connection with the pool and to show that the pool is alive
       return jdbi;
     } catch (Exception e) {
-      log.error("Jdbi connection is closed, recreating the connection");
-      jdbi = HandymanRepoImpl.getDatabaseConnectionByConnectionType();
-      log.info("Recreated the connection");
-      return jdbi;
+      // The pooled connection appears stale. Re-resolve the SAME configured
+      // resource first — never silently switch to a different database, which
+      // for a DDL script (rename/drop/create) could target the wrong database.
+      log.error("Jdbi connection stale for resource '{}'; re-resolving the same resource", dbSrc, e);
+      if (dbSrc != null && !dbSrc.isBlank()) {
+        try {
+          final Jdbi reResolved = ResourceAccess.rdbmsJDBIConn(dbSrc);
+          log.info("Re-resolved the configured resource '{}'", dbSrc);
+          return reResolved;
+        } catch (Exception e2) {
+          log.error("Re-resolve of resource '{}' failed; FALLING BACK TO DEFAULT CONNECTION "
+                  + "— verify this targets the intended database", dbSrc, e2);
+        }
+      }
+      // Last resort: original behaviour, but now reached only if the correct
+      // resource could not be re-resolved, and logged loudly (not silent).
+      final Jdbi fallback = HandymanRepoImpl.getDatabaseConnectionByConnectionType();
+      log.warn("Recreated the connection via default connection type");
+      return fallback;
     }
+  }
+
+  /** Backward-compatible overload for any caller that doesn't pass a resource. */
+  public Jdbi checkJDBIConnection(Jdbi jdbi) {
+    return checkJDBIConnection(jdbi, null);
   }
 
   // =========================================================================
