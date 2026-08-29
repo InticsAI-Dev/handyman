@@ -53,7 +53,6 @@ public class PredictionDTO {
     private String sorItemName;
     private String containerName;
     private String sorContainerInstance;
-    private Boolean isMultiEntityEnabled;
     private Integer paperNo;
     private Integer imageWidth;
     private Integer imageHeight;
