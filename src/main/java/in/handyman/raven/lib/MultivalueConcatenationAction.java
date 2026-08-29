@@ -235,7 +235,7 @@ public class MultivalueConcatenationAction implements IActionExecution {
    */
   private MultiValueUniquenessInput cloneUniquenessInputRecord(MultiValueUniquenessInput originalInput) {
     MultiValueUniquenessInput clonedInput = new MultiValueUniquenessInput();
-
+    clonedInput.setTransactionId(originalInput.getTransactionId());
     clonedInput.setStatus(originalInput.getStatus());
     clonedInput.setAnswer(originalInput.getAnswer());
     clonedInput.setBBox(originalInput.getBBox());
@@ -250,6 +250,11 @@ public class MultivalueConcatenationAction implements IActionExecution {
     clonedInput.setScore(originalInput.getScore());
     clonedInput.setSorItemAttributionId(originalInput.getSorItemAttributionId());
     clonedInput.setSorItemName(originalInput.getSorItemName());
+    clonedInput.setSorItemId(originalInput.getSorItemId());
+    clonedInput.setTruthId(originalInput.getTruthId());
+    clonedInput.setVersion(originalInput.getVersion());
+    clonedInput.setSorContainerId(originalInput.getSorContainerId());
+    clonedInput.setSorSynonym(originalInput.getSorSynonym());
     clonedInput.setSorQuestion(originalInput.getSorQuestion());
     clonedInput.setSynonymId(originalInput.getSynonymId());
     clonedInput.setTenantId(originalInput.getTenantId());
