@@ -4,7 +4,6 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import com.zaxxer.hikari.HikariPoolMXBean;
 import in.handyman.raven.exception.HandymanException;
-import in.handyman.raven.lambda.access.repo.HandymanRepoImpl;
 import in.handyman.raven.lambda.doa.config.SpwResourceConfig;
 import in.handyman.raven.util.PropertyHandler;
 import org.jdbi.v3.core.Jdbi;
@@ -58,19 +57,11 @@ public class HikariJdbiProvider {
         } else if ("LEGACY".equalsIgnoreCase(legacyResourceConnection)) {
             log.info("Initializing LEGACY HikariDataSource...");
 
-            String bootstrapUrl = PropertyHandler.get("raven.db.url");
-            HandymanRepoImpl repo = new HandymanRepoImpl();
-            SpwResourceConfig resourceConfig = repo.findAllResourceConfigs().stream()
-                    .filter(c -> bootstrapUrl.equals(c.getResourceUrl()))
-                    .findFirst()
-                    .map(c -> repo.getResourceConfig(c.getConfigName()))
-                    .orElseThrow(() -> new HandymanException(
-                            "No active resource config found in spw_resource_config matching raven.db.url"));
+            SpwResourceConfig resourceConfig = ResourceConfigJdbiProvider.fetchResourceConfig();
             log.info("Using connection details from spw_resource_config [config_name={}] for LEGACY DB connection",
                     resourceConfig.getConfigName());
 
             HikariConfig config = getHikariConfig(resourceConfig);
-
             hikariDataSource = new HikariDataSource(config);
             startMetricsScheduler();
         } else {
@@ -79,7 +70,7 @@ public class HikariJdbiProvider {
     }
 
     @NotNull
-    private static HikariConfig getHikariConfig(SpwResourceConfig resourceConfig) {
+    static HikariConfig getHikariConfig(SpwResourceConfig resourceConfig) {
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl(resourceConfig.getResourceUrl());
         config.setUsername(resourceConfig.getUserName());

@@ -3,6 +3,7 @@ package in.handyman.raven.lambda.doa.config;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import in.handyman.raven.core.azure.adapters.ResourceConfigJdbiProvider;
 import in.handyman.raven.lambda.doa.Auditable;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -10,7 +11,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
-import in.handyman.raven.core.azure.adapters.HikariJdbiProvider;
 import org.jdbi.v3.core.Jdbi;
 
 @Getter
@@ -38,7 +38,7 @@ public class SpwResourceConfig extends Auditable {
     private Integer version;
 
     public Jdbi get() {
-        return HikariJdbiProvider.getJdbi();
+            return new ResourceConfigJdbiProvider(this).get();
     }
 
 }
