@@ -198,6 +198,7 @@ action:
     |sectionFilteringAfterGrouping
     |documentWisePostProcessing
     |stateInfoToJson
+    |themisCompliance
     );
 
 
@@ -1314,6 +1315,15 @@ documentparser:
 
 neonKvp:
     'neonKvp' 'as' name=STRING
+    'on-resource-conn' resourceConn=STRING
+    'copro-url' endpoint=STRING
+    'output-table' outputTable=STRING
+    'using' '{'
+            querySet=STRING
+    '}' ('on-condition' condition=expression)* ;
+
+themisCompliance:
+    'themisCompliance' 'as' name=STRING
     'on-resource-conn' resourceConn=STRING
     'copro-url' endpoint=STRING
     'output-table' outputTable=STRING
